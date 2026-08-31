@@ -72,8 +72,16 @@ public struct RecordTransactionIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        // All the work lives in the coordinator so this action and the single-field one
-        // cannot drift into two different behaviours.
+        let debugRaw = """
+        [SPENT Ingest Debug]
+        • amount received: \(amount != nil ? "\(amount!)" : "nil")
+        • merchant received: \(merchant != nil ? "\"\(merchant!)\"" : "nil")
+        • currency received: \(currency != nil ? "\"\(currency!)\"" : "nil")
+        • transactionDate received: \(transactionDate != nil ? "\(transactionDate!)" : "nil")
+        • amountText received: \(amountText != nil ? "\"\(amountText!)\"" : "nil")
+        """
+        print(debugRaw)
+
         let result = await WalletIngestCoordinator.run(
             amount: amount,
             amountText: amountText,
@@ -81,6 +89,8 @@ public struct RecordTransactionIntent: AppIntent {
             currency: currency,
             transactionDate: transactionDate
         )
-        return .result(dialog: IntentDialog(stringLiteral: result.message))
+
+        let dialogMessage = "\(debugRaw)\n\n\(result.message)"
+        return .result(dialog: IntentDialog(stringLiteral: dialogMessage))
     }
 }

@@ -37,10 +37,12 @@ public struct LogWalletPaymentIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        // Deliberately NOT passed as amountText. That slot means "this field holds an
-        // amount" and parses permissively, which turned the 67 in "Kokpit 67" into a ₪67
-        // charge. As free text the payload goes through the strict path, where a number
-        // only counts as money if it carries a currency mark or decimals.
+        let debugRaw = """
+        [SPENT Simple Ingest Debug]
+        • payload received: \(payload != nil ? "\"\(payload!)\"" : "nil")
+        """
+        print(debugRaw)
+
         let result = await WalletIngestCoordinator.run(
             amount: nil,
             amountText: nil,
@@ -48,6 +50,7 @@ public struct LogWalletPaymentIntent: AppIntent {
             currency: nil,
             transactionDate: nil
         )
-        return .result(dialog: IntentDialog(stringLiteral: result.message))
+        let dialogMessage = "\(debugRaw)\n\n\(result.message)"
+        return .result(dialog: IntentDialog(stringLiteral: dialogMessage))
     }
 }

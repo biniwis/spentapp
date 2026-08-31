@@ -6,8 +6,9 @@ public struct ProfileView: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @Query private var allEnrichments: [CityEnrichment]
+    @Query private var budgets: [CategoryBudget]
 
-    @AppStorage("userName") private var userName = "בן"
+    @AppStorage("userName") private var userName = "בנימין"
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 8000.0
     @State private var showSettings = false
     @State private var showBudgetsSheet = false
@@ -16,6 +17,18 @@ public struct ProfileView: View {
     @State private var showIngestLogSheet = false
     @State private var showApplePayGuideSheet = false
     @State private var selectedMonth: String? = nil
+
+    private var thisMonthTransactions: [Transaction] {
+        let cal = Calendar.current
+        let now = Date()
+        return allTransactions.filter {
+            cal.isDate($0.timestamp, equalTo: now, toGranularity: .month)
+        }
+    }
+
+    private var totalThisMonth: Double {
+        thisMonthTransactions.filter { $0.category != .savings }.reduce(0) { $0 + $1.amount }
+    }
 
     private var yearTransactions: [Transaction] {
         let cal = Calendar.current
@@ -29,16 +42,8 @@ public struct ProfileView: View {
         yearTransactions.filter { $0.category != .savings }.reduce(0) { $0 + $1.amount }
     }
 
-    private var totalThisMonth: Double {
-        let cal = Calendar.current
-        let now = Date()
-        return allTransactions.filter {
-            cal.isDate($0.timestamp, equalTo: now, toGranularity: .month) && $0.category != .savings
-        }.reduce(0) { $0 + $1.amount }
-    }
-
-    // Monthly totals for bar chart (last 12 months)
-    private var monthlyTotals: [(label: String, amount: Double)] {
+    // Monthly totals for bar chart (last 12 rolling months)
+    private var monthlyTotals: [(label: String, amount: Double, monthDate: Date)] {
         let cal = Calendar.current
         let now = Date()
         let hebrewMonths = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יוני", "יולי", "אוג", "ספט", "אוק", "נוב", "דצמ"]
@@ -59,7 +64,74 @@ public struct ProfileView: View {
                 f.dateFormat = "MMM"
                 monthLabel = f.string(from: monthDate)
             }
-            return (monthLabel, total)
+            return (monthLabel, total, monthDate)
+        }
+    }
+
+    private var total12Months: Double {
+        monthlyTotals.reduce(0) { $0 + $1.amount }
+    }
+
+    /// Real consecutive daily transaction streak
+    private var activeStreakDays: Int {
+        guard !allTransactions.isEmpty else { return 0 }
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let daysWithTx = Set(allTransactions.map { cal.startOfDay(for: $0.timestamp) })
+        
+        var streak = 0
+        var checkDate = today
+        
+        if !daysWithTx.contains(checkDate) {
+            guard let yesterday = cal.date(byAdding: .day, value: -1, to: today),
+                  daysWithTx.contains(yesterday) else {
+                return 0
+            }
+            checkDate = yesterday
+        }
+        
+        while daysWithTx.contains(checkDate) {
+            streak += 1
+            guard let prevDay = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
+            checkDate = prevDay
+        }
+        return streak
+    }
+
+    /// Effective budget limit across category caps or global budget
+    private var effectiveBudgetLimit: Double {
+        let categoryTotal = budgets.reduce(0) { $0 + $1.monthlyLimit }
+        if categoryTotal > 0 { return categoryTotal }
+        return userMonthlyBudget > 0 ? userMonthlyBudget : 0
+    }
+
+    private var budgetGoalText: String {
+        let limit = effectiveBudgetLimit
+        guard limit > 0 else {
+            return l10n.language == .hebrew ? "לא הוגדר" : "Not set"
+        }
+        let pct = Int(round((totalThisMonth / limit) * 100))
+        return "\(pct)% " + (l10n.language == .hebrew ? "מהיעד" : "of goal")
+    }
+
+    private var displayName: String {
+        var clean = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.hasPrefix("העיר של ") {
+            clean = String(clean.dropFirst("העיר של ".count))
+        }
+        return clean.isEmpty ? (l10n.language == .hebrew ? "בנימין" : "Binyamin") : clean
+    }
+
+    private var greetingText: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let isHe = l10n.language == .hebrew
+        let name = displayName
+        if hour < 12 {
+            return isHe ? "בוקר טוב, \(name)" : "Good morning, \(name)"
+        } else if hour < 17 {
+            return isHe ? "צהריים טובים, \(name)" : "Good afternoon, \(name)"
+        } else {
+            return isHe ? "ערב טוב, \(name)" : "Good evening, \(name)"
         }
     }
 
@@ -103,7 +175,7 @@ public struct ProfileView: View {
                     // ── User Avatar & City Greeting Card ──
                     userProfileCard
 
-                    // ── 4 Stats Grid (Matching Mockup) ──
+                    // ── 4 Stats Grid (Real Data) ──
                     statsGridCard
 
                     // ── 12-Month Spending Bar Chart ──
@@ -160,7 +232,7 @@ public struct ProfileView: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(l10n.language == .hebrew ? "בוקר טוב, \(userName)" : "Good morning, \(userName)")
+                Text(greetingText)
                     .font(.system(size: 17, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 
@@ -191,23 +263,22 @@ public struct ProfileView: View {
                 AnnualVaultVectorIcon(color: Color.themeLavender)
             }
             statTile(
-                label: l10n.language == .hebrew ? "עסקאות החודש" : "Transactions",
-                value: "\(allTransactions.count)",
+                label: l10n.language == .hebrew ? "עסקאות החודש" : "This Month",
+                value: "\(thisMonthTransactions.count)",
                 iconBg: Color.themeTurquoiseSoft
             ) {
                 BarMetricVectorIcon(color: Color.themeTurquoise)
             }
             statTile(
                 label: l10n.language == .hebrew ? "רצף ימים פעיל" : "Active Streak",
-                value: "14 " + (l10n.language == .hebrew ? "ימים" : "days"),
+                value: "\(activeStreakDays) " + (l10n.language == .hebrew ? "ימים" : "days"),
                 iconBg: Color.themeOrangeSoft
             ) {
                 StreakFlameVectorIcon(color: Color.themeOrange)
             }
-            let budgetPct = userMonthlyBudget > 0 ? Int(min((totalThisMonth / userMonthlyBudget) * 100, 100)) : 0
             statTile(
                 label: l10n.language == .hebrew ? "יעד תקציב" : "Budget Goal",
-                value: "\(budgetPct)% " + (l10n.language == .hebrew ? "מהיעד" : "of goal"),
+                value: budgetGoalText,
                 iconBg: Color.themeMintSoft
             ) {
                 TargetReticleVectorIcon(color: Color.themeMint)
@@ -261,7 +332,7 @@ public struct ProfileView: View {
                     .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 Spacer()
-                Text("\(l10n.baseCurrency.symbol)\(shortAmt(totalThisYear))")
+                Text("\(l10n.baseCurrency.symbol)\(shortAmt(total12Months))")
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundColor(Color.primaryBlue)
             }
@@ -296,13 +367,15 @@ public struct ProfileView: View {
                             
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.borderSubtle)
+                                    .fill(Color.borderSubtle.opacity(0.6))
                                     .frame(height: 70)
 
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(isSelected ? Color.themeTurquoise : (isPeak ? Color.primaryBlue : Color.primaryBlue.opacity(0.7)))
-                                    .frame(height: max(frac * 70, 6))
-                                    .scaleEffect(isSelected ? 1.08 : 1.0)
+                                if month.amount > 0 {
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(isSelected ? Color.themeTurquoise : (isPeak ? Color.primaryBlue : Color.primaryBlue.opacity(0.8)))
+                                        .frame(height: max(frac * 70, 8))
+                                        .scaleEffect(isSelected ? 1.08 : 1.0)
+                                }
                             }
 
                             Text(month.label)
@@ -526,7 +599,7 @@ public struct SettingsSheet: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query private var allTransactions: [Transaction]
 
-    @AppStorage("userName") private var userName = "בן"
+    @AppStorage("userName") private var userName = "בנימין"
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 8000.0
     @AppStorage("notifications_enabled") private var notificationsEnabled = true
     @AppStorage("haptics_enabled") private var hapticsEnabled = true

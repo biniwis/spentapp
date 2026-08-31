@@ -1,15 +1,24 @@
 const fs = require('fs');
 const path = require('path');
 
+// The diorama is authored here and compiled into MoneyCity/Resources/diorama.html.
+//
+// This file was regenerated from that HTML on 2026-08-31, because the two had drifted:
+// roughly 776 lines — the construction crews, the street characters, the speech-bubble
+// engine — had been written straight into the compiled output, and running this script
+// silently deleted every one of them. Edit the diorama HERE from now on, and run
+// `node build_diorama.js` to compile. Editing diorama.html directly puts the two out of
+// sync again and the next build wins.
 const threeMinJs = fs.readFileSync(path.join(__dirname, "vendor/three.min.js"), "utf8");
 
 const htmlContent = `<!DOCTYPE html>
-<html>
+<html lang="he">
 <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", "Helvetica Neue", "Arial Hebrew", "Arial", sans-serif; }
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background: transparent !important; touch-action:none; }
     #stage { width:100%; height:100%; position:relative; overflow:hidden; background: transparent !important; }
     canvas { display:block; width:100% !important; height:100% !important; background: transparent !important; }
@@ -72,6 +81,52 @@ const htmlContent = `<!DOCTYPE html>
     .diorama-pill-amount.zero {
       color: #94a3b8;
       font-weight: 700;
+    }
+
+    /* 💬 Native Crisp Vector Speech Bubbles (Zero Pixelation / Zero Font Glitches) */
+    .diorama-speech-bubble {
+      position: absolute;
+      top: 0; left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 16px;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Rubik", "Heebo", system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      border: 1.5px solid rgba(226, 232, 240, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.06);
+      transform: translate3d(-50%, -100%, 0) scale(0.001);
+      opacity: 0;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      white-space: nowrap;
+      z-index: 25;
+      direction: rtl;
+    }
+    .diorama-speech-bubble::after {
+      content: "";
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid #ffffff;
+    }
+    .diorama-speech-bubble.active {
+      transform: translate3d(-50%, -100%, 0) scale(1);
+      opacity: 1;
+    }
+    .diorama-speech-bubble.closing {
+      transform: translate3d(-50%, -130%, 0) scale(0.8);
+      opacity: 0;
     }
   </style>
   <script>
@@ -1094,73 +1149,196 @@ ${threeMinJs}
     }
 
     // ================================================================
-    // 💬 EMOJI SPEECH BUBBLE & STREET SITUATIONS ENGINE
+    // 💬 MULTILINGUAL SPEECH BUBBLE & STREET SITUATIONS ENGINE
     // ================================================================
+    let currentLanguage = "he";
     const activeBubbles = [];
     const interactiveCitizens = [];
 
-    function createBubbleTexture(text) {
-      const c = cv(256, 128), g = c.getContext("2d");
-      g.clearRect(0, 0, 256, 128);
+    const DIORAMA_PHRASES = {
+      he: {
+        busStop: "תחנת אוטובוס • העלאת נוסעים",
+        vacantSlot: "חלקה פנויה לבנייה",
+        arrived: "הגעתי לעיר!",
+        newUpgrade: "שדרוג חדש בעיר!",
+        construction: [
+          "עוד שתי דקות מסיימים... אחי איפה המפתחות?",
+          "רק מחזק פה בורג אחד של שכירות",
+          "חריגת תקציב קלה, אבל תראה איזה יופי",
+          "זה תקן אירופאי, אל תשאל אותי",
+          "יצא פיקס! הקפה עליך",
+          "בטון מזוין נגד עליות מחירים!",
+          "רק מניח פה בלוק וממשיכים"
+        ],
+        constructionDone: "סיימנו! תתחדש על המבנה! 🎉",
+        cat: [
+          "אני רואה את כל ההוצאות שלך מלמעלה...",
+          "עוד משלוח אוכל? באמת?",
+          "מיאו! איזה כיף על הגג החם",
+          "גררר... תודה שפתחת אותי!"
+        ],
+        dog: [
+          "הב הב! מטיילים בפארק!",
+          "כלב טוב! אל תאכל את הקבלה!",
+          "הב! מצאתי מקל חינם בפארק!"
+        ],
+        fountain: "מזרקת המשאלות • לזרוק שקל?",
+        sakura: "פריחת הדובדבן מושלמת!",
+        coffeeStand: "שיבולת שועל זה עוד 4 שקלים?!",
+        sculpture: "פסל אמנות מודרנית • מה זה מייצג?",
+        tap: [
+          "בוקר טוב!", "איזה יום מקסים!", "שומר על תקציב מעולה",
+          "קפה מושלם היום", "אוהב את העיר!", "שלום חבר!",
+          "בדרך לקניות", "הפארק מהמם!", "החיסכון גדל!",
+          "באתי רק לקנות חלב, יצאתי ב-400 שקל",
+          "הכלב שלי אוכל יותר יקר ממני",
+          "האבוקדו יבש, אבל עלה כמו מניית אנבידיה",
+          "שוב שכחתי לבטל מנוי ל-7 ימי ניסיון",
+          "קניתי ירקות רק כדי לראות אותם נרקבים"
+        ],
+        street: [
+          "איפה דירה 4B? הוויז השתגע!",
+          "באתי רק לקנות חלב, יצאתי ב-400 שקל",
+          "שוב שכחתי לבטל את המנוי ל-7 ימי ניסיון",
+          "האבוקדו יבש, אבל עלה כמו מניית אנבידיה",
+          "מי הזמין מים מינרליים ב-38 שקל?!",
+          "אחי, רק שתי דקות על כחול-לבן!",
+          "דמי משלוח 18 שקל? אני אבשל לבד... טוב לא",
+          "דירת 20 מ״ר עם פוטנציאל ונוף לפח הזבל",
+          "חם מדי בשביל לקבל החלטות כלכליות",
+          "אני בהייטק אבל שותה נס של עלית במשרד",
+          "קניתי ירקות כדי לראות אותם נרקבים במקרר",
+          "נהג מונית: 'אני בכלל עושה את זה בשביל הנפש'",
+          "מאפה ב-28 שקל? הוא עשוי מזהב טהור?",
+          "הכלב שלי אוכל יותר יקר ממני",
+          "החשבון הגיע... מי מחשב טיפ?",
+          "למה עשיתי ריצה במקום להזמין וולט?",
+          "שיבולת שועל זה עוד 4 שקלים?!",
+          "פירור של לחם מחמצת 45 שקל!",
+          "סליחה! זזנו לאותו צד..."
+        ]
+      },
+      en: {
+        busStop: "Bus Stop • Boarding",
+        vacantSlot: "Vacant Plot",
+        arrived: "Welcome to the city!",
+        newUpgrade: "New City Upgrade!",
+        construction: [
+          "Almost done... bro where are the keys?",
+          "Just tightening a rent bolt here",
+          "Slight budget overrun, but look at that finish!",
+          "It's European standard, don't even ask",
+          "Pristine job! Coffee is on you",
+          "Reinforced concrete against inflation!",
+          "Laying down one more brick!"
+        ],
+        constructionDone: "All done! Enjoy your new building! 🎉",
+        cat: [
+          "I see all your expenses from up here...",
+          "Another food delivery? Really?",
+          "Meow! Sunbathing on the warm roof",
+          "Purrr... thanks for unlocking me!"
+        ],
+        dog: [
+          "Woof woof! Strolling in the park!",
+          "Good boy! Don't chew the receipt!",
+          "My dog eats more expensive food than me!"
+        ],
+        fountain: "Wishing Fountain • Toss a coin?",
+        sakura: "Cherry blossoms in full bloom!",
+        coffeeStand: "Oat milk is an extra ₪4?!",
+        sculpture: "Modern sculpture • What does it mean?",
+        tap: [
+          "Good morning!", "What a lovely day!", "Keeping my budget on track!",
+          "Great coffee today!", "Love this city!", "Hello friend!",
+          "Came for milk, spent ₪400",
+          "Forgot to cancel the 7-day trial again",
+          "Avocado rock hard, cost like Nvidia stock",
+          "Work in high-tech, drink instant coffee"
+        ],
+        street: [
+          "Where is Apt 4B? GPS went wild!",
+          "Came in for milk, walked out with ₪400",
+          "Forgot to cancel the 7-day free trial again",
+          "Avocado is rock hard, cost like Nvidia stock",
+          "Who ordered the ₪38 mineral water?!",
+          "Bro, only stepped out for 2 mins!",
+          "₪18 delivery fee? I'll cook... nah",
+          "20 sqm studio with trash can views",
+          "Too hot for responsible financial decisions",
+          "Work in high-tech, drink instant coffee",
+          "Bought veggies just to watch them rot",
+          "Cab driver: 'I only drive for the soul'",
+          "₪28 croissant? Is it made of 24k gold?",
+          "My dog eats better than I do",
+          "Bill is here... who calculates the tip?",
+          "Why did I jog instead of Wolt?",
+          "Oat milk is an extra ₪4?!",
+          "Crumb of a ₪45 artisan sourdough!",
+          "Pardon me! Sidewalk shuffle..."
+        ]
+      }
+    };
 
-      // Bubble shadow
-      g.shadowColor = "rgba(0,0,0,0.22)";
-      g.shadowBlur = 12;
-      g.shadowOffsetY = 4;
+    window.setDioramaLanguage = function(lang) {
+      if (lang === "en" || lang === "he") {
+        currentLanguage = lang;
+        document.documentElement.lang = lang;
+      }
+    };
 
-      // Rounded bubble
-      g.fillStyle = "#ffffff";
-      g.beginPath();
-      const x = 14, y = 10, w = 228, h = 80, r = 24;
-      g.moveTo(x + r, y);
-      g.lineTo(x + w - r, y);
-      g.quadraticCurveTo(x + w, y, x + w, y + r);
-      g.lineTo(x + w, y + h - r);
-      g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      g.lineTo(x + r, y + h);
-      g.quadraticCurveTo(x, y + h, x, y + h - r);
-      g.lineTo(x, y + r);
-      g.quadraticCurveTo(x, y, x + r, y);
-      g.closePath();
-      g.fill();
-
-      // Tail
-      g.beginPath();
-      g.moveTo(116, 90);
-      g.lineTo(128, 112);
-      g.lineTo(140, 90);
-      g.closePath();
-      g.fill();
-
-      g.shadowColor = "transparent";
-      g.fillStyle = "#0f172a";
-      g.font = "bold 34px -apple-system, sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(text, 128, 50);
-
-      return tex(c);
+    function getDioramaPhrases() {
+      return DIORAMA_PHRASES[currentLanguage] || DIORAMA_PHRASES.he;
     }
 
     function popEmojiBubble(parentObj, text, duration) {
-      if (!parentObj || typeof parentObj.add !== "function") return;
+      if (!parentObj) return;
       try {
-        const bMat = new THREE.SpriteMaterial({ map: createBubbleTexture(text), transparent: true, opacity: 1.0, depthTest: false });
-        const sprite = new THREE.Sprite(bMat);
-        sprite.scale.set(0.01, 0.005, 1);
-        sprite.position.set(0, 0.95, 0);
-        parentObj.add(sprite);
+        const cleanText = (text || "").trim();
+        if (!cleanText) return;
+
+        // Keep maximum 1 active bubble on screen so speech is calm, clean and never crowded
+        while (activeBubbles.length > 0) {
+          const oldB = activeBubbles.pop();
+          if (oldB.el && oldB.el.parentNode) {
+            oldB.el.parentNode.removeChild(oldB.el);
+          }
+        }
+
+        const bubbleEl = document.createElement("div");
+        bubbleEl.className = "diorama-speech-bubble";
+        bubbleEl.style.direction = currentLanguage === "he" ? "rtl" : "ltr";
+        bubbleEl.textContent = cleanText;
+
+        const container = document.getElementById("diorama-html-tags") || stage || document.body;
+        container.appendChild(bubbleEl);
+
+        // Immediate position calculation
+        const v = new THREE.Vector3();
+        parentObj.getWorldPosition(v);
+        v.y += 1.4;
+        v.project(camera);
+        if (v.z < 1) {
+          const screenX = ((v.x + 1) * 0.5) * stage.clientWidth;
+          const screenY = ((-v.y + 1) * 0.5) * stage.clientHeight;
+          bubbleEl.style.left = screenX + "px";
+          bubbleEl.style.top = screenY + "px";
+        }
+
+        // Trigger entrance
+        requestAnimationFrame(() => {
+          bubbleEl.classList.add("active");
+        });
 
         activeBubbles.push({
-          sprite: sprite,
-          parent: parentObj,
+          el: bubbleEl,
+          targetObj: parentObj,
           life: 0,
-          maxLife: duration || 2.4,
-          baseScaleX: 1.4,
-          baseScaleY: 0.7
+          maxLife: duration || 2.5,
+          offsetY: 1.4
         });
       } catch (err) {
-        console.warn("Bubble creation caught:", err);
+        console.warn("Speech bubble creation caught:", err);
       }
     }
 
@@ -1269,6 +1447,178 @@ ${threeMinJs}
       dogBody.userData = uData;
       interactiveCitizens.push(dogBody);
       return dog;
+    }
+
+    const activeConstructionCrews = [];
+
+    function createConstructionWorker(opts) {
+      opts = opts || {};
+      const fig = new THREE.Group();
+      const vestMat = mat(opts.vestColor || 0xf97316, 0.7); // High-vis neon orange
+      const pantsMat = mat(0x1e293b, 0.85); // Sturdy work pants
+      const skinMat = mat(0xfbbf24, 0.8);
+      const helmetMat = mat(opts.helmetColor || 0xfacc15, 0.3, 0.2); // Bright yellow safety hardhat
+      const shoeMat = mat(0x78350f, 0.9); // Heavy work boots
+
+      const torsoGroup = new THREE.Group();
+      torsoGroup.position.y = 0.40;
+      fig.add(torsoGroup);
+
+      const torsoMesh = mesh(new THREE.BoxGeometry(0.24, 0.28, 0.14), vestMat, 0, 0, 0);
+      torsoGroup.add(torsoMesh);
+      // Reflective silver safety striping
+      torsoGroup.add(mesh(new THREE.BoxGeometry(0.25, 0.05, 0.15), mat(0xe2e8f0, 0.2, 0.9), 0, 0.02, 0));
+
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 0.22, 0);
+      torsoGroup.add(headGroup);
+      headGroup.add(mesh(new THREE.SphereGeometry(0.075, 10, 8), skinMat, 0, 0, 0));
+      
+      // Safety hardhat with visor brim
+      const helmet = mesh(new THREE.SphereGeometry(0.090, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), helmetMat, 0, 0.02, 0);
+      const helmetBrim = mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.015, 12), helmetMat, 0, 0.01, 0);
+      headGroup.add(helmet, helmetBrim);
+
+      const legL = new THREE.Group(); legL.position.set(-0.055, 0.24, 0); fig.add(legL);
+      legL.add(mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.24, 8), pantsMat, 0, -0.12, 0));
+      legL.add(mesh(new THREE.BoxGeometry(0.06, 0.04, 0.09), shoeMat, 0, -0.24, 0.02));
+
+      const legR = new THREE.Group(); legR.position.set(0.055, 0.24, 0); fig.add(legR);
+      legR.add(mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.24, 8), pantsMat, 0, -0.12, 0));
+      legR.add(mesh(new THREE.BoxGeometry(0.06, 0.04, 0.09), shoeMat, 0, -0.24, 0.02));
+
+      const armL = new THREE.Group(); armL.position.set(-0.14, 0.48, 0); fig.add(armL);
+      armL.add(mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8), vestMat, 0, -0.11, 0));
+      armL.add(mesh(new THREE.SphereGeometry(0.030, 6, 6), skinMat, 0, -0.22, 0));
+
+      const armR = new THREE.Group(); armR.position.set(0.14, 0.48, 0); fig.add(armR);
+      armR.add(mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8), vestMat, 0, -0.11, 0));
+      armR.add(mesh(new THREE.SphereGeometry(0.030, 6, 6), skinMat, 0, -0.22, 0));
+
+      if (opts.hasHammer) {
+        const hammer = new THREE.Group();
+        hammer.position.set(0, -0.22, 0.06);
+        hammer.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.16, 6), mat(0x78350f, 0.8), 0, 0, 0));
+        hammer.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.08), mat(0x64748b, 0.3, 0.8), 0, 0.07, 0.01));
+        armR.add(hammer);
+      } else if (opts.hasWrench) {
+        const wrench = mesh(new THREE.BoxGeometry(0.025, 0.14, 0.01), mat(0x94a3b8, 0.2, 0.9), 0, -0.20, 0.04);
+        wrench.rotation.z = 0.3;
+        armR.add(wrench);
+      } else if (opts.hasBlueprint) {
+        const bp = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.18, 8), mat(0x38bdf8, 0.5), 0, -0.20, 0.04);
+        bp.rotation.x = Math.PI / 2;
+        armL.add(bp);
+      }
+
+      const uData = {
+        fig: fig,
+        isWorker: true,
+        torso: torsoGroup, head: headGroup,
+        legL: legL, legR: legR, armL: armL, armR: armR,
+        hasHammer: opts.hasHammer || false,
+        hasWrench: opts.hasWrench || false,
+        hammerPhase: Math.random() * Math.PI * 2,
+        hopTimer: 0
+      };
+      fig.userData = uData;
+      torsoMesh.userData = uData;
+      interactiveCitizens.push(torsoMesh);
+
+      return fig;
+    }
+
+    function createConstructionCrew(buildingId, posX, posZ, parent, opts) {
+      opts = opts || {};
+      const g = new THREE.Group();
+      g.position.set(posX, 0.22, posZ);
+      (parent || root).add(g);
+
+      // Worker 1: Active Hammerer
+      const w1 = createConstructionWorker({ hasHammer: true, vestColor: 0xf97316, helmetColor: 0xfde047 });
+      w1.position.set(0.65, 0, 0.55);
+      w1.rotation.y = -Math.PI * 0.75;
+      g.add(w1);
+
+      // Worker 2: Wrench / Blueprint Foreman
+      const w2 = createConstructionWorker({ hasWrench: true, hasBlueprint: true, vestColor: 0x84cc16, helmetColor: 0xffffff });
+      w2.position.set(-0.65, 0, 0.60);
+      w2.rotation.y = Math.PI * 0.65;
+      g.add(w2);
+
+      // Safety Cones
+      [-0.95, 0.95].forEach(cx => {
+        const cone = new THREE.Group();
+        cone.position.set(cx, 0, 0.85);
+        cone.add(mesh(new THREE.BoxGeometry(0.20, 0.025, 0.20), mat(0x1e293b, 0.9), 0, 0.012, 0));
+        cone.add(mesh(new THREE.ConeGeometry(0.08, 0.32, 10), mat(0xf97316, 0.6), 0, 0.16, 0));
+        cone.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.06, 10), mat(0xffffff, 0.4), 0, 0.16, 0));
+        g.add(cone);
+      });
+
+      // Sturdy Red Toolbox
+      const toolbox = mesh(new THREE.BoxGeometry(0.22, 0.12, 0.14), mat(0xd97706, 0.6), 0, 0.06, 0.75);
+      g.add(toolbox);
+
+      // A crane and scaffolding, but only for an actual building site. The permanent
+      // roadworks crew in the city centre is patching a street, not raising a tower,
+      // so it keeps just its cones and toolbox.
+      let crane = null, scaffold = null;
+      if (opts.withRig) {
+        scaffold = new THREE.Group(); g.add(scaffold);
+        [[-1.05, -1.05], [1.05, -1.05], [-1.05, 1.05], [1.05, 1.05]].forEach(pp => {
+          scaffold.add(mesh(new THREE.CylinderGeometry(0.028, 0.028, 1.75, 6), mat(0x94a3b8, 0.4, 0.7), pp[0], 0.875, pp[1]));
+        });
+        [0.58, 1.30].forEach(ry => {
+          scaffold.add(mesh(new THREE.BoxGeometry(2.14, 0.032, 0.032), mat(0x94a3b8, 0.4, 0.7), 0, ry, -1.05));
+          scaffold.add(mesh(new THREE.BoxGeometry(2.14, 0.032, 0.032), mat(0x94a3b8, 0.4, 0.7), 0, ry, 1.05));
+          scaffold.add(mesh(new THREE.BoxGeometry(0.032, 0.032, 2.14), mat(0x94a3b8, 0.4, 0.7), -1.05, ry, 0));
+          scaffold.add(mesh(new THREE.BoxGeometry(0.032, 0.032, 2.14), mat(0x94a3b8, 0.4, 0.7), 1.05, ry, 0));
+        });
+        // A plank walkway on the lower rail, so the scaffold reads as usable.
+        scaffold.add(mesh(new THREE.BoxGeometry(2.10, 0.03, 0.26), mat(0xd6b48a, 0.85), 0, 0.60, -1.05));
+
+        const craneG = new THREE.Group(); craneG.position.set(-1.45, 0, -1.30); g.add(craneG);
+        craneG.add(mesh(new THREE.BoxGeometry(0.38, 0.07, 0.38), mat(0x475569, 0.8), 0, 0.035, 0));
+        craneG.add(mesh(new THREE.BoxGeometry(0.085, 2.20, 0.085), mat(0xfacc15, 0.5), 0, 1.10, 0));
+        const jib = new THREE.Group(); jib.position.set(0, 2.16, 0); craneG.add(jib);
+        jib.add(mesh(new THREE.BoxGeometry(1.70, 0.055, 0.065), mat(0xfacc15, 0.5), 0.62, 0, 0));
+        jib.add(mesh(new THREE.BoxGeometry(0.50, 0.055, 0.065), mat(0x334155, 0.6), -0.32, 0, 0));
+        jib.add(mesh(new THREE.BoxGeometry(0.18, 0.16, 0.18), mat(0x334155, 0.7), -0.46, -0.05, 0));
+        jib.add(mesh(new THREE.BoxGeometry(0.14, 0.13, 0.16), mat(0xf8fafc, 0.4), 0.10, -0.10, 0));
+        const cable = mesh(new THREE.CylinderGeometry(0.006, 0.006, 1.0, 4), mat(0x1e293b, 0.8), 1.18, -0.50, 0);
+        const hook = mesh(new THREE.BoxGeometry(0.15, 0.11, 0.15), mat(0x94a3b8, 0.3, 0.8), 1.18, -1.06, 0);
+        jib.add(cable, hook);
+        crane = { jib: jib, cable: cable, hook: hook };
+      }
+
+      const crew = {
+        buildingId: buildingId,
+        group: g,
+        workers: [w1, w2],
+        timer: opts.timer || 75.0,
+        isTemporary: true,
+        speechTimer: 4.0,
+        crane: crane,
+        scaffold: scaffold,
+        buildTarget: null,
+        buildElapsed: 0,
+        buildDuration: 0
+      };
+      activeConstructionCrews.push(crew);
+      return crew;
+    }
+
+    /// Puts a crew on a plot and has them raise the building over a few seconds,
+    /// instead of the building simply popping into existence at full height.
+    function startConstruction(id, bg, wp) {
+      const crew = createConstructionCrew(id, wp.x, wp.z, root, { withRig: true, timer: 9.2 });
+      crew.buildTarget = bg;
+      crew.buildDuration = 7.4;
+      crew.buildElapsed = 0;
+      bg.userData.underConstruction = true;
+      bg.scale.set(0.06, 0.02, 0.06);
+      return crew;
     }
 
     function addWalkingCitizen(opts) {
@@ -1673,9 +2023,14 @@ ${threeMinJs}
         const scooter = new THREE.Group(); scooter.position.set(sx, 0, sz); scooter.rotation.y = sRot; woltChaos.add(scooter);
         scooter.add(mesh(new THREE.BoxGeometry(0.18, 0.12, 0.82), mat(0x0284c7, 0.4, 0.4), 0, 0.16, 0));
         scooter.add(mesh(new THREE.BoxGeometry(0.16, 0.38, 0.18), mat(0x0284c7, 0.4, 0.4), 0, 0.32, 0.30));
+        // This deck runs along Z, so its wheels have to spin about X. A cylinder's
+        // default axis is Y: left alone each wheel lies flat like a coin under the
+        // board, which is what made these parked scooters read as tipped over.
         [0.32, -0.32].forEach(wz => {
-          scooter.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.06, 12), mat(0x18181b, 0.9), 0, 0.13, wz));
-          scooter.add(mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.065, 10), mat(0xd1d5db, 0.2, 0.9), 0, 0.13, wz));
+          const tyre = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.06, 12), mat(0x18181b, 0.9), 0, 0.13, wz);
+          tyre.rotation.z = Math.PI / 2; scooter.add(tyre);
+          const rim = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.065, 10), mat(0xd1d5db, 0.2, 0.9), 0, 0.13, wz);
+          rim.rotation.z = Math.PI / 2; scooter.add(rim);
         });
         scooter.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.44, 6), mat(0x18181b, 0.7), 0, 0.56, 0.28));
         const hBar = mesh(new THREE.BoxGeometry(0.42, 0.03, 0.03), mat(0x18181b, 0.7), 0, 0.76, 0.28);
@@ -2573,8 +2928,16 @@ ${threeMinJs}
         const sc = new THREE.Group(); sc.position.set(sx, 0, (i % 2 === 0 ? 0.05 : -0.05));
         sc.rotation.y = (i * 0.12) - 0.06;
         
-        sc.add(mesh(roundedBox(0.12, 0.04, 0.58, 0.02), mat(0x10b981, 0.6), 0, 0.06, 0));
-        [-0.24, 0.24].forEach(wz => sc.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 8), mat(0x18181b, 0.9), 0, 0.05, wz)));
+        // Same fix at the sharing station, plus the deck lifted clear of the wheels.
+        sc.add(mesh(roundedBox(0.12, 0.04, 0.58, 0.02), mat(0x10b981, 0.6), 0, 0.115, 0));
+        [-0.26, 0.26].forEach(wz => {
+          const w = mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.03, 10), mat(0x18181b, 0.9), 0, 0.055, wz);
+          w.rotation.z = Math.PI / 2;
+          sc.add(w);
+        });
+        // A kickstand, so a parked scooter has a reason not to fall over.
+        const stand = mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.14, 5), mat(0x475569, 0.6), 0.05, 0.06, -0.15);
+        stand.rotation.x = 0.22; stand.rotation.z = -0.45; sc.add(stand);
         sc.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.68, 6), mat(0x18181b, 0.7), 0, 0.40, 0.22));
         sc.add(mesh(new THREE.BoxGeometry(0.32, 0.02, 0.02), mat(0x10b981, 0.6), 0, 0.74, 0.22));
         sc.add(mesh(new THREE.BoxGeometry(0.05, 0.04, 0.01), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 2.5 }), 0, 0.75, 0.21));
@@ -3144,6 +3507,297 @@ ${threeMinJs}
       ]
     });
 
+    // 10. 🚧 Starter Roadworks / City Development Crew (Active from Day 1)
+    const starterCrew = createConstructionCrew("starter_city_works", 2.2, -4.6, root);
+    starterCrew.isTemporary = false; // Always lively in the city center
+
+    // ════════════════════════════════════════════════════════════════
+    // 🎭 URBAN SATIRICAL CITIZENS & PHYSICAL MICRO-SCENES
+    // ════════════════════════════════════════════════════════════════
+
+    // 1. 🛴 Electric Lime Scooter Zoomer (Cruising down the promenade)
+    function buildElectricScooterFigure() {
+      const g = new THREE.Group();
+      g.position.set(0, 0.22, -3.4);
+      root.add(g);
+
+      // Scooter Frame (Lime Green & Midnight Dark)
+      const deck = mesh(roundedBox(0.85, 0.05, 0.22, 0.04), mat(0x84cc16, 0.4, 0.6), 0, 0.08, 0);
+      g.add(deck);
+      const stem = mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.70, 8), mat(0x18181b, 0.8), 0.32, 0.42, 0);
+      const bar = mesh(new THREE.BoxGeometry(0.03, 0.03, 0.32), mat(0x18181b, 0.8), 0.32, 0.76, 0);
+      const light = mesh(new THREE.SphereGeometry(0.045, 8, 8), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }), 0.35, 0.72, 0);
+      g.add(stem, bar, light);
+      
+      // Wheels
+      [[-0.35, 0], [0.35, 0]].forEach(wp => {
+        const wh = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 12), mat(0x09090b, 0.9), wp[0], 0.09, wp[1]);
+        wh.rotation.x = Math.PI / 2;
+        g.add(wh);
+      });
+
+      // Rider Figure with Oversized Headphones
+      const rider = createMiniFigure({
+        shirtColor: 0x6366f1, pantsColor: 0x09090b, hairColor: 0x451a03
+      });
+      // The mini-figure is modelled facing +Z — that is the convention the walking
+      // citizens' heading maths assumes — while this scooter is modelled facing +X.
+      // Without the quarter turn the rider stands sideways on the deck, which is what
+      // made him look like he was riding a scooter lying on its side.
+      const riderParts = rider.userData;
+      rider.position.set(-0.05, 0.105, 0);
+      rider.rotation.y = Math.PI / 2;
+      // Hands forward onto the handlebar instead of hanging at his sides.
+      if (riderParts) {
+        if (riderParts.armL) riderParts.armL.rotation.x = -1.45;
+        if (riderParts.armR) riderParts.armR.rotation.x = -1.45;
+        // Front foot ahead, back foot behind: a scooter stance, not a standing pose.
+        if (riderParts.legL) riderParts.legL.position.z = 0.10;
+        if (riderParts.legR) riderParts.legR.position.z = -0.09;
+      }
+      const hpL = mesh(new THREE.SphereGeometry(0.04, 6, 6), mat(0xec4899, 0.3), -0.09, 0.64, 0);
+      const hpR = mesh(new THREE.SphereGeometry(0.04, 6, 6), mat(0xec4899, 0.3), 0.09, 0.64, 0);
+      const hpBand = mesh(new THREE.TorusGeometry(0.09, 0.015, 6, 8, Math.PI), mat(0x1e293b, 0.8), 0, 0.64, 0);
+      hpBand.rotation.z = Math.PI;
+      rider.add(hpL, hpR, hpBand);
+      g.add(rider);
+
+      const uData = {
+        fig: g,
+        isScooter: true,
+        rider: rider,
+        phrases: [
+          "זה מדרכה או אוטוסטרדה?!",
+          "דקה אני ברוטשילד!",
+          "הברקסים חורקים אבל יש לי ביטוח",
+          "שמתי וויז על מהירות 40 קמ״ש"
+        ],
+        phrasesEn: [
+          "Is this a sidewalk or a highway?!",
+          "1 min to Rothschild!",
+          "Brakes are squeaking but I'm in a rush!",
+          "Cruising at max battery speed"
+        ],
+        progress: 0.2,
+        hopTimer: 0
+      };
+      g.userData = uData;
+      rider.userData = uData;
+      return g;
+    }
+    const scooterZoomer = buildElectricScooterFigure();
+
+    // 2. 👮‍♂️ Municipal Parking Inspector
+    function buildParkingInspector() {
+      const g = new THREE.Group();
+      g.position.set(1.5, 0.22, -1.8);
+      root.add(g);
+
+      const insp = createMiniFigure({
+        shirtColor: 0x1e3a8a, pantsColor: 0x0f172a, hairColor: 0x18181b
+      });
+      g.add(insp);
+
+      // Inspector Cap
+      const cap = mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.04, 10), mat(0x1e3a8a, 0.8), 0, 0.72, 0);
+      const visor = mesh(new THREE.BoxGeometry(0.11, 0.015, 0.06), mat(0x09090b, 0.9), 0, 0.70, 0.06);
+      insp.add(cap, visor);
+
+      const terminal = mesh(new THREE.BoxGeometry(0.045, 0.08, 0.02), mat(0x09090b, 0.8), 0, -0.16, 0.06);
+      if (insp.userData && insp.userData.armL) insp.userData.armL.add(terminal);
+
+      const uData = {
+        fig: g,
+        phrases: [
+          "אחי, רק שתי דקות על כחול-לבן!",
+          "חנית על אדום-לבן, אל תתווכח",
+          "קנס 250 ש״ח על פריקת סחורה",
+          "אין פה פנגו? תשלם דוח"
+        ],
+        phrasesEn: [
+          "Bro, only stepped out for 2 mins!",
+          "Parked on red-and-white, don't argue",
+          "₪250 fine for double parking",
+          "No parking app active? That's a ticket"
+        ],
+        hopTimer: 0
+      };
+      g.userData = uData;
+      insp.userData = uData;
+      return g;
+    }
+    const parkingInspector = buildParkingInspector();
+
+    // 3. 📸 Influencer with Selfie Stick & Coffee
+    function buildInfluencer() {
+      const g = new THREE.Group();
+      g.position.set(-0.7, 0.22, -3.8);
+      root.add(g);
+
+      const figure = createMiniFigure({
+        shirtColor: 0xf43f5e, pantsColor: 0xf8fafc, hairColor: 0xfde047, hasCoffee: true
+      });
+      g.add(figure);
+
+      const stick = mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.35, 6), mat(0xd1d5db, 0.5), 0, -0.15, 0.16);
+      stick.rotation.x = -Math.PI / 3;
+      const phone = mesh(new THREE.BoxGeometry(0.05, 0.09, 0.012), mat(0xec4899, 0.3, 0.8), 0, 0.16, 0);
+      phone.rotation.x = Math.PI / 6;
+      stick.add(phone);
+      if (figure.userData && figure.userData.armR) figure.userData.armR.add(stick);
+
+      const uData = {
+        fig: g,
+        phrases: [
+          "רק עוד 40 תמונות לאינסטגרם",
+          "הקפה כבר קר אבל התאורה מושלמת!",
+          "חייבת לתייג את בית הקפה בשביל הנחה",
+          "מי מצלם אותי ספונטני עכשיו?"
+        ],
+        phrasesEn: [
+          "Just 40 more takes for Insta",
+          "Coffee is cold but lighting is fire!",
+          "Tagging the cafe for that 10% discount",
+          "Can someone take a 'candid' photo of me?"
+        ],
+        hopTimer: 0
+      };
+      g.userData = uData;
+      figure.userData = uData;
+      return g;
+    }
+    const influencerFigure = buildInfluencer();
+
+    // 4. 🧑‍💻 Tech Worker with Laptop on Park Bench
+    function buildTechWorkerOnBench() {
+      const g = new THREE.Group();
+      g.position.set(-4.8, 0.22, 7.4);
+      root.add(g);
+
+      const worker = createMiniFigure({
+        shirtColor: 0x0284c7, pantsColor: 0x1e293b, hairColor: 0x1f2937, isSitting: true
+      });
+      g.add(worker);
+
+      const laptopBase = mesh(new THREE.BoxGeometry(0.18, 0.012, 0.14), mat(0xd1d5db, 0.3, 0.9), 0, 0.20, 0.10);
+      const laptopScreen = mesh(new THREE.BoxGeometry(0.18, 0.12, 0.010), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }), 0, 0.06, -0.06);
+      laptopScreen.rotation.x = -0.35;
+      laptopBase.add(laptopScreen);
+      worker.add(laptopBase);
+
+      const uData = {
+        fig: g,
+        phrases: [
+          "משחרר גרסה לפרודקשן מהפארק...",
+          "מישהו יודע מה הסיסמה ל-WiFi של העירייה?",
+          "אני בהייטק אבל שותה נס של עלית",
+          "זום מנהלים בעוד 3 דקות, איפה השקט?"
+        ],
+        phrasesEn: [
+          "Deploying to prod from the park...",
+          "Anyone know the city WiFi password?",
+          "Work in high-tech, drink instant coffee",
+          "Executive Zoom call in 3 mins, need silence"
+        ],
+        hopTimer: 0
+      };
+      g.userData = uData;
+      worker.userData = uData;
+      return g;
+    }
+    const techWorkerOnBench = buildTechWorkerOnBench();
+
+    // 5. 🎸 Street Musician in Plaza Arcade
+    function buildStreetMusician() {
+      const g = new THREE.Group();
+      g.position.set(4.2, 0.22, -4.8);
+      root.add(g);
+
+      const busker = createMiniFigure({
+        shirtColor: 0x10b981, pantsColor: 0x334155, hairColor: 0x92400e
+      });
+      g.add(busker);
+
+      const guitar = new THREE.Group();
+      guitar.position.set(0, 0.35, 0.12);
+      guitar.rotation.z = -0.4;
+      const gBody = mesh(new THREE.BoxGeometry(0.16, 0.22, 0.06), mat(0xd97706, 0.7), 0, 0, 0);
+      const gNeck = mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.24, 6), mat(0x78350f, 0.8), 0, 0.20, 0);
+      guitar.add(gBody, gNeck);
+      busker.add(guitar);
+
+      const gCase = mesh(new THREE.BoxGeometry(0.24, 0.06, 0.40), mat(0x1e293b, 0.9), 0.35, 0.03, 0.15);
+      const coin = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.005, 8), new THREE.MeshBasicMaterial({ color: 0xfacc15 }), 0, 0.035, 0);
+      gCase.add(coin);
+      g.add(gCase);
+
+      const uData = {
+        fig: g,
+        phrases: [
+          "מנגן שלמה ארצי בשביל שקלים",
+          "אפשר להעביר טיפ גם ב-Apple Pay?",
+          "השיר הבא מוקדש לתקציב החודשי",
+          "גיטריסט מוסמך, עובד בשביל קפה"
+        ],
+        phrasesEn: [
+          "Playing classic tunes for coins",
+          "Do you take tips via Apple Pay?",
+          "Next song is dedicated to monthly savings",
+          "Certified musician, playing for coffee"
+        ],
+        hopTimer: 0
+      };
+      g.userData = uData;
+      busker.userData = uData;
+      return g;
+    }
+    const streetMusician = buildStreetMusician();
+
+    // 6. 🧘‍♀️ Park Yoga Guru
+    function buildYogaPractitioner() {
+      const g = new THREE.Group();
+      g.position.set(-7.4, 0.22, 6.2);
+      root.add(g);
+
+      const matMesh = mesh(roundedBox(0.45, 0.015, 0.90, 0.02), mat(0xa855f7, 0.8), 0, 0.01, 0);
+      g.add(matMesh);
+
+      const yogi = createMiniFigure({
+        shirtColor: 0x06b6d4, pantsColor: 0x09090b, hairColor: 0x451a03
+      });
+      yogi.position.set(0, 0, 0);
+      if (yogi.userData && yogi.userData.legL) {
+        yogi.userData.legL.rotation.z = 0.8;
+        yogi.userData.legL.position.y = 0.28;
+      }
+      if (yogi.userData && yogi.userData.armL && yogi.userData.armR) {
+        yogi.userData.armL.rotation.z = -1.2;
+        yogi.userData.armR.rotation.z = 1.2;
+      }
+      g.add(yogi);
+
+      const uData = {
+        fig: g,
+        phrases: [
+          "נושמת פנימה שלווה, נושפת החוצה את השכירות",
+          "נמסטה והעברתי בביט",
+          "שומרת על איזון כלכלי ופנימי",
+          "תנוחת עץ הדובדבן למשיכת שפע"
+        ],
+        phrasesEn: [
+          "Inhaling peace, exhaling the rent",
+          "Namaste and I sent it via Bit",
+          "Balancing my inner energy and budget",
+          "Tree pose for financial mindfulness"
+        ],
+        hopTimer: 0
+      };
+      g.userData = uData;
+      yogi.userData = uData;
+      return g;
+    }
+    const yogaPractitioner = buildYogaPractitioner();
+
     // ────────────────────────────────────────────────────────────────
     // 🚗  CALM & SEPARATED VEHICLES (NO OVERLAPPING / NO CRASHING)
     // ────────────────────────────────────────────────────────────────
@@ -3321,39 +3975,40 @@ ${threeMinJs}
             if (targetObj && targetObj.visible !== false) {
               u.hopTimer = 0.40;
               
+              const ph = getDioramaPhrases();
               if (u.isSlot) {
-                popEmojiBubble(targetObj, "📍 " + u.slotName, 2.4);
+                popEmojiBubble(targetObj, u.slotName || ph.vacantSlot, 2.4);
                 if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.slotTapped) {
                   try { window.webkit.messageHandlers.slotTapped.postMessage({ slotId: u.slotId, slotName: u.slotName }); } catch(e) {}
                 }
                 return;
               }
 
-              let phrase = "בוקר טוב! ☀️";
-              if (u.isCat) {
-                const catPhrases = ["🐱 מיאו! איזה חום נעים... ☀️", "🐾 גררר... שמח שפתחת אותי! 😸", "🐱 מיאו מיאו! 🐟"];
-                phrase = catPhrases[Math.floor(Math.random() * catPhrases.length)];
+              let phrase = ph.tap[0];
+              if (u.phrases && u.phrases.length > 0) {
+                const list = currentLanguage === "he" ? u.phrases : (u.phrasesEn || u.phrases);
+                phrase = list[Math.floor(Math.random() * list.length)];
+              } else if (u.isWorker) {
+                const cQuotes = ph.construction || ["עוד שתי דקות מסיימים...", "יצא פיקס! הקפה עליך"];
+                phrase = cQuotes[Math.floor(Math.random() * cQuotes.length)];
+              } else if (u.isCat) {
+                phrase = ph.cat[Math.floor(Math.random() * ph.cat.length)];
               } else if (u.isDog) {
-                phrase = "🐕 הב הב! מטיילים בפארק! ❤️";
+                phrase = ph.dog[Math.floor(Math.random() * ph.dog.length)] || ph.dog;
               } else if (u.isFountain) {
-                phrase = "⛲ מזרקת המשאלות של העיר! 💧";
+                phrase = ph.fountain;
               } else if (u.isSakura) {
-                phrase = "🌸 פריחת הדובדבן מושלמת!";
+                phrase = ph.sakura;
               } else if (u.isCoffeeStand) {
-                phrase = "☕ אספרסו משובח וטרי!";
+                phrase = ph.coffeeStand;
               } else if (u.isSculpture) {
-                phrase = "🗿 אמנות מודרנית במרכז!";
+                phrase = ph.sculpture;
               } else if (u.phrase) {
                 phrase = u.phrase;
               } else {
-                const tapPhrases = [
-                  "בוקר טוב! ☀️", "איזה יום מקסים! ☀️", "שומר על תקציב מעולה 💰",
-                  "קפה מושלם היום ☕", "אוהב את העיר! 🏙️", "שלום חבר! 👋",
-                  "בדרך לקניות 🛍️", "הפארק מהמם 🌸", "החיסכון גדל! 📈"
-                ];
-                phrase = tapPhrases[Math.floor(Math.random() * tapPhrases.length)];
+                phrase = ph.tap[Math.floor(Math.random() * ph.tap.length)];
               }
-              popEmojiBubble(targetObj, phrase, 2.4);
+              popEmojiBubble(targetObj, phrase, 2.5);
               if (u.slotId && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.slotTapped) {
                 try { window.webkit.messageHandlers.slotTapped.postMessage({ slotId: u.slotId, currentItem: u.isCat ? "pet_cat_rooftop" : (u.isFountain ? "fountain_marble" : (u.isSakura ? "tree_sakura" : (u.isCoffeeStand ? "cafe_stand" : (u.isSculpture ? "public_art_sculpture" : "")))) }); } catch(e) {}
               }
@@ -3578,6 +4233,11 @@ ${threeMinJs}
       }, 350);
     };
 
+    // The first payload is the app telling the diorama what the city already looks
+    // like. Everything after it is a change the user just caused — and only a change
+    // deserves a construction crew or an arrival celebration.
+    let hasHydratedCity = false;
+
     window.updateDioramaData = function(data) {
       if (!data) return;
       try {
@@ -3598,6 +4258,26 @@ ${threeMinJs}
           const isBuilding = hasSpend && (tf.tier >= 2);
 
           if (bg) {
+            const wasEmpty = (bg.userData.hasSpend !== true);
+            if (wasEmpty && hasSpend) {
+              bg.userData.hasSpend = true;
+              // Skipped on the first payload: otherwise opening the app drops a crew on
+              // every building the user already has, which says "twelve new buildings"
+              // when nothing was built at all.
+              if (hasHydratedCity) {
+                // The matrices are only refreshed by the render loop, and the very first
+                // payload can arrive before a single frame has run — without this the
+                // crew is placed from a stale matrix and lands at the island's origin.
+                bg.updateWorldMatrix(true, false);
+                const wp = new THREE.Vector3();
+                bg.getWorldPosition(wp);
+                startConstruction(id, bg, wp);
+              }
+            } else if (!hasSpend) {
+              bg.userData.hasSpend = false;
+              bg.userData.underConstruction = false;
+            }
+
             bg.visible = hasSpend;
             if (bg.userData.stallGroup) {
               bg.userData.stallGroup.visible = isStall;
@@ -3670,6 +4350,25 @@ ${threeMinJs}
         syncBuilding("house_util", rUtil, utilBody, "-2% מחודש שעבר");
         syncBuilding("house_subs", rSubs, subMediaBody, "מנויים פעילים");
 
+        // Traffic should arrive with the city rather than greet an empty island. A user
+        // on day one has one resident and empty plots; a taxi, a bus and a delivery
+        // scooter already circling it makes the city look finished before it is built.
+        const savingsForTraffic = data.savings || 0;
+        const trafficTotal = fRest + fSuper + fCoffee + fWolt
+                           + sFashion + sTech + sTravel + sArcade
+                           + rTower + rUtil + rSubs;
+        // Any activity at all means the city is inhabited, and an inhabited city has a bus
+        // route and a cab on it. Holding them back behind a shekel figure made a perfectly
+        // alive city look unfinished, so the only state without traffic is the genuinely
+        // empty one: day one, one resident, empty plots, quiet streets.
+        const cityIsAlive = trafficTotal > 0 || savingsForTraffic > 0;
+        vehicleState.forEach(v => {
+          // The delivery scooter stays tied to delivery spending — that is what it is for,
+          // not a gate on how developed the city is.
+          const show = (v.id === "wolt") ? (fWolt > 0) : cityIsAlive;
+          if (v.obj.visible !== show) v.obj.visible = show;
+        });
+
         // 4. Cynical Behavioral Habits & Absurdity Satire Engine
         const habits = data.habits || {};
         const woltCount = habits.woltCount || 0;
@@ -3730,15 +4429,17 @@ ${threeMinJs}
                 if (item.fig && item.fig.visible !== shouldBeVisible) {
                   item.fig.visible = shouldBeVisible;
                   if (item.dog) item.dog.visible = shouldBeVisible;
+                  const ph = getDioramaPhrases();
                   if (shouldBeVisible && (!data.newlyUnlockedId || data.newlyUnlockedId !== eId)) {
-                    popEmojiBubble(item.fig, "👋 הגעתי לעיר!", 2.8);
+                    popEmojiBubble(item.fig, ph.arrived, 2.8);
                   }
                 }
               } else if (item.visible !== undefined) {
                 if (item.visible !== shouldBeVisible) {
                   item.visible = shouldBeVisible;
+                  const ph = getDioramaPhrases();
                   if (shouldBeVisible && (!data.newlyUnlockedId || data.newlyUnlockedId !== eId)) {
-                    popEmojiBubble(item, "🏛️ שדרוג חדש!", 2.8);
+                    popEmojiBubble(item, ph.newUpgrade, 2.8);
                   }
                 }
 
@@ -3764,8 +4465,10 @@ ${threeMinJs}
             }
           }
         }
+        hasHydratedCity = true;
       } catch (err) {
         console.warn("updateDioramaData caught error:", err);
+        hasHydratedCity = true; // a failed payload still counts as "we have seen the city"
       }
     };
 
@@ -3820,6 +4523,10 @@ ${threeMinJs}
       // Dynamic Building Scaling Lerp
       for (const bId in buildingRoots) {
         const bg = buildingRoots[bId];
+        // While a crew is raising it, the crew owns its scale. Letting the lerp run too
+        // would snap the building to full height in half a second and leave the workers
+        // hammering at something already finished.
+        if (bg.userData.underConstruction) continue;
         const tY = bg.userData.targetScaleY || 1.0;
         const tXZ = bg.userData.targetScaleXZ || 1.0;
         bg.scale.y += (tY - bg.scale.y) * Math.min(1, dt * 5.0);
@@ -3958,7 +4665,8 @@ ${threeMinJs}
           if (!v.hasPausedAtBusStop && Math.abs(currentZ - (-4.8)) < 0.45) {
             v.pauseTimer = 2.4;
             v.hasPausedAtBusStop = true;
-            popEmojiBubble(v.obj, "🚏 תחנת אוטובוס • העלאת נוסעים", 2.2);
+            const ph = getDioramaPhrases();
+            popEmojiBubble(v.obj, ph.busStop, 2.2);
             return;
           }
           if (currentZ < -8.0 || currentZ > 8.0) {
@@ -4018,89 +4726,259 @@ ${threeMinJs}
         }
       });
 
-      // Update Speech / Emoji Bubbles
+      // Update Speech Bubbles (project 3D position to 2D HTML/DOM)
+      const bubbleVec = new THREE.Vector3();
       for (let bi = activeBubbles.length - 1; bi >= 0; bi--) {
         const b = activeBubbles[bi];
         b.life += dt;
-        const progress = b.life / b.maxLife;
-        if (progress >= 1.0) {
-          b.parent.remove(b.sprite);
+        if (b.life >= b.maxLife) {
+          if (b.el && b.el.parentNode) {
+            b.el.parentNode.removeChild(b.el);
+          }
           activeBubbles.splice(bi, 1);
+          continue;
+        }
+
+        if (b.life >= b.maxLife - 0.28) {
+          b.el.classList.remove("active");
+          b.el.classList.add("closing");
+        }
+
+        if (b.targetObj && b.targetObj.visible !== false) {
+          b.targetObj.getWorldPosition(bubbleVec);
+          bubbleVec.y += (b.offsetY || 1.35) + Math.sin(b.life * 2.5) * 0.04;
+          bubbleVec.project(camera);
+
+          if (bubbleVec.z < 1) {
+            const screenX = ((bubbleVec.x + 1) * 0.5) * stage.clientWidth;
+            const screenY = ((-bubbleVec.y + 1) * 0.5) * stage.clientHeight;
+            b.el.style.left = screenX + "px";
+            b.el.style.top = screenY + "px";
+          } else {
+            b.el.style.opacity = "0";
+          }
         } else {
-          const enter = Math.min(1.0, b.life * 6.0);
-          const fade = progress > 0.75 ? (1.0 - (progress - 0.75) / 0.25) : 1.0;
-          b.sprite.scale.set(b.baseScaleX * enter * fade, b.baseScaleY * enter * fade, 1);
-          b.sprite.position.y = 1.05 + b.life * 0.05;
-          b.sprite.material.opacity = fade;
+          if (b.el && b.el.parentNode) {
+            b.el.parentNode.removeChild(b.el);
+          }
+          activeBubbles.splice(bi, 1);
         }
       }
 
-      // Spontaneous Street Situations ("פה ושם" - Every 8-16 seconds)
+      // Spontaneous Street Situations ("פה ושם" - Every 25-50 seconds, rare & delightful)
       situationClock += dt;
       if (situationClock > nextSituationTime) {
         situationClock = 0;
-        nextSituationTime = 8.0 + Math.random() * 10.0;
+        nextSituationTime = 25.0 + Math.random() * 25.0;
 
         const activeCitizens = walkingCitizens.filter(c => c.obj.visible);
         if (activeCitizens.length > 0) {
-          const sitKind = Math.floor(Math.random() * 7);
-          if (sitKind === 0) {
-            // Situation 1: Friendly Greeting Wave
-            const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
-            c.isPaused = true;
-            c.pauseDuration = 2.4;
-            c.pauseTimer = 2.4;
-            popEmojiBubble(c.obj, "👋 היי!", 2.2);
-          } else if (sitKind === 1) {
-            // Situation 2: Photo
-            const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
-            c.isPaused = true;
-            c.pauseDuration = 2.6;
-            c.pauseTimer = 2.6;
-            popEmojiBubble(c.obj, "📸 צ'יז! 😊", 2.4);
-          } else if (sitKind === 2) {
-            // Situation 3: Coffee / Drink Sip
-            const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
-            c.isPaused = true;
-            c.pauseDuration = 2.4;
-            c.pauseTimer = 2.4;
-            popEmojiBubble(c.obj, "☕ יאם! אספרסו", 2.2);
-          } else if (sitKind === 3) {
-            // Situation 4: Dog Love
+          const ph = getDioramaPhrases();
+          const sitKind = Math.floor(Math.random() * ph.street.length);
+          const chosenPhrase = ph.street[sitKind] || ph.street[0];
+          
+          if (sitKind === 3) {
+            // Dog Love
             const dogWalkers = activeCitizens.filter(c => c.dog && c.dog.visible);
             if (dogWalkers.length > 0) {
               const dw = dogWalkers[0];
               dw.isPaused = true;
               dw.pauseDuration = 2.5;
               dw.pauseTimer = 2.5;
-              popEmojiBubble(dw.obj, "🐕 ❤️ גוד בוי!", 2.3);
+              popEmojiBubble(dw.obj, chosenPhrase, 2.3);
             }
           } else if (sitKind === 4) {
-            // Situation 5: Confused Wolt Courier
+            // Courier
             const courier = activeCitizens.find(c => c.obj.userData && (c.obj.userData.hasPhone || c.obj.userData.hasBag));
             if (courier) {
               courier.isPaused = true;
               courier.pauseDuration = 3.0;
               courier.pauseTimer = 3.0;
-              popEmojiBubble(courier.obj, "🗺️ איפה דירה 4B?!", 2.8);
+              popEmojiBubble(courier.obj, chosenPhrase, 2.8);
             }
-          } else if (sitKind === 5) {
-            // Situation 6: Sidewalk Shuffle (Awkward Dodge)
-            if (activeCitizens.length >= 2) {
-              const c1 = activeCitizens[0];
-              c1.isPaused = true;
-              c1.pauseDuration = 2.2;
-              c1.pauseTimer = 2.2;
-              popEmojiBubble(c1.obj, "😅 סליחה!", 2.0);
-            }
-          } else if (sitKind === 6) {
-            // Situation 7: Joyful High Five
+          } else if (sitKind === 5 && activeCitizens.length >= 2) {
+            // Shuffle
+            const c1 = activeCitizens[0];
+            c1.isPaused = true;
+            c1.pauseDuration = 2.2;
+            c1.pauseTimer = 2.2;
+            popEmojiBubble(c1.obj, chosenPhrase, 2.0);
+          } else {
+            // Citizen greeting / photo / coffee
             const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
             c.isPaused = true;
-            c.pauseDuration = 2.2;
-            c.pauseTimer = 2.2;
-            popEmojiBubble(c.obj, "🎉 איזה יום יפה!", 2.2);
+            c.pauseDuration = 2.4;
+            c.pauseTimer = 2.4;
+            popEmojiBubble(c.obj, chosenPhrase, 2.3);
           }
+        }
+      }
+
+      // 👷 Construction crews animation & calm occasional contractor chatter (every 35-60s)
+      for (let ci = activeConstructionCrews.length - 1; ci >= 0; ci--) {
+        const crew = activeConstructionCrews[ci];
+        if (!crew.group || !crew.group.visible) continue;
+
+        crew.speechTimer -= dt;
+        if (crew.speechTimer <= 0) {
+          crew.speechTimer = 35.0 + Math.random() * 25.0;
+          const ph = getDioramaPhrases();
+          if (ph.construction && ph.construction.length > 0) {
+            const chosenWorker = crew.workers[Math.floor(Math.random() * crew.workers.length)];
+            const quote = ph.construction[Math.floor(Math.random() * ph.construction.length)];
+            popEmojiBubble(chosenWorker, quote, 2.6);
+          }
+        }
+
+        // Raise the building under the crew's hands.
+        if (crew.buildTarget) {
+          const bg = crew.buildTarget;
+          crew.buildElapsed += dt;
+          const p = Math.min(1, crew.buildElapsed / crew.buildDuration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          const tY = bg.userData.targetScaleY || 1.0;
+          const tXZ = bg.userData.targetScaleXZ || 1.0;
+          // A little shake on every hammer blow, fading out as the structure sets.
+          const shake = (p < 1) ? Math.sin(crew.buildElapsed * 24.0) * 0.014 * (1 - p) : 0;
+          bg.scale.y = Math.max(0.02, tY * eased + shake);
+          const spread = 0.40 + 0.60 * eased;
+          bg.scale.x = Math.max(0.02, tXZ * spread);
+          bg.scale.z = Math.max(0.02, tXZ * spread);
+          if (p >= 1) {
+            bg.scale.set(tXZ, tY, tXZ);
+            bg.userData.underConstruction = false;
+            crew.buildTarget = null;
+          }
+        }
+
+        // Crane: the jib slews and the hook rides up and down over the plot.
+        if (crew.crane) {
+          crew.crane.jib.rotation.y = Math.sin(T * 0.42 + crew.buildElapsed) * 0.75;
+          const lift = 0.62 + Math.sin(T * 0.9) * 0.30;
+          crew.crane.hook.position.y = -0.44 - lift;
+          crew.crane.cable.scale.y = Math.max(0.15, lift * 1.35);
+          crew.crane.cable.position.y = -0.44 - lift * 0.5;
+        }
+
+        crew.workers.forEach(w => {
+          const u = w.userData;
+          if (!u) return;
+
+          // Realistic Hammering / Wrench action
+          if (u.hasHammer && u.armR) {
+            u.hammerPhase = (u.hammerPhase || 0) + dt * 11.0;
+            u.armR.rotation.x = -1.1 + Math.sin(u.hammerPhase) * 0.50;
+            if (u.torso) u.torso.position.y = 0.40 + Math.abs(Math.sin(u.hammerPhase)) * 0.03;
+          } else if (u.hasWrench && u.armR) {
+            u.hammerPhase = (u.hammerPhase || 0) + dt * 4.5;
+            u.armR.rotation.z = Math.sin(u.hammerPhase) * 0.35;
+          }
+
+          // Hop on tap
+          if (u.hopTimer > 0) {
+            u.hopTimer -= dt;
+            const hopP = Math.max(0, u.hopTimer / 0.40);
+            if (u.torso) u.torso.position.y = 0.40 + Math.sin(hopP * Math.PI) * 0.35;
+            if (u.armR) u.armR.rotation.x = -2.2;
+          }
+        });
+
+        if (crew.isTemporary) {
+          crew.timer -= dt;
+          if (crew.timer <= 0) {
+            const ph = getDioramaPhrases();
+            popEmojiBubble(crew.workers[0], ph.constructionDone || "סיימנו! תתחדש! 🎉", 3.5);
+            // Clean up after bubble
+            setTimeout(() => {
+              if (crew.group && crew.group.parent) {
+                crew.group.parent.remove(crew.group);
+              }
+            }, 3500);
+            activeConstructionCrews.splice(ci, 1);
+          }
+        }
+      }
+
+      // 🛴 Electric Scooter Zoomer movement & banking
+      if (scooterZoomer && scooterZoomer.userData) {
+        const su = scooterZoomer.userData;
+        su.progress = (su.progress || 0) + dt * 0.16;
+        const scooterP = (Math.sin(su.progress) + 1) * 0.5; // 0..1 smooth glide
+        scooterZoomer.position.x = -3.6 + scooterP * 7.2;
+        // It moves along X and the model faces +X, so the heading is 0 or PI. The old
+        // +/-PI/2 pointed it across its own path and it crabbed down the promenade.
+        scooterZoomer.rotation.y = (Math.cos(su.progress) >= 0) ? 0 : Math.PI;
+        // A lean is a roll about the direction of travel, which is X here, not Z.
+        scooterZoomer.rotation.x = Math.sin(su.progress * 2.0) * 0.05;
+        scooterZoomer.rotation.z = 0;
+        if (su.hopTimer > 0) {
+          su.hopTimer -= dt;
+          const hopP = Math.max(0, su.hopTimer / 0.40);
+          scooterZoomer.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.25;
+        } else {
+          scooterZoomer.position.y = 0.22; // pin it back down; a missed frame left it floating
+        }
+      }
+
+      // 📸 Influencer gentle selfie posing
+      if (influencerFigure && influencerFigure.userData) {
+        const iu = influencerFigure.userData;
+        if (iu.fig) {
+          iu.fig.rotation.y = Math.sin(T * 0.8) * 0.35;
+        }
+        if (iu.hopTimer > 0) {
+          iu.hopTimer -= dt;
+          const hopP = Math.max(0, iu.hopTimer / 0.40);
+          influencerFigure.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.30;
+        }
+      }
+
+      // 🎸 Street Musician guitar strumming
+      if (streetMusician && streetMusician.userData) {
+        const mu = streetMusician.userData;
+        if (mu.fig) {
+          mu.fig.rotation.y = Math.PI * 0.75 + Math.sin(T * 1.8) * 0.12;
+        }
+        if (mu.hopTimer > 0) {
+          mu.hopTimer -= dt;
+          const hopP = Math.max(0, mu.hopTimer / 0.40);
+          streetMusician.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.30;
+        }
+      }
+
+      // 🧘‍♀️ Park Yogi subtle breathing
+      if (yogaPractitioner && yogaPractitioner.userData) {
+        const yu = yogaPractitioner.userData;
+        if (yu.fig) {
+          yu.fig.position.y = 0.22 + Math.sin(T * 1.2) * 0.02;
+        }
+        if (yu.hopTimer > 0) {
+          yu.hopTimer -= dt;
+          const hopP = Math.max(0, yu.hopTimer / 0.40);
+          yogaPractitioner.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.30;
+        }
+      }
+
+      // 👮‍♂️ Parking Inspector looking around
+      if (parkingInspector && parkingInspector.userData) {
+        const pu = parkingInspector.userData;
+        if (pu.fig) {
+          pu.fig.rotation.y = -Math.PI * 0.25 + Math.sin(T * 0.6) * 0.45;
+        }
+        if (pu.hopTimer > 0) {
+          pu.hopTimer -= dt;
+          const hopP = Math.max(0, pu.hopTimer / 0.40);
+          parkingInspector.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.30;
+        }
+      }
+
+      // 🧑‍💻 Tech Worker typing on laptop
+      if (techWorkerOnBench && techWorkerOnBench.userData) {
+        const tu = techWorkerOnBench.userData;
+        if (tu.hopTimer > 0) {
+          tu.hopTimer -= dt;
+          const hopP = Math.max(0, tu.hopTimer / 0.40);
+          techWorkerOnBench.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.25;
         }
       }
 
@@ -4358,4 +5236,4 @@ try {
 
 const outHtmlPath = path.join(__dirname, "MoneyCity/Resources/diorama.html");
 fs.writeFileSync(outHtmlPath, htmlContent, "utf8");
-console.log(`Build complete – ${outHtmlPath} written successfully (${Math.round(Buffer.byteLength(htmlContent)/1024)} KB).`);
+console.log(`Build complete \u2013 ${outHtmlPath} written successfully (${Math.round(Buffer.byteLength(htmlContent)/1024)} KB).`);

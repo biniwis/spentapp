@@ -18,7 +18,11 @@ public struct LogWalletPaymentIntent: AppIntent {
 
     /// A single parameter, so Shortcuts has one obvious thing to connect the automation's
     /// input to instead of five it can silently leave blank.
-    @Parameter(title: "פרטי העסקה")
+    @Parameter(
+        title: "פרטי העסקה",
+        description: "קלט העסקה שהועבר מ-Wallet",
+        inputConnectionBehavior: .connectToPreviousIntentResult
+    )
     public var payload: String?
 
     public static var parameterSummary: some ParameterSummary {

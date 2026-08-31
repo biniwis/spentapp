@@ -204,6 +204,18 @@ public struct MainCityView: View {
                 showOnboarding = true
             }
         }
+        .onOpenURL { url in
+            let scheme = url.scheme?.lowercased() ?? ""
+            let host = url.host?.lowercased() ?? ""
+            let path = url.path.lowercased()
+            
+            if scheme == "spentapp" || scheme == "moneycity" {
+                if host == "quick-add" || path.contains("quick-add") || host == "scan" || path.contains("scan") {
+                    activeTab = "city"
+                    showQuickAdd = true
+                }
+            }
+        }
         .sheet(isPresented: $showQuickAdd) {
             QuickAddSheet { amount, cat, note, origAmount, origCurrency, exchangeRate in
                 // The user picked the category, so the building must follow that choice —

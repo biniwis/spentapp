@@ -29,7 +29,11 @@ public struct RecordTransactionIntent: AppIntent {
     public static var openAppWhenRun: Bool = false
     public static var isDiscoverable: Bool = true
 
-    @Parameter(title: "סכום העסקה", description: "סכום העסקה שהועבר מ-Wallet")
+    @Parameter(
+        title: "סכום העסקה",
+        description: "סכום העסקה שהועבר מ-Wallet",
+        inputConnectionBehavior: .connectToPreviousIntentResult
+    )
     public var amount: Double?
 
     /// Fallback for the known Shortcuts defect where the numeric amount arrives as 0.0
@@ -37,7 +41,11 @@ public struct RecordTransactionIntent: AppIntent {
     @Parameter(title: "סכום כטקסט", description: "אופציונלי. גיבוי אם הסכום המספרי מגיע ריק")
     public var amountText: String?
 
-    @Parameter(title: "שם בית העסק", description: "שם העסק (Merchant) שהתקבל ב-Apple Pay")
+    @Parameter(
+        title: "שם בית העסק",
+        description: "שם העסק (Merchant) שהתקבל ב-Apple Pay",
+        inputConnectionBehavior: .connectToPreviousIntentResult
+    )
     public var merchant: String?
 
     @Parameter(title: "מטבע", description: "ברירת המחדל היא המטבע הראשי שהוגדר באפליקציה")

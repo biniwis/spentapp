@@ -1135,44 +1135,25 @@ public struct ApplePayGuideSheet: View {
                     }
                     .padding(.top, 10)
                     
-                    // 1-Click Automatic Shortcut Installer Card
-                    VStack(alignment: .leading, spacing: 14) {
+                    // Auto-Installed Notification Card
+                    VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.primaryBlue.opacity(0.12))
+                                    .fill(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.15))
                                     .frame(width: 44, height: 44)
-                                DistrictFinanceVectorIcon(color: Color.primaryBlue)
+                                DistrictFinanceVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
                                     .scaleEffect(1.1)
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(isHebrew ? "התקנה מהירה בלחיצה אחת" : "1-Click Automatic Setup")
-                                    .font(.system(size: 16, weight: .black, design: .rounded))
+                                Text(isHebrew ? "הפעולות של SPENT כבר מותקנות באייפון!" : "SPENT actions are already installed!")
+                                    .font(.system(size: 15, weight: .black, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
-                                Text(isHebrew ? "קיצור דרך מוכן מראש שמחובר ישירות ל-SPENT" : "Pre-built shortcut already wired to SPENT")
+                                Text(isHebrew ? "הפעולה מובנית במערכת — נותר רק להפעיל אוטומציה:" : "Built-in to iOS — just enable the 3-step automation:")
                                     .font(.system(size: 12, weight: .medium, design: .rounded))
                                     .foregroundColor(Color.textMuted)
                             }
                         }
-                        
-                        #if os(iOS)
-                        if let url = URL(string: "https://www.icloud.com/shortcuts/") {
-                            Link(destination: url) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "arrow.down.app.fill")
-                                        .font(.system(size: 16, weight: .bold))
-                                    Text(isHebrew ? "התקן את הקיצור המוכן עכשיו 📥" : "Install Ready-Made Shortcut 📥")
-                                        .font(.system(size: 15, weight: .black, design: .rounded))
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 15)
-                                .background(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                .clipShape(Capsule())
-                                .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.35), radius: 8, y: 3)
-                            }
-                        }
-                        #endif
                     }
                     .padding(18)
                     .background(Color.white)
@@ -1180,63 +1161,27 @@ public struct ApplePayGuideSheet: View {
                     .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), lineWidth: 1.5))
                     .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
 
-                    // Step-by-Step Instructions Card
-                    VStack(alignment: .leading, spacing: 16) {
+                    // Simple Step-by-Step Instructions Card
+                    VStack(alignment: .leading, spacing: 18) {
                         stepRow(
                             number: "1",
-                            title: isHebrew ? "פתח את אפליקציית 'קיצורים' (Shortcuts)" : "Open the 'Shortcuts' App",
-                            desc: isHebrew ? "אפליקציית ברירת המחדל של אפל המותקנת בכל מכשיר iPhone." : "The built-in Apple Shortcuts app on your iPhone."
+                            title: isHebrew ? "פתח את אפליקציית 'קיצורים' (Shortcuts)" : "Open 'Shortcuts' App",
+                            desc: isHebrew ? "עבור ללשונית 'אוטומציה' (בתחתית המסך) ולחץ על + ליצירת אוטומציה חדשה." : "Go to 'Automation' tab and tap +."
                         )
                         
                         stepRow(
                             number: "2",
-                            title: isHebrew ? "צור אוטומציה חדשה" : "Create New Automation",
-                            desc: isHebrew ? "עבור ללשונית 'אוטומציה' (בתחתית) ולחץ על + בפינה." : "Tap the 'Automation' tab at the bottom, then tap + in the corner."
+                            title: isHebrew ? "בחר בטריגר 'עסקה' (Transaction)" : "Select 'Transaction' Trigger",
+                            desc: isHebrew ? "בחר את כרטיסי האשראי שלך, וסמן 'הפעל מיד' (Run Immediately) ללא צורך באישור." : "Select your Apple Pay cards and choose 'Run Immediately'."
                         )
                         
                         stepRow(
                             number: "3",
-                            title: isHebrew ? "בחר בטריגר 'עסקה' (Transaction)" : "Select 'Transaction' Trigger",
-                            desc: isHebrew ? "בחר את כרטיסי ה-Apple Pay שלך, וסמן 'הפעל מיד' (Run Immediately) ללא אישור ידני." : "Select your Apple Pay cards and choose 'Run Immediately'."
+                            title: isHebrew ? "בחר בפעולה: 'הקלטת עסקת Apple Pay'" : "Select Action: 'Record Apple Pay Transaction'",
+                            desc: isHebrew ? "חפש את SPENT, בחר בפעולה 'הקלטת עסקת Apple Pay' ולחץ סיום. כל השדות מחוברים אוטומטית!" : "Search for SPENT, choose 'Record Apple Pay Transaction' and tap Done."
                         )
-                        
-                        stepRow(
-                            number: "4",
-                            title: isHebrew ? "הוסף את הפעולה: 'הקלטת עסקת Apple Pay'" : "Add Action: 'Record Apple Pay Transaction'",
-                            desc: isHebrew ? "חפש את SPENT והוסף את הפעולה 'הקלטת עסקת Apple Pay'." : "Search for SPENT and add 'Record Apple Pay Transaction'."
-                        )
-                        
-                        // Critical mapping highlight box
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack(spacing: 6) {
-                                Text(verbatim: "⚡")
-                                    .font(.system(size: 14))
-                                Text(isHebrew ? "השלב החשוב ביותר (חיבור השדות):" : "Crucial Step (Connecting Fields):")
-                                    .font(.system(size: 13, weight: .black, design: .rounded))
-                                    .foregroundColor(Color.primaryBlue)
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 6) {
-                                mappingLine(
-                                    field: isHebrew ? "סכום העסקה" : "Amount",
-                                    instruction: isHebrew ? "לחץ על 'קלט הקיצור' -> לחץ עליו שוב ובחר 'סכום' (Amount)" : "Tap 'Shortcut Input' -> tap again and select 'Amount'"
-                                )
-                                mappingLine(
-                                    field: isHebrew ? "שם בית העסק" : "Merchant",
-                                    instruction: isHebrew ? "לחץ על 'קלט הקיצור' -> לחץ עליו שוב ובחר 'בית עסק' (Merchant)" : "Tap 'Shortcut Input' -> tap again and select 'Merchant'"
-                                )
-                                mappingLine(
-                                    field: isHebrew ? "תאריך ושעה" : "Date",
-                                    instruction: isHebrew ? "לחץ על 'קלט הקיצור' -> בחר 'תאריך' (Date)" : "Tap 'Shortcut Input' -> select 'Date'"
-                                )
-                            }
-                        }
-                        .padding(14)
-                        .background(Color.themeTurquoiseSoft.opacity(0.4))
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primaryBlue.opacity(0.2), lineWidth: 1.2))
                     }
-                    .padding(18)
+                    .padding(20)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 22))
                     .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.borderSubtle, lineWidth: 1.5))

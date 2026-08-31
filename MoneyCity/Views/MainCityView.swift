@@ -91,6 +91,7 @@ public struct MainCityView: View {
                     newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
                     slotPlacements: currentSlotPlacements,
                     selectedDistrict: selectedDistrict,
+                    language: l10n.language == .hebrew ? "he" : "en",
                     isPaused: (activeTab != "city"),
                     onSelectDistrict: handleSelectDistrict,
                     onBuildingSelected: handleSelectBuilding,
@@ -173,7 +174,6 @@ public struct MainCityView: View {
                             InspectorModalView(info: b, onClose: {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { inspectedBuilding = nil }
                             }, onShowFeed: {
-                                inspectedBuilding = nil
                                 showFeed = true
                             })
                             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -568,7 +568,7 @@ public struct MainCityView: View {
                         HStack(spacing: 5) {
                             Text(verbatim: "✕")
                                 .font(.system(size: 13, weight: .black, design: .rounded))
-                            Text("חזרה לעיר")
+                            Text(l10n.language == .hebrew ? "חזרה לעיר" : "Back to City")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                         }
                         .foregroundColor(Color.textSecondary)
@@ -927,23 +927,27 @@ struct DistrictDeepDiveCard: View {
     
     var body: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(districtTitle.uppercased())
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .foregroundColor(Color(red: 156/255, green: 163/255, blue: 175/255))
                     .tracking(0.6)
                 
-                Text(l10n.language == .hebrew ? "לחץ על מבנה למידע מפורט 👆" : "Tap building for details 👆")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 15/255, green: 13/255, blue: 23/255))
+                HStack(spacing: 5) {
+                    CategoryVectorIcon(category: districtCategory, size: 14)
+                    Text(l10n.language == .hebrew ? "לחץ על מבנה לצפייה בעסקאות" : "Tap building for details")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 15/255, green: 13/255, blue: 23/255))
+                }
             }
             
             Spacer()
             
             Button(action: onBack) {
                 HStack(spacing: 6) {
-                    Text(verbatim: "↩")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                    DistrictSkylineVectorIcon(color: .white)
+                        .frame(width: 14, height: 14)
+                        .scaleEffect(0.85)
                     Text(l10n.language == .hebrew ? "חזרה לעיר" : "Back to City")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                 }
@@ -1010,6 +1014,10 @@ struct InspectorModalView: View {
         .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(red: 243/255, green: 244/255, blue: 246/255), lineWidth: 1.5))
         .shadow(color: Color.black.opacity(0.08), radius: 16, y: 6)
         .padding(.horizontal, 20)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onShowFeed()
+        }
     }
     
     private var headerRow: some View {
@@ -1046,6 +1054,7 @@ struct InspectorModalView: View {
                     .background(Color.appBackground)
                     .clipShape(Circle())
             }
+            .buttonStyle(.plain)
         }
     }
     
@@ -1075,6 +1084,7 @@ struct InspectorModalView: View {
                 .clipShape(Capsule())
                 .shadow(color: Color.primaryBlue.opacity(0.25), radius: 6, y: 2)
             }
+            .buttonStyle(.plain)
             .bouncyPress(scale: 0.94)
         }
     }

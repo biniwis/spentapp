@@ -7,132 +7,140 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8D2A437F9883425DB44979E0 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E8DF991F0A5B429EB0209EB0; };
-		71C90FD9B6DF4863BD163D01 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 54A1762073EF45EDAA1BF358; };
-		AFB7221BC2284BA88A42091A /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 636C72F4085E4B728819D84F; };
-		16C1BC8AF82F4AC8A2BC8DB3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 83C5406E77EE4E36AE670EDB; };
-		D022F2DAE1914E278DD97744 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6FC6EBC3DF5943049ED990DB; };
-		50E3333746714DCA8F7E0897 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 90DC2780ECDB4A3F86871C22; };
-		AB9506BCB3FE442C99480A6A /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C40B3E96E88045DF8F077C08; };
-		9806CA36CDF04C15ABE20D9A /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A7286DB3BAB94F5B85382F83; };
-		4C5868AFF5D649F791BC0906 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 678727D121654F2086C41203; };
-		00BC040D9E9447C693C618A7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 40B0B3FA3FAE4EC7B061CC3B; };
-		EDA44B0C539A4000ABCFEB05 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E5991AC0DBC1411FBB2DF786; };
-		9C266C3A3AD54E90AE822D4D /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A907F337FF48433FA2CAE7B7; };
-		5E549228AC024E95A52801FC /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8791A3F954C14ABEB9DBE020; };
-		18A5F7D67FFD4B729DFDE88B /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F2D7678D03474CB6AB25B716; };
-		075DC72EBC774134A46CB9CA /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 03562A38EB414E1789BAA931; };
-		A94A7ABDEDDD44E8BC03B434 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 26E34C3AD99C40C48775451B; };
-		A452EE84EB0E44B388D27D9E /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D50F97998545464AA2258260; };
-		843721E15D6244BFA23F9629 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D7408DF220294D518DB9C926; };
-		A75BBBB92E0542D79071E334 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6626E7ACAD93435EAEB0C54C; };
-		87C7AD2385AA44FEAA7E53C8 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 620BA321EE5B4794B9783ED9; };
-		E292BACBE5D6455095556B99 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F0554D11E6E34B4DAD86739D; };
-		31F3D4AB3BEE46EBB1CD1DF8 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 95BEA0D6773640018EBC4241; };
-		AC0BF50A747B4A34A8359D6D /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E166F8DE8A074640BC79B2A8; };
-		D389C9D0FC6948289B558054 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = FE6A617CBD004AD6A446CD82; };
-		779E0647C3E44D19B4588D91 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 47B79BFA77C949298B5E7F0A; };
-		C5F8B1E8046A4BE0BC178D1D /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 412C4014B01A424DB003A3DD; };
-		0FCC584591F74693A7A33AB9 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 67C7D7C568FA42029440BE22; };
-		7745DD8EF16B4673BFDECACC /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 7B46E5220D4C44D29B863699; };
-		1B058353DCB843C99BAF9FF8 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C045060DE580430EAF7BF986; };
-		EDAB65575E044AFEAC144736 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 2C6D469251D342A0B88DF045; };
-		26ED63E51B434AC1A6D18F36 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E41E1598603B461094B30839; };
-		80A775E132DD4BA3B96DBB6C /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B8B61948CC9E4AFCAE21F7DE; };
-		7F7C7F02FB284D9E81C6D8F6 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C581E00C08EB4EF99EAEF59A; };
-		4519816A018D4AC68C6FA1F6 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D8771DA2BDA044CB976F8ED5; };
-		DA9B746639E440D4A7E804FE /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 41D73B8B07064A9BBD716C60; };
-		926F47F499744E7E8ECA1125 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F898F672E3694C4A8A02C81A; };
-		40075605AF6D4314B0F67EFD /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F6699FED85B84E0B94A5F49D; };
-		C7552AB61E014D3584A10B36 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 622B402AF08B49CDB8E8E1EE; };
-		79E50BDD6A3E49DCA17A7C45 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 62CE55DC44F24B3393A0E54B; };
-		8DC5440AC52A42B8BEF4C061 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6C60E318C0964FD6B4C5A7AE; };
-		72E5C408B1704C649291BB18 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 4B95916CF1384FF2A2DD8D15; };
-		8F65E41A281C4B3CAB8709E3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 825D13CB0D344D98A5AA556B; };
-		E8E356FE4E38434D949BD104 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 19BCA8F526E04F8C8C87939E; };
-		54BFAEFA10404479827070AD /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B7F57F8F8EB34F6CA973E93C; };
-		BDA3B63F0BF24B1BAE3CD768 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = BB5085CBA9024BAABE153506; };
-		9B230A0F166643C7A3E8BAB7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 04477F85366E4116B66A761A; };
-		426B94EE9B3B4E37BEBF2799 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6CFB9E24832B4CEA900844A9; };
-		67C61C7D5DCE4B1288E7A7FF /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 883E9949EE7D49CFA12ADB2E; };
-		4A7632E5195549688DD7D58E /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 31FFF91190B4494783E5E568; };
-		391306DFC74A4243A15EAFA2 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 1BA800B8B0654720848F1AFA; };
-		1B860A98C2DA4E2293E37B4E /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 83C2628FD5E245C7AB8D4FAB; };
-		53511E33A9CE41BD9D7656EB /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = ADBE412DD29D46FCA547CE68; };
-		1996797A7FAE4F17A2954227 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 9232AE50CF304532AD44164A; };
-		BB98611ED043422BA0F829E3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 2177643EE6474B96BABBB34F; };
-		B74C3341C1D04DC9A4542569 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 5D69CD1030A341AFA065CAE2; };
-		D2D4EF8F0EA849BCA65804C3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8666114C51E94FE98767A5C6; };
-		53CDE1CD8DF34943B36D5F8D /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 66AB323AB4904AF39A61E81B; };
-		D3571901DC21438780C86CFA /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6E3A9F43D7574257945AA51D; };
-		8E646BD4504A4EE69462F9C9 /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3C4FEF761E3A43BDB37E99E8; };
+		93233223E41A454B98ED2DCB /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 9862606842B443C8A7D84111; };
+		F975DD9FE7DB4EE5B835FEF0 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 19930AB1CD5E448FBC046172; };
+		F457C7DDD19E4070B616C796 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = CCCEA448CCCE4DBAB886623C; };
+		FAF95FF34B0F4E5A8314B79B /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F34A53E1C37342E7A954DECC; };
+		1F35FA35448647D19B7CE799 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 5A5FC2BA84824DE7927CEACE; };
+		E4D653B4ABA34B77825D5EC3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 05E4504D2A264FEFB91985B5; };
+		0F29A59E06DA44DF806119C4 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 0600927D3DC348FDB497D45D; };
+		56F7EC026B1B446A837BA0EF /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 2508D43E95964E918B2A8836; };
+		CE156A5D2DA64F5EB6D859AF /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8FDE09FB4E904A32AAC186DB; };
+		14707879980D485DBB792E71 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = DB0A0A04884048E1A106A48A; };
+		B78ED79F89574A27AA21D185 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = BF7F7436830640E8A4E36FC2; };
+		0EF456A8E50B462E95C9BFF2 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 971515B7559C46FDA94E20DF; };
+		6CCAF7D87CC74EBD86285BA3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 82037B1799644681940521E6; };
+		16F72AF2EA7E4FE1896340E8 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C128984F831B4D7AB9B132A8; };
+		E19428C2740C48A693AF6D36 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 65B4A4D235AD40A78D20A5CD; };
+		FBEC235CA07E4C119B14A1B1 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 1B2B39F592694830B461E92B; };
+		E0DD98E422864029AFED26D0 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F3FCB5FDCB1A47BBAA374E30; };
+		A829CBA0A3C5469C8FFF03A7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 5F62ED71D96149328A6E4F96; };
+		51605B6BEE5C429986F75CF4 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C7725E75D70F4A48895A029C; };
+		1F52E68510354B4D80836AD1 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 89BF3792D51043B28393A875; };
+		9F594E4AF64F471DB4E9765D /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 487C18555F614387A1F0EFAF; };
+		52E4AAC4A68740B9A4A90BCD /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D8CF4DCBE3444AF588EF2B6B; };
+		0C661B609A464D07BDEB02E7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3A1C990B00AE4AFF801E8B59; };
+		53C771F36EC24CF6BBFE68CA /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6F883BC9E8BF44009F17104F; };
+		0E695E3EF0A9452BB6C0EAC0 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 189624E37D84436EB18E9AD0; };
+		5AFD46B8E5FF4DD2BEAD5A48 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 9C552183C4AF47B9A35FB3C1; };
+		7B4511BE96044064AFDCAC3E /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 22BEB7D33A6947B8A3FF7EDA; };
+		956FEEA64C844340B3094AAF /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 72778D41372E4585A667D676; };
+		8740C1D53BDB4845AE7E9E35 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 95BC0BC84AB14CB593D5F523; };
+		ABD42EAB4C0E4AFDB25E4C70 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 296691D7804D4B42B60BAFC1; };
+		1FE5636B80994305AE0B1131 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 9F6038CA92D74C9BBB8CE103; };
+		F086630DCFD7444D9FBCF89C /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 70B2E750F4D74AEFBB528D7D; };
+		AB3AEB85D27646D0B33D5CA2 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F8E9A7B33A794DE5ABEE50E6; };
+		C11D87D7F4E24636ACFF36C7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8C6E9442B6F7455399ADB63A; };
+		A295836636A2405BA648FE41 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A3447346E225416787891D25; };
+		D47580E34FF84F02ABD4EDDF /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F16E62BC5D8F4FAB9654EE4C; };
+		8FCD9007DD2B449D9AD2AFC6 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A7F93B9A195E4E3380D481D3; };
+		1635027AF01C46E8A4E6AF22 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 75BC4D0713B54C5188F00F63; };
+		70C2FFCCA42440BE93E18109 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3CC2B5688D8F4FD2933BD16E; };
+		B209DED85C184BBF8DC150FE /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 963FBD08557949BA825851C8; };
+		E84D314CDE734F4EBB4964D9 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 523F1F7CFF4F498EA44A7F24; };
+		9BA9F8440E484C4FA884B689 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E7EFBB9A39A54283A0EA10EE; };
+		495E704241414DACBE550334 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 63AB74B3B94E4B8FA90E63AC; };
+		2C3773514A5D4629AF50909D /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E0FCE14CF4F246D594EB5F04; };
+		48BE903AFA1944CE8578D8AD /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 4282BBC5D7944DA3A744E365; };
+		6E12B045DBD0488488CE8417 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 798B4E1F3A374C20A2FECA0B; };
+		F99CADA639034454943C0D6D /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F9C684733862455D952F25BF; };
+		FDD2FF763E0C40639CBDAE1F /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8AD5D5E56BB04C62BAC3F933; };
+		E70C921EE918415189AD19D6 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = FB61CA3C123C4579A36EFBFE; };
+		B103A4BBAF6349D5A1911677 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 9FEB98F7E98E4C67A34F8EEC; };
+		9FC1B12B94E149328336A272 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C23CAC9BFF764C20A273DA2A; };
+		4D1090FBB7ED4AFF9B787BDE /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = C8DF1DC1D24D4183B1248EA8; };
+		F7D46605DF25409CB5E9EA19 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 749CDFD0C4AF4C19912509A2; };
+		3BABEF66FD9645A6AC26CF40 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 902D32631BF4463186F78009; };
+		6C0892DE824141C38B47E5D3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A193B7AAB3A14660A9C7AE08; };
+		DFB5DA9674584A38AE71003A /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 4379CA9D2B7346FA844CBAE9; };
+		F38F0DB54E054964B44928A0 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D3C85D544B35419DBFA95964; };
+		F98D34E4935E4F26BCD80C87 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 967F609E19284D06AA7F4820; };
+		7F66D5EB728A4F85BAF288A4 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D932B2B445FD4523A309E093; };
+		0B0E9E1738FC424BA8720AE7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = F0D4D29B87114B6D9454EFC4; };
+		E0853DF480AC4E7088163D8D /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 2F74CD82DC0349269B9E646B; };
+		B2CB30BAAB994F30936ED596 /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = AE1EA46CCA244F799AA49C16; };
+		5DA675CA96C3446285292728 /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B0F60CC1BC9648D2A5C40FEC; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		6305F84F3D594AC68F63A53E /* MoneyCity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoneyCity.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		E8DF991F0A5B429EB0209EB0 /* MoneyCityApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityApp.swift"; path = "MoneyCity/MoneyCityApp.swift"; sourceTree = "<group>"; };
-		54A1762073EF45EDAA1BF358 /* MoneyCityWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityWidgets.swift"; path = "MoneyCity/MoneyCityWidgets.swift"; sourceTree = "<group>"; };
-		636C72F4085E4B728819D84F /* BuildingTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BuildingTile.swift"; path = "MoneyCity/Models/BuildingTile.swift"; sourceTree = "<group>"; };
-		83C5406E77EE4E36AE670EDB /* CategoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CategoryBudget.swift"; path = "MoneyCity/Models/CategoryBudget.swift"; sourceTree = "<group>"; };
-		6FC6EBC3DF5943049ED990DB /* CityEnrichment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityEnrichment.swift"; path = "MoneyCity/Models/CityEnrichment.swift"; sourceTree = "<group>"; };
-		90DC2780ECDB4A3F86871C22 /* CitySlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySlot.swift"; path = "MoneyCity/Models/CitySlot.swift"; sourceTree = "<group>"; };
-		C40B3E96E88045DF8F077C08 /* IncomeSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IncomeSource.swift"; path = "MoneyCity/Models/IncomeSource.swift"; sourceTree = "<group>"; };
-		A7286DB3BAB94F5B85382F83 /* IngestLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IngestLogEntry.swift"; path = "MoneyCity/Models/IngestLogEntry.swift"; sourceTree = "<group>"; };
-		678727D121654F2086C41203 /* InstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InstallmentPlan.swift"; path = "MoneyCity/Models/InstallmentPlan.swift"; sourceTree = "<group>"; };
-		40B0B3FA3FAE4EC7B061CC3B /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LocalizationManager.swift"; path = "MoneyCity/Models/LocalizationManager.swift"; sourceTree = "<group>"; };
-		E5991AC0DBC1411FBB2DF786 /* MerchantRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MerchantRule.swift"; path = "MoneyCity/Models/MerchantRule.swift"; sourceTree = "<group>"; };
-		A907F337FF48433FA2CAE7B7 /* MonthlyCity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MonthlyCity.swift"; path = "MoneyCity/Models/MonthlyCity.swift"; sourceTree = "<group>"; };
-		8791A3F954C14ABEB9DBE020 /* RecurringExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpense.swift"; path = "MoneyCity/Models/RecurringExpense.swift"; sourceTree = "<group>"; };
-		F2D7678D03474CB6AB25B716 /* SavingsGoal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoal.swift"; path = "MoneyCity/Models/SavingsGoal.swift"; sourceTree = "<group>"; };
-		03562A38EB414E1789BAA931 /* SpendingCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SpendingCategory.swift"; path = "MoneyCity/Models/SpendingCategory.swift"; sourceTree = "<group>"; };
-		26E34C3AD99C40C48775451B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Theme.swift"; path = "MoneyCity/Models/Theme.swift"; sourceTree = "<group>"; };
-		D50F97998545464AA2258260 /* Transaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Transaction.swift"; path = "MoneyCity/Models/Transaction.swift"; sourceTree = "<group>"; };
-		D7408DF220294D518DB9C926 /* LogWalletPaymentIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LogWalletPaymentIntent.swift"; path = "MoneyCity/Intents/LogWalletPaymentIntent.swift"; sourceTree = "<group>"; };
-		6626E7ACAD93435EAEB0C54C /* MoneyCityShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityShortcuts.swift"; path = "MoneyCity/Intents/MoneyCityShortcuts.swift"; sourceTree = "<group>"; };
-		620BA321EE5B4794B9783ED9 /* RecordTransactionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordTransactionIntent.swift"; path = "MoneyCity/Intents/RecordTransactionIntent.swift"; sourceTree = "<group>"; };
-		F0554D11E6E34B4DAD86739D /* ScanReceiptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ScanReceiptIntent.swift"; path = "MoneyCity/Intents/ScanReceiptIntent.swift"; sourceTree = "<group>"; };
-		95BEA0D6773640018EBC4241 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AnalyticsView.swift"; path = "MoneyCity/Views/AnalyticsView.swift"; sourceTree = "<group>"; };
-		E166F8DE8A074640BC79B2A8 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "HistoryView.swift"; path = "MoneyCity/Views/HistoryView.swift"; sourceTree = "<group>"; };
-		FE6A617CBD004AD6A446CD82 /* MainCityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MainCityView.swift"; path = "MoneyCity/Views/MainCityView.swift"; sourceTree = "<group>"; };
-		47B79BFA77C949298B5E7F0A /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ProfileView.swift"; path = "MoneyCity/Views/ProfileView.swift"; sourceTree = "<group>"; };
-		412C4014B01A424DB003A3DD /* BudgetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BudgetSheet.swift"; path = "MoneyCity/Views/Modals/BudgetSheet.swift"; sourceTree = "<group>"; };
-		67C7D7C568FA42029440BE22 /* CityProgressSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityProgressSheet.swift"; path = "MoneyCity/Views/Modals/CityProgressSheet.swift"; sourceTree = "<group>"; };
-		7B46E5220D4C44D29B863699 /* CitySlotCustomizerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySlotCustomizerSheet.swift"; path = "MoneyCity/Views/Modals/CitySlotCustomizerSheet.swift"; sourceTree = "<group>"; };
-		C045060DE580430EAF7BF986 /* EditTransactionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "EditTransactionSheet.swift"; path = "MoneyCity/Views/Modals/EditTransactionSheet.swift"; sourceTree = "<group>"; };
-		2C6D469251D342A0B88DF045 /* IngestLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IngestLogSheet.swift"; path = "MoneyCity/Views/Modals/IngestLogSheet.swift"; sourceTree = "<group>"; };
-		E41E1598603B461094B30839 /* QuickAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "QuickAddSheet.swift"; path = "MoneyCity/Views/Modals/QuickAddSheet.swift"; sourceTree = "<group>"; };
-		B8B61948CC9E4AFCAE21F7DE /* RecurringExpensesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpensesSheet.swift"; path = "MoneyCity/Views/Modals/RecurringExpensesSheet.swift"; sourceTree = "<group>"; };
-		C581E00C08EB4EF99EAEF59A /* SavingsGoalsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoalsSheet.swift"; path = "MoneyCity/Views/Modals/SavingsGoalsSheet.swift"; sourceTree = "<group>"; };
-		D8771DA2BDA044CB976F8ED5 /* TransactionFeedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TransactionFeedSheet.swift"; path = "MoneyCity/Views/Modals/TransactionFeedSheet.swift"; sourceTree = "<group>"; };
-		41D73B8B07064A9BBD716C60 /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaReadyWrapper.swift"; path = "MoneyCity/Views/Diorama/DioramaReadyWrapper.swift"; sourceTree = "<group>"; };
-		F898F672E3694C4A8A02C81A /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaSkeletonView.swift"; path = "MoneyCity/Views/Diorama/DioramaSkeletonView.swift"; sourceTree = "<group>"; };
-		F6699FED85B84E0B94A5F49D /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ThreeDioramaView.swift"; path = "MoneyCity/Views/Diorama/ThreeDioramaView.swift"; sourceTree = "<group>"; };
-		622B402AF08B49CDB8E8E1EE /* CityIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityIcon.swift"; path = "MoneyCity/Views/Components/CityIcon.swift"; sourceTree = "<group>"; };
-		62CE55DC44F24B3393A0E54B /* FloatingBottomBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FloatingBottomBar.swift"; path = "MoneyCity/Views/Components/FloatingBottomBar.swift"; sourceTree = "<group>"; };
-		6C60E318C0964FD6B4C5A7AE /* ShimmerLoading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ShimmerLoading.swift"; path = "MoneyCity/Views/Components/ShimmerLoading.swift"; sourceTree = "<group>"; };
-		4B95916CF1384FF2A2DD8D15 /* OnboardingWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingWizardView.swift"; path = "MoneyCity/Views/Onboarding/OnboardingWizardView.swift"; sourceTree = "<group>"; };
-		825D13CB0D344D98A5AA556B /* BudgetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BudgetService.swift"; path = "MoneyCity/Services/BudgetService.swift"; sourceTree = "<group>"; };
-		19BCA8F526E04F8C8C87939E /* CategorizationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CategorizationEngine.swift"; path = "MoneyCity/Services/CategorizationEngine.swift"; sourceTree = "<group>"; };
-		B7F57F8F8EB34F6CA973E93C /* CityProgressEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityProgressEngine.swift"; path = "MoneyCity/Services/CityProgressEngine.swift"; sourceTree = "<group>"; };
-		BB5085CBA9024BAABE153506 /* CitySimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySimulationEngine.swift"; path = "MoneyCity/Services/CitySimulationEngine.swift"; sourceTree = "<group>"; };
-		04477F85366E4116B66A761A /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DatabaseService.swift"; path = "MoneyCity/Services/DatabaseService.swift"; sourceTree = "<group>"; };
-		6CFB9E24832B4CEA900844A9 /* FXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FXService.swift"; path = "MoneyCity/Services/FXService.swift"; sourceTree = "<group>"; };
-		883E9949EE7D49CFA12ADB2E /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Haptics.swift"; path = "MoneyCity/Services/Haptics.swift"; sourceTree = "<group>"; };
-		31FFF91190B4494783E5E568 /* InstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InstallmentService.swift"; path = "MoneyCity/Services/InstallmentService.swift"; sourceTree = "<group>"; };
-		1BA800B8B0654720848F1AFA /* MerchantRuleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MerchantRuleService.swift"; path = "MoneyCity/Services/MerchantRuleService.swift"; sourceTree = "<group>"; };
-		83C2628FD5E245C7AB8D4FAB /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "NotificationService.swift"; path = "MoneyCity/Services/NotificationService.swift"; sourceTree = "<group>"; };
-		ADBE412DD29D46FCA547CE68 /* ReceiptOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ReceiptOCRService.swift"; path = "MoneyCity/Services/ReceiptOCRService.swift"; sourceTree = "<group>"; };
-		9232AE50CF304532AD44164A /* RecurringExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpenseService.swift"; path = "MoneyCity/Services/RecurringExpenseService.swift"; sourceTree = "<group>"; };
-		2177643EE6474B96BABBB34F /* SavingsGoalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoalService.swift"; path = "MoneyCity/Services/SavingsGoalService.swift"; sourceTree = "<group>"; };
-		5D69CD1030A341AFA065CAE2 /* TransactionIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TransactionIngest.swift"; path = "MoneyCity/Services/TransactionIngest.swift"; sourceTree = "<group>"; };
-		8666114C51E94FE98767A5C6 /* WalletIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "WalletIngestCoordinator.swift"; path = "MoneyCity/Services/WalletIngestCoordinator.swift"; sourceTree = "<group>"; };
-		66AB323AB4904AF39A61E81B /* diorama.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = "diorama.html"; path = "MoneyCity/Resources/diorama.html"; sourceTree = "<group>"; };
-		6E3A9F43D7574257945AA51D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.asset-catalog; name = "Assets.xcassets"; path = "MoneyCity/Resources/Assets.xcassets"; sourceTree = "<group>"; };
-		3C4FEF761E3A43BDB37E99E8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "PrivacyInfo.xcprivacy"; path = "MoneyCity/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		A2E928BC70454674A5265578 /* MoneyCity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoneyCity.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9862606842B443C8A7D84111 /* MoneyCityApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityApp.swift"; path = "MoneyCity/MoneyCityApp.swift"; sourceTree = "<group>"; };
+		19930AB1CD5E448FBC046172 /* MoneyCityWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityWidgets.swift"; path = "MoneyCity/MoneyCityWidgets.swift"; sourceTree = "<group>"; };
+		CCCEA448CCCE4DBAB886623C /* BuildingTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BuildingTile.swift"; path = "MoneyCity/Models/BuildingTile.swift"; sourceTree = "<group>"; };
+		F34A53E1C37342E7A954DECC /* CategoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CategoryBudget.swift"; path = "MoneyCity/Models/CategoryBudget.swift"; sourceTree = "<group>"; };
+		5A5FC2BA84824DE7927CEACE /* CityEnrichment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityEnrichment.swift"; path = "MoneyCity/Models/CityEnrichment.swift"; sourceTree = "<group>"; };
+		05E4504D2A264FEFB91985B5 /* CitySlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySlot.swift"; path = "MoneyCity/Models/CitySlot.swift"; sourceTree = "<group>"; };
+		0600927D3DC348FDB497D45D /* IncomeSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IncomeSource.swift"; path = "MoneyCity/Models/IncomeSource.swift"; sourceTree = "<group>"; };
+		2508D43E95964E918B2A8836 /* IngestLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IngestLogEntry.swift"; path = "MoneyCity/Models/IngestLogEntry.swift"; sourceTree = "<group>"; };
+		8FDE09FB4E904A32AAC186DB /* InstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InstallmentPlan.swift"; path = "MoneyCity/Models/InstallmentPlan.swift"; sourceTree = "<group>"; };
+		DB0A0A04884048E1A106A48A /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LocalizationManager.swift"; path = "MoneyCity/Models/LocalizationManager.swift"; sourceTree = "<group>"; };
+		BF7F7436830640E8A4E36FC2 /* MerchantRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MerchantRule.swift"; path = "MoneyCity/Models/MerchantRule.swift"; sourceTree = "<group>"; };
+		971515B7559C46FDA94E20DF /* MonthlyCity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MonthlyCity.swift"; path = "MoneyCity/Models/MonthlyCity.swift"; sourceTree = "<group>"; };
+		82037B1799644681940521E6 /* RecurringExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpense.swift"; path = "MoneyCity/Models/RecurringExpense.swift"; sourceTree = "<group>"; };
+		C128984F831B4D7AB9B132A8 /* SavingsGoal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoal.swift"; path = "MoneyCity/Models/SavingsGoal.swift"; sourceTree = "<group>"; };
+		65B4A4D235AD40A78D20A5CD /* SpendingCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SpendingCategory.swift"; path = "MoneyCity/Models/SpendingCategory.swift"; sourceTree = "<group>"; };
+		1B2B39F592694830B461E92B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Theme.swift"; path = "MoneyCity/Models/Theme.swift"; sourceTree = "<group>"; };
+		F3FCB5FDCB1A47BBAA374E30 /* Transaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Transaction.swift"; path = "MoneyCity/Models/Transaction.swift"; sourceTree = "<group>"; };
+		5F62ED71D96149328A6E4F96 /* LogWalletPaymentIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "LogWalletPaymentIntent.swift"; path = "MoneyCity/Intents/LogWalletPaymentIntent.swift"; sourceTree = "<group>"; };
+		C7725E75D70F4A48895A029C /* MoneyCityShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityShortcuts.swift"; path = "MoneyCity/Intents/MoneyCityShortcuts.swift"; sourceTree = "<group>"; };
+		89BF3792D51043B28393A875 /* RecordTransactionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordTransactionIntent.swift"; path = "MoneyCity/Intents/RecordTransactionIntent.swift"; sourceTree = "<group>"; };
+		487C18555F614387A1F0EFAF /* ScanReceiptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ScanReceiptIntent.swift"; path = "MoneyCity/Intents/ScanReceiptIntent.swift"; sourceTree = "<group>"; };
+		D8CF4DCBE3444AF588EF2B6B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AnalyticsView.swift"; path = "MoneyCity/Views/AnalyticsView.swift"; sourceTree = "<group>"; };
+		3A1C990B00AE4AFF801E8B59 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "HistoryView.swift"; path = "MoneyCity/Views/HistoryView.swift"; sourceTree = "<group>"; };
+		6F883BC9E8BF44009F17104F /* MainCityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MainCityView.swift"; path = "MoneyCity/Views/MainCityView.swift"; sourceTree = "<group>"; };
+		189624E37D84436EB18E9AD0 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ProfileView.swift"; path = "MoneyCity/Views/ProfileView.swift"; sourceTree = "<group>"; };
+		9C552183C4AF47B9A35FB3C1 /* ApplePayDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ApplePayDiagnosticsView.swift"; path = "MoneyCity/Views/Modals/ApplePayDiagnosticsView.swift"; sourceTree = "<group>"; };
+		22BEB7D33A6947B8A3FF7EDA /* BudgetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BudgetSheet.swift"; path = "MoneyCity/Views/Modals/BudgetSheet.swift"; sourceTree = "<group>"; };
+		72778D41372E4585A667D676 /* CityProgressSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityProgressSheet.swift"; path = "MoneyCity/Views/Modals/CityProgressSheet.swift"; sourceTree = "<group>"; };
+		95BC0BC84AB14CB593D5F523 /* CitySlotCustomizerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySlotCustomizerSheet.swift"; path = "MoneyCity/Views/Modals/CitySlotCustomizerSheet.swift"; sourceTree = "<group>"; };
+		296691D7804D4B42B60BAFC1 /* EditTransactionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "EditTransactionSheet.swift"; path = "MoneyCity/Views/Modals/EditTransactionSheet.swift"; sourceTree = "<group>"; };
+		9F6038CA92D74C9BBB8CE103 /* IngestLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IngestLogSheet.swift"; path = "MoneyCity/Views/Modals/IngestLogSheet.swift"; sourceTree = "<group>"; };
+		70B2E750F4D74AEFBB528D7D /* QuickAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "QuickAddSheet.swift"; path = "MoneyCity/Views/Modals/QuickAddSheet.swift"; sourceTree = "<group>"; };
+		F8E9A7B33A794DE5ABEE50E6 /* RecurringExpensesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpensesSheet.swift"; path = "MoneyCity/Views/Modals/RecurringExpensesSheet.swift"; sourceTree = "<group>"; };
+		8C6E9442B6F7455399ADB63A /* SavingsGoalsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoalsSheet.swift"; path = "MoneyCity/Views/Modals/SavingsGoalsSheet.swift"; sourceTree = "<group>"; };
+		A3447346E225416787891D25 /* TransactionFeedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TransactionFeedSheet.swift"; path = "MoneyCity/Views/Modals/TransactionFeedSheet.swift"; sourceTree = "<group>"; };
+		F16E62BC5D8F4FAB9654EE4C /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaReadyWrapper.swift"; path = "MoneyCity/Views/Diorama/DioramaReadyWrapper.swift"; sourceTree = "<group>"; };
+		A7F93B9A195E4E3380D481D3 /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaSkeletonView.swift"; path = "MoneyCity/Views/Diorama/DioramaSkeletonView.swift"; sourceTree = "<group>"; };
+		75BC4D0713B54C5188F00F63 /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ThreeDioramaView.swift"; path = "MoneyCity/Views/Diorama/ThreeDioramaView.swift"; sourceTree = "<group>"; };
+		3CC2B5688D8F4FD2933BD16E /* CityIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityIcon.swift"; path = "MoneyCity/Views/Components/CityIcon.swift"; sourceTree = "<group>"; };
+		963FBD08557949BA825851C8 /* FloatingBottomBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FloatingBottomBar.swift"; path = "MoneyCity/Views/Components/FloatingBottomBar.swift"; sourceTree = "<group>"; };
+		523F1F7CFF4F498EA44A7F24 /* ShimmerLoading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ShimmerLoading.swift"; path = "MoneyCity/Views/Components/ShimmerLoading.swift"; sourceTree = "<group>"; };
+		E7EFBB9A39A54283A0EA10EE /* StorageHealthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StorageHealthBanner.swift"; path = "MoneyCity/Views/Components/StorageHealthBanner.swift"; sourceTree = "<group>"; };
+		63AB74B3B94E4B8FA90E63AC /* OnboardingWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingWizardView.swift"; path = "MoneyCity/Views/Onboarding/OnboardingWizardView.swift"; sourceTree = "<group>"; };
+		E0FCE14CF4F246D594EB5F04 /* BudgetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BudgetService.swift"; path = "MoneyCity/Services/BudgetService.swift"; sourceTree = "<group>"; };
+		4282BBC5D7944DA3A744E365 /* CategorizationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CategorizationEngine.swift"; path = "MoneyCity/Services/CategorizationEngine.swift"; sourceTree = "<group>"; };
+		798B4E1F3A374C20A2FECA0B /* CityProgressEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityProgressEngine.swift"; path = "MoneyCity/Services/CityProgressEngine.swift"; sourceTree = "<group>"; };
+		F9C684733862455D952F25BF /* CitySimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySimulationEngine.swift"; path = "MoneyCity/Services/CitySimulationEngine.swift"; sourceTree = "<group>"; };
+		8AD5D5E56BB04C62BAC3F933 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DatabaseService.swift"; path = "MoneyCity/Services/DatabaseService.swift"; sourceTree = "<group>"; };
+		FB61CA3C123C4579A36EFBFE /* FXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "FXService.swift"; path = "MoneyCity/Services/FXService.swift"; sourceTree = "<group>"; };
+		9FEB98F7E98E4C67A34F8EEC /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "Haptics.swift"; path = "MoneyCity/Services/Haptics.swift"; sourceTree = "<group>"; };
+		C23CAC9BFF764C20A273DA2A /* InstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InstallmentService.swift"; path = "MoneyCity/Services/InstallmentService.swift"; sourceTree = "<group>"; };
+		C8DF1DC1D24D4183B1248EA8 /* MerchantRuleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MerchantRuleService.swift"; path = "MoneyCity/Services/MerchantRuleService.swift"; sourceTree = "<group>"; };
+		749CDFD0C4AF4C19912509A2 /* MoneyCityLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityLog.swift"; path = "MoneyCity/Services/MoneyCityLog.swift"; sourceTree = "<group>"; };
+		902D32631BF4463186F78009 /* MoneyCitySchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCitySchema.swift"; path = "MoneyCity/Services/MoneyCitySchema.swift"; sourceTree = "<group>"; };
+		A193B7AAB3A14660A9C7AE08 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "NotificationService.swift"; path = "MoneyCity/Services/NotificationService.swift"; sourceTree = "<group>"; };
+		4379CA9D2B7346FA844CBAE9 /* ReceiptOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ReceiptOCRService.swift"; path = "MoneyCity/Services/ReceiptOCRService.swift"; sourceTree = "<group>"; };
+		D3C85D544B35419DBFA95964 /* RecurringExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpenseService.swift"; path = "MoneyCity/Services/RecurringExpenseService.swift"; sourceTree = "<group>"; };
+		967F609E19284D06AA7F4820 /* SavingsGoalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoalService.swift"; path = "MoneyCity/Services/SavingsGoalService.swift"; sourceTree = "<group>"; };
+		D932B2B445FD4523A309E093 /* TransactionIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TransactionIngest.swift"; path = "MoneyCity/Services/TransactionIngest.swift"; sourceTree = "<group>"; };
+		F0D4D29B87114B6D9454EFC4 /* WalletIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "WalletIngestCoordinator.swift"; path = "MoneyCity/Services/WalletIngestCoordinator.swift"; sourceTree = "<group>"; };
+		2F74CD82DC0349269B9E646B /* diorama.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = "diorama.html"; path = "MoneyCity/Resources/diorama.html"; sourceTree = "<group>"; };
+		AE1EA46CCA244F799AA49C16 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.asset-catalog; name = "Assets.xcassets"; path = "MoneyCity/Resources/Assets.xcassets"; sourceTree = "<group>"; };
+		B0F60CC1BC9648D2A5C40FEC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "PrivacyInfo.xcprivacy"; path = "MoneyCity/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		B76BC1EE4A3740E4B509CE82 /* Frameworks */ = {
+		8808398ABE6540149B20136E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -142,76 +150,80 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		65365BF42C254C38AB4E2E91 = {
+		2C8D0EC02D9944189BF9FBFB = {
 			isa = PBXGroup;
 			children = (
-				C78140E696B04BF69F3120B6 /* Products */,
-				E8DF991F0A5B429EB0209EB0 /* MoneyCityApp.swift */,
-				54A1762073EF45EDAA1BF358 /* MoneyCityWidgets.swift */,
-				636C72F4085E4B728819D84F /* BuildingTile.swift */,
-				83C5406E77EE4E36AE670EDB /* CategoryBudget.swift */,
-				6FC6EBC3DF5943049ED990DB /* CityEnrichment.swift */,
-				90DC2780ECDB4A3F86871C22 /* CitySlot.swift */,
-				C40B3E96E88045DF8F077C08 /* IncomeSource.swift */,
-				A7286DB3BAB94F5B85382F83 /* IngestLogEntry.swift */,
-				678727D121654F2086C41203 /* InstallmentPlan.swift */,
-				40B0B3FA3FAE4EC7B061CC3B /* LocalizationManager.swift */,
-				E5991AC0DBC1411FBB2DF786 /* MerchantRule.swift */,
-				A907F337FF48433FA2CAE7B7 /* MonthlyCity.swift */,
-				8791A3F954C14ABEB9DBE020 /* RecurringExpense.swift */,
-				F2D7678D03474CB6AB25B716 /* SavingsGoal.swift */,
-				03562A38EB414E1789BAA931 /* SpendingCategory.swift */,
-				26E34C3AD99C40C48775451B /* Theme.swift */,
-				D50F97998545464AA2258260 /* Transaction.swift */,
-				D7408DF220294D518DB9C926 /* LogWalletPaymentIntent.swift */,
-				6626E7ACAD93435EAEB0C54C /* MoneyCityShortcuts.swift */,
-				620BA321EE5B4794B9783ED9 /* RecordTransactionIntent.swift */,
-				F0554D11E6E34B4DAD86739D /* ScanReceiptIntent.swift */,
-				95BEA0D6773640018EBC4241 /* AnalyticsView.swift */,
-				E166F8DE8A074640BC79B2A8 /* HistoryView.swift */,
-				FE6A617CBD004AD6A446CD82 /* MainCityView.swift */,
-				47B79BFA77C949298B5E7F0A /* ProfileView.swift */,
-				412C4014B01A424DB003A3DD /* BudgetSheet.swift */,
-				67C7D7C568FA42029440BE22 /* CityProgressSheet.swift */,
-				7B46E5220D4C44D29B863699 /* CitySlotCustomizerSheet.swift */,
-				C045060DE580430EAF7BF986 /* EditTransactionSheet.swift */,
-				2C6D469251D342A0B88DF045 /* IngestLogSheet.swift */,
-				E41E1598603B461094B30839 /* QuickAddSheet.swift */,
-				B8B61948CC9E4AFCAE21F7DE /* RecurringExpensesSheet.swift */,
-				C581E00C08EB4EF99EAEF59A /* SavingsGoalsSheet.swift */,
-				D8771DA2BDA044CB976F8ED5 /* TransactionFeedSheet.swift */,
-				41D73B8B07064A9BBD716C60 /* DioramaReadyWrapper.swift */,
-				F898F672E3694C4A8A02C81A /* DioramaSkeletonView.swift */,
-				F6699FED85B84E0B94A5F49D /* ThreeDioramaView.swift */,
-				622B402AF08B49CDB8E8E1EE /* CityIcon.swift */,
-				62CE55DC44F24B3393A0E54B /* FloatingBottomBar.swift */,
-				6C60E318C0964FD6B4C5A7AE /* ShimmerLoading.swift */,
-				4B95916CF1384FF2A2DD8D15 /* OnboardingWizardView.swift */,
-				825D13CB0D344D98A5AA556B /* BudgetService.swift */,
-				19BCA8F526E04F8C8C87939E /* CategorizationEngine.swift */,
-				B7F57F8F8EB34F6CA973E93C /* CityProgressEngine.swift */,
-				BB5085CBA9024BAABE153506 /* CitySimulationEngine.swift */,
-				04477F85366E4116B66A761A /* DatabaseService.swift */,
-				6CFB9E24832B4CEA900844A9 /* FXService.swift */,
-				883E9949EE7D49CFA12ADB2E /* Haptics.swift */,
-				31FFF91190B4494783E5E568 /* InstallmentService.swift */,
-				1BA800B8B0654720848F1AFA /* MerchantRuleService.swift */,
-				83C2628FD5E245C7AB8D4FAB /* NotificationService.swift */,
-				ADBE412DD29D46FCA547CE68 /* ReceiptOCRService.swift */,
-				9232AE50CF304532AD44164A /* RecurringExpenseService.swift */,
-				2177643EE6474B96BABBB34F /* SavingsGoalService.swift */,
-				5D69CD1030A341AFA065CAE2 /* TransactionIngest.swift */,
-				8666114C51E94FE98767A5C6 /* WalletIngestCoordinator.swift */,
-				66AB323AB4904AF39A61E81B /* diorama.html */,
-				6E3A9F43D7574257945AA51D /* Assets.xcassets */,
-				3C4FEF761E3A43BDB37E99E8 /* PrivacyInfo.xcprivacy */,
+				1BC677D970B647319DD3CE0A /* Products */,
+				9862606842B443C8A7D84111 /* MoneyCityApp.swift */,
+				19930AB1CD5E448FBC046172 /* MoneyCityWidgets.swift */,
+				CCCEA448CCCE4DBAB886623C /* BuildingTile.swift */,
+				F34A53E1C37342E7A954DECC /* CategoryBudget.swift */,
+				5A5FC2BA84824DE7927CEACE /* CityEnrichment.swift */,
+				05E4504D2A264FEFB91985B5 /* CitySlot.swift */,
+				0600927D3DC348FDB497D45D /* IncomeSource.swift */,
+				2508D43E95964E918B2A8836 /* IngestLogEntry.swift */,
+				8FDE09FB4E904A32AAC186DB /* InstallmentPlan.swift */,
+				DB0A0A04884048E1A106A48A /* LocalizationManager.swift */,
+				BF7F7436830640E8A4E36FC2 /* MerchantRule.swift */,
+				971515B7559C46FDA94E20DF /* MonthlyCity.swift */,
+				82037B1799644681940521E6 /* RecurringExpense.swift */,
+				C128984F831B4D7AB9B132A8 /* SavingsGoal.swift */,
+				65B4A4D235AD40A78D20A5CD /* SpendingCategory.swift */,
+				1B2B39F592694830B461E92B /* Theme.swift */,
+				F3FCB5FDCB1A47BBAA374E30 /* Transaction.swift */,
+				5F62ED71D96149328A6E4F96 /* LogWalletPaymentIntent.swift */,
+				C7725E75D70F4A48895A029C /* MoneyCityShortcuts.swift */,
+				89BF3792D51043B28393A875 /* RecordTransactionIntent.swift */,
+				487C18555F614387A1F0EFAF /* ScanReceiptIntent.swift */,
+				D8CF4DCBE3444AF588EF2B6B /* AnalyticsView.swift */,
+				3A1C990B00AE4AFF801E8B59 /* HistoryView.swift */,
+				6F883BC9E8BF44009F17104F /* MainCityView.swift */,
+				189624E37D84436EB18E9AD0 /* ProfileView.swift */,
+				9C552183C4AF47B9A35FB3C1 /* ApplePayDiagnosticsView.swift */,
+				22BEB7D33A6947B8A3FF7EDA /* BudgetSheet.swift */,
+				72778D41372E4585A667D676 /* CityProgressSheet.swift */,
+				95BC0BC84AB14CB593D5F523 /* CitySlotCustomizerSheet.swift */,
+				296691D7804D4B42B60BAFC1 /* EditTransactionSheet.swift */,
+				9F6038CA92D74C9BBB8CE103 /* IngestLogSheet.swift */,
+				70B2E750F4D74AEFBB528D7D /* QuickAddSheet.swift */,
+				F8E9A7B33A794DE5ABEE50E6 /* RecurringExpensesSheet.swift */,
+				8C6E9442B6F7455399ADB63A /* SavingsGoalsSheet.swift */,
+				A3447346E225416787891D25 /* TransactionFeedSheet.swift */,
+				F16E62BC5D8F4FAB9654EE4C /* DioramaReadyWrapper.swift */,
+				A7F93B9A195E4E3380D481D3 /* DioramaSkeletonView.swift */,
+				75BC4D0713B54C5188F00F63 /* ThreeDioramaView.swift */,
+				3CC2B5688D8F4FD2933BD16E /* CityIcon.swift */,
+				963FBD08557949BA825851C8 /* FloatingBottomBar.swift */,
+				523F1F7CFF4F498EA44A7F24 /* ShimmerLoading.swift */,
+				E7EFBB9A39A54283A0EA10EE /* StorageHealthBanner.swift */,
+				63AB74B3B94E4B8FA90E63AC /* OnboardingWizardView.swift */,
+				E0FCE14CF4F246D594EB5F04 /* BudgetService.swift */,
+				4282BBC5D7944DA3A744E365 /* CategorizationEngine.swift */,
+				798B4E1F3A374C20A2FECA0B /* CityProgressEngine.swift */,
+				F9C684733862455D952F25BF /* CitySimulationEngine.swift */,
+				8AD5D5E56BB04C62BAC3F933 /* DatabaseService.swift */,
+				FB61CA3C123C4579A36EFBFE /* FXService.swift */,
+				9FEB98F7E98E4C67A34F8EEC /* Haptics.swift */,
+				C23CAC9BFF764C20A273DA2A /* InstallmentService.swift */,
+				C8DF1DC1D24D4183B1248EA8 /* MerchantRuleService.swift */,
+				749CDFD0C4AF4C19912509A2 /* MoneyCityLog.swift */,
+				902D32631BF4463186F78009 /* MoneyCitySchema.swift */,
+				A193B7AAB3A14660A9C7AE08 /* NotificationService.swift */,
+				4379CA9D2B7346FA844CBAE9 /* ReceiptOCRService.swift */,
+				D3C85D544B35419DBFA95964 /* RecurringExpenseService.swift */,
+				967F609E19284D06AA7F4820 /* SavingsGoalService.swift */,
+				D932B2B445FD4523A309E093 /* TransactionIngest.swift */,
+				F0D4D29B87114B6D9454EFC4 /* WalletIngestCoordinator.swift */,
+				2F74CD82DC0349269B9E646B /* diorama.html */,
+				AE1EA46CCA244F799AA49C16 /* Assets.xcassets */,
+				B0F60CC1BC9648D2A5C40FEC /* PrivacyInfo.xcprivacy */,
 			);
 			sourceTree = "<group>";
 		};
-		C78140E696B04BF69F3120B6 /* Products */ = {
+		1BC677D970B647319DD3CE0A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6305F84F3D594AC68F63A53E /* MoneyCity.app */,
+				A2E928BC70454674A5265578 /* MoneyCity.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -219,13 +231,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		33EEEBBD55C24DD6AC0A7667 /* MoneyCity */ = {
+		B385A39923F542F89D1BF988 /* MoneyCity */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 73C11296E24245B49CA1B81D /* Build configuration list for PBXNativeTarget "MoneyCity" */;
+			buildConfigurationList = 7E086EF76F38410C99EA86D0 /* Build configuration list for PBXNativeTarget "MoneyCity" */;
 			buildPhases = (
-				0CEE168242604770894F4AA7 /* Sources */,
-				B76BC1EE4A3740E4B509CE82 /* Frameworks */,
-				464C440E131242AFA9F76F3B /* Resources */,
+				1F44310F155A4770B0674445 /* Sources */,
+				8808398ABE6540149B20136E /* Frameworks */,
+				6626FB396F804A5B88DBFF21 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -233,13 +245,13 @@
 			);
 			name = MoneyCity;
 			productName = MoneyCity;
-			productReference = 6305F84F3D594AC68F63A53E /* MoneyCity.app */;
+			productReference = A2E928BC70454674A5265578 /* MoneyCity.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		89104C3458244AEBBFFB71D6 /* Project object */ = {
+		DFE6BF7D8A634A63AF78F3F0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
@@ -247,12 +259,12 @@
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
-					33EEEBBD55C24DD6AC0A7667 = {
+					B385A39923F542F89D1BF988 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
 			};
-			buildConfigurationList = 9BCE28CFF0394EA08AF297A0 /* Build configuration list for PBXProject "MoneyCity" */;
+			buildConfigurationList = 4E30E7BC88D7458AA6D61D62 /* Build configuration list for PBXProject "MoneyCity" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -260,97 +272,101 @@
 				en,
 				Base,
 			);
-			mainGroup = 65365BF42C254C38AB4E2E91;
-			productRefGroup = C78140E696B04BF69F3120B6 /* Products */;
+			mainGroup = 2C8D0EC02D9944189BF9FBFB;
+			productRefGroup = 1BC677D970B647319DD3CE0A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				33EEEBBD55C24DD6AC0A7667 /* MoneyCity */,
+				B385A39923F542F89D1BF988 /* MoneyCity */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		464C440E131242AFA9F76F3B /* Resources */ = {
+		6626FB396F804A5B88DBFF21 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				53CDE1CD8DF34943B36D5F8D /* Resources */,
-				D3571901DC21438780C86CFA /* Resources */,
-				8E646BD4504A4EE69462F9C9 /* Resources */,
+				E0853DF480AC4E7088163D8D /* Resources */,
+				B2CB30BAAB994F30936ED596 /* Resources */,
+				5DA675CA96C3446285292728 /* Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		0CEE168242604770894F4AA7 /* Sources */ = {
+		1F44310F155A4770B0674445 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8D2A437F9883425DB44979E0 /* Sources */,
-				71C90FD9B6DF4863BD163D01 /* Sources */,
-				AFB7221BC2284BA88A42091A /* Sources */,
-				16C1BC8AF82F4AC8A2BC8DB3 /* Sources */,
-				D022F2DAE1914E278DD97744 /* Sources */,
-				50E3333746714DCA8F7E0897 /* Sources */,
-				AB9506BCB3FE442C99480A6A /* Sources */,
-				9806CA36CDF04C15ABE20D9A /* Sources */,
-				4C5868AFF5D649F791BC0906 /* Sources */,
-				00BC040D9E9447C693C618A7 /* Sources */,
-				EDA44B0C539A4000ABCFEB05 /* Sources */,
-				9C266C3A3AD54E90AE822D4D /* Sources */,
-				5E549228AC024E95A52801FC /* Sources */,
-				18A5F7D67FFD4B729DFDE88B /* Sources */,
-				075DC72EBC774134A46CB9CA /* Sources */,
-				A94A7ABDEDDD44E8BC03B434 /* Sources */,
-				A452EE84EB0E44B388D27D9E /* Sources */,
-				843721E15D6244BFA23F9629 /* Sources */,
-				A75BBBB92E0542D79071E334 /* Sources */,
-				87C7AD2385AA44FEAA7E53C8 /* Sources */,
-				E292BACBE5D6455095556B99 /* Sources */,
-				31F3D4AB3BEE46EBB1CD1DF8 /* Sources */,
-				AC0BF50A747B4A34A8359D6D /* Sources */,
-				D389C9D0FC6948289B558054 /* Sources */,
-				779E0647C3E44D19B4588D91 /* Sources */,
-				C5F8B1E8046A4BE0BC178D1D /* Sources */,
-				0FCC584591F74693A7A33AB9 /* Sources */,
-				7745DD8EF16B4673BFDECACC /* Sources */,
-				1B058353DCB843C99BAF9FF8 /* Sources */,
-				EDAB65575E044AFEAC144736 /* Sources */,
-				26ED63E51B434AC1A6D18F36 /* Sources */,
-				80A775E132DD4BA3B96DBB6C /* Sources */,
-				7F7C7F02FB284D9E81C6D8F6 /* Sources */,
-				4519816A018D4AC68C6FA1F6 /* Sources */,
-				DA9B746639E440D4A7E804FE /* Sources */,
-				926F47F499744E7E8ECA1125 /* Sources */,
-				40075605AF6D4314B0F67EFD /* Sources */,
-				C7552AB61E014D3584A10B36 /* Sources */,
-				79E50BDD6A3E49DCA17A7C45 /* Sources */,
-				8DC5440AC52A42B8BEF4C061 /* Sources */,
-				72E5C408B1704C649291BB18 /* Sources */,
-				8F65E41A281C4B3CAB8709E3 /* Sources */,
-				E8E356FE4E38434D949BD104 /* Sources */,
-				54BFAEFA10404479827070AD /* Sources */,
-				BDA3B63F0BF24B1BAE3CD768 /* Sources */,
-				9B230A0F166643C7A3E8BAB7 /* Sources */,
-				426B94EE9B3B4E37BEBF2799 /* Sources */,
-				67C61C7D5DCE4B1288E7A7FF /* Sources */,
-				4A7632E5195549688DD7D58E /* Sources */,
-				391306DFC74A4243A15EAFA2 /* Sources */,
-				1B860A98C2DA4E2293E37B4E /* Sources */,
-				53511E33A9CE41BD9D7656EB /* Sources */,
-				1996797A7FAE4F17A2954227 /* Sources */,
-				BB98611ED043422BA0F829E3 /* Sources */,
-				B74C3341C1D04DC9A4542569 /* Sources */,
-				D2D4EF8F0EA849BCA65804C3 /* Sources */,
+				93233223E41A454B98ED2DCB /* Sources */,
+				F975DD9FE7DB4EE5B835FEF0 /* Sources */,
+				F457C7DDD19E4070B616C796 /* Sources */,
+				FAF95FF34B0F4E5A8314B79B /* Sources */,
+				1F35FA35448647D19B7CE799 /* Sources */,
+				E4D653B4ABA34B77825D5EC3 /* Sources */,
+				0F29A59E06DA44DF806119C4 /* Sources */,
+				56F7EC026B1B446A837BA0EF /* Sources */,
+				CE156A5D2DA64F5EB6D859AF /* Sources */,
+				14707879980D485DBB792E71 /* Sources */,
+				B78ED79F89574A27AA21D185 /* Sources */,
+				0EF456A8E50B462E95C9BFF2 /* Sources */,
+				6CCAF7D87CC74EBD86285BA3 /* Sources */,
+				16F72AF2EA7E4FE1896340E8 /* Sources */,
+				E19428C2740C48A693AF6D36 /* Sources */,
+				FBEC235CA07E4C119B14A1B1 /* Sources */,
+				E0DD98E422864029AFED26D0 /* Sources */,
+				A829CBA0A3C5469C8FFF03A7 /* Sources */,
+				51605B6BEE5C429986F75CF4 /* Sources */,
+				1F52E68510354B4D80836AD1 /* Sources */,
+				9F594E4AF64F471DB4E9765D /* Sources */,
+				52E4AAC4A68740B9A4A90BCD /* Sources */,
+				0C661B609A464D07BDEB02E7 /* Sources */,
+				53C771F36EC24CF6BBFE68CA /* Sources */,
+				0E695E3EF0A9452BB6C0EAC0 /* Sources */,
+				5AFD46B8E5FF4DD2BEAD5A48 /* Sources */,
+				7B4511BE96044064AFDCAC3E /* Sources */,
+				956FEEA64C844340B3094AAF /* Sources */,
+				8740C1D53BDB4845AE7E9E35 /* Sources */,
+				ABD42EAB4C0E4AFDB25E4C70 /* Sources */,
+				1FE5636B80994305AE0B1131 /* Sources */,
+				F086630DCFD7444D9FBCF89C /* Sources */,
+				AB3AEB85D27646D0B33D5CA2 /* Sources */,
+				C11D87D7F4E24636ACFF36C7 /* Sources */,
+				A295836636A2405BA648FE41 /* Sources */,
+				D47580E34FF84F02ABD4EDDF /* Sources */,
+				8FCD9007DD2B449D9AD2AFC6 /* Sources */,
+				1635027AF01C46E8A4E6AF22 /* Sources */,
+				70C2FFCCA42440BE93E18109 /* Sources */,
+				B209DED85C184BBF8DC150FE /* Sources */,
+				E84D314CDE734F4EBB4964D9 /* Sources */,
+				9BA9F8440E484C4FA884B689 /* Sources */,
+				495E704241414DACBE550334 /* Sources */,
+				2C3773514A5D4629AF50909D /* Sources */,
+				48BE903AFA1944CE8578D8AD /* Sources */,
+				6E12B045DBD0488488CE8417 /* Sources */,
+				F99CADA639034454943C0D6D /* Sources */,
+				FDD2FF763E0C40639CBDAE1F /* Sources */,
+				E70C921EE918415189AD19D6 /* Sources */,
+				B103A4BBAF6349D5A1911677 /* Sources */,
+				9FC1B12B94E149328336A272 /* Sources */,
+				4D1090FBB7ED4AFF9B787BDE /* Sources */,
+				F7D46605DF25409CB5E9EA19 /* Sources */,
+				3BABEF66FD9645A6AC26CF40 /* Sources */,
+				6C0892DE824141C38B47E5D3 /* Sources */,
+				DFB5DA9674584A38AE71003A /* Sources */,
+				F38F0DB54E054964B44928A0 /* Sources */,
+				F98D34E4935E4F26BCD80C87 /* Sources */,
+				7F66D5EB728A4F85BAF288A4 /* Sources */,
+				0B0E9E1738FC424BA8720AE7 /* Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		25BCAB801D074006BCA7EACD /* Debug */ = {
+		E4558BBC47944CFA8B975DE3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -383,7 +399,7 @@
 			};
 			name = Debug;
 		};
-		FFDE6D53C7A84C3CB73B0C26 /* Release */ = {
+		EC7822E4368E47C8B9012624 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -410,7 +426,7 @@
 			};
 			name = Release;
 		};
-		945F7EB8342F480B9D8B65FA /* Debug */ = {
+		31CC4201309F4B82A8DE34AF /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -440,7 +456,7 @@
 			};
 			name = Debug;
 		};
-		3EA90F6C31594D62B331738E /* Release */ = {
+		08412B82B34747FA9B6ECB3C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -473,25 +489,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9BCE28CFF0394EA08AF297A0 /* Build configuration list for PBXProject "MoneyCity" */ = {
+		4E30E7BC88D7458AA6D61D62 /* Build configuration list for PBXProject "MoneyCity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				25BCAB801D074006BCA7EACD /* Debug */,
-				FFDE6D53C7A84C3CB73B0C26 /* Release */,
+				E4558BBC47944CFA8B975DE3 /* Debug */,
+				EC7822E4368E47C8B9012624 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		73C11296E24245B49CA1B81D /* Build configuration list for PBXNativeTarget "MoneyCity" */ = {
+		7E086EF76F38410C99EA86D0 /* Build configuration list for PBXNativeTarget "MoneyCity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				945F7EB8342F480B9D8B65FA /* Debug */,
-				3EA90F6C31594D62B331738E /* Release */,
+				31CC4201309F4B82A8DE34AF /* Debug */,
+				08412B82B34747FA9B6ECB3C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 89104C3458244AEBBFFB71D6 /* Project object */;
+	rootObject = DFE6BF7D8A634A63AF78F3F0 /* Project object */;
 }

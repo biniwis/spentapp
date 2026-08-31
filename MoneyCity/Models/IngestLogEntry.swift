@@ -19,11 +19,30 @@ public final class IngestLogEntry: Identifiable {
     public var rawMerchant: String = "—"
     public var rawCurrency: String = "—"
     public var rawDate: String = "—"
+    public var intentName: String = "RecordTransactionIntent"
 
     /// "saved", "duplicate", "placeholder", or the error that stopped it.
     public var outcome: String = ""
+    public var failureReason: String? = nil
+    public var categoryDetected: String? = nil
     public var resolvedAmount: Double? = nil
     public var resolvedMerchant: String? = nil
+
+    public var hasAmount: Bool {
+        rawAmount != "nil (לא הועבר)" && rawAmount != "\"\" (מחרוזת ריקה)" && rawAmount != "—"
+    }
+
+    public var hasMerchant: Bool {
+        rawMerchant != "nil (לא הועבר)" && rawMerchant != "\"\" (מחרוזת ריקה)" && rawMerchant != "—"
+    }
+
+    public var hasCurrency: Bool {
+        rawCurrency != "nil (לא הועבר)" && rawCurrency != "\"\" (מחרוזת ריקה)" && rawCurrency != "—"
+    }
+
+    public var hasDate: Bool {
+        rawDate != "nil (לא הועבר)" && rawDate != "\"\" (מחרוזת ריקה)" && rawDate != "—"
+    }
 
     public init(
         id: UUID = UUID(),
@@ -33,7 +52,10 @@ public final class IngestLogEntry: Identifiable {
         rawMerchant: String,
         rawCurrency: String,
         rawDate: String,
+        intentName: String = "RecordTransactionIntent",
         outcome: String = "",
+        failureReason: String? = nil,
+        categoryDetected: String? = nil,
         resolvedAmount: Double? = nil,
         resolvedMerchant: String? = nil
     ) {
@@ -44,7 +66,10 @@ public final class IngestLogEntry: Identifiable {
         self.rawMerchant = rawMerchant
         self.rawCurrency = rawCurrency
         self.rawDate = rawDate
+        self.intentName = intentName
         self.outcome = outcome
+        self.failureReason = failureReason
+        self.categoryDetected = categoryDetected
         self.resolvedAmount = resolvedAmount
         self.resolvedMerchant = resolvedMerchant
     }

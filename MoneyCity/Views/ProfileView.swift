@@ -138,7 +138,7 @@ public struct ProfileView: View {
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showIngestLogSheet) {
-            IngestLogSheet()
+            ApplePayDiagnosticsView()
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showApplePayGuideSheet) {
@@ -378,8 +378,8 @@ public struct ProfileView: View {
             Divider().background(Color.borderSubtle).padding(.leading, 62)
 
             menuRow(
-                title: l10n.language == .hebrew ? "יומן קליטה אוטומטי (Apple Pay / OCR)" : "Ingest & Screenshot Log",
-                subtitle: l10n.language == .hebrew ? "תיעוד עסקאות שנקלטו אוטומטית" : "Live transaction diagnostics",
+                title: l10n.language == .hebrew ? "אבחון Apple Pay ודיאגנוסטיקה" : "Apple Pay Diagnostics & Dev Hub",
+                subtitle: l10n.language == .hebrew ? "בדיקת Pipeline, נתונים גולמיים מ-Wallet ויצוא דוח" : "Pipeline steps, raw Wallet inspection & export",
                 iconBg: Color.themeYellowSoft
             ) {
                 ScannerLensVectorIcon(color: Color.themeYellow)

@@ -41,16 +41,22 @@ public struct LogWalletPaymentIntent: AppIntent {
         [SPENT Simple Ingest Debug]
         • payload received: \(payload != nil ? "\"\(payload!)\"" : "nil")
         """
-        print(debugRaw)
+        MoneyCityLog.sensitive(debugRaw)
 
         let result = await WalletIngestCoordinator.run(
             amount: nil,
             amountText: nil,
             merchant: payload,
             currency: nil,
-            transactionDate: nil
+            transactionDate: nil,
+            intentName: "LogWalletPaymentIntent"
         )
-        let dialogMessage = "\(debugRaw)\n\n\(result.message)"
+        // The dialog is what Shortcuts speaks or shows after every tap-to-pay purchase.
+        // A payload dump belongs in the ingest log inside the app, not on a lock screen
+        // where anyone standing at the till can read the merchant and the amount.
+        let dialogMessage = MoneyCityLog.isDebugBuild
+            ? "\(debugRaw)\n\n\(result.message)"
+            : result.message
         return .result(dialog: IntentDialog(stringLiteral: dialogMessage))
     }
 }

@@ -241,7 +241,7 @@ public enum RecurringExpenseService {
             try context.save()
         } catch {
             // Never report a phantom success — the caller shows the user a confirmation.
-            print("RecurringExpenseService: save failed: \(error)")
+            MoneyCityLog.error("RecurringExpenseService: save failed: \(error)")
             return 0
         }
         return created

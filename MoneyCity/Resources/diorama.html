@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="he">
 <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", "Helvetica Neue", "Arial Hebrew", "Arial", sans-serif; }
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background: transparent !important; touch-action:none; }
     #stage { width:100%; height:100%; position:relative; overflow:hidden; background: transparent !important; }
     canvas { display:block; width:100% !important; height:100% !important; background: transparent !important; }
@@ -67,6 +68,52 @@
     .diorama-pill-amount.zero {
       color: #94a3b8;
       font-weight: 700;
+    }
+
+    /* 💬 Native Crisp Vector Speech Bubbles (Zero Pixelation / Zero Font Glitches) */
+    .diorama-speech-bubble {
+      position: absolute;
+      top: 0; left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 16px;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Rubik", "Heebo", system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      border: 1.5px solid rgba(226, 232, 240, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14), 0 2px 6px rgba(15, 23, 42, 0.06);
+      transform: translate3d(-50%, -100%, 0) scale(0.001);
+      opacity: 0;
+      transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      white-space: nowrap;
+      z-index: 25;
+      direction: rtl;
+    }
+    .diorama-speech-bubble::after {
+      content: "";
+      position: absolute;
+      bottom: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; height: 0;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid #ffffff;
+    }
+    .diorama-speech-bubble.active {
+      transform: translate3d(-50%, -100%, 0) scale(1);
+      opacity: 1;
+    }
+    .diorama-speech-bubble.closing {
+      transform: translate3d(-50%, -130%, 0) scale(0.8);
+      opacity: 0;
     }
   </style>
   <script>
@@ -1095,73 +1142,118 @@
     }
 
     // ================================================================
-    // 💬 EMOJI SPEECH BUBBLE & STREET SITUATIONS ENGINE
+    // 💬 MULTILINGUAL SPEECH BUBBLE & STREET SITUATIONS ENGINE
     // ================================================================
+    let currentLanguage = "he";
     const activeBubbles = [];
     const interactiveCitizens = [];
 
-    function createBubbleTexture(text) {
-      const c = cv(256, 128), g = c.getContext("2d");
-      g.clearRect(0, 0, 256, 128);
+    const DIORAMA_PHRASES = {
+      he: {
+        busStop: "תחנת אוטובוס • העלאת נוסעים",
+        vacantSlot: "חלקה פנויה",
+        arrived: "הגעתי לעיר!",
+        newUpgrade: "שדרוג חדש בעיר!",
+        cat: ["מיאו! איזה כיף על הגג", "גררר... תודה שפתחת אותי!", "מיאו מיאו!"],
+        dog: "הב הב! מטיילים בפארק!",
+        fountain: "מזרקת המשאלות של העיר",
+        sakura: "פריחת הדובדבן מושלמת!",
+        coffeeStand: "אספרסו משובח וטרי!",
+        sculpture: "פסל אמנות מודרנית",
+        tap: [
+          "בוקר טוב!", "איזה יום מקסים!", "שומר על תקציב מעולה",
+          "קפה מושלם היום", "אוהב את העיר!", "שלום חבר!",
+          "בדרך לקניות", "הפארק מהמם!", "החיסכון גדל!"
+        ],
+        street: [
+          "היי!",
+          "איזה יום מעולה!",
+          "אספרסו מצוין!",
+          "כלב טוב!",
+          "איפה דירה 4B?",
+          "סליחה!",
+          "איזה יום יפה בעיר!"
+        ]
+      },
+      en: {
+        busStop: "Bus Stop • Boarding",
+        vacantSlot: "Vacant Plot",
+        arrived: "Welcome to the city!",
+        newUpgrade: "New City Upgrade!",
+        cat: ["Meow! Sunbathing on the roof", "Purrr... thanks for unlocking me!", "Meow meow!"],
+        dog: "Woof woof! Strolling in the park!",
+        fountain: "City Wishing Fountain",
+        sakura: "Cherry blossoms in full bloom!",
+        coffeeStand: "Fresh artisan espresso!",
+        sculpture: "Modern art sculpture",
+        tap: [
+          "Good morning!", "What a lovely day!", "Keeping my budget on track!",
+          "Great coffee today!", "Love this city!", "Hello friend!",
+          "Heading out shopping!", "The park is gorgeous!", "Savings are growing!"
+        ],
+        street: [
+          "Hey there!",
+          "Awesome day!",
+          "Delicious espresso!",
+          "Good boy!",
+          "Where is Apt 4B?",
+          "Pardon me!",
+          "Such a beautiful city!"
+        ]
+      }
+    };
 
-      // Bubble shadow
-      g.shadowColor = "rgba(0,0,0,0.22)";
-      g.shadowBlur = 12;
-      g.shadowOffsetY = 4;
+    window.setDioramaLanguage = function(lang) {
+      if (lang === "en" || lang === "he") {
+        currentLanguage = lang;
+        document.documentElement.lang = lang;
+      }
+    };
 
-      // Rounded bubble
-      g.fillStyle = "#ffffff";
-      g.beginPath();
-      const x = 14, y = 10, w = 228, h = 80, r = 24;
-      g.moveTo(x + r, y);
-      g.lineTo(x + w - r, y);
-      g.quadraticCurveTo(x + w, y, x + w, y + r);
-      g.lineTo(x + w, y + h - r);
-      g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-      g.lineTo(x + r, y + h);
-      g.quadraticCurveTo(x, y + h, x, y + h - r);
-      g.lineTo(x, y + r);
-      g.quadraticCurveTo(x, y, x + r, y);
-      g.closePath();
-      g.fill();
-
-      // Tail
-      g.beginPath();
-      g.moveTo(116, 90);
-      g.lineTo(128, 112);
-      g.lineTo(140, 90);
-      g.closePath();
-      g.fill();
-
-      g.shadowColor = "transparent";
-      g.fillStyle = "#0f172a";
-      g.font = "bold 34px -apple-system, sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(text, 128, 50);
-
-      return tex(c);
+    function getDioramaPhrases() {
+      return DIORAMA_PHRASES[currentLanguage] || DIORAMA_PHRASES.he;
     }
 
     function popEmojiBubble(parentObj, text, duration) {
-      if (!parentObj || typeof parentObj.add !== "function") return;
+      if (!parentObj) return;
       try {
-        const bMat = new THREE.SpriteMaterial({ map: createBubbleTexture(text), transparent: true, opacity: 1.0, depthTest: false });
-        const sprite = new THREE.Sprite(bMat);
-        sprite.scale.set(0.01, 0.005, 1);
-        sprite.position.set(0, 0.95, 0);
-        parentObj.add(sprite);
+        const cleanText = (text || "").trim();
+        if (!cleanText) return;
+
+        const bubbleEl = document.createElement("div");
+        bubbleEl.className = "diorama-speech-bubble";
+        bubbleEl.style.direction = currentLanguage === "he" ? "rtl" : "ltr";
+        bubbleEl.textContent = cleanText;
+
+        const container = document.getElementById("diorama-html-tags") || stage || document.body;
+        container.appendChild(bubbleEl);
+
+        // Immediate position calculation
+        const v = new THREE.Vector3();
+        parentObj.getWorldPosition(v);
+        v.y += 1.4;
+        v.project(camera);
+        if (v.z < 1) {
+          const screenX = ((v.x + 1) * 0.5) * stage.clientWidth;
+          const screenY = ((-v.y + 1) * 0.5) * stage.clientHeight;
+          bubbleEl.style.left = screenX + "px";
+          bubbleEl.style.top = screenY + "px";
+        }
+
+        // Trigger entrance
+        requestAnimationFrame(() => {
+          bubbleEl.classList.add("active");
+        });
 
         activeBubbles.push({
-          sprite: sprite,
-          parent: parentObj,
+          el: bubbleEl,
+          targetObj: parentObj,
           life: 0,
-          maxLife: duration || 2.4,
-          baseScaleX: 1.4,
-          baseScaleY: 0.7
+          maxLife: duration || 2.5,
+          offsetY: 1.4
         });
       } catch (err) {
-        console.warn("Bubble creation caught:", err);
+        console.warn("Speech bubble creation caught:", err);
       }
     }
 
@@ -3322,39 +3414,34 @@
             if (targetObj && targetObj.visible !== false) {
               u.hopTimer = 0.40;
               
+              const ph = getDioramaPhrases();
               if (u.isSlot) {
-                popEmojiBubble(targetObj, "📍 " + u.slotName, 2.4);
+                popEmojiBubble(targetObj, u.slotName || ph.vacantSlot, 2.4);
                 if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.slotTapped) {
                   try { window.webkit.messageHandlers.slotTapped.postMessage({ slotId: u.slotId, slotName: u.slotName }); } catch(e) {}
                 }
                 return;
               }
 
-              let phrase = "בוקר טוב! ☀️";
+              let phrase = ph.tap[0];
               if (u.isCat) {
-                const catPhrases = ["🐱 מיאו! איזה חום נעים... ☀️", "🐾 גררר... שמח שפתחת אותי! 😸", "🐱 מיאו מיאו! 🐟"];
-                phrase = catPhrases[Math.floor(Math.random() * catPhrases.length)];
+                phrase = ph.cat[Math.floor(Math.random() * ph.cat.length)];
               } else if (u.isDog) {
-                phrase = "🐕 הב הב! מטיילים בפארק! ❤️";
+                phrase = ph.dog;
               } else if (u.isFountain) {
-                phrase = "⛲ מזרקת המשאלות של העיר! 💧";
+                phrase = ph.fountain;
               } else if (u.isSakura) {
-                phrase = "🌸 פריחת הדובדבן מושלמת!";
+                phrase = ph.sakura;
               } else if (u.isCoffeeStand) {
-                phrase = "☕ אספרסו משובח וטרי!";
+                phrase = ph.coffeeStand;
               } else if (u.isSculpture) {
-                phrase = "🗿 אמנות מודרנית במרכז!";
+                phrase = ph.sculpture;
               } else if (u.phrase) {
                 phrase = u.phrase;
               } else {
-                const tapPhrases = [
-                  "בוקר טוב! ☀️", "איזה יום מקסים! ☀️", "שומר על תקציב מעולה 💰",
-                  "קפה מושלם היום ☕", "אוהב את העיר! 🏙️", "שלום חבר! 👋",
-                  "בדרך לקניות 🛍️", "הפארק מהמם 🌸", "החיסכון גדל! 📈"
-                ];
-                phrase = tapPhrases[Math.floor(Math.random() * tapPhrases.length)];
+                phrase = ph.tap[Math.floor(Math.random() * ph.tap.length)];
               }
-              popEmojiBubble(targetObj, phrase, 2.4);
+              popEmojiBubble(targetObj, phrase, 2.5);
               if (u.slotId && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.slotTapped) {
                 try { window.webkit.messageHandlers.slotTapped.postMessage({ slotId: u.slotId, currentItem: u.isCat ? "pet_cat_rooftop" : (u.isFountain ? "fountain_marble" : (u.isSakura ? "tree_sakura" : (u.isCoffeeStand ? "cafe_stand" : (u.isSculpture ? "public_art_sculpture" : "")))) }); } catch(e) {}
               }
@@ -3731,15 +3818,17 @@
                 if (item.fig && item.fig.visible !== shouldBeVisible) {
                   item.fig.visible = shouldBeVisible;
                   if (item.dog) item.dog.visible = shouldBeVisible;
+                  const ph = getDioramaPhrases();
                   if (shouldBeVisible && (!data.newlyUnlockedId || data.newlyUnlockedId !== eId)) {
-                    popEmojiBubble(item.fig, "👋 הגעתי לעיר!", 2.8);
+                    popEmojiBubble(item.fig, ph.arrived, 2.8);
                   }
                 }
               } else if (item.visible !== undefined) {
                 if (item.visible !== shouldBeVisible) {
                   item.visible = shouldBeVisible;
+                  const ph = getDioramaPhrases();
                   if (shouldBeVisible && (!data.newlyUnlockedId || data.newlyUnlockedId !== eId)) {
-                    popEmojiBubble(item, "🏛️ שדרוג חדש!", 2.8);
+                    popEmojiBubble(item, ph.newUpgrade, 2.8);
                   }
                 }
 
@@ -3959,7 +4048,8 @@
           if (!v.hasPausedAtBusStop && Math.abs(currentZ - (-4.8)) < 0.45) {
             v.pauseTimer = 2.4;
             v.hasPausedAtBusStop = true;
-            popEmojiBubble(v.obj, "🚏 תחנת אוטובוס • העלאת נוסעים", 2.2);
+            const ph = getDioramaPhrases();
+            popEmojiBubble(v.obj, ph.busStop, 2.2);
             return;
           }
           if (currentZ < -8.0 || currentZ > 8.0) {
@@ -4019,20 +4109,42 @@
         }
       });
 
-      // Update Speech / Emoji Bubbles
+      // Update Speech Bubbles (project 3D position to 2D HTML/DOM)
+      const bubbleVec = new THREE.Vector3();
       for (let bi = activeBubbles.length - 1; bi >= 0; bi--) {
         const b = activeBubbles[bi];
         b.life += dt;
-        const progress = b.life / b.maxLife;
-        if (progress >= 1.0) {
-          b.parent.remove(b.sprite);
+        if (b.life >= b.maxLife) {
+          if (b.el && b.el.parentNode) {
+            b.el.parentNode.removeChild(b.el);
+          }
           activeBubbles.splice(bi, 1);
+          continue;
+        }
+
+        if (b.life >= b.maxLife - 0.28) {
+          b.el.classList.remove("active");
+          b.el.classList.add("closing");
+        }
+
+        if (b.targetObj && b.targetObj.visible !== false) {
+          b.targetObj.getWorldPosition(bubbleVec);
+          bubbleVec.y += (b.offsetY || 1.35) + Math.sin(b.life * 2.5) * 0.04;
+          bubbleVec.project(camera);
+
+          if (bubbleVec.z < 1) {
+            const screenX = ((bubbleVec.x + 1) * 0.5) * stage.clientWidth;
+            const screenY = ((-bubbleVec.y + 1) * 0.5) * stage.clientHeight;
+            b.el.style.left = screenX + "px";
+            b.el.style.top = screenY + "px";
+          } else {
+            b.el.style.opacity = "0";
+          }
         } else {
-          const enter = Math.min(1.0, b.life * 6.0);
-          const fade = progress > 0.75 ? (1.0 - (progress - 0.75) / 0.25) : 1.0;
-          b.sprite.scale.set(b.baseScaleX * enter * fade, b.baseScaleY * enter * fade, 1);
-          b.sprite.position.y = 1.05 + b.life * 0.05;
-          b.sprite.material.opacity = fade;
+          if (b.el && b.el.parentNode) {
+            b.el.parentNode.removeChild(b.el);
+          }
+          activeBubbles.splice(bi, 1);
         }
       }
 
@@ -4044,63 +4156,43 @@
 
         const activeCitizens = walkingCitizens.filter(c => c.obj.visible);
         if (activeCitizens.length > 0) {
-          const sitKind = Math.floor(Math.random() * 7);
-          if (sitKind === 0) {
-            // Situation 1: Friendly Greeting Wave
-            const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
-            c.isPaused = true;
-            c.pauseDuration = 2.4;
-            c.pauseTimer = 2.4;
-            popEmojiBubble(c.obj, "👋 היי!", 2.2);
-          } else if (sitKind === 1) {
-            // Situation 2: Photo
-            const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
-            c.isPaused = true;
-            c.pauseDuration = 2.6;
-            c.pauseTimer = 2.6;
-            popEmojiBubble(c.obj, "📸 צ'יז! 😊", 2.4);
-          } else if (sitKind === 2) {
-            // Situation 3: Coffee / Drink Sip
-            const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
-            c.isPaused = true;
-            c.pauseDuration = 2.4;
-            c.pauseTimer = 2.4;
-            popEmojiBubble(c.obj, "☕ יאם! אספרסו", 2.2);
-          } else if (sitKind === 3) {
-            // Situation 4: Dog Love
+          const ph = getDioramaPhrases();
+          const sitKind = Math.floor(Math.random() * ph.street.length);
+          const chosenPhrase = ph.street[sitKind] || ph.street[0];
+          
+          if (sitKind === 3) {
+            // Dog Love
             const dogWalkers = activeCitizens.filter(c => c.dog && c.dog.visible);
             if (dogWalkers.length > 0) {
               const dw = dogWalkers[0];
               dw.isPaused = true;
               dw.pauseDuration = 2.5;
               dw.pauseTimer = 2.5;
-              popEmojiBubble(dw.obj, "🐕 ❤️ גוד בוי!", 2.3);
+              popEmojiBubble(dw.obj, chosenPhrase, 2.3);
             }
           } else if (sitKind === 4) {
-            // Situation 5: Confused Wolt Courier
+            // Courier
             const courier = activeCitizens.find(c => c.obj.userData && (c.obj.userData.hasPhone || c.obj.userData.hasBag));
             if (courier) {
               courier.isPaused = true;
               courier.pauseDuration = 3.0;
               courier.pauseTimer = 3.0;
-              popEmojiBubble(courier.obj, "🗺️ איפה דירה 4B?!", 2.8);
+              popEmojiBubble(courier.obj, chosenPhrase, 2.8);
             }
-          } else if (sitKind === 5) {
-            // Situation 6: Sidewalk Shuffle (Awkward Dodge)
-            if (activeCitizens.length >= 2) {
-              const c1 = activeCitizens[0];
-              c1.isPaused = true;
-              c1.pauseDuration = 2.2;
-              c1.pauseTimer = 2.2;
-              popEmojiBubble(c1.obj, "😅 סליחה!", 2.0);
-            }
-          } else if (sitKind === 6) {
-            // Situation 7: Joyful High Five
+          } else if (sitKind === 5 && activeCitizens.length >= 2) {
+            // Shuffle
+            const c1 = activeCitizens[0];
+            c1.isPaused = true;
+            c1.pauseDuration = 2.2;
+            c1.pauseTimer = 2.2;
+            popEmojiBubble(c1.obj, chosenPhrase, 2.0);
+          } else {
+            // Citizen greeting / photo / coffee
             const c = activeCitizens[Math.floor(Math.random() * activeCitizens.length)];
             c.isPaused = true;
-            c.pauseDuration = 2.2;
-            c.pauseTimer = 2.2;
-            popEmojiBubble(c.obj, "🎉 איזה יום יפה!", 2.2);
+            c.pauseDuration = 2.4;
+            c.pauseTimer = 2.4;
+            popEmojiBubble(c.obj, chosenPhrase, 2.3);
           }
         }
       }

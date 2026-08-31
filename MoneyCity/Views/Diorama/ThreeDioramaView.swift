@@ -41,6 +41,7 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let newlyUnlockedEnrichmentId: String?
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
+    public let language: String
     public let isPaused: Bool
     public let onSelectDistrict: (String?) -> Void
     public let onBuildingSelected: (DistrictBuildingInfo) -> Void
@@ -56,6 +57,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         newlyUnlockedEnrichmentId: String? = nil,
         slotPlacements: [String: String] = [:],
         selectedDistrict: String?,
+        language: String = "he",
         isPaused: Bool = false,
         onSelectDistrict: @escaping (String?) -> Void,
         onBuildingSelected: @escaping (DistrictBuildingInfo) -> Void,
@@ -70,6 +72,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
+        self.language = language
         self.isPaused = isPaused
         self.onSelectDistrict = onSelectDistrict
         self.onBuildingSelected = onBuildingSelected
@@ -131,6 +134,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let transport: Double
         public let savings: Double
         public let targetDistrict: String?
+        public let language: String
         public let enrichments: [String]
         public let newlyUnlockedId: String?
         public let slotPlacements: [String: String]
@@ -168,6 +172,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             transport: transport,
             savings: savings,
             targetDistrict: selectedDistrict,
+            language: language,
             enrichments: enrichmentIds,
             newlyUnlockedId: newlyUnlockedEnrichmentId,
             slotPlacements: slotPlacements,
@@ -202,8 +207,9 @@ public struct ThreeDioramaView: ViewRepresentable {
     public static func warmUp() {
         let config = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: config)
-        if let htmlURL = Bundle.main.url(forResource: "diorama", withExtension: "html") {
-            webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+        if let htmlURL = Bundle.main.url(forResource: "diorama", withExtension: "html"),
+           let htmlData = try? Data(contentsOf: htmlURL) {
+            webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: htmlURL.deletingLastPathComponent())
         }
     }
     
@@ -236,16 +242,18 @@ public struct ThreeDioramaView: ViewRepresentable {
         webView.setValue(false, forKey: "drawsBackground")
         #endif
         
-        // Direct bundle resource load – zero Base64 bloat
-        if let htmlURL = Bundle.main.url(forResource: "diorama", withExtension: "html") {
-            webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+        // Load with explicit UTF-8 encoding so Hebrew and non-ASCII strings never degrade to question marks
+        if let htmlURL = Bundle.main.url(forResource: "diorama", withExtension: "html"),
+           let htmlData = try? Data(contentsOf: htmlURL) {
+            webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: htmlURL.deletingLastPathComponent())
         } else if let htmlPath = Bundle.main.path(forResource: "diorama", ofType: "html"),
-                  let htmlString = try? String(contentsOfFile: htmlPath, encoding: .utf8) {
-            webView.loadHTMLString(htmlString, baseURL: nil)
+                  let htmlData = try? Data(contentsOf: URL(fileURLWithPath: htmlPath)) {
+            webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: URL(fileURLWithPath: htmlPath).deletingLastPathComponent())
         } else {
             #if SWIFT_PACKAGE
-            if let moduleURL = Bundle.module.url(forResource: "diorama", withExtension: "html") {
-                webView.loadFileURL(moduleURL, allowingReadAccessTo: moduleURL.deletingLastPathComponent())
+            if let moduleURL = Bundle.module.url(forResource: "diorama", withExtension: "html"),
+               let htmlData = try? Data(contentsOf: moduleURL) {
+                webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: moduleURL.deletingLastPathComponent())
             }
             #endif
         }
@@ -260,6 +268,9 @@ public struct ThreeDioramaView: ViewRepresentable {
           window.pauseDioramaRendering(\(pauseStr));
         }
         if(!\(pauseStr)){
+          if(window.setDioramaLanguage){
+            window.setDioramaLanguage('\(language)');
+          }
           if(window.updateDioramaData){
             window.updateDioramaData(\(dataPayloadJSON));
           } else {

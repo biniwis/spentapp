@@ -1,6 +1,18 @@
 import Foundation
 import SwiftData
 
+/// How much of the raw-payload diagnostic trail is kept, and for how long.
+///
+/// The count cap alone is not enough: a user whose automation works writes a handful of
+/// entries a week, so 100 entries can mean a year of merchant names and amounts sitting on
+/// disk to explain a problem that was fixed in March. The age cap is the one that actually
+/// bounds the exposure. Kept outside `DatabaseService` so the pure retention rule is
+/// reachable without touching the main actor.
+public enum IngestLogRetention {
+    public static let maxEntries = 100
+    public static let maxAge: TimeInterval = 14 * 24 * 60 * 60
+}
+
 /// Centralized, production-grade database coordinator for SwiftData & SQLite storage.
 @MainActor
 public final class DatabaseService {
@@ -11,30 +23,131 @@ public final class DatabaseService {
         container.mainContext
     }
     
+    /// How the store actually opened. Anything other than `.persistent` means the app is
+    /// running degraded and the user has to be told, because both other modes look
+    /// identical to "all my data disappeared" from the outside.
+    public enum StorageMode: Equatable {
+        /// Normal operation: the existing on-disk store opened.
+        case persistent
+        /// The old store could not be opened, so it was moved aside and a new one started.
+        /// Nothing was deleted — `backupPath` is where the old files are.
+        case recoveredFreshStore(backupPath: String?)
+        /// Nothing could be opened on disk. The app runs, but nothing survives relaunch.
+        case memoryOnly
+    }
+
+    /// The mode the container opened in.
+    public let storageMode: StorageMode
+
+    /// The underlying error, when the first attempt failed. Diagnostics only.
+    public let storageFailure: String?
+
+    /// True when writes will not survive the app being closed.
+    public var isEphemeral: Bool { storageMode == .memoryOnly }
+
     private init() {
-        let schema = Schema([
-            Transaction.self,
-            CityEnrichment.self,
-            RecurringExpense.self,
-            IncomeSource.self,
-            CategoryBudget.self,
-            MerchantRule.self,
-            InstallmentPlan.self,
-            SavingsGoal.self,
-            IngestLogEntry.self
-        ])
-        
+        // Built from the versioned schema, not a bare model list, so the store carries the
+        // version identifier the migration plan matches against. V1 is 1.0.0, which is also
+        // what an unversioned schema defaulted to — so an existing store opens unchanged.
+        let schema = Schema(versionedSchema: MoneyCitySchemaV1.self)
+        let outcome = DatabaseService.openContainer(schema: schema)
+        self.container = outcome.container
+        self.storageMode = outcome.mode
+        self.storageFailure = outcome.failure
+    }
+
+    // MARK: - Container recovery
+
+    /// Opens the store, preferring to keep the user's data over keeping the app quiet.
+    ///
+    /// The previous version fell straight to an in-memory store on any failure and only
+    /// printed about it. That is the worst possible outcome for a ledger: the app opens,
+    /// looks empty, accepts new expenses all day, and loses them at relaunch — while the
+    /// real store is still sitting on disk, unopened and now competing with a month of
+    /// re-entered data. So the failure path here moves the unreadable store somewhere safe
+    /// first, and only gives up on disk entirely if that doesn't help.
+    private static func openContainer(
+        schema: Schema
+    ) -> (container: ModelContainer, mode: StorageMode, failure: String?) {
+
+        // 1. The ordinary path.
         do {
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-            self.container = try ModelContainer(for: schema, configurations: [config])
+            let container = try ModelContainer(
+                for: schema,
+                migrationPlan: MoneyCityMigrationPlan.self,
+                configurations: [config]
+            )
+            return (container, .persistent, nil)
         } catch {
-            print("⚠️ SwiftData on-disk container failed to initialize: \(error). Falling back to in-memory store.")
+            let firstFailure = String(describing: error)
+            MoneyCityLog.error("on-disk container failed to open: \(firstFailure)")
+
+            // 2. Quarantine whatever is there and try again on disk. If the store files
+            //    aren't where we expect, `quarantine` returns nil and retrying would just
+            //    fail the same way, so we skip straight to memory.
+            if let backup = quarantineExistingStore() {
+                MoneyCityLog.error("previous store moved to \(backup); retrying on disk")
+                do {
+                    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+                    let container = try ModelContainer(
+                        for: schema,
+                        migrationPlan: MoneyCityMigrationPlan.self,
+                        configurations: [config]
+                    )
+                    return (container, .recoveredFreshStore(backupPath: backup), firstFailure)
+                } catch {
+                    MoneyCityLog.error("fresh on-disk container also failed: \(error)")
+                }
+            }
+
+            // 3. Last resort. The app opens; the banner tells the user not to trust it.
             do {
                 let memoryConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                self.container = try ModelContainer(for: schema, configurations: [memoryConfig])
+                let container = try ModelContainer(for: schema, configurations: [memoryConfig])
+                return (container, .memoryOnly, firstFailure)
             } catch {
-                fatalError("Critical: Failed to initialize SwiftData ModelContainer: \(error)")
+                fatalError("Critical: no SwiftData container could be created: \(error)")
             }
+        }
+    }
+
+    /// Moves the existing store aside rather than deleting it, and reports where it went.
+    ///
+    /// Returns nil when there was nothing to move, which is also the signal that a retry
+    /// on disk is pointless.
+    private static func quarantineExistingStore() -> String? {
+        let fm = FileManager.default
+        guard let support = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        ) else { return nil }
+
+        let names = ["default.store", "default.store-wal", "default.store-shm"]
+        let present = names.filter { fm.fileExists(atPath: support.appendingPathComponent($0).path) }
+        guard !present.isEmpty else { return nil }
+
+        let stamp = DateFormatter()
+        stamp.dateFormat = "yyyy-MM-dd-HHmmss"
+        stamp.locale = Locale(identifier: "en_US_POSIX")
+        let folder = support
+            .appendingPathComponent("RecoveredStores", isDirectory: true)
+            .appendingPathComponent(stamp.string(from: Date()), isDirectory: true)
+
+        do {
+            try fm.createDirectory(at: folder, withIntermediateDirectories: true)
+            for name in present {
+                try fm.moveItem(
+                    at: support.appendingPathComponent(name),
+                    to: folder.appendingPathComponent(name)
+                )
+            }
+            return folder.path
+        } catch {
+            MoneyCityLog.error("could not quarantine store: \(error)")
+            return nil
         }
     }
     
@@ -78,7 +191,7 @@ public final class DatabaseService {
         do {
             return try context.fetch(descriptor)
         } catch {
-            print("Error fetching all transactions: \(error)")
+            MoneyCityLog.error("Error fetching all transactions: \(error)")
             return []
         }
     }
@@ -98,7 +211,7 @@ public final class DatabaseService {
         do {
             return try context.fetch(descriptor)
         } catch {
-            print("Error fetching month transactions: \(error)")
+            MoneyCityLog.error("Error fetching month transactions: \(error)")
             return []
         }
     }
@@ -119,7 +232,7 @@ public final class DatabaseService {
         do {
             return try context.fetch(descriptor)
         } catch {
-            print("Error fetching category transactions: \(error)")
+            MoneyCityLog.error("Error fetching category transactions: \(error)")
             return []
         }
     }
@@ -139,7 +252,7 @@ public final class DatabaseService {
         do {
             return try context.fetch(descriptor)
         } catch {
-            print("Error fetching yearly transactions: \(error)")
+            MoneyCityLog.error("Error fetching yearly transactions: \(error)")
             return []
         }
     }
@@ -156,7 +269,7 @@ public final class DatabaseService {
         do {
             return try context.fetch(descriptor)
         } catch {
-            print("Error fetching recent transactions: \(error)")
+            MoneyCityLog.error("Error fetching recent transactions: \(error)")
             return []
         }
     }
@@ -190,14 +303,41 @@ public final class DatabaseService {
         try? context.save()
     }
 
-    /// This is a diagnostic trail, not history — keep it small.
-    private func pruneIngestLog() {
+    /// This is a diagnostic trail, not history — keep it small and short-lived.
+    /// Also called at launch: pruning only on write means a user who stops using the
+    /// automation keeps their last payloads on disk indefinitely, which is exactly the
+    /// case the age limit exists for.
+    public func pruneIngestLog() {
         let descriptor = FetchDescriptor<IngestLogEntry>(
             sortBy: [SortDescriptor(\.receivedAt, order: .reverse)]
         )
-        guard let all = try? context.fetch(descriptor), all.count > 100 else { return }
-        for entry in all.dropFirst(100) { context.delete(entry) }
-        try? context.save()
+        guard let all = try? context.fetch(descriptor) else { return }
+
+        let now = Date()
+        var removed = false
+
+        for (index, entry) in all.enumerated()
+        where DatabaseService.shouldDropIngestEntry(index: index, receivedAt: entry.receivedAt, now: now) {
+            context.delete(entry)
+            removed = true
+        }
+
+        if removed { try? context.save() }
+    }
+
+    /// Whether one entry in the newest-first list has aged out. Pure, so it can be tested
+    /// without a store: the retention rule is the part that has to stay correct, and a
+    /// mistake here means either an unbounded payload archive or a log that erases the
+    /// evidence before the user can show it to anyone.
+    ///
+    /// - Parameter index: position in a list sorted newest first.
+    nonisolated public static func shouldDropIngestEntry(
+        index: Int,
+        receivedAt: Date,
+        now: Date
+    ) -> Bool {
+        if index >= IngestLogRetention.maxEntries { return true }
+        return now.timeIntervalSince(receivedAt) > IngestLogRetention.maxAge
     }
 
     // MARK: - Aggregations
@@ -302,7 +442,7 @@ public final class DatabaseService {
         do {
             return try context.fetch(descriptor)
         } catch {
-            print("Error fetching merchant rules: \(error)")
+            MoneyCityLog.error("Error fetching merchant rules: \(error)")
             return []
         }
     }

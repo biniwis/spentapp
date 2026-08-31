@@ -20,7 +20,8 @@ public enum WalletIngestCoordinator {
         amountText: String?,
         merchant: String?,
         currency: String?,
-        transactionDate: Date?
+        transactionDate: Date?,
+        intentName: String = "RecordTransactionIntent"
     ) async -> WalletIngestResult {
 
         let date = TransactionIngest.sanitizedDate(transactionDate) ?? Date()
@@ -33,7 +34,8 @@ public enum WalletIngestCoordinator {
             rawAmountText: IngestLogEntry.describe(amountText),
             rawMerchant: IngestLogEntry.describe(merchant),
             rawCurrency: IngestLogEntry.describe(currency),
-            rawDate: IngestLogEntry.describe(transactionDate)
+            rawDate: IngestLogEntry.describe(transactionDate),
+            intentName: intentName
         )
         DatabaseService.shared.record(log)
 
@@ -71,9 +73,11 @@ public enum WalletIngestCoordinator {
 
             try await DatabaseService.shared.save(transaction: newTransaction)
 
-            log.outcome = newTransaction.isConfirmed ? "נשמר" : "נשמר — ממתין לאישור"
+            log.outcome = newTransaction.isConfirmed ? "נשמר בהצלחה" : "נשמר — ממתין לאישור"
             log.resolvedAmount = newTransaction.amount
             log.resolvedMerchant = newTransaction.merchant
+            log.categoryDetected = newTransaction.category.shortName
+            log.failureReason = nil
             DatabaseService.shared.persist()
 
             let amountString = String(format: "%.2f", newTransaction.amount)
@@ -85,37 +89,43 @@ public enum WalletIngestCoordinator {
 
         } catch TransactionIngestError.duplicate {
             log.outcome = "כפילות — לא נשמר שוב"
+            log.failureReason = "עסקה זהה בסכום ובבית העסק כבר נרשמה ב-90 השניות האחרונות"
             DatabaseService.shared.persist()
             return WalletIngestResult(message: "העסקה הזו כבר נרשמה בעיר.", succeeded: true)
 
-        } catch {
-            // The payment happened even if the payload was unusable, so it is parked as an
-            // unconfirmed row carrying the raw values — never dropped, never presented as a
-            // real ₪0 purchase.
-            let placeholderMerchant = salvaged.merchant ?? "Apple Pay — פרטים חסרים"
-            let payloadNote = "מטען גולמי: amount=\(log.rawAmount) · amountText=\(log.rawAmountText) · merchant=\(log.rawMerchant)"
-
-            let fallback = Transaction(
-                amount: salvaged.amount ?? 0.0,
-                currency: finalCurrency,
-                merchant: placeholderMerchant,
-                category: .other,
-                timestamp: date,
-                confidenceScore: 0.0,
-                isManual: false,
-                isConfirmed: false,
-                note: payloadNote,
-                buildingId: "shop_boutique"
-            )
-            try? await DatabaseService.shared.save(transaction: fallback)
-
-            log.outcome = "לא זוהה — נשמר לאישור"
+        } catch TransactionIngestError.missingAmount {
+            log.outcome = "נכשל — סכום חסר (nil)"
+            log.failureReason = "Wallet לא העביר סכום מספרי ולא זוהה סכום בטקסט"
             log.resolvedAmount = salvaged.amount
             log.resolvedMerchant = salvaged.merchant
             DatabaseService.shared.persist()
 
             return WalletIngestResult(
-                message: "Wallet לא העביר פרטים מלאים. נשמרה שורה לאישור — פתח את האפליקציה כדי להשלים אותה.",
+                message: "Wallet לא העביר סכום. התיעוד נשמר ביומן הקליטה לצורכי Debug.",
+                succeeded: false
+            )
+
+        } catch TransactionIngestError.missingMerchant {
+            log.outcome = "נכשל — שם עסק חסר (nil)"
+            log.failureReason = "Wallet לא העביר שם בית עסק"
+            log.resolvedAmount = salvaged.amount
+            log.resolvedMerchant = salvaged.merchant
+            DatabaseService.shared.persist()
+
+            return WalletIngestResult(
+                message: "Wallet לא העביר שם עסק. התיעוד נשמר ביומן הקליטה לצורכי Debug.",
+                succeeded: false
+            )
+
+        } catch {
+            log.outcome = "נתונים חסרים מ-Wallet (נכשל)"
+            log.failureReason = "התקבלו שדות חסרים או ריקים מ-iOS Shortcuts"
+            log.resolvedAmount = salvaged.amount
+            log.resolvedMerchant = salvaged.merchant
+            DatabaseService.shared.persist()
+
+            return WalletIngestResult(
+                message: "Wallet לא העביר נתונים (amount/merchant ריקים). התיעוד נשמר ביומן הקליטה לצורכי Debug.",
                 succeeded: false
             )
         }

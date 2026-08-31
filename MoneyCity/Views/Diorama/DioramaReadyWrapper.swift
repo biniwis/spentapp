@@ -13,6 +13,7 @@ public struct DioramaReadyWrapper: View {
     public let newlyUnlockedEnrichmentId: String?
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
+    public let language: String
     public let isPaused: Bool
     public let onSelectDistrict: (String?) -> Void
     public let onBuildingSelected: (DistrictBuildingInfo) -> Void
@@ -30,6 +31,7 @@ public struct DioramaReadyWrapper: View {
         newlyUnlockedEnrichmentId: String?,
         slotPlacements: [String: String],
         selectedDistrict: String?,
+        language: String = "he",
         isPaused: Bool,
         onSelectDistrict: @escaping (String?) -> Void,
         onBuildingSelected: @escaping (DistrictBuildingInfo) -> Void,
@@ -44,6 +46,7 @@ public struct DioramaReadyWrapper: View {
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
+        self.language = language
         self.isPaused = isPaused
         self.onSelectDistrict = onSelectDistrict
         self.onBuildingSelected = onBuildingSelected
@@ -62,6 +65,7 @@ public struct DioramaReadyWrapper: View {
                 newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
                 slotPlacements: slotPlacements,
                 selectedDistrict: selectedDistrict,
+                language: language,
                 isPaused: isPaused,
                 onSelectDistrict: onSelectDistrict,
                 onBuildingSelected: onBuildingSelected,

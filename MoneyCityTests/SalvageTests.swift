@@ -151,4 +151,16 @@ final class SingleFieldPayloadTests: XCTestCase {
         XCTAssertNil(viaSingleField(nil).amount)
         XCTAssertNil(viaSingleField("").merchant)
     }
+
+    func testJSONPayloadsAreDecodedCorrectly() {
+        let jsonStr = #"{"amount": 45.90, "merchant": "AM:PM", "card": "Visa"}"#
+        let out = viaSingleField(jsonStr)
+        XCTAssertEqual(out.amount, 45.90)
+        XCTAssertEqual(out.merchant, "AM:PM")
+
+        let jsonAlternate = #"{"Amount": "12.90", "Name": "Cofix"}"#
+        let out2 = viaSingleField(jsonAlternate)
+        XCTAssertEqual(out2.amount, 12.90)
+        XCTAssertEqual(out2.merchant, "Cofix")
+    }
 }

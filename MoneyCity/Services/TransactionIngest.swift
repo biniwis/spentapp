@@ -169,6 +169,26 @@ public enum TransactionIngest {
         amountText: String?,
         merchant: String?
     ) -> Salvaged {
+        // 0. Support structured JSON payloads (e.g. {"amount": 45.9, "merchant": "AM:PM"})
+        for candidate in [merchant, amountText] {
+            if let text = candidate, text.contains("{") && text.contains("}") {
+                if let data = text.data(using: .utf8),
+                   let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    let jsonAmount = (dict["amount"] as? Double)
+                        ?? (dict["Amount"] as? Double)
+                        ?? (dict["amount"] as? String).flatMap(Double.init)
+                        ?? (dict["Amount"] as? String).flatMap(Double.init)
+                    let jsonMerchant = (dict["merchant"] as? String)
+                        ?? (dict["name"] as? String)
+                        ?? (dict["Merchant"] as? String)
+                        ?? (dict["Name"] as? String)
+                    if jsonAmount != nil || jsonMerchant != nil {
+                        return Salvaged(amount: jsonAmount, merchant: jsonMerchant)
+                    }
+                }
+            }
+        }
+
         // The merchant field is only a last resort for the amount, and only when the text
         // actually looks like money. "Kokpit 67" is a shop with a number in its name, not a
         // ₪67 charge — guessing there would invent a wrong amount instead of asking.

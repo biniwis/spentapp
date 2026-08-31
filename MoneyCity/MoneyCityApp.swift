@@ -30,6 +30,23 @@ struct MoneyCityApp: App {
                         isHebrew: l10n.language == .hebrew
                     )
                 }
+                .onOpenURL { url in
+                    Task {
+                        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
+                        let amount = components.queryItems?.first(where: { $0.name == "amount" })?.value.flatMap(Double.init)
+                        let merchant = components.queryItems?.first(where: { $0.name == "merchant" })?.value
+                        let currency = components.queryItems?.first(where: { $0.name == "currency" })?.value
+                        if amount != nil || merchant != nil {
+                            _ = await WalletIngestCoordinator.run(
+                                amount: amount,
+                                amountText: nil,
+                                merchant: merchant,
+                                currency: currency,
+                                transactionDate: Date()
+                            )
+                        }
+                    }
+                }
         }
         .modelContainer(DatabaseService.shared.container)
     }

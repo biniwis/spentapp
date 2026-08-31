@@ -267,7 +267,7 @@ public struct MoneyCityWidget: Widget {
                 .containerBackground(.white, for: .widget)
                 #endif
         }
-        .configurationDisplayName("MoneyCity - הוספה מהירה ומעקב")
+        .configurationDisplayName("SPENT - הוספה מהירה ומעקב")
         .description("הוסף עסקאות בנגיעה אחת ישירות ממסך הנעילה או ממסך הבית.")
         #if os(iOS)
         .supportedFamilies([

@@ -1135,6 +1135,51 @@ public struct ApplePayGuideSheet: View {
                     }
                     .padding(.top, 10)
                     
+                    // 1-Click Automatic Shortcut Installer Card
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.primaryBlue.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                DistrictFinanceVectorIcon(color: Color.primaryBlue)
+                                    .scaleEffect(1.1)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(isHebrew ? "התקנה מהירה בלחיצה אחת" : "1-Click Automatic Setup")
+                                    .font(.system(size: 16, weight: .black, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                                Text(isHebrew ? "קיצור דרך מוכן מראש שמחובר ישירות ל-SPENT" : "Pre-built shortcut already wired to SPENT")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(Color.textMuted)
+                            }
+                        }
+                        
+                        #if os(iOS)
+                        if let url = URL(string: "https://www.icloud.com/shortcuts/") {
+                            Link(destination: url) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.down.app.fill")
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text(isHebrew ? "התקן את הקיצור המוכן עכשיו 📥" : "Install Ready-Made Shortcut 📥")
+                                        .font(.system(size: 15, weight: .black, design: .rounded))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                .clipShape(Capsule())
+                                .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.35), radius: 8, y: 3)
+                            }
+                        }
+                        #endif
+                    }
+                    .padding(18)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 22))
+                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), lineWidth: 1.5))
+                    .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
+
                     // Step-by-Step Instructions Card
                     VStack(alignment: .leading, spacing: 16) {
                         stepRow(
@@ -1158,7 +1203,7 @@ public struct ApplePayGuideSheet: View {
                         stepRow(
                             number: "4",
                             title: isHebrew ? "הוסף את הפעולה: 'הקלטת עסקת Apple Pay'" : "Add Action: 'Record Apple Pay Transaction'",
-                            desc: isHebrew ? "חפש את MoneyCity והוסף את הפעולה 'הקלטת עסקת Apple Pay'." : "Search for MoneyCity and add 'Record Apple Pay Transaction'."
+                            desc: isHebrew ? "חפש את SPENT והוסף את הפעולה 'הקלטת עסקת Apple Pay'." : "Search for SPENT and add 'Record Apple Pay Transaction'."
                         )
                         
                         // Critical mapping highlight box

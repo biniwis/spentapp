@@ -89,14 +89,31 @@ public struct OnboardingWizardView: View {
                                 .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
                         }
                     } else if currentStep == 2 {
-                        Button(action: { currentStep = 3 }) {
-                            Text("הפעל אוטומציית Shortcuts")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Capsule().fill(Color(red: 16/255, green: 185/255, blue: 129/255)))
-                                .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
+                        VStack(spacing: 8) {
+                            #if os(iOS)
+                            if let url = URL(string: "https://www.icloud.com/shortcuts/") {
+                                Link(destination: url) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "arrow.down.app.fill")
+                                        Text("התקן קיצור מוכן ל-SPENT (קליק אחד)")
+                                            .font(.system(size: 15, weight: .bold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(Capsule().fill(Color(red: 16/255, green: 185/255, blue: 129/255)))
+                                    .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
+                                }
+                            }
+                            #endif
+                            
+                            Button(action: { currentStep = 3 }) {
+                                Text("המשך להגדרת הכנסה")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(Color.textMuted)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 8)
+                            }
                         }
                     } else if currentStep == 3 {
                         Button(action: { saveIncomeAndContinue() }) {

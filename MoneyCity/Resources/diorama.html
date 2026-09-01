@@ -1444,19 +1444,69 @@
       const pantsMat = mat(opts.pantsColor || 0x1e293b, 0.85);
       const skinMat  = mat(opts.skinColor || 0xfcd34d, 0.80);
       const hairMat  = mat(opts.hairColor || 0x451a03, 0.90);
-      const shoeMat  = mat(0x09090b, 0.90);
+      const shoeMat  = mat(opts.shoeColor || 0x09090b, 0.90);
 
       const torsoGroup = new THREE.Group();
       fig.add(torsoGroup);
       const shirtMesh = mesh(roundedBox(0.22, 0.28, 0.15, 0.03), shirtMat, 0, 0.38, 0);
       torsoGroup.add(shirtMesh);
 
+      // Backpack on back
+      if (opts.hasBackpack) {
+        const bpMat = mat(opts.backpackColor || 0x0284c7, 0.6);
+        const bpMesh = mesh(roundedBox(0.18, 0.22, 0.10, 0.03), bpMat, 0, 0.40, -0.11);
+        torsoGroup.add(bpMesh);
+        const pocket = mesh(new THREE.BoxGeometry(0.14, 0.09, 0.03), mat(0x0f172a, 0.8), 0, 0.36, -0.16);
+        torsoGroup.add(pocket);
+      }
+
+      // Head & Expressions
       const headGroup = new THREE.Group();
       headGroup.position.set(0, 0.60, 0);
       torsoGroup.add(headGroup);
       headGroup.add(mesh(new THREE.SphereGeometry(0.075, 10, 8), skinMat, 0, 0, 0));
-      headGroup.add(mesh(new THREE.SphereGeometry(0.080, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat, 0, 0.012, 0));
 
+      // Hair Styles & Hats
+      if (opts.hatType === "cap") {
+        const capMat = mat(opts.hatColor || 0xef4444, 0.5);
+        const cap = mesh(new THREE.SphereGeometry(0.082, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.52), capMat, 0, 0.02, 0);
+        const brim = mesh(new THREE.CylinderGeometry(0.095, 0.095, 0.012, 12, 1, false, 0, Math.PI), capMat, 0, 0.01, 0.04);
+        headGroup.add(cap, brim);
+      } else if (opts.hatType === "beanie") {
+        const bMat = mat(opts.hatColor || 0xf59e0b, 0.8);
+        const beanie = mesh(new THREE.SphereGeometry(0.085, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.60), bMat, 0, 0.03, 0);
+        const pom = mesh(new THREE.SphereGeometry(0.025, 6, 6), mat(0xffffff, 0.9), 0, 0.11, 0);
+        headGroup.add(beanie, pom);
+      } else if (opts.hatType === "ponytail") {
+        headGroup.add(mesh(new THREE.SphereGeometry(0.082, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat, 0, 0.012, 0));
+        const tail = mesh(new THREE.SphereGeometry(0.045, 6, 6), hairMat, 0, 0.04, -0.09);
+        headGroup.add(tail);
+      } else if (opts.hatType === "curls") {
+        headGroup.add(mesh(new THREE.SphereGeometry(0.088, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.65), hairMat, 0, 0.015, 0));
+      } else {
+        headGroup.add(mesh(new THREE.SphereGeometry(0.080, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat, 0, 0.012, 0));
+      }
+
+      // Sunglasses / Cool Specs
+      if (opts.hasGlasses) {
+        const gMat = mat(0x0f172a, 0.3, 0.9);
+        const frameL = mesh(new THREE.BoxGeometry(0.045, 0.035, 0.01), gMat, -0.038, 0.01, 0.075);
+        const frameR = mesh(new THREE.BoxGeometry(0.045, 0.035, 0.01), gMat,  0.038, 0.01, 0.075);
+        const bridge = mesh(new THREE.BoxGeometry(0.032, 0.008, 0.01), gMat,  0, 0.015, 0.075);
+        headGroup.add(frameL, frameR, bridge);
+      }
+
+      // Headphones
+      if (opts.hasHeadphones) {
+        const hpMat = mat(opts.headphonesColor || 0xec4899, 0.3, 0.7);
+        const hpL = mesh(new THREE.SphereGeometry(0.035, 6, 6), hpMat, -0.082, 0.01, 0);
+        const hpR = mesh(new THREE.SphereGeometry(0.035, 6, 6), hpMat,  0.082, 0.01, 0);
+        const band = mesh(new THREE.TorusGeometry(0.082, 0.012, 6, 8, Math.PI), mat(0x1e293b, 0.8), 0, 0.01, 0);
+        band.rotation.z = Math.PI;
+        headGroup.add(hpL, hpR, band);
+      }
+
+      // Legs
       const legL = new THREE.Group(); legL.position.set(-0.055, 0.24, 0); fig.add(legL);
       legL.add(mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.24, 8), pantsMat, 0, -0.12, 0));
       legL.add(mesh(new THREE.BoxGeometry(0.05, 0.035, 0.08), shoeMat, 0, -0.24, 0.02));
@@ -1465,6 +1515,7 @@
       legR.add(mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.24, 8), pantsMat, 0, -0.12, 0));
       legR.add(mesh(new THREE.BoxGeometry(0.05, 0.035, 0.08), shoeMat, 0, -0.24, 0.02));
 
+      // Arms
       const armL = new THREE.Group(); armL.position.set(-0.14, 0.48, 0); fig.add(armL);
       armL.add(mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8), shirtMat, 0, -0.11, 0));
       armL.add(mesh(new THREE.SphereGeometry(0.030, 6, 6), skinMat, 0, -0.22, 0));
@@ -1473,6 +1524,7 @@
       armR.add(mesh(new THREE.CylinderGeometry(0.028, 0.024, 0.22, 8), shirtMat, 0, -0.11, 0));
       armR.add(mesh(new THREE.SphereGeometry(0.030, 6, 6), skinMat, 0, -0.22, 0));
 
+      // Props & Accessories
       if (opts.hasBag) {
         const bag = new THREE.Group(); bag.position.set(0, -0.28, 0);
         bag.add(mesh(new THREE.BoxGeometry(0.12, 0.14, 0.07), mat(opts.bagColor || 0xec4899, 0.6), 0, 0, 0));
@@ -1488,6 +1540,10 @@
       if (opts.hasPhone) {
         const phone = mesh(new THREE.BoxGeometry(0.035, 0.06, 0.01), mat(0x0284c7, 0.3, 0.8, 0x38bdf8, 1.2), 0, -0.18, 0.06);
         phone.rotation.x = -0.5; armL.add(phone);
+      }
+      if (opts.hasBriefcase) {
+        const caseG = mesh(new THREE.BoxGeometry(0.06, 0.16, 0.22), mat(0x78350f, 0.6), 0, -0.24, 0);
+        armR.add(caseG);
       }
 
       if (opts.isSitting) {
@@ -1506,6 +1562,8 @@
         hasCoffee: opts.hasCoffee || false,
         hasPhone: opts.hasPhone || false,
         hasBag: opts.hasBag || false,
+        phrases: opts.phrases || null,
+        phrasesEn: opts.phrasesEn || null,
         hopTimer: 0
       };
       fig.userData = uData;
@@ -3634,90 +3692,204 @@
     // 🚶 POPULATE CITIZENS (STARTS WITH 1 RESIDENT — EXPANDS VIA PROGRESS)
     // ================================================================
 
-    // 1. Founding Citizen (The 1 and only Starter Resident of the City Island)
+    // 1. Founding Citizen (Avi - The Local Starter Resident)
     addWalkingCitizen({
       shirtColor: 0x3b82f6, pantsColor: 0x1e293b, hairColor: 0x451a03,
+      hatType: "cap", hatColor: 0xef4444, hasGlasses: true, hasCoffee: true,
+      hasBackpack: true, backpackColor: 0x0284c7,
       isStarter: true,
-      hasCoffee: true,
       speed: 0.26, initialProgress: 0.0,
-      path: [{x: -4.8, z: -3.3}, {x: 4.8, z: -3.3}, {x: 4.8, z: -6.5}, {x: -4.8, z: -6.5}]
+      path: [{x: -4.8, z: -3.3}, {x: 4.8, z: -3.3}, {x: 4.8, z: -6.5}, {x: -4.8, z: -6.5}],
+      phrases: [
+        "פעם ראשונה שאני עוקב אחרי התקציב שלי! 📈",
+        "כוס קפה שנייה להיום... אל תגלו 🤫",
+        "העיר הזו נראית יותר טוב מהדירה שלי 🏙️",
+        "שומר על רצף חיסכון חודשי מנצח! 💎"
+      ],
+      phrasesEn: [
+        "First time actually tracking my budget! 📈",
+        "Second iced coffee today... don't judge 🤫",
+        "This city looks cleaner than my living room 🏙️",
+        "Keeping that monthly savings streak alive! 💎"
+      ]
     });
 
-    // 2. Creative Street Artist (Unlocked via resident_artist progress option)
+    // 2. Creative Street Artist (Maya - Vibrant Bohemian)
     addWalkingCitizen({
       shirtColor: 0xa855f7, pantsColor: 0x1e293b, hairColor: 0xfde047,
+      hatType: "beanie", hatColor: 0xf59e0b, hasBag: true, bagColor: 0xec4899,
+      hasHeadphones: true, headphonesColor: 0xec4899,
       enrichmentId: "resident_artist",
-      hasBag: true, bagColor: 0xec4899,
       speed: 0.24, initialProgress: 0.2,
-      path: [{x: -4.5, z: -4.5}, {x: -9.5, z: -4.5}, {x: -9.5, z: -9.2}, {x: -4.5, z: -9.2}]
+      path: [{x: -4.5, z: -4.5}, {x: -9.5, z: -4.5}, {x: -9.5, z: -9.2}, {x: -4.5, z: -9.2}],
+      phrases: [
+        "מציירת את הגרפיטי הבא בטיילת! 🎨",
+        "התאורה בעיר הזאת פשוט מושלמת ✨",
+        "קניתי צבעי שמן חדשים ב-₪120 🖌️",
+        "האמנות ברחוב מביאה נשמה לעיר! 🌈"
+      ],
+      phrasesEn: [
+        "Sketching the next mural on the boardwalk! 🎨",
+        "The lighting in this district is pure magic ✨",
+        "Splurged \$40 on new acrylic paints 🖌️",
+        "Street art gives this island soul! 🌈"
+      ]
     });
 
-    // 3. 🐕 Golden Dog Walker (Unlocked via pet_golden_dog progress option)
+    // 3. 🐕 Golden Dog Walker (Tomer & Toffee)
     addWalkingCitizen({
       shirtColor: 0x059669, pantsColor: 0x475569, hairColor: 0x92400e,
+      hatType: "cap", hatColor: 0x10b981,
       enrichmentId: "pet_golden_dog",
       hasDog: true, dogColor: 0xd97706,
       speed: 0.22, initialProgress: 0.1,
       path: [
         {x: -4.6, z: 4.5}, {x: -5.4, z: 7.6}, {x: -7.8, z: 7.6},
         {x: -8.6, z: 4.8}, {x: -7.2, z: 3.8}, {x: -5.2, z: 3.8}
+      ],
+      phrases: [
+        "טופי, אל תאכל את זה מהרצפה! 🐶",
+        "סיבוב שלישי בפארק להיום 🌳",
+        "החטיפים שלו עולים יותר מהסופר שלי 🦴",
+        "גולדן שמח = בעלים רגוע 🐕"
+      ],
+      phrasesEn: [
+        "Toffee, drop that stick! 🐶",
+        "Third walk in the park today 🌳",
+        "His gourmet kibble costs more than my lunch 🦴",
+        "Happy golden retriever = good vibes 🐕"
       ]
     });
 
-    // 4. Fashion Shopper on Promenade (Progress resident)
+    // 4. Fashion Shopper on Promenade (Noa - Trendsetter)
     addWalkingCitizen({
       shirtColor: 0xec4899, pantsColor: 0x1e293b, hairColor: 0xfde047,
+      hatType: "ponytail", hasGlasses: true, hasBag: true, bagColor: 0x9333ea, hasPhone: true,
       enrichmentId: "resident_shopper",
-      hasBag: true, bagColor: 0x9333ea,
       speed: 0.28, initialProgress: 0.0,
-      path: [{x: 4.5, z: -4.5}, {x: 9.5, z: -4.5}, {x: 9.5, z: -9.2}, {x: 4.5, z: -9.2}]
+      path: [{x: 4.5, z: -4.5}, {x: 9.5, z: -4.5}, {x: 9.5, z: -9.2}, {x: 4.5, z: -9.2}],
+      phrases: [
+        "רק נכנסתי להסתכל בחלון ראווה... 🛍️",
+        "היה 50% הנחה, הייתי חייבת! ✨",
+        "איפה שמתי את הקבלה להחזר? 🧾",
+        "תיק חדש זה לא הוצאה, זו השקעה! 💅"
+      ],
+      phrasesEn: [
+        "I only walked in to browse... 🛍️",
+        "It was 50% off, how could I not?! ✨",
+        "Where did I put the return receipt? 🧾",
+        "A designer bag is an investment! 💅"
+      ]
     });
 
-    // 5. Tech Enthusiast in Plaza (Progress resident)
+    // 5. Tech Enthusiast in Plaza (Guy - Dev & Gadgets)
     addWalkingCitizen({
       shirtColor: 0x0284c7, pantsColor: 0x334155, hairColor: 0x1f2937,
+      hasGlasses: true, hasPhone: true, hasCoffee: true,
+      hasBackpack: true, backpackColor: 0x0f172a,
+      hasHeadphones: true, headphonesColor: 0x38bdf8,
       enrichmentId: "resident_tech",
-      hasPhone: true, hasCoffee: true,
       speed: 0.24, initialProgress: 0.45,
-      path: [{x: 6.8, z: -4.5}, {x: 6.8, z: -9.2}, {x: 6.8, z: -4.5}]
+      path: [{x: 6.8, z: -4.5}, {x: 6.8, z: -9.2}, {x: 6.8, z: -4.5}],
+      phrases: [
+        "שחררתי גרסה לפרודקשן בלי באגים! 🚀",
+        "איפה ה-WiFi של הסיטי הכי חזק? 📶",
+        "בדיוק בודק את הגרפים ב-Analytics 📊",
+        "שוקל לקנות עוד גאדג'ט חכם... 🤔"
+      ],
+      phrasesEn: [
+        "Pushed a clean build straight to prod! 🚀",
+        "Where's the fastest 5G hotspot here? 📶",
+        "Checking my monthly charts in Analytics 📊",
+        "Debating buying another smart gadget... 🤔"
+      ]
     });
 
-    // 6. Food District Gourmand (Progress resident)
+    // 6. Food District Gourmand (Yoni - Epicurean)
     addWalkingCitizen({
       shirtColor: 0xd97706, pantsColor: 0x1e1b4b, hairColor: 0x1e293b,
+      hatType: "beanie", hatColor: 0x78350f, hasCoffee: true, hasBag: true, bagColor: 0xf59e0b,
       enrichmentId: "resident_coffee",
-      hasCoffee: true,
       speed: 0.26, initialProgress: 0.2,
-      path: [{x: -4.5, z: -4.5}, {x: -9.5, z: -4.5}, {x: -9.5, z: -9.2}, {x: -4.5, z: -9.2}]
+      path: [{x: -4.5, z: -4.5}, {x: -9.5, z: -4.5}, {x: -9.5, z: -9.2}, {x: -4.5, z: -9.2}],
+      phrases: [
+        "הקרואסון הפיסטוק פה לא מהעולם הזה! 🥐",
+        "מתלבט בין סושי לפיצה הערב... 🍕",
+        "תמיד יש מקום בקיבה לקינוח 🍰",
+        "חוק ברזל: לא חוסכים על חומרי גלם! ☕"
+      ],
+      phrasesEn: [
+        "The pistachio croissant here is unmatched! 🥐",
+        "Debating sushi vs gourmet pizza tonight... 🍕",
+        "There is always room for dessert 🍰",
+        "Golden rule: never skimp on good beans! ☕"
+      ]
     });
 
-    // 7. Crosswalk Commuter (Progress resident)
+    // 7. Crosswalk Commuter / Executive (Danit - FinTech Pro)
     addWalkingCitizen({
       shirtColor: 0x10b981, pantsColor: 0x1e293b, hairColor: 0x78350f,
+      hatType: "ponytail", hasGlasses: true, hasBriefcase: true, hasCoffee: true,
       enrichmentId: "resident_commuter",
-      hasBag: true, bagColor: 0xf59e0b,
       speed: 0.30, initialProgress: 0.15,
-      path: [{x: -4.8, z: -3.3}, {x: 4.8, z: -3.3}, {x: -4.8, z: -3.3}]
+      path: [{x: -4.8, z: -3.3}, {x: 4.8, z: -3.3}, {x: -4.8, z: -3.3}],
+      phrases: [
+        "בדרך לפגישת תקציב שנתית! 💼",
+        "הרכבת הקלה בדיוק בזמן לשם שינוי 🚊",
+        "השקעות חכמות מביאות תשואה שקטה 📊",
+        "כבר תכננתי את החיסכון לרבעון הבא 💡"
+      ],
+      phrasesEn: [
+        "Headed to the quarterly budget review! 💼",
+        "Tram is on schedule for once 🚊",
+        "Smart diversified savings compound quietly 📊",
+        "Next quarter roadmap is looking solid 💡"
+      ]
     });
 
-    // 8. Grand Residence Tower Citizen (Progress resident)
+    // 8. Grand Residence Tower Citizen (Eli - High Life)
     addWalkingCitizen({
       shirtColor: 0x6366f1, pantsColor: 0x1e293b, hairColor: 0x312e81,
+      hasGlasses: true, hasBackpack: true, backpackColor: 0x06b6d4, hasPhone: true,
       enrichmentId: "resident_housing",
-      hasBag: true, bagColor: 0x06b6d4,
       speed: 0.24, initialProgress: 0.6,
-      path: [{x: 4.5, z: 4.2}, {x: 9.5, z: 4.2}, {x: 9.5, z: 8.8}, {x: 4.5, z: 8.8}]
+      path: [{x: 4.5, z: 4.2}, {x: 9.5, z: 4.2}, {x: 9.5, z: 8.8}, {x: 4.5, z: 8.8}],
+      phrases: [
+        "הנוף ממגדל המגורים פשוט מטורף 🏙️",
+        "שילמתי שכירות וחשבונות בזמן, ראש שקט! 🔑",
+        "השכנים פה בעיר הכי נחמדים שיש 😊",
+        "אין כמו לחזור הביתה למגדל ✨"
+      ],
+      phrasesEn: [
+        "The penthouse diorama view is unreal 🏙️",
+        "Rent and utilities paid on time, zero stress! 🔑",
+        "Best neighbors on the entire island 😊",
+        "Nothing beats coming home to the tower ✨"
+      ]
     });
 
-    // 9. 🏃 Park Jogger on Trail (Progress resident)
+    // 9. 🏃 Park Jogger on Trail (Ran - Marathon Runner)
     addWalkingCitizen({
       shirtColor: 0xf97316, pantsColor: 0x09090b, hairColor: 0x18181b,
+      hatType: "cap", hatColor: 0xf97316, hasHeadphones: true, headphonesColor: 0x10b981,
       enrichmentId: "resident_jogger",
       isJogging: true,
       speed: 0.55, initialProgress: 0.7,
       path: [
         {x: -4.0, z: 4.0}, {x: -4.0, z: 8.8}, {x: -8.8, z: 8.8},
         {x: -8.8, z: 4.0}
+      ],
+      phrases: [
+        "עוד 2 קילומטר לסיום הריצה! 🏃‍♂️",
+        "למה עשיתי את העלייה הזו?! 🥵",
+        "דופק 165, שורף את הקלוריות של הוולט 🔥",
+        "האוויר בפארק הזה פשוט מעולה 🌳"
+      ],
+      phrasesEn: [
+        "2 more kilometers to the finish! 🏃‍♂️",
+        "Why did I choose this steep incline?! 🥵",
+        "Pumping 165 BPM, burning off lunch 🔥",
+        "The fresh air in this green park is peak 🌳"
       ]
     });
 

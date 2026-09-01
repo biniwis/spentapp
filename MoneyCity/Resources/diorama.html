@@ -902,11 +902,72 @@
     const winGlowM = new THREE.MeshStandardMaterial({ map: winGlowTex(), emissive: 0xfbbf24, emissiveIntensity: 3.5, roughness: 0.25 });
 
     // ────────────────────────────────────────────────────────────────
+    // 🌐 MULTILINGUAL BUILDING & PLOT LOCALIZATION
+    // ────────────────────────────────────────────────────────────────
+    const BUILDING_LOCALIZATION = {
+      "food_bistro": {
+        he: { title: "מסעדות וביסטרו", sub: "אוכל בחוץ ובילויים", tag: "מסעדות וביסטרו", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Bistro & Dining", sub: "Restaurants & Dining Out", tag: "Bistro & Dining", header: "🏗️ Vacant Plot" }
+      },
+      "food_super": {
+        he: { title: "סופרמרקט ומזון", sub: "קניות מצרכים", tag: "סופרמרקט ומזון", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Supermarket & Food", sub: "Grocery Shopping", tag: "Supermarket", header: "🏗️ Vacant Plot" }
+      },
+      "food_coffee": {
+        he: { title: "בתי קפה ומאפים", sub: "אספרסו ומאפים", tag: "קפה ומאפים", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Coffee & Bakery", sub: "Espresso & Pastries", tag: "Coffee & Bakery", header: "🏗️ Vacant Plot" }
+      },
+      "food_wolt": {
+        he: { title: "משלוחי אוכל", sub: "וולט ומשלוחים", tag: "וולט ומשלוחים", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Food Delivery", sub: "Wolt & Takeout", tag: "Food Delivery", header: "🏗️ Vacant Plot" }
+      },
+      "shop_boutique": {
+        he: { title: "אופנה וביגוד", sub: "ביגוד, נעליים ואקססוריז", tag: "ביגוד ואופנה", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Fashion & Boutique", sub: "Apparel & Accessories", tag: "Fashion Boutique", header: "🏗️ Vacant Plot" }
+      },
+      "shop_tech": {
+        he: { title: "טכנולוגיה וגאדג'טים", sub: "מחשבים וציוד היקפי", tag: "טכנולוגיה וגאדג'טים", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Tech & Electronics", sub: "Computers & Hardware", tag: "Tech Store", header: "🏗️ Vacant Plot" }
+      },
+      "shop_travel": {
+        he: { title: "נסיעות וטיסות", sub: "חופשות ופנאי", tag: "חופשות וטיסות", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Travel & Vacations", sub: "Flights & Holidays", tag: "Travel Agency", header: "🏗️ Vacant Plot" }
+      },
+      "shop_arcade": {
+        he: { title: "בילויים וגיימינג", sub: "קולנוע, משחקים ואטרקציות", tag: "פנאי ובידור", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Gaming & Arcade", sub: "Cinema & Attractions", tag: "Arcade Complex", header: "🏗️ Vacant Plot" }
+      },
+      "house_tower": {
+        he: { title: "שכירות ומשכנתא", sub: "מגורים והוצאות קבועות", tag: "מגורים ושכירות", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Rent & Housing", sub: "Living & Fixed Bills", tag: "Residential Tower", header: "🏗️ Vacant Plot" }
+      },
+      "house_util": {
+        he: { title: "חשבונות בית", sub: "חשמל, מים וארנונה", tag: "חשמל וארנונה", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Home Utilities", sub: "Power, Water & Bills", tag: "Utilities Hub", header: "🏗️ Vacant Plot" }
+      },
+      "house_subs": {
+        he: { title: "מנויים וסטרימינג", sub: "שירותים דיגיטליים", tag: "מנויים וסטרימינג", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Subscriptions & Media", sub: "Digital & Streaming", tag: "Subscriptions", header: "🏗️ Vacant Plot" }
+      },
+      "city_sorting_hub": {
+        he: { title: "בית הדואר ומרכז המיון", sub: "מיון הוצאות ושונות", tag: "בית הדואר ומרכז המיון", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Postal Sorting Hub", sub: "Package & Expense Triage", tag: "Sorting Hub", header: "🏗️ Vacant Plot" }
+      }
+    };
+
+    // ────────────────────────────────────────────────────────────────
     // 🚧  CONSTRUCTION PLOT / SITE SIGNPOST GENERATOR
     // ────────────────────────────────────────────────────────────────
     const plotSites = {};
 
-    function plotSignTex(title, subtitle) {
+    function plotSignTex(id, lang) {
+      const currentL = lang || (typeof currentLanguage !== "undefined" ? currentLanguage : null) || (window._initialDataPayload && window._initialDataPayload.language) || "he";
+      const isEn = (currentL === "en");
+      const loc = (BUILDING_LOCALIZATION[id] && BUILDING_LOCALIZATION[id][isEn ? "en" : "he"]) || null;
+      const title = loc ? loc.title : (isEn ? "Vacant Lot" : "מגרש פנוי");
+      const subtitle = loc ? loc.sub : (isEn ? "Add expense to construct" : "הוסף הוצאה כדי להקים מבנה");
+      const header = loc ? loc.header : (isEn ? "🏗️ Vacant Plot" : "🏗️ מגרש פנוי לבנייה");
+
       const c = cv(512, 256), g = c.getContext("2d");
       // Clean white card background
       g.fillStyle = "#ffffff";
@@ -925,22 +986,22 @@
       g.fillStyle = "#94a3b8";
       g.font = "bold 24px -apple-system, BlinkMacSystemFont, sans-serif";
       g.textAlign = "center";
-      g.fillText("🏗️ מגרש פנוי לבנייה", 256, 45);
+      g.fillText(header, 256, 45);
       
       // Main title
       g.fillStyle = "#0f172a";
-      g.font = "bold 40px -apple-system, BlinkMacSystemFont, sans-serif";
+      g.font = "bold 38px -apple-system, BlinkMacSystemFont, sans-serif";
       g.fillText(title, 256, 140);
       
       // Subtitle
       g.fillStyle = "#64748b";
-      g.font = "600 24px -apple-system, BlinkMacSystemFont, sans-serif";
-      g.fillText(subtitle || "הוסף הוצאה כדי להקים מבנה", 256, 198);
+      g.font = "600 22px -apple-system, BlinkMacSystemFont, sans-serif";
+      g.fillText(subtitle, 256, 198);
       
       return tex(c);
     }
 
-    function createPlotSite(id, title, subtitle, posX, posZ, parent, bData) {
+    function createPlotSite(id, posX, posZ, parent, bData) {
       const g = new THREE.Group();
       g.position.set(posX, 0.22, posZ);
       parent.add(g);
@@ -957,7 +1018,9 @@
       const postR = mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8), mat(0x78350f, 0.9), 0.7, 0.6, 0);
       signGroup.add(postL, postR);
       
-      const board = mesh(new THREE.BoxGeometry(1.7, 0.85, 0.06), new THREE.MeshStandardMaterial({ map: plotSignTex(title, subtitle), roughness: 0.7 }), 0, 0.82, 0.04);
+      const initLang = (typeof currentLanguage !== "undefined" ? currentLanguage : null) || (window._initialDataPayload && window._initialDataPayload.language) || "he";
+      const boardMat = new THREE.MeshStandardMaterial({ map: plotSignTex(id, initLang), roughness: 0.7 });
+      const board = mesh(new THREE.BoxGeometry(1.7, 0.85, 0.06), boardMat, 0, 0.82, 0.04);
       signGroup.add(board);
       g.add(signGroup);
 
@@ -970,6 +1033,7 @@
       g.add(cone);
       
       g.visible = false;
+      g.userData = { id: id, board: board };
       plotSites[id] = g;
       
       // Allow tapping the sign
@@ -1145,7 +1209,7 @@
     // ================================================================
     // 💬 MULTILINGUAL SPEECH BUBBLE & STREET SITUATIONS ENGINE
     // ================================================================
-    let currentLanguage = "he";
+    let currentLanguage = (window._initialDataPayload && window._initialDataPayload.language) || "he";
     const activeBubbles = [];
     const interactiveCitizens = [];
 
@@ -1278,6 +1342,40 @@
       if (lang === "en" || lang === "he") {
         currentLanguage = lang;
         document.documentElement.lang = lang;
+        
+        // 1. Update all plot billboard sign textures
+        for (const id in plotSites) {
+          const site = plotSites[id];
+          if (site && site.userData && site.userData.board) {
+            site.userData.board.material.map = plotSignTex(id, lang);
+            site.userData.board.material.needsUpdate = true;
+          }
+        }
+        
+        // 2. Update interactive buildings userData name & trend
+        for (let i = 0; i < interactiveBuildings.length; i++) {
+          const b = interactiveBuildings[i];
+          if (b && b.userData && b.userData.id && BUILDING_LOCALIZATION[b.userData.id]) {
+            const loc = BUILDING_LOCALIZATION[b.userData.id][lang === "en" ? "en" : "he"];
+            if (loc) {
+              b.userData.name = loc.title;
+            }
+          }
+        }
+        
+        // 3. Update district building tags
+        for (const bId in districtBuildingTags) {
+          const tag = districtBuildingTags[bId];
+          if (tag && BUILDING_LOCALIZATION[bId]) {
+            const loc = BUILDING_LOCALIZATION[bId][lang === "en" ? "en" : "he"];
+            if (loc) {
+              tag.title = loc.tag || loc.title;
+              if (tag.clickBox && tag.clickBox.userData) {
+                tag.clickBox.userData.name = tag.title;
+              }
+            }
+          }
+        }
       }
     };
 
@@ -2084,10 +2182,10 @@
     const woltBody    = createWoltDepot(foodZone);
     interactiveBuildings.push(nestBody, superBody, coffeeBody, woltBody);
 
-    createPlotSite("food_bistro", "מסעדות וביסטרו", "אוכל בחוץ ובילויים", -2.3, -2.2, foodZone, nestBody.userData);
-    createPlotSite("food_super",  "סופרמרקט ומזון", "קניות מצרכים",       2.3, -2.2, foodZone, superBody.userData);
-    createPlotSite("food_coffee", "בתי קפה ומאפים", "אספרסו ומאפים",    -2.3, 2.2, foodZone, coffeeBody.userData);
-    createPlotSite("food_wolt",   "משלוחי אוכל",    "וולט ומשלוחים",      2.3, 2.2, foodZone, woltBody.userData);
+    createPlotSite("food_bistro", -2.3, -2.2, foodZone, nestBody.userData);
+    createPlotSite("food_super",   2.3, -2.2, foodZone, superBody.userData);
+    createPlotSite("food_coffee", -2.3,  2.2, foodZone, coffeeBody.userData);
+    createPlotSite("food_wolt",    2.3,  2.2, foodZone, woltBody.userData);
 
     // ────────────────────────────────────────────────────────────────
     // 🛍️  SHOPPING PROMENADE (Paved Plaza & Teak Boardwalk)
@@ -2340,10 +2438,10 @@
     const arcadeBody   = createArcade(shopZone);
     interactiveBuildings.push(boutiqueBody, techBody, travelBody, arcadeBody);
 
-    createPlotSite("shop_boutique", "אופנה וביגוד",        "ביגוד, נעליים ואקססוריז", -2.3, -2.2, shopZone, boutiqueBody.userData);
-    createPlotSite("shop_tech",     "טכנולוגיה וגאדג'טים", "מחשבים וציוד היקפי",       2.3, -2.2, shopZone, techBody.userData);
-    createPlotSite("shop_travel",   "נסיעות וטיסות",        "חופשות ופנאי",           -2.3, 2.2, shopZone, travelBody.userData);
-    createPlotSite("shop_arcade",   "בילויים וגיימינג",     "קולנוע, משחקים ואטרקציות", 2.3, 2.2, shopZone, arcadeBody.userData);
+    createPlotSite("shop_boutique", -2.3, -2.2, shopZone, boutiqueBody.userData);
+    createPlotSite("shop_tech",      2.3, -2.2, shopZone, techBody.userData);
+    createPlotSite("shop_travel",   -2.3,  2.2, shopZone, travelBody.userData);
+    createPlotSite("shop_arcade",    2.3,  2.2, shopZone, arcadeBody.userData);
 
     // ────────────────────────────────────────────────────────────────
     // 🏠  RESIDENCE DISTRICT (Garden Terraces & Brick Courtyards)
@@ -2520,9 +2618,9 @@
     const subMediaBody = createSubscriptionsSpire(houseZone);
     interactiveBuildings.push(towerBody, utilBody, subMediaBody);
 
-    createPlotSite("house_tower", "שכירות ומשכנתא",   "מגורים והוצאות קבועות", -2.2, -2.0, houseZone, towerBody.userData);
-    createPlotSite("house_util",  "חשבונות בית",       "חשמל, מים וארנונה",     2.2, -2.0, houseZone, utilBody.userData);
-    createPlotSite("house_subs",  "מנויים וסטרימינג", "שירותים דיגיטליים",       0, 2.2, houseZone, subMediaBody.userData);
+    createPlotSite("house_tower", -2.2, -2.0, houseZone, towerBody.userData);
+    createPlotSite("house_util",   2.2, -2.0, houseZone, utilBody.userData);
+    createPlotSite("house_subs",   0,    2.2, houseZone, subMediaBody.userData);
 
     // ────────────────────────────────────────────────────────────────
     // ────────────────────────────────────────────────────────────────
@@ -2608,7 +2706,7 @@
 
     const sortingHubBody = createCitySortingHub(civicZone);
     interactiveBuildings.push(sortingHubBody);
-    createPlotSite("city_sorting_hub", "בית הדואר ומרכז המיון", "מיון הוצאות ושונות", 0, 0, civicZone, sortingHubBody.userData);
+    createPlotSite("city_sorting_hub", 0, 0, civicZone, sortingHubBody.userData);
 
     // 🌱  SAVINGS PARK SANCTUARY
     // ────────────────────────────────────────────────────────────────
@@ -4362,6 +4460,10 @@
     window.updateDioramaData = function(data) {
       if (!data) return;
       try {
+        if (data.language && window.setDioramaLanguage) {
+          window.setDioramaLanguage(data.language);
+        }
+
         if (data.newlyUnlockedId) {
           window.celebrateNewEnrichment(data.newlyUnlockedId);
         }

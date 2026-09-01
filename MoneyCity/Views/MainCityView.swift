@@ -1134,6 +1134,28 @@ struct InspectorModalView: View {
         info.id == "city_sorting_hub"
     }
     
+    private var localizedBuildingTitle: String {
+        let isHe = l10n.language == .hebrew
+        switch info.id {
+        case "food_bistro": return isHe ? "ביסטרו ומסעדות" : "Bistro & Dining"
+        case "food_super": return isHe ? "סופרמרקט ומזון" : "Supermarket & Food"
+        case "food_coffee": return isHe ? "אספרסו בר" : "Espresso Bar"
+        case "food_wolt": return isHe ? "וולט ומשלוחי אוכל" : "Food Delivery"
+        case "shop_boutique": return isHe ? "בוטיק אופנה" : "Fashion Boutique"
+        case "shop_tech": return isHe ? "חנות אלקטרוניקה" : "Electronics Store"
+        case "shop_travel": return isHe ? "סוכנות נסיעות" : "Travel Agency"
+        case "shop_arcade": return isHe ? "מתחם ארקייד" : "Arcade Complex"
+        case "house_tower": return isHe ? "מגדל מגורים" : "Residential Tower"
+        case "house_util": return isHe ? "חשמל ומים" : "Power & Water"
+        case "house_subs": return isHe ? "מנויים וסטרימינג" : "Subscriptions & Streaming"
+        case "savings_sanctuary": return isHe ? "שמורת הטבע והחיסכון" : "Nature & Savings Park"
+        case "trans_station": return isHe ? "תחבורה וחניה" : "Transit & Parking"
+        case "city_sorting_hub": return isHe ? "מרכז המיון והדואר" : "City Sorting Hub"
+        default:
+            return info.name
+        }
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerRow
@@ -1184,7 +1206,7 @@ struct InspectorModalView: View {
             }
             
             VStack(alignment: .leading, spacing: 3) {
-                Text(info.name)
+                Text(localizedBuildingTitle)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 if isSortingHub {

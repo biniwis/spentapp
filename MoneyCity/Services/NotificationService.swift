@@ -34,6 +34,13 @@ public enum NotificationService {
     }
 
     #if canImport(UserNotifications)
+    private static let delegate = NotificationDelegate()
+
+    public static func setupDelegate() {
+        let center = UNUserNotificationCenter.current()
+        center.delegate = delegate
+    }
+
     private static func scheduleWeekly(isHebrew: Bool) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier])
@@ -56,14 +63,50 @@ public enum NotificationService {
         center.add(request, withCompletionHandler: nil)
     }
 
-    /// Dispatches an immediate confirmation notification when an expense is logged via screenshot / automation.
-    public static func sendExpenseLoggedNotification(amount: Double, categoryName: String, merchant: String) {
+    /// Dispatches an immediate confirmation notification when an Apple Pay expense is logged.
+    public static func sendExpenseLoggedNotification(
+        amount: Double,
+        currency: String = "₪",
+        categoryName: String,
+        merchant: String,
+        isRefund: Bool = false
+    ) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            if settings.authorizationStatus == .notDetermined {
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    if granted {
+                        dispatchNotification(amount: amount, currency: currency, categoryName: categoryName, merchant: merchant, isRefund: isRefund)
+                    }
+                }
+            } else if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+                dispatchNotification(amount: amount, currency: currency, categoryName: categoryName, merchant: merchant, isRefund: isRefund)
+            }
+        }
+    }
+
+    private static func dispatchNotification(
+        amount: Double,
+        currency: String,
+        categoryName: String,
+        merchant: String,
+        isRefund: Bool
+    ) {
         let center = UNUserNotificationCenter.current()
         let content = UNMutableNotificationContent()
         
-        let formattedAmount = "₪" + (amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", amount) : String(format: "%.2f", amount))
-        content.title = "נוספו \(formattedAmount) ל\(categoryName)"
-        content.body = merchant
+        let amountFormatted = (amount.truncatingRemainder(dividingBy: 1) == 0)
+            ? String(format: "%.0f", amount)
+            : String(format: "%.2f", amount)
+        let formattedAmount = "\(currency)\(amountFormatted)"
+        
+        if isRefund {
+            content.title = "זוהה זיכוי ע״ס \(formattedAmount) 💰"
+            content.body = "\(merchant) • ממתין לבדיקתך ב-SPENT"
+        } else {
+            content.title = "נוספו \(formattedAmount) ל\(categoryName) לתקציב 🏙️"
+            content.body = "עסקה ב-\(merchant) נקלטה בהצלחה"
+        }
         content.sound = .default
         
         let request = UNNotificationRequest(
@@ -110,3 +153,16 @@ public enum NotificationService {
     }
     #endif
 }
+
+#if canImport(UserNotifications)
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        // Show banner and play sound even if app is in the foreground
+        completionHandler([.banner, .sound, .badge, .list])
+    }
+}
+#endif

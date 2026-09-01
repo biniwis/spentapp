@@ -74,6 +74,17 @@ public enum WalletIngestCoordinator {
             try await DatabaseService.shared.save(transaction: newTransaction)
 
             let isRefund = newTransaction.note?.contains("זיכוי") == true || newTransaction.amount < 0
+
+            #if canImport(UserNotifications)
+            NotificationService.sendExpenseLoggedNotification(
+                amount: abs(newTransaction.amount),
+                currency: finalCurrency,
+                categoryName: newTransaction.category.shortName,
+                merchant: newTransaction.merchant,
+                isRefund: isRefund
+            )
+            #endif
+
             if isRefund {
                 log.outcome = "נשמר — זוהה זיכוי (ממתין לבדיקתך)"
             } else {

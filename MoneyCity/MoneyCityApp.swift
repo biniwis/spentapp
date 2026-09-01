@@ -36,6 +36,10 @@ struct MoneyCityApp: App {
                     // Post any fixed expenses that came due while the app was closed.
                     RecurringExpenseService.materializeDue(context: DatabaseService.shared.context)
 
+                    #if canImport(UserNotifications)
+                    NotificationService.setupDelegate()
+                    #endif
+
                     NotificationService.sync(
                         enabled: NotificationService.isEnabled,
                         isHebrew: l10n.language == .hebrew

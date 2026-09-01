@@ -535,47 +535,111 @@
       return tex(c, 1, 1);
     }
 
-    // 🛣️ CITY ASPHALT ROADS: High-Contrast Charcoal Slate with Crisp Markings
+    // 🛣️ CITY ASPHALT ROADS: High-End Clean Midnight Charcoal Asphalt
     function asphaltTexH() {
-      const c = cv(1024, 256), g = c.getContext("2d");
-      g.fillStyle = "#1e293b"; g.fillRect(0, 0, 1024, 256); // Rich slate asphalt
-      // Aggregate stone texture
-      for (let i = 0; i < 1500; i++) {
+      const c = cv(512, 512), g = c.getContext("2d");
+      g.fillStyle = "#1e293b"; g.fillRect(0, 0, 512, 512); // Rich slate asphalt
+      // Fine aggregate stone texture
+      for (let i = 0; i < 2500; i++) {
         g.fillStyle = Math.random() > 0.5 ? "#334155" : "#0f172a";
-        g.fillRect(Math.random() * 1024, Math.random() * 256, 3, 3);
+        g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
       }
-      // Solid white road shoulder boundary lines
-      g.fillStyle = "#ffffff";
-      g.fillRect(0, 18, 1024, 6);
-      g.fillRect(0, 232, 1024, 6);
-      // Dashed centerline
-      for (let x = 0; x < 1024; x += 64) {
-        g.fillRect(x, 125, 36, 6);
-      }
-      // Green painted bicycle lane box
-      g.fillStyle = "#059669";
-      g.fillRect(100, 28, 90, 50);
-      g.fillRect(600, 28, 90, 50);
-      g.fillStyle = "#ffffff";
-      g.fillRect(120, 48, 50, 6);
-      g.fillRect(620, 48, 50, 6);
-      return tex(c, 2, 1);
+      return tex(c, 4, 4);
     }
 
     function asphaltTexV() {
-      const c = cv(256, 1024), g = c.getContext("2d");
-      g.fillStyle = "#1e293b"; g.fillRect(0, 0, 256, 1024);
-      for (let i = 0; i < 1500; i++) {
+      const c = cv(512, 512), g = c.getContext("2d");
+      g.fillStyle = "#1e293b"; g.fillRect(0, 0, 512, 512);
+      for (let i = 0; i < 2500; i++) {
         g.fillStyle = Math.random() > 0.5 ? "#334155" : "#0f172a";
-        g.fillRect(Math.random() * 256, Math.random() * 1024, 3, 3);
+        g.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
       }
+      return tex(c, 4, 4);
+    }
+
+    function roadArrowTex(type) {
+      const c = cv(256, 512), g = c.getContext("2d");
+      g.clearRect(0, 0, 256, 512);
       g.fillStyle = "#ffffff";
-      g.fillRect(18, 0, 6, 1024);
-      g.fillRect(232, 0, 6, 1024);
-      for (let y = 0; y < 1024; y += 64) {
-        g.fillRect(125, y, 6, 36);
+      if (type === "straight") {
+        g.beginPath();
+        g.moveTo(128, 40);
+        g.lineTo(190, 160);
+        g.lineTo(150, 160);
+        g.lineTo(150, 460);
+        g.lineTo(106, 460);
+        g.lineTo(106, 160);
+        g.lineTo(66, 160);
+        g.closePath();
+        g.fill();
+      } else if (type === "left" || type === "right") {
+        const flip = (type === "left") ? -1 : 1;
+        g.save();
+        g.translate(128, 256);
+        g.scale(flip, 1);
+        g.beginPath();
+        g.moveTo(75, -180);
+        g.lineTo(75, -230);
+        g.lineTo(0, -150);
+        g.lineTo(75, -70);
+        g.lineTo(75, -120);
+        g.quadraticCurveTo(0, -120, -35, 20);
+        g.lineTo(-35, 190);
+        g.lineTo(-75, 190);
+        g.lineTo(-75, 20);
+        g.quadraticCurveTo(-35, -160, 75, -180);
+        g.closePath();
+        g.fill();
+        g.restore();
       }
-      return tex(c, 1, 2);
+      return tex(c, 1, 1);
+    }
+
+    function roadSpeedLimitTex(num) {
+      const c = cv(256, 256), g = c.getContext("2d");
+      g.clearRect(0, 0, 256, 256);
+      g.beginPath();
+      g.arc(128, 128, 115, 0, Math.PI * 2);
+      g.fillStyle = "#dc2626";
+      g.fill();
+      g.beginPath();
+      g.arc(128, 128, 88, 0, Math.PI * 2);
+      g.fillStyle = "#ffffff";
+      g.fill();
+      g.fillStyle = "#0f172a";
+      g.font = "bold 92px 'SF Pro Rounded', 'Arial Rounded MT Bold', sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(num || "30", 128, 132);
+      return tex(c, 1, 1);
+    }
+
+    function manholeCoverTex() {
+      const c = cv(256, 256), g = c.getContext("2d");
+      g.clearRect(0, 0, 256, 256);
+      g.fillStyle = "#334155";
+      g.beginPath(); g.arc(128, 128, 120, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "#1e293b"; g.lineWidth = 10;
+      g.beginPath(); g.arc(128, 128, 105, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.arc(128, 128, 70, 0, Math.PI * 2); g.stroke();
+      g.beginPath(); g.arc(128, 128, 35, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = "#1e293b";
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        g.fillRect(128 + Math.cos(a) * 85 - 6, 128 + Math.sin(a) * 85 - 6, 12, 12);
+        g.fillRect(128 + Math.cos(a) * 50 - 5, 128 + Math.sin(a) * 50 - 5, 10, 10);
+      }
+      return tex(c, 1, 1);
+    }
+
+    function busStopRoadTex() {
+      const c = cv(512, 256), g = c.getContext("2d");
+      g.clearRect(0, 0, 512, 256);
+      g.fillStyle = "#facc15";
+      g.font = "900 110px 'SF Pro Display', 'Arial Black', sans-serif";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText("BUS", 256, 128);
+      return tex(c, 1, 1);
     }
 
     function asphaltBumpTex() {
@@ -1810,20 +1874,20 @@
     // ════════════════════════════════════════════════════════════════
     // 🌍 ARCHITECTURAL DIORAMA PODIUM (High-End Titanium & Obsidian Plinth)
     // ════════════════════════════════════════════════════════════════
-    // 1. Titanium Slate Sub-Base (Sleek Modern Charcoal with Chamfered Corners)
-    root.add(mesh(roundedBox(23.2, 0.45, 23.2, 1.4), mat(0x0f172a, 0.95, 0.1), 0, -0.22, 0, false, true));
+    // 1. Titanium Slate Sub-Base (Sleek Modern Charcoal with Chamfered Corners - Top at y = 0.00)
+    root.add(mesh(roundedBox(23.2, 0.45, 23.2, 1.4), mat(0x0f172a, 0.95, 0.1), 0, -0.55, 0, false, true));
     
     // 2. Chiseled Anthracite Foundation Layer
-    root.add(mesh(roundedBox(23.0, 0.90, 23.0, 1.5), mat(0x18181b, 0.90, 0.2), 0, -0.85, 0, false, true));
+    root.add(mesh(roundedBox(23.0, 0.90, 23.0, 1.5), mat(0x18181b, 0.90, 0.2), 0, -1.50, 0, false, true));
     
     // 3. Luxurious Chamfered Base Plinth with Warm Golden Brass Trim Ring
-    root.add(mesh(roundedBox(23.6, 0.22, 23.6, 1.6), mat(0xf59e0b, 0.35, 0.85, 0xb45309, 0.2), 0, -1.35, 0, false, false));
-    root.add(mesh(roundedBox(22.6, 0.80, 22.6, 1.3), mat(0x09090b, 0.95), 0, -1.85, 0, false, false));
+    root.add(mesh(roundedBox(23.6, 0.22, 23.6, 1.6), mat(0xf59e0b, 0.35, 0.85, 0xb45309, 0.2), 0, -1.80, 0, false, false));
+    root.add(mesh(roundedBox(22.6, 0.80, 22.6, 1.3), mat(0x09090b, 0.95), 0, -2.70, 0, false, false));
 
     // ════════════════════════════════════════════════════════════════
     // 🛣️ RECESSED ASPHALT ROADS, RAIN GUTTERS & HIGH-CONTRAST MARKINGS
     // ════════════════════════════════════════════════════════════════
-    // Recessed Midnight Charcoal Asphalt Surface (y = 0.05) with stone aggregate bump map
+    // Recessed Midnight Charcoal Asphalt Surface (y = 0.06, top at y = 0.12) with stone aggregate bump map
     const asphaltMatH = new THREE.MeshStandardMaterial({
       map: asphaltTexH(),
       bumpMap: asphaltBumpTex(),
@@ -1838,117 +1902,189 @@
       roughness: 0.85,
       metalness: 0.15
     });
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.10, 4.4), asphaltMatH, 0, 0.05, -0.8, false, true));
-    root.add(mesh(new THREE.BoxGeometry(4.4, 0.10, 23.0), asphaltMatV, 0.6, 0.05, 0, false, true));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.12, 4.4), asphaltMatH, 0, 0.06, -0.8, false, true));
+    root.add(mesh(new THREE.BoxGeometry(4.4, 0.12, 23.0), asphaltMatV, 0.6, 0.06, 0, false, true));
 
     // Stone Drainage Gutter Channels along road curbs
     const gutterMat = mat(0x1e293b, 0.9);
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.11, 0.18), gutterMat, 0, 0.055, -2.95));
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.11, 0.18), gutterMat, 0, 0.055, 1.35));
-    root.add(mesh(new THREE.BoxGeometry(0.18, 0.11, 23.0), gutterMat, -1.55, 0.055, 0));
-    root.add(mesh(new THREE.BoxGeometry(0.18, 0.11, 23.0), gutterMat, 2.75, 0.055, 0));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.13, 0.18), gutterMat, 0, 0.07, -2.95));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.13, 0.18), gutterMat, 0, 0.07, 1.35));
+    root.add(mesh(new THREE.BoxGeometry(0.18, 0.13, 23.0), gutterMat, -1.55, 0.07, 0));
+    root.add(mesh(new THREE.BoxGeometry(0.18, 0.13, 23.0), gutterMat, 2.75, 0.07, 0));
 
-        // ════════════════════════════════════════════════════════════════
-    // 🛣️ CRISP ART-DIRECTED ROAD MARKINGS & ZEBRA CROSSWALKS (מעברי חצייה וסימוני כביש)
+    // ════════════════════════════════════════════════════════════════
+    // 🛣️ CRISP ART-DIRECTED ROAD MARKINGS & ZEBRA CROSSWALKS
     // ════════════════════════════════════════════════════════════════
     const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
-    const roadY = 0.105; // Slightly elevated above 0.05 asphalt for zero z-fighting
+    const roadMarkingY = 0.135; // Positioned cleanly on top of asphalt surface
 
-    // A. Solid White Road Shoulder Boundaries
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.015, 0.12), whiteLineMat, 0, roadY, -2.8));
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.015, 0.12), whiteLineMat, 0, roadY, 1.2));
-    root.add(mesh(new THREE.BoxGeometry(0.12, 0.015, 23.0), whiteLineMat, -1.4, roadY, 0));
-    root.add(mesh(new THREE.BoxGeometry(0.12, 0.015, 23.0), whiteLineMat, 2.6, roadY, 0));
-
-    // B. Dashed Centerlines along Horizontal & Vertical Avenues
-    for (let rx = -10.5; rx < 10.5; rx += 2.4) {
-      if (Math.abs(rx - 0.6) > 2.2) { // Skip center intersection box
-        root.add(mesh(new THREE.BoxGeometry(1.2, 0.015, 0.14), whiteLineMat, rx, roadY, -0.8));
-      }
+    // A. Clean Dashed Centerlines (Outside intersection and crosswalk zones)
+    // Horizontal Avenue (Z = -0.8):
+    for (let rx = -10.5; rx <= -4.0; rx += 2.0) {
+      root.add(mesh(new THREE.BoxGeometry(1.2, 0.015, 0.14), whiteLineMat, rx, roadMarkingY, -0.8));
     }
-    for (let rz = -10.5; rz < 10.5; rz += 2.4) {
-      if (Math.abs(rz - (-0.8)) > 2.2) { // Skip center intersection box
-        root.add(mesh(new THREE.BoxGeometry(0.14, 0.015, 1.2), whiteLineMat, 0.6, roadY, rz));
-      }
+    for (let rx = 5.2; rx <= 10.5; rx += 2.0) {
+      root.add(mesh(new THREE.BoxGeometry(1.2, 0.015, 0.14), whiteLineMat, rx, roadMarkingY, -0.8));
+    }
+    // Vertical Avenue (X = 0.6):
+    for (let rz = -10.5; rz <= -4.8; rz += 2.0) {
+      root.add(mesh(new THREE.BoxGeometry(0.14, 0.015, 1.2), whiteLineMat, 0.6, roadMarkingY, rz));
+    }
+    for (let rz = 3.6; rz <= 10.5; rz += 2.0) {
+      root.add(mesh(new THREE.BoxGeometry(0.14, 0.015, 1.2), whiteLineMat, 0.6, roadMarkingY, rz));
     }
 
-    // C. Bold Crisp White Zebra Crosswalks (מעברי חצייה קלאסיים)
-    function createZebraCrossing(centerX, centerZ, isHorizontal, width, length) {
-      const g = new THREE.Group(); g.position.set(centerX, roadY, centerZ); root.add(g);
-      const numStripes = 7;
-      const step = width / (numStripes - 1);
-      for (let i = 0; i < numStripes; i++) {
-        const offset = -width / 2 + i * step;
-        if (isHorizontal) {
-          // Stripes along X, crossing Z
-          g.add(mesh(new THREE.BoxGeometry(0.32, 0.015, length), whiteLineMat, offset, 0, 0));
-        } else {
-          // Stripes along Z, crossing X
-          g.add(mesh(new THREE.BoxGeometry(length, 0.015, 0.32), whiteLineMat, 0, 0, offset));
-        }
+    // B. Clean, Proportional Zebra Crosswalks (מעברי חצייה מסודרים ומדויקים)
+    function addCrosswalkVerticalRoad(centerX, centerZ) {
+      const g = new THREE.Group();
+      g.position.set(centerX, roadMarkingY, centerZ);
+      root.add(g);
+      const stripeCount = 6;
+      const totalSpan = 3.4;
+      const step = totalSpan / (stripeCount - 1);
+      for (let i = 0; i < stripeCount; i++) {
+        const xOff = -totalSpan / 2 + i * step;
+        g.add(mesh(new THREE.BoxGeometry(0.32, 0.015, 1.35), whiteLineMat, xOff, 0, 0));
       }
-      // Stop Line before crosswalk (Thick solid white bar)
-      if (isHorizontal) {
-        g.add(mesh(new THREE.BoxGeometry(width * 1.05, 0.015, 0.22), whiteLineMat, 0, 0, -length / 2 - 0.35));
-        g.add(mesh(new THREE.BoxGeometry(width * 1.05, 0.015, 0.22), whiteLineMat, 0, 0, length / 2 + 0.35));
-      } else {
-        g.add(mesh(new THREE.BoxGeometry(0.22, 0.015, width * 1.05), whiteLineMat, -length / 2 - 0.35, 0, 0));
-        g.add(mesh(new THREE.BoxGeometry(0.22, 0.015, width * 1.05), whiteLineMat, length / 2 + 0.35, 0, 0));
-      }
-      return g;
+      // Single clean stop line bar before crosswalk
+      g.add(mesh(new THREE.BoxGeometry(totalSpan + 0.2, 0.015, 0.20), whiteLineMat, 0, 0, -0.95));
+      g.add(mesh(new THREE.BoxGeometry(totalSpan + 0.2, 0.015, 0.20), whiteLineMat, 0, 0,  0.95));
     }
 
-    // 1. North Crossing (Food Plaza <-> Shopping Promenade)
-    createZebraCrossing(0.6, -3.4, false, 3.2, 3.4);
-    // 2. South Crossing (Park Sanctuary <-> Residence District)
-    createZebraCrossing(0.6, 1.8, false, 3.2, 3.4);
-    // 3. West Crossing (Food Plaza <-> Park Sanctuary)
-    createZebraCrossing(-2.2, -0.8, true, 3.2, 3.4);
-    // 4. East Crossing (Shopping Promenade <-> Residence District)
-    createZebraCrossing(3.4, -0.8, true, 3.2, 3.4);
-    // 5. Postal Island Road Crossing (Crossing to Sorting Hub)
-    createZebraCrossing(0.6, 6.8, false, 3.0, 3.4);
+    function addCrosswalkHorizontalRoad(centerX, centerZ) {
+      const g = new THREE.Group();
+      g.position.set(centerX, roadMarkingY, centerZ);
+      root.add(g);
+      const stripeCount = 6;
+      const totalSpan = 3.4;
+      const step = totalSpan / (stripeCount - 1);
+      for (let i = 0; i < stripeCount; i++) {
+        const zOff = -totalSpan / 2 + i * step;
+        g.add(mesh(new THREE.BoxGeometry(1.35, 0.015, 0.32), whiteLineMat, 0, 0, zOff));
+      }
+      // Single clean stop line bar before crosswalk
+      g.add(mesh(new THREE.BoxGeometry(0.20, 0.015, totalSpan + 0.2), whiteLineMat, -0.95, 0, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.20, 0.015, totalSpan + 0.2), whiteLineMat,  0.95, 0, 0));
+    }
+
+    // 1. North Crosswalk (Food District <-> Shopping Promenade)
+    addCrosswalkVerticalRoad(0.6, -3.4);
+    // 2. South Crosswalk (Park Sanctuary <-> Housing District)
+    addCrosswalkVerticalRoad(0.6, 2.0);
+    // 3. West Crosswalk (Food District <-> Park Sanctuary)
+    addCrosswalkHorizontalRoad(-2.4, -0.8);
+    // 4. East Crosswalk (Shopping Promenade <-> Housing District)
+    addCrosswalkHorizontalRoad(3.6, -0.8);
+
+    // C. 🚦 Directional Lane Arrows (חצי תנועה לנתיבים)
+    const arrowStraightMat = new THREE.MeshBasicMaterial({ map: roadArrowTex("straight"), transparent: true });
+    const arrowLeftMat     = new THREE.MeshBasicMaterial({ map: roadArrowTex("left"),     transparent: true });
+    const arrowRightMat    = new THREE.MeshBasicMaterial({ map: roadArrowTex("right"),    transparent: true });
+
+    function addRoadArrow(x, z, type, rotY) {
+      const aMat = (type === "straight") ? arrowStraightMat : (type === "left" ? arrowLeftMat : arrowRightMat);
+      const aMesh = mesh(new THREE.PlaneGeometry(0.65, 1.30), aMat, x, roadMarkingY + 0.002, z);
+      aMesh.rotation.x = -Math.PI / 2;
+      if (rotY) aMesh.rotation.z = rotY;
+      root.add(aMesh);
+    }
+
+    // Northbound Vertical Avenue
+    addRoadArrow(1.6, -6.0, "straight", 0);
+    addRoadArrow(-0.4, -6.0, "straight", Math.PI);
+
+    // Southbound Vertical Avenue
+    addRoadArrow(1.6, 5.0, "straight", 0);
+    addRoadArrow(-0.4, 5.0, "straight", Math.PI);
+
+    // Eastbound Horizontal Avenue
+    addRoadArrow(6.5, -1.8, "straight", Math.PI / 2);
+    addRoadArrow(6.5, 0.2, "straight", -Math.PI / 2);
+
+    // Westbound Horizontal Avenue
+    addRoadArrow(-6.0, -1.8, "straight", Math.PI / 2);
+    addRoadArrow(-6.0, 0.2, "straight", -Math.PI / 2);
+
+    // D. ⭕ Speed Limit Circles ("30" עיגול מהירות אדום-לבן על הכביש)
+    const speed30Mat = new THREE.MeshBasicMaterial({ map: roadSpeedLimitTex("30"), transparent: true });
+    function addSpeedCircle(x, z) {
+      const sp = mesh(new THREE.PlaneGeometry(1.10, 1.10), speed30Mat, x, roadMarkingY + 0.002, z);
+      sp.rotation.x = -Math.PI / 2;
+      root.add(sp);
+    }
+    addSpeedCircle(1.6, -8.8);
+    addSpeedCircle(-0.4, 7.5);
+    addSpeedCircle(8.8, -1.8);
+    addSpeedCircle(-8.8, 0.2);
+
+    // E. 🕳️ Cast-Iron Manhole Covers & Drain Grates (מכסי ביוב וניקוז)
+    const manholeMat = new THREE.MeshStandardMaterial({ map: manholeCoverTex(), roughness: 0.5, metalness: 0.8, transparent: true });
+    function addManhole(x, z) {
+      const mh = mesh(new THREE.PlaneGeometry(0.80, 0.80), manholeMat, x, roadMarkingY + 0.002, z);
+      mh.rotation.x = -Math.PI / 2;
+      root.add(mh);
+    }
+    addManhole(0.1, -1.8);
+    addManhole(1.2, 0.2);
+
+    // F. 🚌 Bus Stop Road Stencil & Yellow Bay Box
+    const busStencilMat = new THREE.MeshBasicMaterial({ map: busStopRoadTex(), transparent: true });
+    const busStencil = mesh(new THREE.PlaneGeometry(1.5, 0.75), busStencilMat, 1.6, roadMarkingY + 0.002, -2.0);
+    busStencil.rotation.x = -Math.PI / 2;
+    busStencil.rotation.z = Math.PI / 2;
+    root.add(busStencil);
+
+
 
     // ════════════════════════════════════════════════════════════════
-    // 🧱 3D PHYSICAL BEVELED GRANITE CURBS (True Architectural Elevation)
+    // 🧱 3D PHYSICAL CURBS (מדרכות כחול-לבן, אדום-לבן וגרניט אדריכלי)
     // ════════════════════════════════════════════════════════════════
     const curbGraniteM = mat(0xe2e8f0, 0.7, 0.4);
     const curbDarkM    = mat(0x475569, 0.75, 0.3);
+    const curbBlueM    = mat(0x2563eb, 0.5, 0.6); // כחול
+    const curbWhiteM   = mat(0xf8fafc, 0.5, 0.6); // לבן
+    const curbRedM     = mat(0xdc2626, 0.5, 0.6); // אדום
 
-    function add3DCurbLine(pStart, pEnd, isVertical) {
+    function add3DCurbLine(pStart, pEnd, isVertical, curbStyle) {
       const len = isVertical ? Math.abs(pEnd.z - pStart.z) : Math.abs(pEnd.x - pStart.x);
-      const segLen = 0.85;
+      const segLen = 0.80;
       const count = Math.floor(len / segLen);
       for (let s = 0; s < count; s++) {
-        const segMat = (s % 2 === 0) ? curbGraniteM : curbDarkM;
+        let segMat = (s % 2 === 0) ? curbGraniteM : curbDarkM;
+        if (curbStyle === "blue_white") {
+          segMat = (s % 2 === 0) ? curbBlueM : curbWhiteM;
+        } else if (curbStyle === "red_white") {
+          segMat = (s % 2 === 0) ? curbRedM : curbWhiteM;
+        }
+
         if (isVertical) {
           const cz = pStart.z + (s + 0.5) * (pEnd.z > pStart.z ? segLen : -segLen);
-          const cb = mesh(new THREE.BoxGeometry(0.16, 0.16, segLen * 0.96), segMat, pStart.x, 0.14, cz, false, true);
+          const cb = mesh(new THREE.BoxGeometry(0.20, 0.20, segLen * 0.96), segMat, pStart.x, 0.18, cz, false, true);
           root.add(cb);
         } else {
           const cx = pStart.x + (s + 0.5) * (pEnd.x > pStart.x ? segLen : -segLen);
-          const cb = mesh(new THREE.BoxGeometry(segLen * 0.96, 0.16, 0.16), segMat, cx, 0.14, pStart.z, false, true);
+          const cb = mesh(new THREE.BoxGeometry(segLen * 0.96, 0.20, 0.20), segMat, cx, 0.18, pStart.z, false, true);
           root.add(cb);
         }
       }
     }
 
-    // 1. Food District Curbs (North-West)
-    add3DCurbLine({x: -11.0, z: -3.0}, {x: -1.6, z: -3.0}, false);
-    add3DCurbLine({x: -1.6, z: -3.0}, {x: -1.6, z: -11.0}, true);
+    // 1. Food District Curbs (North-West) - Blue & White for dining parking
+    add3DCurbLine({x: -11.0, z: -3.0}, {x: -1.6, z: -3.0}, false, "blue_white");
+    add3DCurbLine({x: -1.6, z: -3.0}, {x: -1.6, z: -11.0}, true, "blue_white");
 
-    // 2. Shopping District Curbs (North-East)
-    add3DCurbLine({x: 2.8, z: -3.0}, {x: 11.0, z: -3.0}, false);
-    add3DCurbLine({x: 2.8, z: -3.0}, {x: 2.8, z: -11.0}, true);
+    // 2. Shopping District Curbs (North-East) - Red & White near bus stop, Blue & White for shopping
+    add3DCurbLine({x: 2.8, z: -3.0}, {x: 11.0, z: -3.0}, false, "blue_white");
+    add3DCurbLine({x: 2.8, z: -3.0}, {x: 2.8, z: -11.0}, true, "red_white");
 
-    // 3. Housing District Curbs (South-East)
-    add3DCurbLine({x: 2.8, z: 1.4}, {x: 11.0, z: 1.4}, false);
-    add3DCurbLine({x: 2.8, z: 1.4}, {x: 2.8, z: 11.0}, true);
+    // 3. Housing District Curbs (South-East) - Blue & White for resident parking
+    add3DCurbLine({x: 2.8, z: 1.4}, {x: 11.0, z: 1.4}, false, "blue_white");
+    add3DCurbLine({x: 2.8, z: 1.4}, {x: 2.8, z: 11.0}, true, "blue_white");
 
-    // 4. Park District Curbs (South-West)
-    add3DCurbLine({x: -11.0, z: 1.4}, {x: -1.6, z: 1.4}, false);
-    add3DCurbLine({x: -1.6, z: 1.4}, {x: -1.6, z: 11.0}, true);
+    // 4. Park District Curbs (South-West) - Red & White near park sanctuary
+    add3DCurbLine({x: -11.0, z: 1.4}, {x: -1.6, z: 1.4}, false, "red_white");
+    add3DCurbLine({x: -1.6, z: 1.4}, {x: -1.6, z: 11.0}, true, "red_white");
 
     // ================================================================
     // BUILDING CREATORS – PROPORTIONALLY SPACED & DETAILED
@@ -4987,6 +5123,8 @@
       }
 
       const busObj = vehicleState.find(v => v.isBus);
+      const busZ = busObj ? busObj.obj.position.z : 999;
+      const scooterX = (typeof scooterZoomer !== "undefined" && scooterZoomer && scooterZoomer.userData) ? scooterZoomer.position.x : 999;
 
       vehicleState.forEach((v, vIdx) => {
         if (v.pauseTimer > 0) {
@@ -5001,34 +5139,73 @@
         // 1. Bus Stop Routine: City Bus stops at roadside shelter at z = -4.8 (Shopping promenade)
         if (v.isBus) {
           if (!v.hasPausedAtBusStop && Math.abs(currentZ - (-4.8)) < 0.45) {
-            v.pauseTimer = 2.4;
+            v.pauseTimer = 2.8;
             v.hasPausedAtBusStop = true;
             const ph = getDioramaPhrases();
-            popEmojiBubble(v.obj, ph.busStop, 2.2);
+            popEmojiBubble(v.obj, ph.busStop, 2.4);
             return;
           }
           if (currentZ < -8.0 || currentZ > 8.0) {
             v.hasPausedAtBusStop = false;
           }
-        }
 
-        // 2. Perpendicular Intersection Yielding (Westbound Taxi / Eastbound Wolt vs Northbound Bus)
-        if (!v.isBus && busObj) {
-          const busZ = busObj.obj.position.z;
-          if (v.lane === "westbound") {
-            // Taxi crosses bus lane at (1.2, -1.6)
-            if (busZ > -2.4 && busZ < -0.8 && currentX > 1.2 && currentX < 2.6) {
-              return; // Brief yield while bus passes through crossing
-            }
-          } else if (v.lane === "eastbound") {
-            // Wolt crosses bus lane at (1.2, -0.2)
-            if (busZ > -1.0 && busZ < 0.6 && currentX < 1.2 && currentX > -0.2) {
-              return; // Brief yield while bus passes through crossing
+          // 2. Bus Yields to Electric Scooter Rider on the North Promenade Crossing (Z = -3.4)
+          if (typeof scooterZoomer !== "undefined" && scooterZoomer && scooterZoomer.userData) {
+            // If scooter is currently traversing the bus lane (X between 0.2 and 2.2)
+            if (scooterX > 0.2 && scooterX < 2.2) {
+              // If bus is approaching the crosswalk stop line
+              if (currentZ > -3.2 && currentZ < -2.0) {
+                return; // Bus waits safely at the stop line
+              }
             }
           }
         }
 
-        // 3. Drive forward continuously & smoothly
+        // 3. Vehicles Yield for Pedestrians Crossing Ahead on Crosswalks
+        let pedestrianInPath = false;
+        for (let ci = 0; ci < walkingCitizens.length; ci++) {
+          const cit = walkingCitizens[ci];
+          if (!cit.obj || !cit.obj.visible) continue;
+          const cp = cit.obj.position;
+
+          if (v.lane === "northbound") {
+            // Northbound bus: corridor X [0.3..2.1], pedestrian ahead in Z [currentZ-2.4 .. currentZ-0.1]
+            if (cp.x > 0.3 && cp.x < 2.1 && cp.z < currentZ - 0.1 && cp.z > currentZ - 2.4) {
+              pedestrianInPath = true; break;
+            }
+          } else if (v.lane === "westbound") {
+            // Westbound taxi: corridor Z [-2.4 .. -0.8], pedestrian ahead in X [currentX-2.4 .. currentX-0.1]
+            if (cp.z > -2.4 && cp.z < -0.8 && cp.x < currentX - 0.1 && cp.x > currentX - 2.4) {
+              pedestrianInPath = true; break;
+            }
+          } else if (v.lane === "eastbound") {
+            // Eastbound wolt: corridor Z [-0.9 .. 0.5], pedestrian ahead in X [currentX+0.1 .. currentX+2.4]
+            if (cp.z > -0.9 && cp.z < 0.5 && cp.x > currentX + 0.1 && cp.x < currentX + 2.4) {
+              pedestrianInPath = true; break;
+            }
+          }
+        }
+
+        if (pedestrianInPath) {
+          return; // Vehicle yields right-of-way to pedestrian!
+        }
+
+        // 4. Perpendicular Intersection Yielding (Westbound Taxi / Eastbound Wolt vs Northbound Bus)
+        if (!v.isBus && busObj) {
+          if (v.lane === "westbound") {
+            // Taxi crosses bus lane at (1.2, -1.6)
+            if (busZ > -2.4 && busZ < -0.6 && currentX > 1.2 && currentX < 2.8) {
+              return; // Yield while bus clears the crossing
+            }
+          } else if (v.lane === "eastbound") {
+            // Wolt crosses bus lane at (1.2, -0.2)
+            if (busZ > -1.2 && busZ < 0.6 && currentX < 1.2 && currentX > -0.4) {
+              return; // Yield while bus clears the crossing
+            }
+          }
+        }
+
+        // 5. Drive forward continuously & smoothly
         v.progress = (v.progress + dt * v.speed) % 1.0;
         v.obj.position.x = pA.x + (pB.x - pA.x) * v.progress;
         v.obj.position.z = pA.z + (pB.z - pA.z) * v.progress;
@@ -5237,24 +5414,64 @@
         }
       }
 
-      // 🛴 Electric Scooter Zoomer movement & banking
+      // 🛴 Electric Scooter Zoomer movement, right-of-way yielding & banking
       if (scooterZoomer && scooterZoomer.userData) {
         const su = scooterZoomer.userData;
-        su.progress = (su.progress || 0) + dt * 0.16;
-        const scooterP = (Math.sin(su.progress) + 1) * 0.5; // 0..1 smooth glide
-        scooterZoomer.position.x = -3.6 + scooterP * 7.2;
-        // It moves along X and the model faces +X, so the heading is 0 or PI. The old
-        // +/-PI/2 pointed it across its own path and it crabbed down the promenade.
-        scooterZoomer.rotation.y = (Math.cos(su.progress) >= 0) ? 0 : Math.PI;
-        // A lean is a roll about the direction of travel, which is X here, not Z.
-        scooterZoomer.rotation.x = Math.sin(su.progress * 2.0) * 0.05;
-        scooterZoomer.rotation.z = 0;
+        const currentScooterX = scooterZoomer.position.x;
+        const movingEast = Math.cos(su.progress || 0) >= 0;
+
+        // Check if City Bus is approaching the North promenade crosswalk (Z = -3.4, X = 1.2)
+        const busObj = vehicleState.find(v => v.isBus);
+        let shouldYieldForBus = false;
+        if (busObj) {
+          const busZ = busObj.obj.position.z;
+          // Bus is in approaching zone (-5.4 < Z < -1.6)
+          if (busZ > -5.4 && busZ < -1.6) {
+            // If scooter is heading East and approaching bus lane from West (X between -0.8 and 0.9)
+            if (movingEast && currentScooterX > -0.8 && currentScooterX < 0.9) {
+              shouldYieldForBus = true;
+            }
+            // If scooter is heading West and approaching bus lane from East (X between 1.5 and 3.0)
+            if (!movingEast && currentScooterX < 3.0 && currentScooterX > 1.5) {
+              shouldYieldForBus = true;
+            }
+          }
+        }
+
+        // Check if a pedestrian is right in front of scooter on the promenade
+        let shouldYieldForPed = false;
+        for (let ci = 0; ci < walkingCitizens.length; ci++) {
+          const cit = walkingCitizens[ci];
+          if (!cit.obj || !cit.obj.visible) continue;
+          const cp = cit.obj.position;
+          if (Math.abs(cp.z - (-3.4)) < 0.6) {
+            const diffX = cp.x - currentScooterX;
+            if (movingEast && diffX > 0.1 && diffX < 1.2) { shouldYieldForPed = true; break; }
+            if (!movingEast && diffX < -0.1 && diffX > -1.2) { shouldYieldForPed = true; break; }
+          }
+        }
+
+        if (shouldYieldForBus || shouldYieldForPed) {
+          // Scooter smoothly stops and yields right of way!
+          scooterZoomer.rotation.x = 0;
+          scooterZoomer.rotation.z = 0;
+          scooterZoomer.position.y = 0.22;
+        } else {
+          // Advance scooter smoothly
+          su.progress = (su.progress || 0) + dt * 0.16;
+          const scooterP = (Math.sin(su.progress) + 1) * 0.5; // 0..1 smooth glide
+          scooterZoomer.position.x = -3.6 + scooterP * 7.2;
+          scooterZoomer.rotation.y = movingEast ? 0 : Math.PI;
+          scooterZoomer.rotation.x = Math.sin(su.progress * 2.0) * 0.05;
+          scooterZoomer.rotation.z = 0;
+        }
+
         if (su.hopTimer > 0) {
           su.hopTimer -= dt;
           const hopP = Math.max(0, su.hopTimer / 0.40);
           scooterZoomer.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.25;
-        } else {
-          scooterZoomer.position.y = 0.22; // pin it back down; a missed frame left it floating
+        } else if (!shouldYieldForBus && !shouldYieldForPed) {
+          scooterZoomer.position.y = 0.22;
         }
       }
 
@@ -5295,29 +5512,52 @@
       }
 
       try {
-        // Calm, natural pedestrians with gentle strolling pace & micro-pauses
+        // Calm, natural pedestrians with physically-coupled kinematic locomotion (Zero Foot Sliding)
         walkingCitizens.forEach(c => {
           if (!c.obj || !c.obj.visible) return;
 
           const wps = c.waypoints;
           if (!wps || wps.length < 2) return;
           const n = wps.length;
-          if (isNaN(c.progress) || c.progress < 0) c.progress = 0;
-          const totalP = (c.progress % 1.0) * n;
-          const segIdx = Math.max(0, Math.min(n - 1, Math.floor(totalP)));
-          const pA = wps[segIdx];
-          const pB = wps[(segIdx + 1) % n];
-          if (!pA || !pB) return;
-          const segProgress = totalP % 1.0;
 
-          // Micro-pause check at waypoints
-          if (segIdx !== c.lastSegIdx) {
-            c.lastSegIdx = segIdx;
-            if (Math.random() < c.pauseChance) {
-              c.isPaused = true;
-              c.pauseDuration = 2.0 + Math.random() * 2.0; // 2-4s relaxed pause
-              c.pauseTimer = c.pauseDuration;
+          // Track segment index and progress along current segment
+          if (c.segIdx === undefined) {
+            c.segIdx = 0;
+            c.segProgress = (c.progress || 0);
+          }
+
+          const pA = wps[c.segIdx];
+          const pB = wps[(c.segIdx + 1) % n];
+          if (!pA || !pB) return;
+
+          const segDx = pB.x - pA.x;
+          const segDz = pB.z - pA.z;
+          const segLen = Math.hypot(segDx, segDz) || 0.1;
+
+          const posX = pA.x + segDx * Math.min(1.0, c.segProgress);
+          const posZ = pA.z + segDz * Math.min(1.0, c.segProgress);
+
+          // 🏃‍♂️ Detect if citizen is crossing the road
+          const isCrossingRoad = (posZ > -2.9 && posZ < 1.3) || (posX > -1.5 && posX < 2.7);
+
+          // Check if any vehicle is yielding or nearby (within 4.2m)
+          let isVehicleYieldingNear = false;
+          if (isCrossingRoad) {
+            for (let vi = 0; vi < vehicleState.length; vi++) {
+              const v = vehicleState[vi];
+              if (v.obj && v.obj.position.distanceTo(c.obj.position) < 4.2) {
+                isVehicleYieldingNear = true;
+                break;
+              }
             }
+          }
+
+          const isHustling = isCrossingRoad && isVehicleYieldingNear;
+
+          // Never pause on a road or crosswalk!
+          if (isCrossingRoad && c.isPaused) {
+            c.isPaused = false;
+            c.pauseTimer = 0;
           }
 
           const u = c.obj.userData;
@@ -5335,60 +5575,95 @@
             if (c.pauseTimer <= 0) {
               c.isPaused = false;
             } else {
+              // Smoothly relax limbs to neutral standing posture
+              if (u && u.legL && u.legR && u.hopTimer <= 0) {
+                u.legL.rotation.x *= 0.85;
+                u.legR.rotation.x *= 0.85;
+                if (u.armL) u.armL.rotation.x *= 0.85;
+                if (u.armR && !u.hasCoffee && !u.hasPhone) u.armR.rotation.x *= 0.85;
+                if (u.torso) {
+                  u.torso.rotation.x *= 0.85;
+                  u.torso.position.y *= 0.85;
+                }
+              }
               // Idle breathing & looking around
               if (u && u.head) {
-                u.head.rotation.y = Math.sin(T * 1.5 + c.legPhase) * 0.35;
-              }
-              if (u && u.armR && u.hasCoffee) {
-                u.armR.rotation.x = -0.9 + Math.sin(T * 1.8) * 0.15;
-              }
-              if (u && u.armR && u.hasPhone) {
-                u.armR.rotation.x = -1.1 + Math.sin(T * 1.2) * 0.08;
+                u.head.rotation.y = Math.sin(T * 1.5 + (c.legPhase || 0)) * 0.35;
               }
               if (c.dog) {
                 const du = c.dog.userData;
+                if (du && du.legs) {
+                  du.legs.forEach(l => l.rotation.x *= 0.85);
+                }
                 if (du && du.tail) du.tail.rotation.y = Math.sin(T * 8) * 0.35;
               }
               return;
             }
           }
 
-          // Gentle, relaxed strolling pace
-          c.progress = (c.progress + dt * (c.speed * 0.016)) % 1.0;
+          // 🚶‍♀️ Natural Movement Speed (meters/second):
+          // Normal stroll: ~0.95 m/s, Jogger: 1.45 m/s, Polite Crosswalk Pace: 1.38 m/s (relaxed, not stressful)
+          const baseSpeed = c.isJogging ? 1.45 : (c.speed * 1.55);
+          const moveSpeed = isHustling ? (baseSpeed * 1.35) : (c.isJogging ? baseSpeed : baseSpeed);
 
-          const posX = pA.x + (pB.x - pA.x) * segProgress;
-          const posZ = pA.z + (pB.z - pA.z) * segProgress;
+          // Physical distance moved this frame (in scene units / meters)
+          const distMoved = moveSpeed * dt;
+          c.segProgress += distMoved / segLen;
+
+          if (c.segProgress >= 1.0) {
+            c.segProgress = 0;
+            c.segIdx = (c.segIdx + 1) % n;
+            // Chance to micro-pause only on peaceful sidewalks
+            if (!isCrossingRoad && Math.random() < c.pauseChance) {
+              c.isPaused = true;
+              c.pauseDuration = 2.0 + Math.random() * 2.5;
+              c.pauseTimer = c.pauseDuration;
+            }
+          }
+
+          // Update position & heading angle
           c.obj.position.set(posX, 0.22, posZ);
-
-          const dx = pB.x - pA.x, dz = pB.z - pA.z;
-          const targetAngle = Math.atan2(-dz, dx) + Math.PI / 2;
+          const targetAngle = Math.atan2(-segDz, segDx) + Math.PI / 2;
           c.obj.rotation.y = targetAngle;
 
-          // Reset head during walk
           if (u && u.head) {
             u.head.rotation.y *= 0.90;
           }
 
-          // Smooth locomotion
-          const strideSpeed = c.isJogging ? 8.5 : 5.2;
-          c.legPhase += dt * strideSpeed;
+          // 🎯 PURE MATHEMATICALLY COUPLED LEG KINEMATICS:
+          // 1 meter in 3D world = exactly 6.4 radians of leg swing.
+          // Zero foot skating! Natural walking pace and smooth relaxed strides.
+          c.legPhase = (c.legPhase || 0) + distMoved * 6.4;
 
           if (u && u.legL && u.legR && (u.hopTimer <= 0)) {
-            const swing = Math.sin(c.legPhase) * (c.isJogging ? 0.65 : 0.45);
+            const legAmp = isHustling ? 0.46 : (c.isJogging ? 0.50 : 0.38);
+            const swing = Math.sin(c.legPhase) * legAmp;
             u.legL.rotation.x = swing;
             u.legR.rotation.x = -swing;
             u.armL.rotation.x = -swing * 0.65;
-            if (!u.hasPhone && !u.hasCoffee) {
+
+            // Polite casual wave to driver if crossing
+            if (isHustling && !u.hasPhone && !u.hasCoffee) {
+              u.armR.rotation.x = -1.45;
+              u.armR.rotation.z = 0.28 + Math.sin(T * 8) * 0.10;
+            } else if (!u.hasPhone && !u.hasCoffee) {
               u.armR.rotation.x = swing * 0.65;
+              u.armR.rotation.z = 0;
             } else if (u.hasCoffee) {
-              u.armR.rotation.x = -0.6 + Math.sin(c.legPhase * 0.5) * 0.10;
+              u.armR.rotation.x = -0.70 + Math.sin(c.legPhase * 0.5) * 0.08;
+              u.armR.rotation.z = 0.12;
             } else if (u.hasPhone) {
-              u.armR.rotation.x = -0.8 + Math.sin(c.legPhase * 0.5) * 0.08;
+              u.armR.rotation.x = -0.90 + Math.sin(c.legPhase * 0.5) * 0.06;
+              u.armR.rotation.z = 0.12;
             }
-            u.torso.position.y = Math.abs(Math.sin(c.legPhase * 2)) * 0.025;
+
+            // Torso: gentle natural posture + subtle step bounce
+            u.torso.rotation.x = isHustling ? 0.05 : (c.isJogging ? 0.06 : 0.0);
+            const bounceAmp = isHustling ? 0.022 : (c.isJogging ? 0.025 : 0.015);
+            u.torso.position.y = Math.abs(Math.sin(c.legPhase * 2)) * bounceAmp;
           }
 
-          // Dog trotting alongside owner
+          // Dog trotting perfectly synced to movement distance
           if (c.dog) {
             const sideAngle = targetAngle - Math.PI / 2;
             const dogX = posX + Math.cos(sideAngle) * 0.42 - Math.cos(targetAngle - Math.PI/2) * 0.15;
@@ -5398,12 +5673,12 @@
 
             const du = c.dog.userData;
             if (du && du.legs) {
-              const dogSwing = Math.sin(c.legPhase * 1.2) * 0.40;
+              const dogSwing = Math.sin(c.legPhase * 1.2) * (isHustling ? 0.50 : 0.35);
               du.legs[0].rotation.x = dogSwing;
               du.legs[1].rotation.x = -dogSwing;
               du.legs[2].rotation.x = -dogSwing;
               du.legs[3].rotation.x = dogSwing;
-              if (du.tail) du.tail.rotation.y = Math.sin(T * 10) * 0.35;
+              if (du.tail) du.tail.rotation.y = Math.sin(T * (isHustling ? 14 : 9)) * 0.35;
             }
           }
         });

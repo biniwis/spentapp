@@ -5086,21 +5086,8 @@
         }
       }
 
-      // 📸 Influencer gentle selfie posing
-      if (influencerFigure && influencerFigure.userData) {
-        const iu = influencerFigure.userData;
-        if (iu.fig) {
-          iu.fig.rotation.y = Math.sin(T * 0.8) * 0.35;
-        }
-        if (iu.hopTimer > 0) {
-          iu.hopTimer -= dt;
-          const hopP = Math.max(0, iu.hopTimer / 0.40);
-          influencerFigure.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.30;
-        }
-      }
-
       // 🎸 Street Musician guitar strumming
-      if (streetMusician && streetMusician.userData) {
+      if (typeof streetMusician !== "undefined" && streetMusician && streetMusician.userData) {
         const mu = streetMusician.userData;
         if (mu.fig) {
           mu.fig.rotation.y = Math.PI * 0.75 + Math.sin(T * 1.8) * 0.12;
@@ -5113,7 +5100,7 @@
       }
 
       // 🧘‍♀️ Park Yogi subtle breathing
-      if (yogaPractitioner && yogaPractitioner.userData) {
+      if (typeof yogaPractitioner !== "undefined" && yogaPractitioner && yogaPractitioner.userData) {
         const yu = yogaPractitioner.userData;
         if (yu.fig) {
           yu.fig.position.y = 0.22 + Math.sin(T * 1.2) * 0.02;
@@ -5125,21 +5112,8 @@
         }
       }
 
-      // 👮‍♂️ Parking Inspector looking around
-      if (parkingInspector && parkingInspector.userData) {
-        const pu = parkingInspector.userData;
-        if (pu.fig) {
-          pu.fig.rotation.y = -Math.PI * 0.25 + Math.sin(T * 0.6) * 0.45;
-        }
-        if (pu.hopTimer > 0) {
-          pu.hopTimer -= dt;
-          const hopP = Math.max(0, pu.hopTimer / 0.40);
-          parkingInspector.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.30;
-        }
-      }
-
       // 🧑‍💻 Tech Worker typing on laptop
-      if (techWorkerOnBench && techWorkerOnBench.userData) {
+      if (typeof techWorkerOnBench !== "undefined" && techWorkerOnBench && techWorkerOnBench.userData) {
         const tu = techWorkerOnBench.userData;
         if (tu.hopTimer > 0) {
           tu.hopTimer -= dt;

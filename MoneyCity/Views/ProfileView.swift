@@ -218,46 +218,47 @@ public struct ProfileView: View {
         }
     }
 
-    // MARK: - User Profile Greeting Card (Bespoke Mayor Hero Card)
+    // MARK: - User Profile Greeting Card (Bespoke Light Mayor Card)
 
     private var userProfileCard: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.12))
-                    .frame(width: 54, height: 54)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                    )
-                DistrictSkylineVectorIcon(color: Color.themeMint)
-                    .scaleEffect(1.2)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color.themeTurquoiseSoft)
+                    .frame(width: 52, height: 52)
+                DistrictSkylineVectorIcon(color: Color.themeTurquoise)
+                    .scaleEffect(1.15)
             }
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(greetingText)
                     .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.deepNavy)
                 
                 HStack(spacing: 6) {
                     Text(l10n.language == .hebrew ? "ראש העיר" : "Mayor")
-                        .font(.system(size: 11, weight: .black, design: .rounded))
-                        .foregroundColor(Color.themeMint)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.themeTurquoise)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Color.white.opacity(0.12))
+                        .background(Color.themeTurquoiseSoft)
                         .clipShape(Capsule())
                     
                     Text(l10n.language == .hebrew ? "• \(transactionCount) עסקאות בעיר" : "• \(transactionCount) transactions")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.white.opacity(0.75))
+                        .foregroundColor(Color.textMuted)
                 }
             }
 
             Spacer()
         }
-        .padding(18)
-        .cityCard(.night, radius: MoneyCityTheme.radiusHero)
+        .padding(16)
+        .background(Color.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.borderSubtle, lineWidth: 1.2)
+        )
         .padding(.horizontal, 16)
     }
 

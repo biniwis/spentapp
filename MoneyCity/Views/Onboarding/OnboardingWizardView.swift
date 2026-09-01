@@ -32,8 +32,9 @@ public struct OnboardingWizardView: View {
                         .fill(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.12))
                         .frame(width: 100, height: 100)
                     
-                    Text(stepIcon)
-                        .font(.system(size: 48))
+                    Image(systemName: stepIcon)
+                        .font(.system(size: 42, weight: .bold))
+                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                 }
                 
                 // Titles
@@ -130,8 +131,9 @@ public struct OnboardingWizardView: View {
                             onTriggerSampleTransaction()
                             onComplete()
                         }) {
-                            HStack {
-                                Text("☕")
+                            HStack(spacing: 8) {
+                                Image(systemName: "cup.and.saucer.fill")
+                                    .font(.system(size: 15, weight: .bold))
                                 Text("שתול זרע ראשון (קפה בדיקה ב-₪14)")
                                     .font(.system(size: 15, weight: .bold))
                             }
@@ -163,10 +165,10 @@ public struct OnboardingWizardView: View {
 
     private var stepIcon: String {
         switch currentStep {
-        case 1: return "🏙️"
-        case 2: return "⚡"
-        case 3: return "💰"
-        default: return "🌱"
+        case 1: return "building.2.fill"
+        case 2: return "bolt.fill"
+        case 3: return "banknote.fill"
+        default: return "leaf.fill"
         }
     }
     

@@ -31,6 +31,7 @@ public struct HistoryView: View {
     @State private var undoToken: UUID? = nil
     @State private var currentDate: Date = Date()
     @State private var editingTx: Transaction? = nil
+    @State private var selectedMerchantForDetails: String? = nil
 
     private var monthTransactions: [Transaction] {
         let cal = Calendar.current
@@ -132,18 +133,15 @@ public struct HistoryView: View {
                             .foregroundColor(Color.deepNavy)
                         if !searchText.isEmpty {
                             Button(action: { searchText = "" }) {
-                                Text(verbatim: "✕")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 14))
                                     .foregroundColor(Color.textMuted)
                             }
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 11)
-                    .background(Color.cardBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.borderSubtle, lineWidth: 1.2))
-                    .shadow(color: Color.deepNavy.opacity(0.03), radius: 6, y: 2)
+                    .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
                     .padding(.horizontal, 16)
 
                     // Category Filter Pills
@@ -224,6 +222,19 @@ public struct HistoryView: View {
             EditTransactionSheet(transaction: tx)
                 .presentationDetents([PresentationDetent.medium, PresentationDetent.large])
         }
+        .sheet(item: Binding<IdentifiableMerchant?>(
+            get: { selectedMerchantForDetails.map { IdentifiableMerchant(name: $0) } },
+            set: { selectedMerchantForDetails = $0?.name }
+        )) { item in
+            MerchantDetailSheet(merchantName: item.name)
+                .presentationDetents([.medium, .large])
+                .environmentObject(l10n)
+        }
+    }
+
+    private struct IdentifiableMerchant: Identifiable {
+        var id: String { name }
+        let name: String
     }
 
     // MARK: - Filter Chips
@@ -307,10 +318,7 @@ public struct HistoryView: View {
                     }
                 }
             }
-            .background(Color.cardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.borderSubtle, lineWidth: 1.2))
-            .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
+            .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
         }
     }
 
@@ -336,7 +344,12 @@ public struct HistoryView: View {
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(tx.category.themeColor)
 
-                    if !tx.isConfirmed {
+                    let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
+                    if isRefund {
+                        Text(l10n.language == .hebrew ? "• ↩️ זיכוי" : "• ↩️ Refund")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.themeMint)
+                    } else if !tx.isConfirmed {
                         Text(l10n.language == .hebrew ? "• סיווג לא ודאי" : "• unverified")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundColor(Color.themeYellow)
@@ -346,9 +359,16 @@ public struct HistoryView: View {
 
             Spacer()
 
-            Text("\(l10n.baseCurrency.symbol)\(Int(tx.amount))")
-                .font(.system(size: 16, weight: .black, design: .rounded))
-                .foregroundColor(Color.deepNavy)
+            let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
+            if isRefund {
+                Text("-\(l10n.baseCurrency.symbol)\(Int(abs(tx.amount)))")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundColor(Color.themeMint)
+            } else {
+                Text("\(l10n.baseCurrency.symbol)\(Int(tx.amount))")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -362,6 +382,11 @@ public struct HistoryView: View {
             } label: {
                 Text(l10n.language == .hebrew ? "ערוך עסקה" : "Edit Transaction")
             }
+            Button {
+                selectedMerchantForDetails = tx.merchant
+            } label: {
+                Text(l10n.language == .hebrew ? "פרטי בית עסק (\(tx.merchant))" : "Merchant Details (\(tx.merchant))")
+            }
             if !tx.isConfirmed {
                 Button {
                     DatabaseService.shared.rememberCorrection(merchant: tx.merchant, category: tx.category)
@@ -370,7 +395,7 @@ public struct HistoryView: View {
                     try? modelContext.save()
                     Haptics.impact(.light)
                 } label: {
-                    Text(l10n.language == .hebrew ? "✓ אשר את הסיווג" : "✓ Confirm category")
+                    Label(l10n.language == .hebrew ? "אשר את הסיווג" : "Confirm category", systemImage: "checkmark")
                 }
             }
             Divider()
@@ -403,9 +428,7 @@ public struct HistoryView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
-                .background(Color.deepNavy)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .shadow(color: Color.deepNavy.opacity(0.3), radius: 12, y: 6)
+                .cityCard(.night, radius: MoneyCityTheme.radiusCard)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 80)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

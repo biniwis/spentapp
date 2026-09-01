@@ -204,31 +204,62 @@ public enum TransactionIngest {
     }
 
     /// An amount embedded in free text, accepted only when it is marked as money — by a
-    /// currency symbol or by decimal digits. A bare integer inside a shop name is not money.
+    /// currency symbol, Hebrew money term, or by decimal digits.
     public static func amountLikeValue(in text: String?) -> Double? {
         guard let text, !text.isEmpty else { return nil }
 
-        let hasCurrencyMark = ["₪", "$", "€", "£", "ILS", "USD", "EUR", "GBP"]
-            .contains { text.contains($0) }
+        let currencyKeywords = [
+            "₪", "$", "€", "£", "ils", "usd", "eur", "gbp", "nis",
+            "ש״ח", "ש\"ח", "שח", "שקלים", "שקל", "בסך", "ע״ס", "בסכום של"
+        ]
+        let lower = text.lowercased()
+        let hasCurrencyMark = currencyKeywords.contains { lower.contains($0) }
         let hasDecimalRun = text.range(
             of: "[0-9]+[.,][0-9]{1,2}(?![0-9])",
             options: .regularExpression
         ) != nil
 
         guard hasCurrencyMark || hasDecimalRun else { return nil }
-        return normalizedAmount(nil, text)
+        
+        if let direct = normalizedAmount(nil, text) {
+            return direct
+        }
+        
+        // Fallback: extract the first valid numeric run
+        if let range = text.range(of: "[0-9]+(?:[.,][0-9]+)?", options: .regularExpression) {
+            let numStr = String(text[range]).replacingOccurrences(of: ",", with: ".")
+            if let val = Double(numStr), val > 0 {
+                return val
+            }
+        }
+        
+        return nil
     }
 
-    /// Strips currency symbols and numeric runs so "Chacoli ₪6.00" yields "Chacoli".
+    /// Strips currency symbols, Hebrew currency terms, transaction prefixes, and numeric runs so "Chacoli ₪6.00" yields "Chacoli".
     /// Returns nil when nothing but digits and punctuation was there to begin with.
     public static func nameWithoutAmount(_ text: String) -> String? {
-        var stripped = text.replacingOccurrences(
+        var stripped = text
+        
+        // Remove common transaction notification prefixes
+        let prefixesToRemove = [
+            "עסקה ב-", "עסקה ב", "רכישה ב-", "רכישה ב", "חיוב ב-", "חיוב ב",
+            "תשלום ב-", "תשלום ב", "הודעת חיוב:", "חיוב כרטיס ב-",
+            "Transaction at ", "Payment to ", "Purchase at ", "Transaction: ", "Payment: "
+        ]
+        for p in prefixesToRemove {
+            if stripped.hasPrefix(p) {
+                stripped = String(stripped.dropFirst(p.count))
+            }
+        }
+        
+        stripped = stripped.replacingOccurrences(
             of: "[0-9\u{0660}-\u{0669}]+(?:[.,][0-9]+)*",
             with: " ",
             options: .regularExpression
         )
-        for symbol in ["₪", "$", "€", "£", "ILS", "USD", "EUR", "GBP"] {
-            stripped = stripped.replacingOccurrences(of: symbol, with: " ")
+        for symbol in ["₪", "$", "€", "£", "ILS", "USD", "EUR", "GBP", "NIS", "nis", "ש״ח", "ש\"ח", "שח", "שקלים", "שקל", "בסך", "ע״ס", "סך"] {
+            stripped = stripped.replacingOccurrences(of: symbol, with: " ", options: .caseInsensitive)
         }
         stripped = stripped
             .trimmingCharacters(in: CharacterSet(charactersIn: " \t\n-–—,.·:;|/\\"))
@@ -363,8 +394,22 @@ public enum TransactionIngest {
     ) throws -> Transaction {
         // 1. Recover amount from numeric parameter, text parameter, or embedded within merchant string
         var cleanAmount = normalizedAmount(amount, amountText)
-        if cleanAmount == nil, let rawM = merchant {
-            cleanAmount = normalizedAmount(nil, rawM)
+        var isRefund = false
+        if cleanAmount == nil {
+            // Check if it was a negative amount (refund)
+            if let a = amount, a < 0, a.isFinite {
+                cleanAmount = abs(a)
+                isRefund = true
+            } else if let raw = amountText?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      raw.hasPrefix("-") || raw.hasPrefix("\u{2212}") || raw.hasPrefix("\u{2013}") || raw.hasPrefix("(") {
+                let stripped = raw.trimmingCharacters(in: CharacterSet(charactersIn: "-–—() \t\n\u{2212}\u{2013}"))
+                if let parsed = normalizedAmount(nil, stripped) {
+                    cleanAmount = parsed
+                    isRefund = true
+                }
+            } else if let rawM = merchant {
+                cleanAmount = normalizedAmount(nil, rawM)
+            }
         }
 
         guard let finalParsedAmount = cleanAmount ?? (allowZeroFallback ? 0.0 : nil) else {
@@ -402,28 +447,64 @@ public enum TransactionIngest {
 
         let autoConvert = defaults.object(forKey: "auto_convert_fx") as? Bool ?? true
 
-        if let rawCurrType = CurrencyType(symbolOrCode: currency),
-           rawCurrType != baseCurrType,
-           autoConvert {
-            finalAmount = FXService.convert(amount: finalParsedAmount, from: rawCurrType, to: baseCurrType)
-            finalCurrency = baseCurrType.symbol
+        // A charge that is not in the base currency and was not converted must never be filed
+        // as though it were. Nothing downstream looks at the currency field: budgets, the
+        // month total and the city all just add `amount` up. So keeping the face value and
+        // swapping the label meant one ₺2,400 dinner in Istanbul raised the Israeli month by
+        // 2,400 shekels, with the stored currency correctly reading "TRY" and nothing
+        // anywhere looking wrong.
+        //
+        // Two ways in, neither of them a mistake by the user: a currency outside the four the
+        // app knows (sanitizedCurrency accepts any short non-numeric string, so "CHF", "TRY"
+        // and "AED" all reach here), or the FX toggle turned off — which reads like it only
+        // stops a network call.
+        var needsCurrencyReview = false
+
+        if let rawCurrType = CurrencyType(symbolOrCode: currency) {
+            if rawCurrType == baseCurrType {
+                finalCurrency = baseCurrType.symbol
+            } else if autoConvert {
+                finalAmount = FXService.convert(amount: finalParsedAmount, from: rawCurrType, to: baseCurrType)
+                finalCurrency = baseCurrType.symbol
+                originalAmount = finalParsedAmount
+                originalCurrency = rawCurrType.symbol
+                // The rate actually applied, which is not the rate to shekels whenever the
+                // base currency is not the shekel.
+                exchangeRate = finalParsedAmount > 0 ? finalAmount / finalParsedAmount : nil
+            } else {
+                // Left in its own currency on purpose, and parked so it cannot be silently
+                // added to a total kept in another one.
+                finalAmount = finalParsedAmount
+                finalCurrency = rawCurrType.symbol
+                originalAmount = finalParsedAmount
+                originalCurrency = rawCurrType.symbol
+                needsCurrencyReview = true
+            }
+        } else if !currency.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  currency != baseCurrType.symbol {
+            // A currency the app has no rate for at all.
+            finalAmount = finalParsedAmount
+            finalCurrency = currency
             originalAmount = finalParsedAmount
             originalCurrency = currency
-            exchangeRate = FXService.rateToILS(for: rawCurrType)
+            needsCurrencyReview = true
         } else {
-            finalCurrency = currency
+            finalCurrency = baseCurrType.symbol
         }
 
         return Transaction(
-            amount: finalAmount,
+            amount: isRefund ? -finalAmount : finalAmount,
             currency: finalCurrency,
             merchant: cleanMerchant,
             category: classification.category,
             timestamp: date,
-            confidenceScore: isRecognized ? classification.confidence : 0.0,
+            confidenceScore: (isRefund || needsCurrencyReview) ? 0.5 : (isRecognized ? classification.confidence : 0.0),
             isManual: false,
             // Anything missing a merchant, amount, or with low confidence is parked for the user to review.
-            isConfirmed: isRecognized,
+            // Refunds are always parked for user review so they never alter spending without confirmation.
+            // So is an amount in a currency the app could not convert.
+            isConfirmed: (isRefund || needsCurrencyReview) ? false : isRecognized,
+            note: isRefund ? "זיכוי / החזר מ-Apple Pay (ממתין לבדיקתך)" : nil,
             buildingId: classification.buildingId,
             originalAmount: originalAmount,
             originalCurrency: originalCurrency,

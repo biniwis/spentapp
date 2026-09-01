@@ -86,12 +86,14 @@ public struct CitySlotCustomizerSheet: View {
                                     }) {
                                         VStack(alignment: .leading, spacing: 6) {
                                             HStack {
-                                                Text(slot.icon)
-                                                    .font(.system(size: 18))
+                                                Image(systemName: slot.icon)
+                                                    .font(.system(size: 16, weight: .bold))
+                                                    .foregroundColor(isSelected ? .white : Color(red: 217/255, green: 119/255, blue: 6/255))
                                                 Spacer()
                                                 if placedItem != nil {
-                                                    Text(itemIcon)
-                                                        .font(.system(size: 14))
+                                                    Image(systemName: itemIcon)
+                                                        .font(.system(size: 12, weight: .bold))
+                                                        .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
                                                         .padding(4)
                                                         .background(Color.white.opacity(0.8))
                                                         .clipShape(Circle())
@@ -126,8 +128,12 @@ public struct CitySlotCustomizerSheet: View {
                     // 3. Current Selected Slot Card
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 10) {
-                            Text(currentSlot.icon)
-                                .font(.system(size: 28))
+                            Image(systemName: currentSlot.icon)
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
+                                .frame(width: 40, height: 40)
+                                .background(Color(red: 254/255, green: 243/255, blue: 199/255))
+                                .clipShape(Circle())
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(currentSlot.name)
@@ -145,8 +151,14 @@ public struct CitySlotCustomizerSheet: View {
                         
                         // Status of this slot
                         if let placed = currentlyPlacedEnrichment {
-                            HStack {
-                                Text("מוצב כעת: \(placed.icon) \(placed.name)")
+                            HStack(spacing: 6) {
+                                Text("מוצב כעת:")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                Image(systemName: placed.resolvedIcon)
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                Text(placed.name)
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                                 Spacer()
@@ -191,8 +203,9 @@ public struct CitySlotCustomizerSheet: View {
                         
                         if unlockedEnrichments.isEmpty {
                             VStack(spacing: 8) {
-                                Text("🌱")
-                                    .font(.system(size: 32))
+                                Image(systemName: "leaf.fill")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                                 Text("טרם נפתחו שדרוגים פיזיים")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
@@ -220,8 +233,9 @@ public struct CitySlotCustomizerSheet: View {
                                                 RoundedRectangle(cornerRadius: 12)
                                                     .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
                                                     .frame(width: 44, height: 44)
-                                                Text(item.icon)
-                                                    .font(.system(size: 22))
+                                                Image(systemName: item.resolvedIcon)
+                                                    .font(.system(size: 18, weight: .bold))
+                                                    .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 2) {
@@ -238,7 +252,7 @@ public struct CitySlotCustomizerSheet: View {
                                             Spacer()
                                             
                                             if isPlacedInThisSlot {
-                                                Text("מוצב כאן ✓")
+                                                Label("מוצב כאן", systemImage: "checkmark")
                                                     .font(.system(size: 12, weight: .bold, design: .rounded))
                                                     .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                                                     .padding(.horizontal, 10)

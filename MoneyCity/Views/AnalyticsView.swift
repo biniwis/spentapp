@@ -39,6 +39,7 @@ public struct AnalyticsView: View {
 
     @State private var selectedSlice: SpendingCategory? = nil
     @State private var selectedWeek: String? = nil
+    @State private var activeRecap: MonthlyRecap? = nil
     @State private var animateChart = false
 
     private var displayTransactions: [Transaction] {
@@ -100,14 +101,9 @@ public struct AnalyticsView: View {
                 VStack(spacing: 20) {
                     // ── Header ──
                     HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(l10n.language == .hebrew ? "ניתוח הוצאות" : "Spending Analytics")
-                                .font(.system(size: 26, weight: .black, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                            Text(l10n.language == .hebrew ? "פילוח תקציב חודשי" : "Current Month Breakdown")
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundColor(Color.textMuted)
-                        }
+                        Text(l10n.language == .hebrew ? "ניתוח" : "Analytics")
+                            .font(.system(size: 26, weight: .black, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
                         Spacer()
                     }
                     .padding(.horizontal, 20)
@@ -115,6 +111,46 @@ public struct AnalyticsView: View {
 
                     // ── Modern Donut Card with Embedded Category Legend ──
                     donutAnalyticsCard
+
+                    // ── Monthly Story Card (Spotify Wrapped Style) ──
+                    if !displayTransactions.isEmpty {
+                        Button(action: {
+                            Haptics.impact(.medium)
+                            activeRecap = MonthlyRecapService.generateRecap(
+                                for: Date(),
+                                allTransactions: allTransactions
+                            )
+                        }) {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.primaryBlue.opacity(0.12))
+                                        .frame(width: 44, height: 44)
+                                    DistrictSkylineVectorIcon(color: Color.primaryBlue)
+                                        .scaleEffect(1.0)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(l10n.language == .hebrew ? "הסיפור של החודש" : "Monthly City Story")
+                                        .font(.system(size: 15, weight: .black, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                    Text(l10n.language == .hebrew ? "צפה בסיכום הוויזואלי של מה שבנית החודש בעיר" : "See the visual story of what you built")
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color.textMuted)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(Color.primaryBlue)
+                            }
+                            .padding(14)
+                            .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 20)
+                    }
 
                     // ── Weekly Expenses Bar Chart ──
                     weeklyExpensesCard
@@ -125,6 +161,9 @@ public struct AnalyticsView: View {
                     Spacer(minLength: 110)
                 }
             }
+        }
+        .sheet(item: $activeRecap) { recap in
+            MonthlyRecapSheet(recap: recap)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.9)) { animateChart = true }
@@ -230,10 +269,7 @@ public struct AnalyticsView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity)
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1.5))
-        .shadow(color: Color.deepNavy.opacity(0.05), radius: 14, y: 4)
+        .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
         .padding(.horizontal, 16)
     }
 
@@ -307,10 +343,7 @@ public struct AnalyticsView: View {
             .frame(height: 145)
         }
         .padding(20)
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1.5))
-        .shadow(color: Color.deepNavy.opacity(0.05), radius: 14, y: 4)
+        .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
         .padding(.horizontal, 16)
     }
 
@@ -341,10 +374,7 @@ public struct AnalyticsView: View {
             }
         }
         .padding(20)
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1.5))
-        .shadow(color: Color.deepNavy.opacity(0.05), radius: 14, y: 4)
+        .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
         .padding(.horizontal, 16)
     }
 

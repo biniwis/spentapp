@@ -30,8 +30,8 @@ public struct StorageHealthBanner: View {
                     ? "הנתונים הקודמים לא נטענו"
                     : "Previous data could not be loaded",
                 detail: isHebrew
-                    ? "האפליקציה התחילה מסד נתונים חדש. הקובץ הישן לא נמחק — הוא נשמר במכשיר, ואפשר לשחזר אותו."
-                    : "The app started a fresh database. The old file was not deleted — it is kept on the device and can be recovered.",
+                    ? "האפליקציה התחילה מסד נתונים חדש. הקובץ הישן לא נמחק. לשחזור: פרופיל ← גיבוי ושחזור ← בחר תצלום."
+                    : "The app started a fresh database. The old file was not deleted. To go back: Profile → Backup & Restore → pick a snapshot.",
                 extra: backupPath
             )
         case .memoryOnly:

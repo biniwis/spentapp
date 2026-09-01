@@ -98,6 +98,181 @@ public extension Font {
     }
 }
 
+// ════════════════════════════════════════════════════════════════════
+//  SURFACE SYSTEM
+// ════════════════════════════════════════════════════════════════════
+//
+//  The screens had drifted into twenty distinct corner radii and fifty-one
+//  separate shadows, each decided on its own. That is what made a colourful,
+//  playful app read as generated rather than designed: every element looked
+//  like a one-off. The fix is not less colour — this is a game about a city,
+//  the colour is the point — it is that colour and depth now follow rules.
+//
+//  Three rules:
+//
+//  1. Depth is a solid lip, not a blur. A card sits on a 3pt band of a deeper
+//     shade of itself, the way a physical key sits on its own edge. Blur is
+//     reserved for the two things that genuinely float above the page — the
+//     tab bar and the add button.
+//  2. A tint means something. A surface is coloured because it belongs to a
+//     district of the city, never for variety. Anything that belongs to no
+//     district stays white, which is what lets the coloured ones read.
+//  3. Three radii, and no others.
+
+public extension MoneyCityTheme {
+
+    // ── Radii ────────────────────────────────────────────────────────
+    /// Chips, small controls, inline badges.
+    static let radiusSmall: CGFloat = 13
+    /// The default for anything card-shaped.
+    static let radiusCard: CGFloat = 22
+    /// Hero surfaces and sheets — the largest thing on a screen.
+    static let radiusHero: CGFloat = 26
+
+    /// Height of the solid lip under a surface.
+    static let edgeThickness: CGFloat = 3
+
+    // ── Edge shades ──────────────────────────────────────────────────
+    // Each is a deeper version of the surface above it, not a grey. A grey lip
+    // under a mint card reads as a shadow that got stuck; a deeper mint reads
+    // as the same object seen from the side.
+    static let edgeNeutral = Color(red: 223/255, green: 229/255, blue: 241/255)   // #DFE5F1
+    static let edgeTurquoise = Color(red: 191/255, green: 230/255, blue: 232/255) // #BFE6E8
+    static let edgeLavender = Color(red: 207/255, green: 202/255, blue: 255/255)  // #CFCAFF
+    static let edgeMint = Color(red: 182/255, green: 230/255, blue: 211/255)      // #B6E6D3
+    static let edgeOrange = Color(red: 247/255, green: 213/255, blue: 187/255)    // #F7D5BB
+    static let edgeYellow = Color(red: 245/255, green: 224/255, blue: 160/255)    // #F5E0A0
+    static let edgePink = Color(red: 240/255, green: 200/255, blue: 214/255)      // #F0C8D6
+    static let edgeBlue = Color(red: 26/255, green: 43/255, blue: 146/255)        // #1A2B92
+    static let edgeNavy = Color(red: 6/255, green: 10/255, blue: 22/255)          // #060A16
+
+    // ── The one blur that is allowed ─────────────────────────────────
+    // For the tab bar and the add button. Nothing else floats.
+    static let floatShadow = Color(red: 16/255, green: 23/255, blue: 45/255).opacity(0.10)
+    static let floatShadowRadius: CGFloat = 20
+    static let floatShadowY: CGFloat = 8
+}
+
+/// What a surface is *about*, which is the only reason it may be coloured.
+public enum CitySurface: Equatable {
+    /// Belongs to no district. White. Most surfaces are this.
+    case plain
+    case food
+    case shopping
+    case housing
+    case savings
+    /// A behavioural streak or habit.
+    case habit
+    /// The one dark surface on a screen.
+    case night
+
+    public var fill: Color {
+        switch self {
+        case .plain:    return MoneyCityTheme.cardSurface
+        case .food:     return MoneyCityTheme.turquoiseSoft
+        case .shopping: return MoneyCityTheme.lavenderSoft
+        case .housing:  return MoneyCityTheme.yellowSoft
+        case .savings:  return MoneyCityTheme.mintSoft
+        case .habit:    return MoneyCityTheme.orangeSoft
+        case .night:    return MoneyCityTheme.deepNavy
+        }
+    }
+
+    public var edge: Color {
+        switch self {
+        case .plain:    return MoneyCityTheme.edgeNeutral
+        case .food:     return MoneyCityTheme.edgeTurquoise
+        case .shopping: return MoneyCityTheme.edgeLavender
+        case .housing:  return MoneyCityTheme.edgeYellow
+        case .savings:  return MoneyCityTheme.edgeMint
+        case .habit:    return MoneyCityTheme.edgeOrange
+        case .night:    return MoneyCityTheme.edgeNavy
+        }
+    }
+
+    /// The hairline. A tinted surface borrows its own edge colour rather than a
+    /// neutral line, so the outline never looks like a separate object.
+    public var line: Color {
+        switch self {
+        case .plain:  return MoneyCityTheme.borderSubtle
+        case .night:  return Color.clear
+        default:      return edge
+        }
+    }
+
+    /// The accent used for a glyph or a value sitting on this surface.
+    public var accent: Color {
+        switch self {
+        case .plain:    return MoneyCityTheme.primaryBlue
+        case .food:     return MoneyCityTheme.turquoise
+        case .shopping: return MoneyCityTheme.lavender
+        case .housing:  return MoneyCityTheme.yellow
+        case .savings:  return MoneyCityTheme.mint
+        case .habit:    return MoneyCityTheme.orange
+        case .night:    return MoneyCityTheme.mint
+        }
+    }
+
+    /// Where a spending category lives in the city, so a card about groceries
+    /// and the food district are never two different greens.
+    public static func forCategory(_ category: SpendingCategory) -> CitySurface {
+        switch category.canonical {
+        case .food:      return .food
+        case .shopping:  return .shopping
+        case .housing:   return .housing
+        case .savings:   return .savings
+        default:         return .plain
+        }
+    }
+}
+
+/// A surface with a solid lip instead of a blurred shadow.
+///
+/// The lip is drawn by letting the fill stop `edgeThickness` short of the
+/// bottom, revealing the deeper shape behind it — the same trick a physical
+/// key uses, and the reason a tap feels like it presses something.
+public struct CityCardModifier: ViewModifier {
+    let surface: CitySurface
+    let radius: CGFloat
+
+    public func body(content: Content) -> some View {
+        content
+            // The content sits in the fill, never over the lip.
+            .padding(.bottom, MoneyCityTheme.edgeThickness)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .fill(surface.edge)
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .fill(surface.fill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                                .strokeBorder(surface.line, lineWidth: 1)
+                        )
+                        .padding(.bottom, MoneyCityTheme.edgeThickness)
+                }
+            )
+    }
+}
+
+public extension View {
+    /// The app's card surface. Use this instead of hand-rolling a background,
+    /// a stroke and a shadow — that is how twenty radii happened.
+    func cityCard(_ surface: CitySurface = .plain, radius: CGFloat = MoneyCityTheme.radiusCard) -> some View {
+        modifier(CityCardModifier(surface: surface, radius: radius))
+    }
+
+    /// The only blurred elevation in the app: for the tab bar and the add
+    /// button, which really do float over the content.
+    func cityFloat() -> some View {
+        shadow(
+            color: MoneyCityTheme.floatShadow,
+            radius: MoneyCityTheme.floatShadowRadius,
+            y: MoneyCityTheme.floatShadowY
+        )
+    }
+}
+
 /// Applies the app-wide rounded SF Pro font as the default for all SwiftUI text.
 struct RoundedFontEnvironment: ViewModifier {
     func body(content: Content) -> some View {

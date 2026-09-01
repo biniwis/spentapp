@@ -7,140 +7,158 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0B0E9E1738FC424BA8720AE7 /* WalletIngestCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0D4D29B87114B6D9454EFC4 /* WalletIngestCoordinator.swift */; };
-		0C661B609A464D07BDEB02E7 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1C990B00AE4AFF801E8B59 /* HistoryView.swift */; };
-		0E695E3EF0A9452BB6C0EAC0 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 189624E37D84436EB18E9AD0 /* ProfileView.swift */; };
-		0EF456A8E50B462E95C9BFF2 /* MonthlyCity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971515B7559C46FDA94E20DF /* MonthlyCity.swift */; };
-		0F29A59E06DA44DF806119C4 /* IncomeSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0600927D3DC348FDB497D45D /* IncomeSource.swift */; };
-		14707879980D485DBB792E71 /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB0A0A04884048E1A106A48A /* LocalizationManager.swift */; };
-		1635027AF01C46E8A4E6AF22 /* ThreeDioramaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75BC4D0713B54C5188F00F63 /* ThreeDioramaView.swift */; };
-		16F72AF2EA7E4FE1896340E8 /* SavingsGoal.swift in Sources */ = {isa = PBXBuildFile; fileRef = C128984F831B4D7AB9B132A8 /* SavingsGoal.swift */; };
-		1F35FA35448647D19B7CE799 /* CityEnrichment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A5FC2BA84824DE7927CEACE /* CityEnrichment.swift */; };
-		1F52E68510354B4D80836AD1 /* RecordTransactionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89BF3792D51043B28393A875 /* RecordTransactionIntent.swift */; };
-		1FE5636B80994305AE0B1131 /* IngestLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F6038CA92D74C9BBB8CE103 /* IngestLogSheet.swift */; };
-		2C3773514A5D4629AF50909D /* BudgetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0FCE14CF4F246D594EB5F04 /* BudgetService.swift */; };
-		3BABEF66FD9645A6AC26CF40 /* MoneyCitySchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 902D32631BF4463186F78009 /* MoneyCitySchema.swift */; };
-		48BE903AFA1944CE8578D8AD /* CategorizationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4282BBC5D7944DA3A744E365 /* CategorizationEngine.swift */; };
-		495E704241414DACBE550334 /* OnboardingWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63AB74B3B94E4B8FA90E63AC /* OnboardingWizardView.swift */; };
-		4D1090FBB7ED4AFF9B787BDE /* MerchantRuleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF1DC1D24D4183B1248EA8 /* MerchantRuleService.swift */; };
-		51605B6BEE5C429986F75CF4 /* MoneyCityShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7725E75D70F4A48895A029C /* MoneyCityShortcuts.swift */; };
-		52E4AAC4A68740B9A4A90BCD /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8CF4DCBE3444AF588EF2B6B /* AnalyticsView.swift */; };
-		53C771F36EC24CF6BBFE68CA /* MainCityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F883BC9E8BF44009F17104F /* MainCityView.swift */; };
-		56F7EC026B1B446A837BA0EF /* IngestLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2508D43E95964E918B2A8836 /* IngestLogEntry.swift */; };
-		5AFD46B8E5FF4DD2BEAD5A48 /* ApplePayDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C552183C4AF47B9A35FB3C1 /* ApplePayDiagnosticsView.swift */; };
-		5DA675CA96C3446285292728 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B0F60CC1BC9648D2A5C40FEC /* PrivacyInfo.xcprivacy */; };
-		6C0892DE824141C38B47E5D3 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A193B7AAB3A14660A9C7AE08 /* NotificationService.swift */; };
-		6CCAF7D87CC74EBD86285BA3 /* RecurringExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82037B1799644681940521E6 /* RecurringExpense.swift */; };
-		6E12B045DBD0488488CE8417 /* CityProgressEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798B4E1F3A374C20A2FECA0B /* CityProgressEngine.swift */; };
-		70C2FFCCA42440BE93E18109 /* CityIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CC2B5688D8F4FD2933BD16E /* CityIcon.swift */; };
-		7B4511BE96044064AFDCAC3E /* BudgetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22BEB7D33A6947B8A3FF7EDA /* BudgetSheet.swift */; };
-		7F66D5EB728A4F85BAF288A4 /* TransactionIngest.swift in Sources */ = {isa = PBXBuildFile; fileRef = D932B2B445FD4523A309E093 /* TransactionIngest.swift */; };
-		8740C1D53BDB4845AE7E9E35 /* CitySlotCustomizerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BC0BC84AB14CB593D5F523 /* CitySlotCustomizerSheet.swift */; };
-		8FCD9007DD2B449D9AD2AFC6 /* DioramaSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7F93B9A195E4E3380D481D3 /* DioramaSkeletonView.swift */; };
-		93233223E41A454B98ED2DCB /* MoneyCityApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9862606842B443C8A7D84111 /* MoneyCityApp.swift */; };
-		956FEEA64C844340B3094AAF /* CityProgressSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72778D41372E4585A667D676 /* CityProgressSheet.swift */; };
-		9BA9F8440E484C4FA884B689 /* StorageHealthBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7EFBB9A39A54283A0EA10EE /* StorageHealthBanner.swift */; };
-		9F594E4AF64F471DB4E9765D /* ScanReceiptIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 487C18555F614387A1F0EFAF /* ScanReceiptIntent.swift */; };
-		9FC1B12B94E149328336A272 /* InstallmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C23CAC9BFF764C20A273DA2A /* InstallmentService.swift */; };
-		A295836636A2405BA648FE41 /* TransactionFeedSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3447346E225416787891D25 /* TransactionFeedSheet.swift */; };
-		A829CBA0A3C5469C8FFF03A7 /* LogWalletPaymentIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F62ED71D96149328A6E4F96 /* LogWalletPaymentIntent.swift */; };
-		AB3AEB85D27646D0B33D5CA2 /* RecurringExpensesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E9A7B33A794DE5ABEE50E6 /* RecurringExpensesSheet.swift */; };
-		ABD42EAB4C0E4AFDB25E4C70 /* EditTransactionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 296691D7804D4B42B60BAFC1 /* EditTransactionSheet.swift */; };
-		B103A4BBAF6349D5A1911677 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FEB98F7E98E4C67A34F8EEC /* Haptics.swift */; };
-		B209DED85C184BBF8DC150FE /* FloatingBottomBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 963FBD08557949BA825851C8 /* FloatingBottomBar.swift */; };
-		B2CB30BAAB994F30936ED596 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AE1EA46CCA244F799AA49C16 /* Assets.xcassets */; };
-		B78ED79F89574A27AA21D185 /* MerchantRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF7F7436830640E8A4E36FC2 /* MerchantRule.swift */; };
-		C11D87D7F4E24636ACFF36C7 /* SavingsGoalsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6E9442B6F7455399ADB63A /* SavingsGoalsSheet.swift */; };
-		CE156A5D2DA64F5EB6D859AF /* InstallmentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDE09FB4E904A32AAC186DB /* InstallmentPlan.swift */; };
-		D47580E34FF84F02ABD4EDDF /* DioramaReadyWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = F16E62BC5D8F4FAB9654EE4C /* DioramaReadyWrapper.swift */; };
-		DFB5DA9674584A38AE71003A /* ReceiptOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4379CA9D2B7346FA844CBAE9 /* ReceiptOCRService.swift */; };
-		E0853DF480AC4E7088163D8D /* diorama.html in Resources */ = {isa = PBXBuildFile; fileRef = 2F74CD82DC0349269B9E646B /* diorama.html */; };
-		E0DD98E422864029AFED26D0 /* Transaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3FCB5FDCB1A47BBAA374E30 /* Transaction.swift */; };
-		E19428C2740C48A693AF6D36 /* SpendingCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B4A4D235AD40A78D20A5CD /* SpendingCategory.swift */; };
-		E4D653B4ABA34B77825D5EC3 /* CitySlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E4504D2A264FEFB91985B5 /* CitySlot.swift */; };
-		E70C921EE918415189AD19D6 /* FXService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB61CA3C123C4579A36EFBFE /* FXService.swift */; };
-		E84D314CDE734F4EBB4964D9 /* ShimmerLoading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 523F1F7CFF4F498EA44A7F24 /* ShimmerLoading.swift */; };
-		F086630DCFD7444D9FBCF89C /* QuickAddSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70B2E750F4D74AEFBB528D7D /* QuickAddSheet.swift */; };
-		F38F0DB54E054964B44928A0 /* RecurringExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3C85D544B35419DBFA95964 /* RecurringExpenseService.swift */; };
-		F457C7DDD19E4070B616C796 /* BuildingTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCCEA448CCCE4DBAB886623C /* BuildingTile.swift */; };
-		F7D46605DF25409CB5E9EA19 /* MoneyCityLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 749CDFD0C4AF4C19912509A2 /* MoneyCityLog.swift */; };
-		F975DD9FE7DB4EE5B835FEF0 /* MoneyCityWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19930AB1CD5E448FBC046172 /* MoneyCityWidgets.swift */; };
-		F98D34E4935E4F26BCD80C87 /* SavingsGoalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 967F609E19284D06AA7F4820 /* SavingsGoalService.swift */; };
-		F99CADA639034454943C0D6D /* CitySimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C684733862455D952F25BF /* CitySimulationEngine.swift */; };
-		FAF95FF34B0F4E5A8314B79B /* CategoryBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34A53E1C37342E7A954DECC /* CategoryBudget.swift */; };
-		FBEC235CA07E4C119B14A1B1 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2B39F592694830B461E92B /* Theme.swift */; };
-		FDD2FF763E0C40639CBDAE1F /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AD5D5E56BB04C62BAC3F933 /* DatabaseService.swift */; };
+		0312FF0CA92D4E7D91969B28 /* MoneyCityLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949B5B62924D45B09639336E /* MoneyCityLog.swift */; };
+		0317D5BD6D95499BAA117A24 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B6B063276F342E9A5BBC23E /* NotificationService.swift */; };
+		0B0FD300A4774E1A9BA007BF /* ApplePayDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C6D76C7FB1477282FEB3AE /* ApplePayDiagnosticsView.swift */; };
+		1B33DFAFAAF84B188F408C83 /* SavingsGoal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D34B635830C2422F9185A726 /* SavingsGoal.swift */; };
+		1EAB4A03A8414C3094509D26 /* MonthlyCity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6A5D59A96EC438A9EBC1D2E /* MonthlyCity.swift */; };
+		26A0F114CE05453DB3583F2A /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = D314C7474A0D44B5967FE7E1 /* Theme.swift */; };
+		2A720DDA0CAF4852A2928F98 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003428064D79419788915FA6 /* AnalyticsView.swift */; };
+		2B7B48B0D3A04A3DA1B35C7D /* LogWalletPaymentIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CCB7E9419B944208AF0E3B2 /* LogWalletPaymentIntent.swift */; };
+		2EB367EBFFB04A85B56ED17A /* CitySlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16659AF6C33C481FBF0717FD /* CitySlot.swift */; };
+		34377F712B0E41298F4478C6 /* InstallmentPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66A09E20DEDB4007BECF3763 /* InstallmentPlan.swift */; };
+		406F21AE0E77419291B2E906 /* MerchantDetailSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55153FCD588047AC85B9CD41 /* MerchantDetailSheet.swift */; };
+		463BF3E141774D56B40B25F2 /* TransactionIngest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF58899E18545598E60CC85 /* TransactionIngest.swift */; };
+		46C3D39DDFA747C2B1B1B760 /* MoneyCityShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3405643B8AF844C19F66CC7C /* MoneyCityShortcuts.swift */; };
+		4B8EFDBBB447457DBA4CAA57 /* SpendingCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F408465ACC3D49E7B4E682C5 /* SpendingCategory.swift */; };
+		4D20184FBEE945DD8FFCDA54 /* BuildingTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67886ADF89264B1BBFC80657 /* BuildingTile.swift */; };
+		4E68CBC4BE18404D8BE4A1B7 /* MonthlyRecapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5665468E4AF8474DA15D9D9E /* MonthlyRecapService.swift */; };
+		513BCF538B1D40BDA8A724CE /* CityEnrichment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87DD0AF1954E4977BCA3BC09 /* CityEnrichment.swift */; };
+		576332156D5947EC9D5DA135 /* CitySimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA3969AD93A46E980375BE9 /* CitySimulationEngine.swift */; };
+		5BB98886680246439C31638E /* DatabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25B8A21FD8BB40D694F6342E /* DatabaseService.swift */; };
+		6127CBE559724C04BAA4DF94 /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7D58CC5D2C14C84A7550493 /* LocalizationManager.swift */; };
+		6771DFDB74214499A0B47119 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CC55036EE58D49F4B62BF586 /* Assets.xcassets */; };
+		694896290A9442F7868CB388 /* StorageHealthBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAB010F0CF3C4B4B95EA9598 /* StorageHealthBanner.swift */; };
+		6B87B744C82A40BC81BEC40F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 05C1207CB3AD4446832E57C8 /* PrivacyInfo.xcprivacy */; };
+		72919BD10EB443508E3EDFF7 /* IngestLogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85ACB8844EB24F79AFBD61CF /* IngestLogEntry.swift */; };
+		770D4589F4B341A188FC7DC3 /* CitySlotCustomizerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB35CBC670F24627997E2A31 /* CitySlotCustomizerSheet.swift */; };
+		796C22849F514DCF87A8BA79 /* SavingsGoalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 616F02B62F2641BBB9063FF5 /* SavingsGoalService.swift */; };
+		797B5E3FACCA4B959D4E57AC /* OnboardingWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5B7AC250FB948378C759BB8 /* OnboardingWizardView.swift */; };
+		7AFDC4CBEE7842768C19FEFD /* diorama.html in Resources */ = {isa = PBXBuildFile; fileRef = 95C7E418708B44FDB61DC810 /* diorama.html */; };
+		7F821F63D4CB410AB7948C9C /* MonthlyRecapSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BFFAF889A5E443F99FB09DF /* MonthlyRecapSheet.swift */; };
+		801407C5A66345ACB2577EC2 /* QuickExpensePromptIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AAE1C588A68465691F32E3F /* QuickExpensePromptIntent.swift */; };
+		82183DC7593948B892CB8F7D /* RecordTransactionIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E56FCD29379498EA6C9441A /* RecordTransactionIntent.swift */; };
+		89C6366E5CCD4F70BE5ECDA8 /* InstallmentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D825764238A54770B546E059 /* InstallmentService.swift */; };
+		89E562E99D5D48B6823CB298 /* CategorizationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 867130BF72714CF69C274977 /* CategorizationEngine.swift */; };
+		8BCBC26C10A344608CBD5CED /* CityIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAD5FD42D18A4F0384B7F8B6 /* CityIcon.swift */; };
+		8C127D8449554441AE1F3708 /* MerchantRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 683917F1F511413DA459BCBC /* MerchantRule.swift */; };
+		8E93E6B9A937454596114B71 /* MoneyCitySchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = 289A1AC974A34B94B9B4C0CD /* MoneyCitySchema.swift */; };
+		900D96C8FA9644A786C9510D /* RecurringExpensesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A0D3A4AB4B246DF985781EA /* RecurringExpensesSheet.swift */; };
+		95171E3087A34336B362AB84 /* EditTransactionSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2AA2A266D5F4A91B17B3E36 /* EditTransactionSheet.swift */; };
+		978F1483DA8641879C66B535 /* ScanReceiptIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D10FD2D088A491491A05D55 /* ScanReceiptIntent.swift */; };
+		97F169C2E0E3464A89E05B68 /* CityProgressSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 802B16E1356D45D6976D2B64 /* CityProgressSheet.swift */; };
+		9A4DA846702B424C8312586C /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = C72FB84FC415467C894226E8 /* Haptics.swift */; };
+		9E3BD5D9648344FB8958FCE6 /* SavingsGoalsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC139E254984458F890223ED /* SavingsGoalsSheet.swift */; };
+		A2A49123652A496B9F39EEFE /* BudgetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4571ED8C6C43CFA36A8F16 /* BudgetSheet.swift */; };
+		A6FDA15AF91341AF8E3A5C4B /* DataPortabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE55278F97EB4AE8BC8B5DCB /* DataPortabilityService.swift */; };
+		ABED22A341E0424D90AF1270 /* QuickAddSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71631676F4F84A559BAD0E61 /* QuickAddSheet.swift */; };
+		B0475F73C31B479A9C5559CE /* DioramaReadyWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D07814FB6148DE9BBB77E5 /* DioramaReadyWrapper.swift */; };
+		B317389231F448719284952C /* ThreeDioramaView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FE273FFFB924EC69F2B43C3 /* ThreeDioramaView.swift */; };
+		BE08A41116644B299CE68035 /* MerchantRuleService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48A2A1A6C8441269405A655 /* MerchantRuleService.swift */; };
+		BEC3103E913B4C2D821C6A31 /* FloatingBottomBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC9EDEE23DF14D98A1DC53ED /* FloatingBottomBar.swift */; };
+		BF78053FB61644B1B288D730 /* WalletIngestCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD9FF159E42B479BBA8CEDB1 /* WalletIngestCoordinator.swift */; };
+		C03E8685148C440395126996 /* BackupSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D13B7F20AF040B0A72ADFBE /* BackupSheet.swift */; };
+		C70E4D7AFC8E4930BBA2EB91 /* CitySortingHubSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8168AFC2EE4DBE9B53A307 /* CitySortingHubSheet.swift */; };
+		C8F5CD835BF3444A8ED5D650 /* MoneyCityApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E572A9B6A741799E54CD33 /* MoneyCityApp.swift */; };
+		D16B68373D934BF8B1AC07B8 /* CategoryBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 611D6CA17851493E9F27B4CF /* CategoryBudget.swift */; };
+		D1A10E5C3688419E965785FE /* StoreSnapshotService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF2ADBFDB1B5483CA0F4769B /* StoreSnapshotService.swift */; };
+		D4E1115E685C43CBA60C3628 /* MoneyCityWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A38B2A0735E420BAF91EC8F /* MoneyCityWidgets.swift */; };
+		D55F95D369F84EDBB6B0C489 /* ShimmerLoading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCC4F4AB1584DDD9EE1DADE /* ShimmerLoading.swift */; };
+		D96DF8B392D34F0FAB2F1C44 /* IngestLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7534F9B10EFE4F4FB9C24E3D /* IngestLogSheet.swift */; };
+		DD7757962FFA48178D793C6C /* MainCityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75ADAE7AB6A444689CF8A77F /* MainCityView.swift */; };
+		DF7E1DD47CB44ABABFF56140 /* RecurringExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 109D93CABEC947CA992D54AC /* RecurringExpenseService.swift */; };
+		E2313D3652C6414D98BCD3D4 /* FXService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7DD7E7ABF934141835E3FF0 /* FXService.swift */; };
+		E8AE1DAF8D7D445B9936F11D /* ReceiptOCRService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EDF0B51EDA1431D8CE0C5F4 /* ReceiptOCRService.swift */; };
+		EB32B0260A5A4DA9B3514261 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AEE0909B5A644BABA8E3C65 /* ProfileView.swift */; };
+		F2218C903C3B40DCBB354A40 /* IncomeSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCA2828374B04832A7F314E1 /* IncomeSource.swift */; };
+		F32BB91695944239B71673EA /* RecurringExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6177E5168DB1414A9C14A117 /* RecurringExpense.swift */; };
+		F46D5CBC91F14648A821F837 /* BudgetService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851B54C8FDF44113AE34F62A /* BudgetService.swift */; };
+		F65EB15042284B2E8DFD17BA /* CityProgressEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FF5B04573D4C21B0BF938A /* CityProgressEngine.swift */; };
+		F6F5A14257FE419D9A160677 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96D438354D049E4B0E9454D /* HistoryView.swift */; };
+		F996ADB03C7346CFBA7D77C7 /* MonthlyRecapArchiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7292CC12D03545C988DE1BB2 /* MonthlyRecapArchiveView.swift */; };
+		FB17F9533A6746C78919E1E2 /* Transaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F0014550C14B6B87195F52 /* Transaction.swift */; };
+		FC84EE5EFAA7447C8D84D623 /* TransactionFeedSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F8BDBF56B5F49B49426E763 /* TransactionFeedSheet.swift */; };
+		FCCACE7745C0457ABBB86C13 /* DioramaSkeletonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DDEB0826881470B8B95A462 /* DioramaSkeletonView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		05E4504D2A264FEFB91985B5 /* CitySlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySlot.swift; path = MoneyCity/Models/CitySlot.swift; sourceTree = "<group>"; };
-		0600927D3DC348FDB497D45D /* IncomeSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IncomeSource.swift; path = MoneyCity/Models/IncomeSource.swift; sourceTree = "<group>"; };
-		189624E37D84436EB18E9AD0 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = MoneyCity/Views/ProfileView.swift; sourceTree = "<group>"; };
-		19930AB1CD5E448FBC046172 /* MoneyCityWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityWidgets.swift; path = MoneyCity/MoneyCityWidgets.swift; sourceTree = "<group>"; };
-		1B2B39F592694830B461E92B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = MoneyCity/Models/Theme.swift; sourceTree = "<group>"; };
-		22BEB7D33A6947B8A3FF7EDA /* BudgetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BudgetSheet.swift; path = MoneyCity/Views/Modals/BudgetSheet.swift; sourceTree = "<group>"; };
-		2508D43E95964E918B2A8836 /* IngestLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngestLogEntry.swift; path = MoneyCity/Models/IngestLogEntry.swift; sourceTree = "<group>"; };
-		296691D7804D4B42B60BAFC1 /* EditTransactionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EditTransactionSheet.swift; path = MoneyCity/Views/Modals/EditTransactionSheet.swift; sourceTree = "<group>"; };
-		2F74CD82DC0349269B9E646B /* diorama.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = diorama.html; path = MoneyCity/Resources/diorama.html; sourceTree = "<group>"; };
-		3A1C990B00AE4AFF801E8B59 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryView.swift; path = MoneyCity/Views/HistoryView.swift; sourceTree = "<group>"; };
-		3CC2B5688D8F4FD2933BD16E /* CityIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityIcon.swift; path = MoneyCity/Views/Components/CityIcon.swift; sourceTree = "<group>"; };
-		4282BBC5D7944DA3A744E365 /* CategorizationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CategorizationEngine.swift; path = MoneyCity/Services/CategorizationEngine.swift; sourceTree = "<group>"; };
-		4379CA9D2B7346FA844CBAE9 /* ReceiptOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReceiptOCRService.swift; path = MoneyCity/Services/ReceiptOCRService.swift; sourceTree = "<group>"; };
-		487C18555F614387A1F0EFAF /* ScanReceiptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScanReceiptIntent.swift; path = MoneyCity/Intents/ScanReceiptIntent.swift; sourceTree = "<group>"; };
-		523F1F7CFF4F498EA44A7F24 /* ShimmerLoading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ShimmerLoading.swift; path = MoneyCity/Views/Components/ShimmerLoading.swift; sourceTree = "<group>"; };
-		5A5FC2BA84824DE7927CEACE /* CityEnrichment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityEnrichment.swift; path = MoneyCity/Models/CityEnrichment.swift; sourceTree = "<group>"; };
-		5F62ED71D96149328A6E4F96 /* LogWalletPaymentIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LogWalletPaymentIntent.swift; path = MoneyCity/Intents/LogWalletPaymentIntent.swift; sourceTree = "<group>"; };
-		63AB74B3B94E4B8FA90E63AC /* OnboardingWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingWizardView.swift; path = MoneyCity/Views/Onboarding/OnboardingWizardView.swift; sourceTree = "<group>"; };
-		65B4A4D235AD40A78D20A5CD /* SpendingCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpendingCategory.swift; path = MoneyCity/Models/SpendingCategory.swift; sourceTree = "<group>"; };
-		6F883BC9E8BF44009F17104F /* MainCityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MainCityView.swift; path = MoneyCity/Views/MainCityView.swift; sourceTree = "<group>"; };
-		70B2E750F4D74AEFBB528D7D /* QuickAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickAddSheet.swift; path = MoneyCity/Views/Modals/QuickAddSheet.swift; sourceTree = "<group>"; };
-		72778D41372E4585A667D676 /* CityProgressSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityProgressSheet.swift; path = MoneyCity/Views/Modals/CityProgressSheet.swift; sourceTree = "<group>"; };
-		749CDFD0C4AF4C19912509A2 /* MoneyCityLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityLog.swift; path = MoneyCity/Services/MoneyCityLog.swift; sourceTree = "<group>"; };
-		75BC4D0713B54C5188F00F63 /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ThreeDioramaView.swift; path = MoneyCity/Views/Diorama/ThreeDioramaView.swift; sourceTree = "<group>"; };
-		798B4E1F3A374C20A2FECA0B /* CityProgressEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityProgressEngine.swift; path = MoneyCity/Services/CityProgressEngine.swift; sourceTree = "<group>"; };
-		82037B1799644681940521E6 /* RecurringExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpense.swift; path = MoneyCity/Models/RecurringExpense.swift; sourceTree = "<group>"; };
-		89BF3792D51043B28393A875 /* RecordTransactionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordTransactionIntent.swift; path = MoneyCity/Intents/RecordTransactionIntent.swift; sourceTree = "<group>"; };
-		8AD5D5E56BB04C62BAC3F933 /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DatabaseService.swift; path = MoneyCity/Services/DatabaseService.swift; sourceTree = "<group>"; };
-		8C6E9442B6F7455399ADB63A /* SavingsGoalsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavingsGoalsSheet.swift; path = MoneyCity/Views/Modals/SavingsGoalsSheet.swift; sourceTree = "<group>"; };
-		8FDE09FB4E904A32AAC186DB /* InstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstallmentPlan.swift; path = MoneyCity/Models/InstallmentPlan.swift; sourceTree = "<group>"; };
-		902D32631BF4463186F78009 /* MoneyCitySchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCitySchema.swift; path = MoneyCity/Services/MoneyCitySchema.swift; sourceTree = "<group>"; };
-		95BC0BC84AB14CB593D5F523 /* CitySlotCustomizerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySlotCustomizerSheet.swift; path = MoneyCity/Views/Modals/CitySlotCustomizerSheet.swift; sourceTree = "<group>"; };
-		963FBD08557949BA825851C8 /* FloatingBottomBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FloatingBottomBar.swift; path = MoneyCity/Views/Components/FloatingBottomBar.swift; sourceTree = "<group>"; };
-		967F609E19284D06AA7F4820 /* SavingsGoalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavingsGoalService.swift; path = MoneyCity/Services/SavingsGoalService.swift; sourceTree = "<group>"; };
-		971515B7559C46FDA94E20DF /* MonthlyCity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MonthlyCity.swift; path = MoneyCity/Models/MonthlyCity.swift; sourceTree = "<group>"; };
-		9862606842B443C8A7D84111 /* MoneyCityApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityApp.swift; path = MoneyCity/MoneyCityApp.swift; sourceTree = "<group>"; };
-		9C552183C4AF47B9A35FB3C1 /* ApplePayDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ApplePayDiagnosticsView.swift; path = MoneyCity/Views/Modals/ApplePayDiagnosticsView.swift; sourceTree = "<group>"; };
-		9F6038CA92D74C9BBB8CE103 /* IngestLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngestLogSheet.swift; path = MoneyCity/Views/Modals/IngestLogSheet.swift; sourceTree = "<group>"; };
-		9FEB98F7E98E4C67A34F8EEC /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Haptics.swift; path = MoneyCity/Services/Haptics.swift; sourceTree = "<group>"; };
-		A193B7AAB3A14660A9C7AE08 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = MoneyCity/Services/NotificationService.swift; sourceTree = "<group>"; };
-		A2E928BC70454674A5265578 /* MoneyCity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoneyCity.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A3447346E225416787891D25 /* TransactionFeedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TransactionFeedSheet.swift; path = MoneyCity/Views/Modals/TransactionFeedSheet.swift; sourceTree = "<group>"; };
-		A7F93B9A195E4E3380D481D3 /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DioramaSkeletonView.swift; path = MoneyCity/Views/Diorama/DioramaSkeletonView.swift; sourceTree = "<group>"; };
-		AE1EA46CCA244F799AA49C16 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.asset-catalog"; name = Assets.xcassets; path = MoneyCity/Resources/Assets.xcassets; sourceTree = "<group>"; };
-		B0F60CC1BC9648D2A5C40FEC /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = MoneyCity/Resources/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		BF7F7436830640E8A4E36FC2 /* MerchantRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MerchantRule.swift; path = MoneyCity/Models/MerchantRule.swift; sourceTree = "<group>"; };
-		C128984F831B4D7AB9B132A8 /* SavingsGoal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavingsGoal.swift; path = MoneyCity/Models/SavingsGoal.swift; sourceTree = "<group>"; };
-		C23CAC9BFF764C20A273DA2A /* InstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstallmentService.swift; path = MoneyCity/Services/InstallmentService.swift; sourceTree = "<group>"; };
-		C7725E75D70F4A48895A029C /* MoneyCityShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityShortcuts.swift; path = MoneyCity/Intents/MoneyCityShortcuts.swift; sourceTree = "<group>"; };
-		C8DF1DC1D24D4183B1248EA8 /* MerchantRuleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MerchantRuleService.swift; path = MoneyCity/Services/MerchantRuleService.swift; sourceTree = "<group>"; };
-		CCCEA448CCCE4DBAB886623C /* BuildingTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BuildingTile.swift; path = MoneyCity/Models/BuildingTile.swift; sourceTree = "<group>"; };
-		D3C85D544B35419DBFA95964 /* RecurringExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpenseService.swift; path = MoneyCity/Services/RecurringExpenseService.swift; sourceTree = "<group>"; };
-		D8CF4DCBE3444AF588EF2B6B /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AnalyticsView.swift; path = MoneyCity/Views/AnalyticsView.swift; sourceTree = "<group>"; };
-		D932B2B445FD4523A309E093 /* TransactionIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TransactionIngest.swift; path = MoneyCity/Services/TransactionIngest.swift; sourceTree = "<group>"; };
-		DB0A0A04884048E1A106A48A /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalizationManager.swift; path = MoneyCity/Models/LocalizationManager.swift; sourceTree = "<group>"; };
-		E0FCE14CF4F246D594EB5F04 /* BudgetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BudgetService.swift; path = MoneyCity/Services/BudgetService.swift; sourceTree = "<group>"; };
-		E7EFBB9A39A54283A0EA10EE /* StorageHealthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StorageHealthBanner.swift; path = MoneyCity/Views/Components/StorageHealthBanner.swift; sourceTree = "<group>"; };
-		F0D4D29B87114B6D9454EFC4 /* WalletIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WalletIngestCoordinator.swift; path = MoneyCity/Services/WalletIngestCoordinator.swift; sourceTree = "<group>"; };
-		F16E62BC5D8F4FAB9654EE4C /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DioramaReadyWrapper.swift; path = MoneyCity/Views/Diorama/DioramaReadyWrapper.swift; sourceTree = "<group>"; };
-		F34A53E1C37342E7A954DECC /* CategoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CategoryBudget.swift; path = MoneyCity/Models/CategoryBudget.swift; sourceTree = "<group>"; };
-		F3FCB5FDCB1A47BBAA374E30 /* Transaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Transaction.swift; path = MoneyCity/Models/Transaction.swift; sourceTree = "<group>"; };
-		F8E9A7B33A794DE5ABEE50E6 /* RecurringExpensesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpensesSheet.swift; path = MoneyCity/Views/Modals/RecurringExpensesSheet.swift; sourceTree = "<group>"; };
-		F9C684733862455D952F25BF /* CitySimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySimulationEngine.swift; path = MoneyCity/Services/CitySimulationEngine.swift; sourceTree = "<group>"; };
-		FB61CA3C123C4579A36EFBFE /* FXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FXService.swift; path = MoneyCity/Services/FXService.swift; sourceTree = "<group>"; };
+		003428064D79419788915FA6 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AnalyticsView.swift; path = MoneyCity/Views/AnalyticsView.swift; sourceTree = "<group>"; };
+		05C1207CB3AD4446832E57C8 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = MoneyCity/Resources/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		0D10FD2D088A491491A05D55 /* ScanReceiptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ScanReceiptIntent.swift; path = MoneyCity/Intents/ScanReceiptIntent.swift; sourceTree = "<group>"; };
+		109D93CABEC947CA992D54AC /* RecurringExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpenseService.swift; path = MoneyCity/Services/RecurringExpenseService.swift; sourceTree = "<group>"; };
+		16659AF6C33C481FBF0717FD /* CitySlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySlot.swift; path = MoneyCity/Models/CitySlot.swift; sourceTree = "<group>"; };
+		1DDEB0826881470B8B95A462 /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DioramaSkeletonView.swift; path = MoneyCity/Views/Diorama/DioramaSkeletonView.swift; sourceTree = "<group>"; };
+		1F8BDBF56B5F49B49426E763 /* TransactionFeedSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TransactionFeedSheet.swift; path = MoneyCity/Views/Modals/TransactionFeedSheet.swift; sourceTree = "<group>"; };
+		1FCC4F4AB1584DDD9EE1DADE /* ShimmerLoading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ShimmerLoading.swift; path = MoneyCity/Views/Components/ShimmerLoading.swift; sourceTree = "<group>"; };
+		25B8A21FD8BB40D694F6342E /* DatabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DatabaseService.swift; path = MoneyCity/Services/DatabaseService.swift; sourceTree = "<group>"; };
+		289A1AC974A34B94B9B4C0CD /* MoneyCitySchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCitySchema.swift; path = MoneyCity/Services/MoneyCitySchema.swift; sourceTree = "<group>"; };
+		2A38B2A0735E420BAF91EC8F /* MoneyCityWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityWidgets.swift; path = MoneyCity/MoneyCityWidgets.swift; sourceTree = "<group>"; };
+		2AEE0909B5A644BABA8E3C65 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileView.swift; path = MoneyCity/Views/ProfileView.swift; sourceTree = "<group>"; };
+		2B6B063276F342E9A5BBC23E /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NotificationService.swift; path = MoneyCity/Services/NotificationService.swift; sourceTree = "<group>"; };
+		3405643B8AF844C19F66CC7C /* MoneyCityShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityShortcuts.swift; path = MoneyCity/Intents/MoneyCityShortcuts.swift; sourceTree = "<group>"; };
+		3E56FCD29379498EA6C9441A /* RecordTransactionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecordTransactionIntent.swift; path = MoneyCity/Intents/RecordTransactionIntent.swift; sourceTree = "<group>"; };
+		4EDF0B51EDA1431D8CE0C5F4 /* ReceiptOCRService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReceiptOCRService.swift; path = MoneyCity/Services/ReceiptOCRService.swift; sourceTree = "<group>"; };
+		55153FCD588047AC85B9CD41 /* MerchantDetailSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MerchantDetailSheet.swift; path = MoneyCity/Views/Modals/MerchantDetailSheet.swift; sourceTree = "<group>"; };
+		5665468E4AF8474DA15D9D9E /* MonthlyRecapService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MonthlyRecapService.swift; path = MoneyCity/Services/MonthlyRecapService.swift; sourceTree = "<group>"; };
+		5A0D3A4AB4B246DF985781EA /* RecurringExpensesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpensesSheet.swift; path = MoneyCity/Views/Modals/RecurringExpensesSheet.swift; sourceTree = "<group>"; };
+		611D6CA17851493E9F27B4CF /* CategoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CategoryBudget.swift; path = MoneyCity/Models/CategoryBudget.swift; sourceTree = "<group>"; };
+		616F02B62F2641BBB9063FF5 /* SavingsGoalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavingsGoalService.swift; path = MoneyCity/Services/SavingsGoalService.swift; sourceTree = "<group>"; };
+		6177E5168DB1414A9C14A117 /* RecurringExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpense.swift; path = MoneyCity/Models/RecurringExpense.swift; sourceTree = "<group>"; };
+		66A09E20DEDB4007BECF3763 /* InstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstallmentPlan.swift; path = MoneyCity/Models/InstallmentPlan.swift; sourceTree = "<group>"; };
+		67886ADF89264B1BBFC80657 /* BuildingTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BuildingTile.swift; path = MoneyCity/Models/BuildingTile.swift; sourceTree = "<group>"; };
+		683917F1F511413DA459BCBC /* MerchantRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MerchantRule.swift; path = MoneyCity/Models/MerchantRule.swift; sourceTree = "<group>"; };
+		6CCB7E9419B944208AF0E3B2 /* LogWalletPaymentIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LogWalletPaymentIntent.swift; path = MoneyCity/Intents/LogWalletPaymentIntent.swift; sourceTree = "<group>"; };
+		71631676F4F84A559BAD0E61 /* QuickAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickAddSheet.swift; path = MoneyCity/Views/Modals/QuickAddSheet.swift; sourceTree = "<group>"; };
+		7292CC12D03545C988DE1BB2 /* MonthlyRecapArchiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MonthlyRecapArchiveView.swift; path = MoneyCity/Views/Modals/MonthlyRecapArchiveView.swift; sourceTree = "<group>"; };
+		7534F9B10EFE4F4FB9C24E3D /* IngestLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngestLogSheet.swift; path = MoneyCity/Views/Modals/IngestLogSheet.swift; sourceTree = "<group>"; };
+		75ADAE7AB6A444689CF8A77F /* MainCityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MainCityView.swift; path = MoneyCity/Views/MainCityView.swift; sourceTree = "<group>"; };
+		7AAE1C588A68465691F32E3F /* QuickExpensePromptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickExpensePromptIntent.swift; path = MoneyCity/Intents/QuickExpensePromptIntent.swift; sourceTree = "<group>"; };
+		7B4571ED8C6C43CFA36A8F16 /* BudgetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BudgetSheet.swift; path = MoneyCity/Views/Modals/BudgetSheet.swift; sourceTree = "<group>"; };
+		7BFFAF889A5E443F99FB09DF /* MonthlyRecapSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MonthlyRecapSheet.swift; path = MoneyCity/Views/Modals/MonthlyRecapSheet.swift; sourceTree = "<group>"; };
+		802B16E1356D45D6976D2B64 /* CityProgressSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityProgressSheet.swift; path = MoneyCity/Views/Modals/CityProgressSheet.swift; sourceTree = "<group>"; };
+		851B54C8FDF44113AE34F62A /* BudgetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BudgetService.swift; path = MoneyCity/Services/BudgetService.swift; sourceTree = "<group>"; };
+		85ACB8844EB24F79AFBD61CF /* IngestLogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IngestLogEntry.swift; path = MoneyCity/Models/IngestLogEntry.swift; sourceTree = "<group>"; };
+		867130BF72714CF69C274977 /* CategorizationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CategorizationEngine.swift; path = MoneyCity/Services/CategorizationEngine.swift; sourceTree = "<group>"; };
+		87DD0AF1954E4977BCA3BC09 /* CityEnrichment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityEnrichment.swift; path = MoneyCity/Models/CityEnrichment.swift; sourceTree = "<group>"; };
+		8EF58899E18545598E60CC85 /* TransactionIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TransactionIngest.swift; path = MoneyCity/Services/TransactionIngest.swift; sourceTree = "<group>"; };
+		8FE273FFFB924EC69F2B43C3 /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ThreeDioramaView.swift; path = MoneyCity/Views/Diorama/ThreeDioramaView.swift; sourceTree = "<group>"; };
+		949B5B62924D45B09639336E /* MoneyCityLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityLog.swift; path = MoneyCity/Services/MoneyCityLog.swift; sourceTree = "<group>"; };
+		95C7E418708B44FDB61DC810 /* diorama.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = diorama.html; path = MoneyCity/Resources/diorama.html; sourceTree = "<group>"; };
+		98DDCD8194BC4150A0AE4AC0 /* MoneyCity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoneyCity.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		9D13B7F20AF040B0A72ADFBE /* BackupSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BackupSheet.swift; path = MoneyCity/Views/Modals/BackupSheet.swift; sourceTree = "<group>"; };
+		9DA3969AD93A46E980375BE9 /* CitySimulationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySimulationEngine.swift; path = MoneyCity/Services/CitySimulationEngine.swift; sourceTree = "<group>"; };
+		A2E572A9B6A741799E54CD33 /* MoneyCityApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MoneyCityApp.swift; path = MoneyCity/MoneyCityApp.swift; sourceTree = "<group>"; };
+		A6A5D59A96EC438A9EBC1D2E /* MonthlyCity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MonthlyCity.swift; path = MoneyCity/Models/MonthlyCity.swift; sourceTree = "<group>"; };
+		A7C6D76C7FB1477282FEB3AE /* ApplePayDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ApplePayDiagnosticsView.swift; path = MoneyCity/Views/Modals/ApplePayDiagnosticsView.swift; sourceTree = "<group>"; };
+		AE55278F97EB4AE8BC8B5DCB /* DataPortabilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DataPortabilityService.swift; path = MoneyCity/Services/DataPortabilityService.swift; sourceTree = "<group>"; };
+		BB35CBC670F24627997E2A31 /* CitySlotCustomizerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySlotCustomizerSheet.swift; path = MoneyCity/Views/Modals/CitySlotCustomizerSheet.swift; sourceTree = "<group>"; };
+		BD9FF159E42B479BBA8CEDB1 /* WalletIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WalletIngestCoordinator.swift; path = MoneyCity/Services/WalletIngestCoordinator.swift; sourceTree = "<group>"; };
+		BF2ADBFDB1B5483CA0F4769B /* StoreSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StoreSnapshotService.swift; path = MoneyCity/Services/StoreSnapshotService.swift; sourceTree = "<group>"; };
+		C5B7AC250FB948378C759BB8 /* OnboardingWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = OnboardingWizardView.swift; path = MoneyCity/Views/Onboarding/OnboardingWizardView.swift; sourceTree = "<group>"; };
+		C72FB84FC415467C894226E8 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Haptics.swift; path = MoneyCity/Services/Haptics.swift; sourceTree = "<group>"; };
+		CC55036EE58D49F4B62BF586 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.asset-catalog"; name = Assets.xcassets; path = MoneyCity/Resources/Assets.xcassets; sourceTree = "<group>"; };
+		CC9EDEE23DF14D98A1DC53ED /* FloatingBottomBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FloatingBottomBar.swift; path = MoneyCity/Views/Components/FloatingBottomBar.swift; sourceTree = "<group>"; };
+		CCA2828374B04832A7F314E1 /* IncomeSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IncomeSource.swift; path = MoneyCity/Models/IncomeSource.swift; sourceTree = "<group>"; };
+		D2AA2A266D5F4A91B17B3E36 /* EditTransactionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EditTransactionSheet.swift; path = MoneyCity/Views/Modals/EditTransactionSheet.swift; sourceTree = "<group>"; };
+		D2FF5B04573D4C21B0BF938A /* CityProgressEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityProgressEngine.swift; path = MoneyCity/Services/CityProgressEngine.swift; sourceTree = "<group>"; };
+		D314C7474A0D44B5967FE7E1 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Theme.swift; path = MoneyCity/Models/Theme.swift; sourceTree = "<group>"; };
+		D34B635830C2422F9185A726 /* SavingsGoal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavingsGoal.swift; path = MoneyCity/Models/SavingsGoal.swift; sourceTree = "<group>"; };
+		D48A2A1A6C8441269405A655 /* MerchantRuleService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MerchantRuleService.swift; path = MoneyCity/Services/MerchantRuleService.swift; sourceTree = "<group>"; };
+		D825764238A54770B546E059 /* InstallmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstallmentService.swift; path = MoneyCity/Services/InstallmentService.swift; sourceTree = "<group>"; };
+		DB8168AFC2EE4DBE9B53A307 /* CitySortingHubSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CitySortingHubSheet.swift; path = MoneyCity/Views/Modals/CitySortingHubSheet.swift; sourceTree = "<group>"; };
+		E6D07814FB6148DE9BBB77E5 /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DioramaReadyWrapper.swift; path = MoneyCity/Views/Diorama/DioramaReadyWrapper.swift; sourceTree = "<group>"; };
+		E7DD7E7ABF934141835E3FF0 /* FXService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FXService.swift; path = MoneyCity/Services/FXService.swift; sourceTree = "<group>"; };
+		EAD5FD42D18A4F0384B7F8B6 /* CityIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityIcon.swift; path = MoneyCity/Views/Components/CityIcon.swift; sourceTree = "<group>"; };
+		F408465ACC3D49E7B4E682C5 /* SpendingCategory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SpendingCategory.swift; path = MoneyCity/Models/SpendingCategory.swift; sourceTree = "<group>"; };
+		F7D58CC5D2C14C84A7550493 /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LocalizationManager.swift; path = MoneyCity/Models/LocalizationManager.swift; sourceTree = "<group>"; };
+		F96D438354D049E4B0E9454D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HistoryView.swift; path = MoneyCity/Views/HistoryView.swift; sourceTree = "<group>"; };
+		F9F0014550C14B6B87195F52 /* Transaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Transaction.swift; path = MoneyCity/Models/Transaction.swift; sourceTree = "<group>"; };
+		FAB010F0CF3C4B4B95EA9598 /* StorageHealthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = StorageHealthBanner.swift; path = MoneyCity/Views/Components/StorageHealthBanner.swift; sourceTree = "<group>"; };
+		FC139E254984458F890223ED /* SavingsGoalsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SavingsGoalsSheet.swift; path = MoneyCity/Views/Modals/SavingsGoalsSheet.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		8808398ABE6540149B20136E /* Frameworks */ = {
+		E167D6C9E5F54160BDE41B5A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -150,94 +168,103 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1BC677D970B647319DD3CE0A /* Products */ = {
+		82954ABAEC504D68BD582FF4 = {
 			isa = PBXGroup;
 			children = (
-				A2E928BC70454674A5265578 /* MoneyCity.app */,
+				96BA52409CDF4A80AAB6E0F4 /* Products */,
+				A2E572A9B6A741799E54CD33 /* MoneyCityApp.swift */,
+				2A38B2A0735E420BAF91EC8F /* MoneyCityWidgets.swift */,
+				67886ADF89264B1BBFC80657 /* BuildingTile.swift */,
+				611D6CA17851493E9F27B4CF /* CategoryBudget.swift */,
+				87DD0AF1954E4977BCA3BC09 /* CityEnrichment.swift */,
+				16659AF6C33C481FBF0717FD /* CitySlot.swift */,
+				CCA2828374B04832A7F314E1 /* IncomeSource.swift */,
+				85ACB8844EB24F79AFBD61CF /* IngestLogEntry.swift */,
+				66A09E20DEDB4007BECF3763 /* InstallmentPlan.swift */,
+				F7D58CC5D2C14C84A7550493 /* LocalizationManager.swift */,
+				683917F1F511413DA459BCBC /* MerchantRule.swift */,
+				A6A5D59A96EC438A9EBC1D2E /* MonthlyCity.swift */,
+				6177E5168DB1414A9C14A117 /* RecurringExpense.swift */,
+				D34B635830C2422F9185A726 /* SavingsGoal.swift */,
+				F408465ACC3D49E7B4E682C5 /* SpendingCategory.swift */,
+				D314C7474A0D44B5967FE7E1 /* Theme.swift */,
+				F9F0014550C14B6B87195F52 /* Transaction.swift */,
+				6CCB7E9419B944208AF0E3B2 /* LogWalletPaymentIntent.swift */,
+				3405643B8AF844C19F66CC7C /* MoneyCityShortcuts.swift */,
+				7AAE1C588A68465691F32E3F /* QuickExpensePromptIntent.swift */,
+				3E56FCD29379498EA6C9441A /* RecordTransactionIntent.swift */,
+				0D10FD2D088A491491A05D55 /* ScanReceiptIntent.swift */,
+				003428064D79419788915FA6 /* AnalyticsView.swift */,
+				F96D438354D049E4B0E9454D /* HistoryView.swift */,
+				75ADAE7AB6A444689CF8A77F /* MainCityView.swift */,
+				2AEE0909B5A644BABA8E3C65 /* ProfileView.swift */,
+				A7C6D76C7FB1477282FEB3AE /* ApplePayDiagnosticsView.swift */,
+				9D13B7F20AF040B0A72ADFBE /* BackupSheet.swift */,
+				7B4571ED8C6C43CFA36A8F16 /* BudgetSheet.swift */,
+				802B16E1356D45D6976D2B64 /* CityProgressSheet.swift */,
+				BB35CBC670F24627997E2A31 /* CitySlotCustomizerSheet.swift */,
+				DB8168AFC2EE4DBE9B53A307 /* CitySortingHubSheet.swift */,
+				D2AA2A266D5F4A91B17B3E36 /* EditTransactionSheet.swift */,
+				7534F9B10EFE4F4FB9C24E3D /* IngestLogSheet.swift */,
+				55153FCD588047AC85B9CD41 /* MerchantDetailSheet.swift */,
+				7292CC12D03545C988DE1BB2 /* MonthlyRecapArchiveView.swift */,
+				7BFFAF889A5E443F99FB09DF /* MonthlyRecapSheet.swift */,
+				71631676F4F84A559BAD0E61 /* QuickAddSheet.swift */,
+				5A0D3A4AB4B246DF985781EA /* RecurringExpensesSheet.swift */,
+				FC139E254984458F890223ED /* SavingsGoalsSheet.swift */,
+				1F8BDBF56B5F49B49426E763 /* TransactionFeedSheet.swift */,
+				E6D07814FB6148DE9BBB77E5 /* DioramaReadyWrapper.swift */,
+				1DDEB0826881470B8B95A462 /* DioramaSkeletonView.swift */,
+				8FE273FFFB924EC69F2B43C3 /* ThreeDioramaView.swift */,
+				EAD5FD42D18A4F0384B7F8B6 /* CityIcon.swift */,
+				CC9EDEE23DF14D98A1DC53ED /* FloatingBottomBar.swift */,
+				1FCC4F4AB1584DDD9EE1DADE /* ShimmerLoading.swift */,
+				FAB010F0CF3C4B4B95EA9598 /* StorageHealthBanner.swift */,
+				C5B7AC250FB948378C759BB8 /* OnboardingWizardView.swift */,
+				851B54C8FDF44113AE34F62A /* BudgetService.swift */,
+				867130BF72714CF69C274977 /* CategorizationEngine.swift */,
+				D2FF5B04573D4C21B0BF938A /* CityProgressEngine.swift */,
+				9DA3969AD93A46E980375BE9 /* CitySimulationEngine.swift */,
+				AE55278F97EB4AE8BC8B5DCB /* DataPortabilityService.swift */,
+				25B8A21FD8BB40D694F6342E /* DatabaseService.swift */,
+				E7DD7E7ABF934141835E3FF0 /* FXService.swift */,
+				C72FB84FC415467C894226E8 /* Haptics.swift */,
+				D825764238A54770B546E059 /* InstallmentService.swift */,
+				D48A2A1A6C8441269405A655 /* MerchantRuleService.swift */,
+				949B5B62924D45B09639336E /* MoneyCityLog.swift */,
+				289A1AC974A34B94B9B4C0CD /* MoneyCitySchema.swift */,
+				5665468E4AF8474DA15D9D9E /* MonthlyRecapService.swift */,
+				2B6B063276F342E9A5BBC23E /* NotificationService.swift */,
+				4EDF0B51EDA1431D8CE0C5F4 /* ReceiptOCRService.swift */,
+				109D93CABEC947CA992D54AC /* RecurringExpenseService.swift */,
+				616F02B62F2641BBB9063FF5 /* SavingsGoalService.swift */,
+				BF2ADBFDB1B5483CA0F4769B /* StoreSnapshotService.swift */,
+				8EF58899E18545598E60CC85 /* TransactionIngest.swift */,
+				BD9FF159E42B479BBA8CEDB1 /* WalletIngestCoordinator.swift */,
+				95C7E418708B44FDB61DC810 /* diorama.html */,
+				CC55036EE58D49F4B62BF586 /* Assets.xcassets */,
+				05C1207CB3AD4446832E57C8 /* PrivacyInfo.xcprivacy */,
 			);
-			name = Products;
 			sourceTree = "<group>";
 		};
-		2C8D0EC02D9944189BF9FBFB = {
+		96BA52409CDF4A80AAB6E0F4 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				1BC677D970B647319DD3CE0A /* Products */,
-				9862606842B443C8A7D84111 /* MoneyCityApp.swift */,
-				19930AB1CD5E448FBC046172 /* MoneyCityWidgets.swift */,
-				CCCEA448CCCE4DBAB886623C /* BuildingTile.swift */,
-				F34A53E1C37342E7A954DECC /* CategoryBudget.swift */,
-				5A5FC2BA84824DE7927CEACE /* CityEnrichment.swift */,
-				05E4504D2A264FEFB91985B5 /* CitySlot.swift */,
-				0600927D3DC348FDB497D45D /* IncomeSource.swift */,
-				2508D43E95964E918B2A8836 /* IngestLogEntry.swift */,
-				8FDE09FB4E904A32AAC186DB /* InstallmentPlan.swift */,
-				DB0A0A04884048E1A106A48A /* LocalizationManager.swift */,
-				BF7F7436830640E8A4E36FC2 /* MerchantRule.swift */,
-				971515B7559C46FDA94E20DF /* MonthlyCity.swift */,
-				82037B1799644681940521E6 /* RecurringExpense.swift */,
-				C128984F831B4D7AB9B132A8 /* SavingsGoal.swift */,
-				65B4A4D235AD40A78D20A5CD /* SpendingCategory.swift */,
-				1B2B39F592694830B461E92B /* Theme.swift */,
-				F3FCB5FDCB1A47BBAA374E30 /* Transaction.swift */,
-				5F62ED71D96149328A6E4F96 /* LogWalletPaymentIntent.swift */,
-				C7725E75D70F4A48895A029C /* MoneyCityShortcuts.swift */,
-				89BF3792D51043B28393A875 /* RecordTransactionIntent.swift */,
-				487C18555F614387A1F0EFAF /* ScanReceiptIntent.swift */,
-				D8CF4DCBE3444AF588EF2B6B /* AnalyticsView.swift */,
-				3A1C990B00AE4AFF801E8B59 /* HistoryView.swift */,
-				6F883BC9E8BF44009F17104F /* MainCityView.swift */,
-				189624E37D84436EB18E9AD0 /* ProfileView.swift */,
-				9C552183C4AF47B9A35FB3C1 /* ApplePayDiagnosticsView.swift */,
-				22BEB7D33A6947B8A3FF7EDA /* BudgetSheet.swift */,
-				72778D41372E4585A667D676 /* CityProgressSheet.swift */,
-				95BC0BC84AB14CB593D5F523 /* CitySlotCustomizerSheet.swift */,
-				296691D7804D4B42B60BAFC1 /* EditTransactionSheet.swift */,
-				9F6038CA92D74C9BBB8CE103 /* IngestLogSheet.swift */,
-				70B2E750F4D74AEFBB528D7D /* QuickAddSheet.swift */,
-				F8E9A7B33A794DE5ABEE50E6 /* RecurringExpensesSheet.swift */,
-				8C6E9442B6F7455399ADB63A /* SavingsGoalsSheet.swift */,
-				A3447346E225416787891D25 /* TransactionFeedSheet.swift */,
-				F16E62BC5D8F4FAB9654EE4C /* DioramaReadyWrapper.swift */,
-				A7F93B9A195E4E3380D481D3 /* DioramaSkeletonView.swift */,
-				75BC4D0713B54C5188F00F63 /* ThreeDioramaView.swift */,
-				3CC2B5688D8F4FD2933BD16E /* CityIcon.swift */,
-				963FBD08557949BA825851C8 /* FloatingBottomBar.swift */,
-				523F1F7CFF4F498EA44A7F24 /* ShimmerLoading.swift */,
-				E7EFBB9A39A54283A0EA10EE /* StorageHealthBanner.swift */,
-				63AB74B3B94E4B8FA90E63AC /* OnboardingWizardView.swift */,
-				E0FCE14CF4F246D594EB5F04 /* BudgetService.swift */,
-				4282BBC5D7944DA3A744E365 /* CategorizationEngine.swift */,
-				798B4E1F3A374C20A2FECA0B /* CityProgressEngine.swift */,
-				F9C684733862455D952F25BF /* CitySimulationEngine.swift */,
-				8AD5D5E56BB04C62BAC3F933 /* DatabaseService.swift */,
-				FB61CA3C123C4579A36EFBFE /* FXService.swift */,
-				9FEB98F7E98E4C67A34F8EEC /* Haptics.swift */,
-				C23CAC9BFF764C20A273DA2A /* InstallmentService.swift */,
-				C8DF1DC1D24D4183B1248EA8 /* MerchantRuleService.swift */,
-				749CDFD0C4AF4C19912509A2 /* MoneyCityLog.swift */,
-				902D32631BF4463186F78009 /* MoneyCitySchema.swift */,
-				A193B7AAB3A14660A9C7AE08 /* NotificationService.swift */,
-				4379CA9D2B7346FA844CBAE9 /* ReceiptOCRService.swift */,
-				D3C85D544B35419DBFA95964 /* RecurringExpenseService.swift */,
-				967F609E19284D06AA7F4820 /* SavingsGoalService.swift */,
-				D932B2B445FD4523A309E093 /* TransactionIngest.swift */,
-				F0D4D29B87114B6D9454EFC4 /* WalletIngestCoordinator.swift */,
-				2F74CD82DC0349269B9E646B /* diorama.html */,
-				AE1EA46CCA244F799AA49C16 /* Assets.xcassets */,
-				B0F60CC1BC9648D2A5C40FEC /* PrivacyInfo.xcprivacy */,
+				98DDCD8194BC4150A0AE4AC0 /* MoneyCity.app */,
 			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		B385A39923F542F89D1BF988 /* MoneyCity */ = {
+		78C98A6F7A9F42D3B9960554 /* MoneyCity */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7E086EF76F38410C99EA86D0 /* Build configuration list for PBXNativeTarget "MoneyCity" */;
+			buildConfigurationList = 878CCC1CCD1D47CC8257AD47 /* Build configuration list for PBXNativeTarget "MoneyCity" */;
 			buildPhases = (
-				1F44310F155A4770B0674445 /* Sources */,
-				8808398ABE6540149B20136E /* Frameworks */,
-				6626FB396F804A5B88DBFF21 /* Resources */,
+				0E7F6DDD71A148768332D44B /* Sources */,
+				E167D6C9E5F54160BDE41B5A /* Frameworks */,
+				BAC955DC271746A691CB5330 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -245,13 +272,13 @@
 			);
 			name = MoneyCity;
 			productName = MoneyCity;
-			productReference = A2E928BC70454674A5265578 /* MoneyCity.app */;
+			productReference = 98DDCD8194BC4150A0AE4AC0 /* MoneyCity.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		DFE6BF7D8A634A63AF78F3F0 /* Project object */ = {
+		9958591DC1F94B26987AC0B7 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
@@ -259,12 +286,12 @@
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
-					B385A39923F542F89D1BF988 = {
+					78C98A6F7A9F42D3B9960554 = {
 						CreatedOnToolsVersion = 16.0;
 					};
 				};
 			};
-			buildConfigurationList = 4E30E7BC88D7458AA6D61D62 /* Build configuration list for PBXProject "MoneyCity" */;
+			buildConfigurationList = EDDF7104C2D14CD49690C19D /* Build configuration list for PBXProject "MoneyCity" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -272,163 +299,110 @@
 				en,
 				Base,
 			);
-			mainGroup = 2C8D0EC02D9944189BF9FBFB;
-			productRefGroup = 1BC677D970B647319DD3CE0A /* Products */;
+			mainGroup = 82954ABAEC504D68BD582FF4;
+			productRefGroup = 96BA52409CDF4A80AAB6E0F4 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				B385A39923F542F89D1BF988 /* MoneyCity */,
+				78C98A6F7A9F42D3B9960554 /* MoneyCity */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		6626FB396F804A5B88DBFF21 /* Resources */ = {
+		BAC955DC271746A691CB5330 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				E0853DF480AC4E7088163D8D /* diorama.html in Resources */,
-				B2CB30BAAB994F30936ED596 /* Assets.xcassets in Resources */,
-				5DA675CA96C3446285292728 /* PrivacyInfo.xcprivacy in Resources */,
+				7AFDC4CBEE7842768C19FEFD /* diorama.html in Resources */,
+				6771DFDB74214499A0B47119 /* Assets.xcassets in Resources */,
+				6B87B744C82A40BC81BEC40F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		1F44310F155A4770B0674445 /* Sources */ = {
+		0E7F6DDD71A148768332D44B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				93233223E41A454B98ED2DCB /* MoneyCityApp.swift in Sources */,
-				F975DD9FE7DB4EE5B835FEF0 /* MoneyCityWidgets.swift in Sources */,
-				F457C7DDD19E4070B616C796 /* BuildingTile.swift in Sources */,
-				FAF95FF34B0F4E5A8314B79B /* CategoryBudget.swift in Sources */,
-				1F35FA35448647D19B7CE799 /* CityEnrichment.swift in Sources */,
-				E4D653B4ABA34B77825D5EC3 /* CitySlot.swift in Sources */,
-				0F29A59E06DA44DF806119C4 /* IncomeSource.swift in Sources */,
-				56F7EC026B1B446A837BA0EF /* IngestLogEntry.swift in Sources */,
-				CE156A5D2DA64F5EB6D859AF /* InstallmentPlan.swift in Sources */,
-				14707879980D485DBB792E71 /* LocalizationManager.swift in Sources */,
-				B78ED79F89574A27AA21D185 /* MerchantRule.swift in Sources */,
-				0EF456A8E50B462E95C9BFF2 /* MonthlyCity.swift in Sources */,
-				6CCAF7D87CC74EBD86285BA3 /* RecurringExpense.swift in Sources */,
-				16F72AF2EA7E4FE1896340E8 /* SavingsGoal.swift in Sources */,
-				E19428C2740C48A693AF6D36 /* SpendingCategory.swift in Sources */,
-				FBEC235CA07E4C119B14A1B1 /* Theme.swift in Sources */,
-				E0DD98E422864029AFED26D0 /* Transaction.swift in Sources */,
-				A829CBA0A3C5469C8FFF03A7 /* LogWalletPaymentIntent.swift in Sources */,
-				51605B6BEE5C429986F75CF4 /* MoneyCityShortcuts.swift in Sources */,
-				1F52E68510354B4D80836AD1 /* RecordTransactionIntent.swift in Sources */,
-				9F594E4AF64F471DB4E9765D /* ScanReceiptIntent.swift in Sources */,
-				52E4AAC4A68740B9A4A90BCD /* AnalyticsView.swift in Sources */,
-				0C661B609A464D07BDEB02E7 /* HistoryView.swift in Sources */,
-				53C771F36EC24CF6BBFE68CA /* MainCityView.swift in Sources */,
-				0E695E3EF0A9452BB6C0EAC0 /* ProfileView.swift in Sources */,
-				5AFD46B8E5FF4DD2BEAD5A48 /* ApplePayDiagnosticsView.swift in Sources */,
-				7B4511BE96044064AFDCAC3E /* BudgetSheet.swift in Sources */,
-				956FEEA64C844340B3094AAF /* CityProgressSheet.swift in Sources */,
-				8740C1D53BDB4845AE7E9E35 /* CitySlotCustomizerSheet.swift in Sources */,
-				ABD42EAB4C0E4AFDB25E4C70 /* EditTransactionSheet.swift in Sources */,
-				1FE5636B80994305AE0B1131 /* IngestLogSheet.swift in Sources */,
-				F086630DCFD7444D9FBCF89C /* QuickAddSheet.swift in Sources */,
-				AB3AEB85D27646D0B33D5CA2 /* RecurringExpensesSheet.swift in Sources */,
-				C11D87D7F4E24636ACFF36C7 /* SavingsGoalsSheet.swift in Sources */,
-				A295836636A2405BA648FE41 /* TransactionFeedSheet.swift in Sources */,
-				D47580E34FF84F02ABD4EDDF /* DioramaReadyWrapper.swift in Sources */,
-				8FCD9007DD2B449D9AD2AFC6 /* DioramaSkeletonView.swift in Sources */,
-				1635027AF01C46E8A4E6AF22 /* ThreeDioramaView.swift in Sources */,
-				70C2FFCCA42440BE93E18109 /* CityIcon.swift in Sources */,
-				B209DED85C184BBF8DC150FE /* FloatingBottomBar.swift in Sources */,
-				E84D314CDE734F4EBB4964D9 /* ShimmerLoading.swift in Sources */,
-				9BA9F8440E484C4FA884B689 /* StorageHealthBanner.swift in Sources */,
-				495E704241414DACBE550334 /* OnboardingWizardView.swift in Sources */,
-				2C3773514A5D4629AF50909D /* BudgetService.swift in Sources */,
-				48BE903AFA1944CE8578D8AD /* CategorizationEngine.swift in Sources */,
-				6E12B045DBD0488488CE8417 /* CityProgressEngine.swift in Sources */,
-				F99CADA639034454943C0D6D /* CitySimulationEngine.swift in Sources */,
-				FDD2FF763E0C40639CBDAE1F /* DatabaseService.swift in Sources */,
-				E70C921EE918415189AD19D6 /* FXService.swift in Sources */,
-				B103A4BBAF6349D5A1911677 /* Haptics.swift in Sources */,
-				9FC1B12B94E149328336A272 /* InstallmentService.swift in Sources */,
-				4D1090FBB7ED4AFF9B787BDE /* MerchantRuleService.swift in Sources */,
-				F7D46605DF25409CB5E9EA19 /* MoneyCityLog.swift in Sources */,
-				3BABEF66FD9645A6AC26CF40 /* MoneyCitySchema.swift in Sources */,
-				6C0892DE824141C38B47E5D3 /* NotificationService.swift in Sources */,
-				DFB5DA9674584A38AE71003A /* ReceiptOCRService.swift in Sources */,
-				F38F0DB54E054964B44928A0 /* RecurringExpenseService.swift in Sources */,
-				F98D34E4935E4F26BCD80C87 /* SavingsGoalService.swift in Sources */,
-				7F66D5EB728A4F85BAF288A4 /* TransactionIngest.swift in Sources */,
-				0B0E9E1738FC424BA8720AE7 /* WalletIngestCoordinator.swift in Sources */,
+				C8F5CD835BF3444A8ED5D650 /* MoneyCityApp.swift in Sources */,
+				D4E1115E685C43CBA60C3628 /* MoneyCityWidgets.swift in Sources */,
+				4D20184FBEE945DD8FFCDA54 /* BuildingTile.swift in Sources */,
+				D16B68373D934BF8B1AC07B8 /* CategoryBudget.swift in Sources */,
+				513BCF538B1D40BDA8A724CE /* CityEnrichment.swift in Sources */,
+				2EB367EBFFB04A85B56ED17A /* CitySlot.swift in Sources */,
+				F2218C903C3B40DCBB354A40 /* IncomeSource.swift in Sources */,
+				72919BD10EB443508E3EDFF7 /* IngestLogEntry.swift in Sources */,
+				34377F712B0E41298F4478C6 /* InstallmentPlan.swift in Sources */,
+				6127CBE559724C04BAA4DF94 /* LocalizationManager.swift in Sources */,
+				8C127D8449554441AE1F3708 /* MerchantRule.swift in Sources */,
+				1EAB4A03A8414C3094509D26 /* MonthlyCity.swift in Sources */,
+				F32BB91695944239B71673EA /* RecurringExpense.swift in Sources */,
+				1B33DFAFAAF84B188F408C83 /* SavingsGoal.swift in Sources */,
+				4B8EFDBBB447457DBA4CAA57 /* SpendingCategory.swift in Sources */,
+				26A0F114CE05453DB3583F2A /* Theme.swift in Sources */,
+				FB17F9533A6746C78919E1E2 /* Transaction.swift in Sources */,
+				2B7B48B0D3A04A3DA1B35C7D /* LogWalletPaymentIntent.swift in Sources */,
+				46C3D39DDFA747C2B1B1B760 /* MoneyCityShortcuts.swift in Sources */,
+				801407C5A66345ACB2577EC2 /* QuickExpensePromptIntent.swift in Sources */,
+				82183DC7593948B892CB8F7D /* RecordTransactionIntent.swift in Sources */,
+				978F1483DA8641879C66B535 /* ScanReceiptIntent.swift in Sources */,
+				2A720DDA0CAF4852A2928F98 /* AnalyticsView.swift in Sources */,
+				F6F5A14257FE419D9A160677 /* HistoryView.swift in Sources */,
+				DD7757962FFA48178D793C6C /* MainCityView.swift in Sources */,
+				EB32B0260A5A4DA9B3514261 /* ProfileView.swift in Sources */,
+				0B0FD300A4774E1A9BA007BF /* ApplePayDiagnosticsView.swift in Sources */,
+				C03E8685148C440395126996 /* BackupSheet.swift in Sources */,
+				A2A49123652A496B9F39EEFE /* BudgetSheet.swift in Sources */,
+				97F169C2E0E3464A89E05B68 /* CityProgressSheet.swift in Sources */,
+				770D4589F4B341A188FC7DC3 /* CitySlotCustomizerSheet.swift in Sources */,
+				C70E4D7AFC8E4930BBA2EB91 /* CitySortingHubSheet.swift in Sources */,
+				95171E3087A34336B362AB84 /* EditTransactionSheet.swift in Sources */,
+				D96DF8B392D34F0FAB2F1C44 /* IngestLogSheet.swift in Sources */,
+				406F21AE0E77419291B2E906 /* MerchantDetailSheet.swift in Sources */,
+				F996ADB03C7346CFBA7D77C7 /* MonthlyRecapArchiveView.swift in Sources */,
+				7F821F63D4CB410AB7948C9C /* MonthlyRecapSheet.swift in Sources */,
+				ABED22A341E0424D90AF1270 /* QuickAddSheet.swift in Sources */,
+				900D96C8FA9644A786C9510D /* RecurringExpensesSheet.swift in Sources */,
+				9E3BD5D9648344FB8958FCE6 /* SavingsGoalsSheet.swift in Sources */,
+				FC84EE5EFAA7447C8D84D623 /* TransactionFeedSheet.swift in Sources */,
+				B0475F73C31B479A9C5559CE /* DioramaReadyWrapper.swift in Sources */,
+				FCCACE7745C0457ABBB86C13 /* DioramaSkeletonView.swift in Sources */,
+				B317389231F448719284952C /* ThreeDioramaView.swift in Sources */,
+				8BCBC26C10A344608CBD5CED /* CityIcon.swift in Sources */,
+				BEC3103E913B4C2D821C6A31 /* FloatingBottomBar.swift in Sources */,
+				D55F95D369F84EDBB6B0C489 /* ShimmerLoading.swift in Sources */,
+				694896290A9442F7868CB388 /* StorageHealthBanner.swift in Sources */,
+				797B5E3FACCA4B959D4E57AC /* OnboardingWizardView.swift in Sources */,
+				F46D5CBC91F14648A821F837 /* BudgetService.swift in Sources */,
+				89E562E99D5D48B6823CB298 /* CategorizationEngine.swift in Sources */,
+				F65EB15042284B2E8DFD17BA /* CityProgressEngine.swift in Sources */,
+				576332156D5947EC9D5DA135 /* CitySimulationEngine.swift in Sources */,
+				A6FDA15AF91341AF8E3A5C4B /* DataPortabilityService.swift in Sources */,
+				5BB98886680246439C31638E /* DatabaseService.swift in Sources */,
+				E2313D3652C6414D98BCD3D4 /* FXService.swift in Sources */,
+				9A4DA846702B424C8312586C /* Haptics.swift in Sources */,
+				89C6366E5CCD4F70BE5ECDA8 /* InstallmentService.swift in Sources */,
+				BE08A41116644B299CE68035 /* MerchantRuleService.swift in Sources */,
+				0312FF0CA92D4E7D91969B28 /* MoneyCityLog.swift in Sources */,
+				8E93E6B9A937454596114B71 /* MoneyCitySchema.swift in Sources */,
+				4E68CBC4BE18404D8BE4A1B7 /* MonthlyRecapService.swift in Sources */,
+				0317D5BD6D95499BAA117A24 /* NotificationService.swift in Sources */,
+				E8AE1DAF8D7D445B9936F11D /* ReceiptOCRService.swift in Sources */,
+				DF7E1DD47CB44ABABFF56140 /* RecurringExpenseService.swift in Sources */,
+				796C22849F514DCF87A8BA79 /* SavingsGoalService.swift in Sources */,
+				D1A10E5C3688419E965785FE /* StoreSnapshotService.swift in Sources */,
+				463BF3E141774D56B40B25F2 /* TransactionIngest.swift in Sources */,
+				BF78053FB61644B1B288D730 /* WalletIngestCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		08412B82B34747FA9B6ECB3C /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GGPYC8B9YV;
-				ENABLE_DEBUG_DYLIB = YES;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = SPENT;
-				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
-				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.moneycity.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
-		};
-		31CC4201309F4B82A8DE34AF /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = GGPYC8B9YV;
-				ENABLE_DEBUG_DYLIB = YES;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = SPENT;
-				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
-				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.moneycity.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		E4558BBC47944CFA8B975DE3 /* Debug */ = {
+		1E4C542B019F44B09AC5DFF1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -461,7 +435,7 @@
 			};
 			name = Debug;
 		};
-		EC7822E4368E47C8B9012624 /* Release */ = {
+		29F56CB66AA04A62AC6F0C4D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -488,28 +462,90 @@
 			};
 			name = Release;
 		};
+		6AFD1EE77FED40EF992C9691 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GGPYC8B9YV;
+				ENABLE_DEBUG_DYLIB = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SPENT;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
+				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.moneycity.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		DAB3A297A44049A4BFD9E09A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GGPYC8B9YV;
+				ENABLE_DEBUG_DYLIB = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = SPENT;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
+				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.moneycity.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4E30E7BC88D7458AA6D61D62 /* Build configuration list for PBXProject "MoneyCity" */ = {
+		878CCC1CCD1D47CC8257AD47 /* Build configuration list for PBXNativeTarget "MoneyCity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				E4558BBC47944CFA8B975DE3 /* Debug */,
-				EC7822E4368E47C8B9012624 /* Release */,
+				6AFD1EE77FED40EF992C9691 /* Debug */,
+				DAB3A297A44049A4BFD9E09A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		7E086EF76F38410C99EA86D0 /* Build configuration list for PBXNativeTarget "MoneyCity" */ = {
+		EDDF7104C2D14CD49690C19D /* Build configuration list for PBXProject "MoneyCity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				31CC4201309F4B82A8DE34AF /* Debug */,
-				08412B82B34747FA9B6ECB3C /* Release */,
+				1E4C542B019F44B09AC5DFF1 /* Debug */,
+				29F56CB66AA04A62AC6F0C4D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = DFE6BF7D8A634A63AF78F3F0 /* Project object */;
+	rootObject = 9958591DC1F94B26987AC0B7 /* Project object */;
 }

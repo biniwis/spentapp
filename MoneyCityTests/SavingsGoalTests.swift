@@ -69,8 +69,9 @@ final class SavingsGoalTests: XCTestCase {
     }
 
     func testDepositIsRecordedAsARealSavingsTransfer() {
-        let tx = SavingsGoalService.makeDepositTransaction(goalName: "טיול ליפן", amount: 500, currency: "₪")
-        XCTAssertEqual(tx.category, .savings)
+        let gid = UUID()
+        let tx = SavingsGoalService.makeDepositTransaction(goalId: gid, goalName: "טיול ליפן", amount: 500, currency: "₪")
+        XCTAssertEqual(tx.category, SpendingCategory.savings)
         XCTAssertEqual(tx.amount, 500)
         XCTAssertEqual(tx.buildingId, "savings_sanctuary")
         XCTAssertTrue(tx.isConfirmed)
@@ -91,5 +92,103 @@ final class SavingsGoalTests: XCTestCase {
     func testAGoalIsNotCompleteWithoutATarget() {
         let goal = SavingsGoal(name: "x", targetAmount: 0, savedAmount: 100)
         XCTAssertFalse(goal.isComplete)
+    }
+}
+
+
+/// A deposit used to write the goal's total and a transaction independently, with nothing
+/// linking them, so deleting the transfer from history left the goal claiming money that no
+/// longer existed. Progress is now derived from the transfers that still exist.
+final class SavingsGoalReconciliationTests: XCTestCase {
+
+    private func deposit(_ amount: Double, to goal: SavingsGoal) -> Transaction {
+        SavingsGoalService.makeDepositTransaction(
+            goalId: goal.id, goalName: goal.name, amount: amount, currency: "₪"
+        )
+    }
+
+    func testDepositCarriesTheGoalId() {
+        let goal = SavingsGoal(name: "טיול", targetAmount: 4000)
+        XCTAssertEqual(deposit(500, to: goal).savingsGoalId, goal.id)
+    }
+
+    func testReconciledAmountIsBaselinePlusSurvivingDeposits() {
+        XCTAssertEqual(SavingsGoalService.reconciledAmount(baseline: 0, linkedDeposits: [500, 250]), 750)
+        XCTAssertEqual(SavingsGoalService.reconciledAmount(baseline: 1200, linkedDeposits: [300]), 1500)
+        XCTAssertEqual(SavingsGoalService.reconciledAmount(baseline: 0, linkedDeposits: []), 0)
+    }
+
+    func testNegativeBaselineCannotDragAGoalBelowZero() {
+        XCTAssertEqual(SavingsGoalService.reconciledAmount(baseline: -900, linkedDeposits: [100]), 100)
+    }
+
+    func testDeletingADepositLowersTheGoalByExactlyThatDeposit() {
+        let goal = SavingsGoal(name: "מחשב", targetAmount: 6000)
+        let first = deposit(500, to: goal)
+        let second = deposit(250, to: goal)
+        goal.savedAmount = 750
+        goal.baselineCaptured = true
+        goal.unlinkedBaseline = 0
+
+        // The user deletes the ₪500 row from History.
+        SavingsGoalService.reconcile(goals: [goal], transactions: [second])
+        XCTAssertEqual(goal.savedAmount, 250, accuracy: 0.001)
+        XCTAssertNotNil(first) // silence unused warning; the deleted row is simply absent
+    }
+
+    func testEditingADepositMovesTheGoalByTheDifference() {
+        let goal = SavingsGoal(name: "חופשה", targetAmount: 3000)
+        let tx = deposit(400, to: goal)
+        goal.savedAmount = 400
+        goal.baselineCaptured = true
+
+        tx.amount = 650
+        SavingsGoalService.reconcile(goals: [goal], transactions: [tx])
+        XCTAssertEqual(goal.savedAmount, 650, accuracy: 0.001)
+    }
+
+    func testAGoalFromBeforeTheLinkKeepsItsMoney() {
+        // Its deposits predate the goal id and can never be found again, so the first pass
+        // banks the total instead of wiping the goal to zero.
+        let legacy = SavingsGoal(name: "ישן", targetAmount: 5000, savedAmount: 1800)
+        SavingsGoalService.reconcile(goals: [legacy], transactions: [])
+        XCTAssertEqual(legacy.savedAmount, 1800, accuracy: 0.001)
+        XCTAssertTrue(legacy.baselineCaptured)
+        XCTAssertEqual(legacy.unlinkedBaseline, 1800, accuracy: 0.001)
+    }
+
+    func testALegacyGoalStillGrowsWithNewLinkedDeposits() {
+        let legacy = SavingsGoal(name: "ישן", targetAmount: 5000, savedAmount: 1800)
+        SavingsGoalService.reconcile(goals: [legacy], transactions: [])
+        let fresh = deposit(700, to: legacy)
+        legacy.savedAmount += 700
+        SavingsGoalService.reconcile(goals: [legacy], transactions: [fresh])
+        XCTAssertEqual(legacy.savedAmount, 2500, accuracy: 0.001)
+    }
+
+    func testReconcilingTwiceDoesNotDoubleCount() {
+        let goal = SavingsGoal(name: "יעד", targetAmount: 2000)
+        let tx = deposit(300, to: goal)
+        SavingsGoalService.reconcile(goals: [goal], transactions: [tx])
+        let once = goal.savedAmount
+        SavingsGoalService.reconcile(goals: [goal], transactions: [tx])
+        XCTAssertEqual(goal.savedAmount, once, accuracy: 0.001)
+    }
+
+    func testDepositsForOtherGoalsAreIgnored() {
+        let mine = SavingsGoal(name: "שלי", targetAmount: 1000)
+        let other = SavingsGoal(name: "אחר", targetAmount: 1000)
+        mine.baselineCaptured = true
+        let hers = deposit(400, to: other)
+        SavingsGoalService.reconcile(goals: [mine], transactions: [hers])
+        XCTAssertEqual(mine.savedAmount, 0, accuracy: 0.001)
+    }
+
+    func testReconcileReportsWhetherAnythingMoved() {
+        let goal = SavingsGoal(name: "יעד", targetAmount: 1000)
+        goal.baselineCaptured = true
+        let tx = deposit(100, to: goal)
+        XCTAssertTrue(SavingsGoalService.reconcile(goals: [goal], transactions: [tx]))
+        XCTAssertFalse(SavingsGoalService.reconcile(goals: [goal], transactions: [tx]))
     }
 }

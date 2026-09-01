@@ -63,7 +63,7 @@ public struct ScanReceiptIntent: AppIntent {
             #endif
 
             let formattedAmount = "₪" + (scanResult.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", scanResult.amount) : String(format: "%.2f", scanResult.amount))
-            let successMessage = "✓ נוספו \(formattedAmount) ל\(scanResult.category.displayName) — \(scanResult.merchant)"
+            let successMessage = "נוספו \(formattedAmount) ל\(scanResult.category.displayName) — \(scanResult.merchant)"
 
             return .result(
                 value: successMessage,

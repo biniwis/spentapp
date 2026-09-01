@@ -4,6 +4,18 @@ import AppIntents
 public struct MoneyCityShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
+            intent: QuickExpensePromptIntent(),
+            phrases: [
+                "הוסף הוצאה ב-\(.applicationName)",
+                "רשום הוצאה ב-\(.applicationName)",
+                "Add expense in \(.applicationName)",
+                "Quick expense in \(.applicationName)"
+            ],
+            shortTitle: "הוספת הוצאה",
+            systemImageName: "plus.circle.fill"
+        )
+
+        AppShortcut(
             intent: LogWalletPaymentIntent(),
             phrases: [
                 "קלוט תשלום ב-\(.applicationName)",

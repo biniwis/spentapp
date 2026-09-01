@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// State-of-the-art developer and diagnostics hub for Apple Pay -> Shortcuts -> App Intent verification.
+/// Comprehensive Developer and Diagnostics Hub for Apple Pay -> Shortcuts -> App Intent verification & Simulation Sandbox.
 public struct ApplePayDiagnosticsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
@@ -9,21 +9,30 @@ public struct ApplePayDiagnosticsView: View {
     
     @State private var showExportSheet = false
     @State private var exportJSONText = ""
-    @State private var showSimulateToast = false
     @State private var selectedFilter: DiagnosticsFilter = .all
-
+    @State private var isSimulatingBatch = false
+    @State private var batchProgressText = ""
+    
+    // Custom Simulator Inputs
+    @State private var simAmountText = "45.00"
+    @State private var simMerchantText = "AM:PM"
+    @State private var simCurrencyText = "ILS"
+    @State private var isCustomSimExpanded = false
+    
     private var isHebrew: Bool { l10n.language == .hebrew }
 
     public enum DiagnosticsFilter: String, CaseIterable {
         case all = "הכל"
-        case success = "הצליח"
+        case real = "Apple Pay אמיתי"
+        case simulated = "סימולציה"
         case failed = "נכשל / חסר"
         
         var englishTitle: String {
             switch self {
             case .all: return "All"
-            case .success: return "Success"
-            case .failed: return "Failed"
+            case .real: return "Real Apple Pay"
+            case .simulated: return "Simulated"
+            case .failed: return "Failed / Missing"
             }
         }
     }
@@ -34,8 +43,10 @@ public struct ApplePayDiagnosticsView: View {
         switch selectedFilter {
         case .all:
             return entries
-        case .success:
-            return entries.filter { $0.outcome.contains("נשמר") || $0.outcome.contains("saved") }
+        case .real:
+            return entries.filter { !$0.intentName.contains("Simulation") && !$0.intentName.contains("סימולציה") }
+        case .simulated:
+            return entries.filter { $0.intentName.contains("Simulation") || $0.intentName.contains("סימולציה") }
         case .failed:
             return entries.filter { !$0.outcome.contains("נשמר") && !$0.outcome.contains("saved") }
         }
@@ -48,13 +59,16 @@ public struct ApplePayDiagnosticsView: View {
                     // 1. Status Overview Header Banner
                     overviewHeaderCard
                     
-                    // 2. Action Controls (Export JSON & Run Simulation)
+                    // 2. Scenario Sandbox & Debug Transaction Generator (P0 Feature)
+                    simulationSandboxCard
+
+                    // 3. Action Controls (Export JSON & Batch Generator)
                     actionControlsRow
 
-                    // 3. Filter Segment
+                    // 4. Filter Segment
                     filterSegmentControl
 
-                    // 4. Attempts List or Empty State
+                    // 5. Attempts List or Empty State
                     if filteredEntries.isEmpty {
                         emptyStateCard
                     } else {
@@ -71,7 +85,7 @@ public struct ApplePayDiagnosticsView: View {
                 .padding(.top, 12)
             }
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle(isHebrew ? "אבחון Apple Pay (דיאגנוסטיקה)" : "Apple Pay Diagnostics")
+            .navigationTitle(isHebrew ? "אבחון וסימולציית Apple Pay" : "Apple Pay Diagnostics & Sandbox")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -99,16 +113,17 @@ public struct ApplePayDiagnosticsView: View {
     // MARK: - 1. Overview Header Card
     private var overviewHeaderCard: some View {
         let totalCount = entries.count
-        let successCount = entries.filter { $0.outcome.contains("נשמר") || $0.outcome.contains("saved") }.count
-        let failedCount = totalCount - successCount
+        let realCount = entries.filter { !$0.intentName.contains("Simulation") && !$0.intentName.contains("סימולציה") }.count
+        let simCount = entries.filter { $0.intentName.contains("Simulation") || $0.intentName.contains("סימולציה") }.count
+        let failedCount = entries.filter { !$0.outcome.contains("נשמר") && !$0.outcome.contains("saved") }.count
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 10) {
                 ZStack {
                     Circle()
-                        .fill(successCount > 0 ? Color.themeMintSoft : Color.themeOrangeSoft)
+                        .fill(Color.primaryBlue.opacity(0.12))
                         .frame(width: 38, height: 38)
-                    DistrictFinanceVectorIcon(color: successCount > 0 ? Color.themeMint : Color.themeOrange)
+                    DistrictFinanceVectorIcon(color: Color.primaryBlue)
                         .scaleEffect(1.0)
                 }
                 
@@ -118,13 +133,11 @@ public struct ApplePayDiagnosticsView: View {
                         .foregroundColor(Color.deepNavy)
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(totalCount > 0 && failedCount == 0 ? Color.themeMint : (failedCount > 0 ? Color.themeOrange : Color.slate400))
+                            .fill(realCount > 0 ? Color.themeMint : Color.themeTurquoise)
                             .frame(width: 8, height: 8)
-                        Text(totalCount == 0
-                             ? (isHebrew ? "מחכה לעסקה ראשונה..." : "Waiting for first transaction...")
-                             : (failedCount == 0
-                                ? (isHebrew ? "פעיל ותקין 🟢" : "Active & Healthy 🟢")
-                                : (isHebrew ? "זוהו ניסיונות עם נתונים חסרים ⚠️" : "Detected runs with missing data ⚠️")))
+                        Text(realCount > 0
+                             ? (isHebrew ? "קליטה אמיתית מ-Apple Pay פעילה" : "Real Apple Pay Active")
+                             : (isHebrew ? "מוכן לקליטה / בדיקת סימולציות" : "Ready for Real / Simulation"))
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(Color.textMuted)
                     }
@@ -134,10 +147,11 @@ public struct ApplePayDiagnosticsView: View {
 
             Divider()
 
-            HStack(spacing: 12) {
-                statBox(title: isHebrew ? "סך הכל ניסיונות" : "Total Attempts", value: "\(totalCount)", color: Color.primaryBlue)
-                statBox(title: isHebrew ? "נקלטו בהצלחה" : "Succeeded", value: "\(successCount)", color: Color.themeMint)
-                statBox(title: isHebrew ? "חסרים / נכשלו" : "Failed / Missing", value: "\(failedCount)", color: Color.themeOrange)
+            HStack(spacing: 8) {
+                statBox(title: isHebrew ? "סך הכל ניסיונות" : "Total Attempts", value: "\(totalCount)", color: Color.deepNavy)
+                statBox(title: isHebrew ? "Apple Pay אמיתי" : "Real Apple Pay", value: "\(realCount)", color: Color.themeMint)
+                statBox(title: isHebrew ? "סימולציה" : "Simulated", value: "\(simCount)", color: Color.primaryBlue)
+                statBox(title: isHebrew ? "נכשלו / חסרים" : "Failed / Missing", value: "\(failedCount)", color: failedCount > 0 ? Color.themeOrange : Color.slate400)
             }
         }
         .padding(16)
@@ -150,10 +164,10 @@ public struct ApplePayDiagnosticsView: View {
     private func statBox(title: String, value: String, color: Color) -> some View {
         VStack(alignment: .center, spacing: 4) {
             Text(value)
-                .font(.system(size: 20, weight: .black, design: .rounded))
+                .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundColor(color)
             Text(title)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .font(.system(size: 9, weight: .bold, design: .rounded))
                 .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)
         }
@@ -163,7 +177,191 @@ public struct ApplePayDiagnosticsView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
-    // MARK: - 2. Action Controls Row
+    // MARK: - 2. Scenario Sandbox & Debug Generator
+    private var simulationSandboxCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Image(systemName: "flask.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(Color.themeLavender)
+                Text(isHebrew ? "סימולטור עסקאות (Debug Generator)" : "Scenario Simulation Sandbox")
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                Spacer()
+                Text(isHebrew ? "עובר באותו Pipeline בדיוק" : "Runs Exact Production Pipeline")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.themeLavender)
+            }
+
+            Text(isHebrew ? "בדוק 99% מיכולות האפליקציה (קליטה, סיווג, עיר, והיסטוריה) בלחיצה אחת בלי להוציא שקל:" : "Test 99% of app behavior (ingest, categorization, 3D city, history) without spending real money:")
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+
+            // Preset Scenario Chips
+            VStack(spacing: 8) {
+                HStack(spacing: 8) {
+                    scenarioButton(icon: "cup.and.saucer.fill", title: "קפה ₪18", subtitle: "Aroma") {
+                        simulate(amount: 18, merchant: "ארומה קפה", currency: "ILS")
+                    }
+                    scenarioButton(icon: "fork.knife", title: "מסעדה ₪145", subtitle: "Taqueria") {
+                        simulate(amount: 145, merchant: "טאקריה תל אביב", currency: "ILS")
+                    }
+                    scenarioButton(icon: "cart.fill", title: "סופר ₪382.50", subtitle: "Shufersal") {
+                        simulate(amount: 382.50, merchant: "שופרסל דיל", currency: "ILS")
+                    }
+                }
+                
+                HStack(spacing: 8) {
+                    scenarioButton(icon: "house.fill", title: "דיור ₪3,200", subtitle: "Rent") {
+                        simulate(amount: 3200, merchant: "שכירות ועד בית", currency: "ILS")
+                    }
+                    scenarioButton(icon: "arrow.uturn.backward", title: "זיכוי -₪145", subtitle: "Refund") {
+                        simulate(amount: -145, merchant: "IKEA זיכוי", currency: "ILS")
+                    }
+                    scenarioButton(icon: "exclamationmark.triangle.fill", title: "ללא בית עסק", subtitle: "nil merchant") {
+                        simulate(amount: 55, merchant: nil, currency: "ILS")
+                    }
+                }
+                
+                HStack(spacing: 8) {
+                    scenarioButton(icon: "text.bubble.fill", title: "טקסט בלבד", subtitle: "Wolt ₪89.50") {
+                        simulateTextOnly("וולט משלוחים ₪89.50")
+                    }
+                    scenarioButton(icon: "repeat", title: "כפילות זהה", subtitle: "Deduplication") {
+                        simulateDuplicate()
+                    }
+                }
+            }
+
+            // Live Lock Screen Simulated Purchase Notification Generator
+            Button {
+                Haptics.impact(.medium)
+                NotificationService.scheduleLockScreenFakePurchase(amount: 142.50, merchant: "שופרסל דיל", categoryName: "קניות וסופרמרקט", delaySeconds: 3.0)
+                simulate(amount: 142.50, merchant: "שופרסל דיל", currency: "ILS")
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(Color.white)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(isHebrew ? "שלח התראת רכישה למסך הנעילה (עוד 3 שניות)" : "Send Live Lock Screen Notification (3s)")
+                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.white)
+                        Text(isHebrew ? "לחץ ונעל מיד את הטלפון כדי לראות את ההתראה נדלקת על המסך!" : "Tap and lock phone to see it light up the lock screen!")
+                            .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.white.opacity(0.85))
+                    }
+                    Spacer()
+                    Image(systemName: isHebrew ? "chevron.left" : "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color.white.opacity(0.7))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(
+                        colors: [Color(red: 79/255, green: 70/255, blue: 229/255), Color(red: 99/255, green: 102/255, blue: 241/255)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .shadow(color: Color(red: 79/255, green: 70/255, blue: 229/255).opacity(0.3), radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            // Custom Simulator Expandable Form
+            DisclosureGroup(
+                isExpanded: $isCustomSimExpanded,
+                content: {
+                    VStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(isHebrew ? "סכום" : "Amount")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Color.textMuted)
+                                TextField("45.00", text: $simAmountText)
+                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                    .padding(8)
+                                    .background(Color.appBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(isHebrew ? "בית עסק" : "Merchant")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(Color.textMuted)
+                                TextField("AM:PM", text: $simMerchantText)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .padding(8)
+                                    .background(Color.appBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+
+                        Button(action: {
+                            if let amt = Double(simAmountText) {
+                                simulate(amount: amt, merchant: simMerchantText, currency: simCurrencyText)
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.system(size: 11, weight: .bold))
+                                Text(isHebrew ? "שלח עסקת בדיקה מותאמת" : "Send Custom Simulated Transaction")
+                                    .font(.system(size: 12, weight: .black, design: .rounded))
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.primaryBlue)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                    .padding(.top, 8)
+                },
+                label: {
+                    Text(isHebrew ? "הזנת עסקה מותאמת ידנית..." : "Custom Transaction Inputs...")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.primaryBlue)
+                }
+            )
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.borderSubtle, lineWidth: 1.5))
+        .shadow(color: Color.deepNavy.opacity(0.04), radius: 8, y: 2)
+    }
+
+    private func scenarioButton(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            Haptics.impact(.medium)
+            action()
+        }) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: icon)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color.primaryBlue)
+                    Text(title)
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                }
+                Text(subtitle)
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+            .background(Color.appBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.borderSubtle, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - 3. Action Controls Row
     private var actionControlsRow: some View {
         HStack(spacing: 10) {
             Button(action: generateAndShowExport) {
@@ -180,11 +378,11 @@ public struct ApplePayDiagnosticsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            Button(action: runSimulationTest) {
+            Button(action: generateMonthOfSimulatedActivity) {
                 HStack(spacing: 6) {
-                    Image(systemName: "play.circle.fill")
+                    Image(systemName: "building.2.fill")
                         .font(.system(size: 12, weight: .bold))
-                    Text(isHebrew ? "בדיקת סימולציה" : "Simulate Test")
+                    Text(isHebrew ? "צור חודש עשיר (30 עסקאות)" : "Seed Month (30 txs)")
                         .font(.system(size: 12, weight: .black, design: .rounded))
                 }
                 .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
@@ -196,41 +394,48 @@ public struct ApplePayDiagnosticsView: View {
         }
     }
 
-    // MARK: - 3. Filter Segment Control
+    // MARK: - 4. Filter Segment Control
     private var filterSegmentControl: some View {
-        HStack(spacing: 8) {
-            ForEach(DiagnosticsFilter.allCases, id: \.self) { filter in
-                Button(action: {
-                    withAnimation(.spring(response: 0.3)) {
-                        selectedFilter = filter
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(DiagnosticsFilter.allCases, id: \.self) { filter in
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3)) {
+                            selectedFilter = filter
+                        }
+                    }) {
+                        Text(isHebrew ? filter.rawValue : filter.englishTitle)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(selectedFilter == filter ? Color.white : Color.textMuted)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(selectedFilter == filter ? Color.primaryBlue : Color.white)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.borderSubtle, lineWidth: selectedFilter == filter ? 0 : 1))
                     }
-                }) {
-                    Text(isHebrew ? filter.rawValue : filter.englishTitle)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(selectedFilter == filter ? Color.white : Color.textMuted)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 7)
-                        .background(selectedFilter == filter ? Color.primaryBlue : Color.white)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Color.borderSubtle, lineWidth: selectedFilter == filter ? 0 : 1))
                 }
             }
-            Spacer()
         }
     }
 
-    // MARK: - 4. Diagnostic Card per Transaction Attempt
+    // MARK: - 5. Diagnostic Card per Transaction Attempt
     private func diagnosticCard(entry: IngestLogEntry, index: Int) -> some View {
         let isSuccess = entry.outcome.contains("נשמר") || entry.outcome.contains("saved")
+        let isSim = entry.intentName.contains("Simulation") || entry.intentName.contains("סימולציה")
         let statusColor: Color = isSuccess ? Color.themeMint : (entry.outcome.contains("כפילות") ? Color.themeYellow : Color.themeOrange)
 
         return VStack(alignment: .leading, spacing: 14) {
             // Card Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isHebrew ? "עסקת Apple Pay #\(index)" : "Apple Pay Ingest #\(index)")
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
+                    HStack(spacing: 6) {
+                        Image(systemName: isSim ? "flask.fill" : "creditcard.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(isSim ? Color.themeLavender : Color.themeMint)
+                        Text(isSim ? (isHebrew ? "סימולציה #\(index)" : "Simulated Ingest #\(index)") : (isHebrew ? "Apple Pay אמיתי #\(index)" : "Real Apple Pay #\(index)"))
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    }
                     Text(formattedDate(entry.receivedAt))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundColor(Color.textMuted)
@@ -252,9 +457,9 @@ public struct ApplePayDiagnosticsView: View {
 
             Divider()
 
-            // Section A: Received from Shortcut
+            // Section A: Received Input
             VStack(alignment: .leading, spacing: 6) {
-                Text(isHebrew ? "1. נתונים גולמיים שהתקבלו מ-Shortcuts:" : "1. Received from Shortcut:")
+                Text(isHebrew ? "1. נתוני קלט שהתקבלו:" : "1. Ingest Input Parameters:")
                     .font(.system(size: 12, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 
@@ -272,41 +477,27 @@ public struct ApplePayDiagnosticsView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            // Section B: Available Fields Checklist
+            // Section B: Pipeline Execution
             VStack(alignment: .leading, spacing: 6) {
-                Text(isHebrew ? "2. זמינות שדות במטען (Field Checklist):" : "2. Available Fields Checklist:")
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-
-                HStack(spacing: 8) {
-                    fieldPill(name: "Amount", available: entry.hasAmount)
-                    fieldPill(name: "Merchant", available: entry.hasMerchant)
-                    fieldPill(name: "Currency", available: entry.hasCurrency)
-                    fieldPill(name: "Date", available: entry.hasDate)
-                }
-            }
-
-            // Section C: Pipeline Steps
-            VStack(alignment: .leading, spacing: 6) {
-                Text(isHebrew ? "3. שלבי העיבוד (Pipeline Execution):" : "3. Pipeline Processing:")
+                Text(isHebrew ? "2. שלבי העיבוד והסיווג (Pipeline Steps):" : "2. Pipeline Verification Steps:")
                     .font(.system(size: 12, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    pipelineStep(name: isHebrew ? "הפעלת App Intent ברקע" : "App Intent Launched", passed: true)
-                    pipelineStep(name: isHebrew ? "חילוץ סכום תקין" : "Amount Parsed", passed: entry.hasAmount || entry.resolvedAmount != nil)
-                    pipelineStep(name: isHebrew ? "ניקוי וסיווג שם בית עסק" : "Merchant Normalized", passed: entry.hasMerchant || entry.resolvedMerchant != nil)
+                    pipelineStep(name: isHebrew ? "קבלת פקודה (App Intent)" : "App Intent Received", passed: true)
+                    pipelineStep(name: isHebrew ? "אימות ותקינות סכום (Amount Validation)" : "Amount Parsed", passed: entry.hasAmount || entry.resolvedAmount != nil)
+                    pipelineStep(name: isHebrew ? "זיהוי וניקוי שם בית עסק (Merchant Normalization)" : "Merchant Normalized", passed: entry.hasMerchant || entry.resolvedMerchant != nil)
                     if let cat = entry.categoryDetected {
-                        pipelineStep(name: isHebrew ? "סיווג לקטגוריה: \(cat)" : "Category: \(cat)", passed: true)
+                        pipelineStep(name: isHebrew ? "סיווג קטגוריה אוטומטי: \(cat)" : "Category Classified: \(cat)", passed: true)
                     }
-                    pipelineStep(name: isHebrew ? "שמירה לבסיס הנתונים" : "Database Persistence", passed: isSuccess)
+                    pipelineStep(name: isHebrew ? "שמירה לבסיס הנתונים ועדכון תלת-ממד" : "Persisted & City Updated", passed: isSuccess)
                 }
                 .padding(10)
                 .background(Color.appBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            // Section D: Diagnostic Result & Failure Reason (if failed)
+            // Section C: Diagnostics failure if any
             if let reason = entry.failureReason, !reason.isEmpty {
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -347,82 +538,59 @@ public struct ApplePayDiagnosticsView: View {
         }
     }
 
-    private func fieldPill(name: String, available: Bool) -> some View {
-        HStack(spacing: 4) {
-            Text(available ? "✓" : "✕")
-                .font(.system(size: 10, weight: .black))
-            Text(name)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-        }
-        .foregroundColor(available ? Color.themeMint : Color.themeOrange)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background((available ? Color.themeMint : Color.themeOrange).opacity(0.12))
-        .clipShape(Capsule())
-    }
-
     private func pipelineStep(name: String, passed: Bool) -> some View {
-        HStack(spacing: 6) {
-            Text(passed ? "✓" : "✕")
-                .font(.system(size: 11, weight: .black))
+        HStack(spacing: 8) {
+            Image(systemName: passed ? "checkmark.circle.fill" : "xmark.circle.fill")
+                .font(.system(size: 12, weight: .bold))
                 .foregroundColor(passed ? Color.themeMint : Color.themeOrange)
             Text(name)
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundColor(passed ? Color.deepNavy : Color.textMuted)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
         }
     }
 
-    // MARK: - 5. Empty State Card
     private var emptyStateCard: some View {
         VStack(spacing: 12) {
-            ScannerLensVectorIcon(color: Color.primaryBlue)
+            DistrictFinanceVectorIcon(color: Color.textMuted)
                 .scaleEffect(1.3)
-                .frame(width: 44, height: 44)
-            Text(isHebrew ? "טרם נקלטו עסקאות Apple Pay" : "No Apple Pay attempts logged yet")
+                .padding(.top, 10)
+            Text(isHebrew ? "אין רישומי דיאגנוסטיקה עדיין" : "No Ingest Logs Yet")
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .foregroundColor(Color.deepNavy)
-            Text(isHebrew
-                 ? "בצע קנייה ב-Apple Pay או הרץ בדיקת סימולציה למעלה. ברגע שהאוטומציה תפעל, כל שלבי ה-Pipeline והנתונים הגולמיים יופיעו כאן בזמן אמת."
-                 : "Make a test Apple Pay payment or tap Simulate Test above to see the live data stream.")
+            Text(isHebrew ? "הפעל סימולציה מהכפתורים למעלה או בצע רכישה ב-Apple Pay כדי לראות את שלבי הקליטה." : "Run a simulation above or make an Apple Pay purchase to inspect pipeline logs.")
                 .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
         }
-        .padding(28)
         .frame(maxWidth: .infinity)
+        .padding(24)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.borderSubtle, lineWidth: 1.5))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.borderSubtle, lineWidth: 1))
     }
 
-    // MARK: - Export Modal
     private var exportReportModal: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                Text(isHebrew ? "דוח דיאגנוסטיקה (ללא פרטים רגישים)" : "Sanitized Diagnostic Report")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                Text(isHebrew ? "דוח JSON המכיל את כל שלבי הנתונים הגולמיים והסיווגים:" : "Full JSON Diagnostics Ingest Trace:")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
-                    .padding(.top, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                ScrollView {
-                    Text(exportJSONText)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundColor(Color.deepNavy)
-                        .padding(14)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(red: 248/255, green: 250/255, blue: 252/255))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.borderSubtle, lineWidth: 1))
-                }
+                TextEditor(text: .constant(exportJSONText))
+                    .font(.system(size: 11, design: .monospaced))
+                    .padding(8)
+                    .background(Color.appBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.borderSubtle, lineWidth: 1))
 
                 #if os(iOS)
                 ShareLink(item: exportJSONText) {
                     HStack(spacing: 8) {
                         Image(systemName: "square.and.arrow.up")
-                        Text(isHebrew ? "שתף דוח טקסט / JSON" : "Share Report")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
+                        Text(isHebrew ? "שתף דוח JSON" : "Share JSON Report")
                     }
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
@@ -444,7 +612,109 @@ public struct ApplePayDiagnosticsView: View {
         }
     }
 
-    // MARK: - Actions
+    // MARK: - Simulation Actions
+    private func simulate(amount: Double?, merchant: String?, currency: String?) {
+        Task {
+            _ = await WalletIngestCoordinator.run(
+                amount: amount,
+                amountText: nil,
+                merchant: merchant,
+                currency: currency,
+                transactionDate: Date(),
+                intentName: "RecordTransactionIntent (Simulation)"
+            )
+            await MainActor.run {
+                Haptics.notify(.success)
+            }
+        }
+    }
+
+    private func simulateTextOnly(_ text: String) {
+        Task {
+            _ = await WalletIngestCoordinator.run(
+                amount: nil,
+                amountText: text,
+                merchant: text,
+                currency: "ILS",
+                transactionDate: Date(),
+                intentName: "RecordTransactionIntent (Simulation Text-Only)"
+            )
+            await MainActor.run {
+                Haptics.notify(.success)
+            }
+        }
+    }
+
+    private func simulateDuplicate() {
+        let fixedDate = Date()
+        Task {
+            // First run
+            _ = await WalletIngestCoordinator.run(
+                amount: 88.0,
+                amountText: nil,
+                merchant: "Super Yuda Duplicate Test",
+                currency: "ILS",
+                transactionDate: fixedDate,
+                intentName: "RecordTransactionIntent (Simulation Run 1)"
+            )
+            // Second run (Duplicate)
+            _ = await WalletIngestCoordinator.run(
+                amount: 88.0,
+                amountText: nil,
+                merchant: "Super Yuda Duplicate Test",
+                currency: "ILS",
+                transactionDate: fixedDate,
+                intentName: "RecordTransactionIntent (Simulation Run 2 - Duplicate)"
+            )
+            await MainActor.run {
+                Haptics.notify(.success)
+            }
+        }
+    }
+
+    private func generateMonthOfSimulatedActivity() {
+        Task {
+            let cal = Calendar(identifier: .gregorian)
+            let now = Date()
+            
+            let dataset: [(amt: Double, m: String, dayOffset: Int)] = [
+                (18.0, "ארומה קפה", 1),
+                (3200.0, "שכר דירה חודשי", 1),
+                (145.0, "טאקריה", 3),
+                (42.0, "וולט פיצה", 5),
+                (380.0, "שופרסל דיל", 7),
+                (18.0, "ארומה קפה", 8),
+                (120.0, "ZARA", 10),
+                (65.0, "סופר-פארם", 12),
+                (18.0, "ארומה קפה", 14),
+                (250.0, "Gett מוניות", 15),
+                (49.90, "Netflix", 16),
+                (1850.0, "איקאה ריהוט", 18),
+                (18.0, "ארומה קפה", 20),
+                (95.0, "סינמה סיטי", 22),
+                (410.0, "רמי לוי", 24),
+                (18.0, "ארומה קפה", 26),
+                (85.0, "דלק פז", 28)
+            ]
+            
+            for item in dataset {
+                let txDate = cal.date(byAdding: .day, value: -item.dayOffset, to: now) ?? now
+                _ = await WalletIngestCoordinator.run(
+                    amount: item.amt,
+                    amountText: nil,
+                    merchant: item.m,
+                    currency: "ILS",
+                    transactionDate: txDate,
+                    intentName: "RecordTransactionIntent (Batch Seed)"
+                )
+            }
+            
+            await MainActor.run {
+                Haptics.notify(.success)
+            }
+        }
+    }
+
     private func generateAndShowExport() {
         var reports: [[String: Any]] = []
         for (i, entry) in entries.enumerated() {
@@ -471,22 +741,6 @@ public struct ApplePayDiagnosticsView: View {
             exportJSONText = "[]"
         }
         showExportSheet = true
-    }
-
-    private func runSimulationTest() {
-        Task {
-            _ = await WalletIngestCoordinator.run(
-                amount: 47.25,
-                amountText: nil,
-                merchant: "שופרסל, גבעתיים, מחוז תל אביב",
-                currency: "ILS",
-                transactionDate: Date(),
-                intentName: "RecordTransactionIntent (Simulation)"
-            )
-            await MainActor.run {
-                Haptics.notify(.success)
-            }
-        }
     }
 
     private func formattedDate(_ date: Date) -> String {

@@ -78,8 +78,9 @@ public struct RecurringExpensesSheet: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Text("🔁")
-                .font(.system(size: 44, design: .rounded))
+            Image(systemName: "repeat")
+                .font(.system(size: 38, weight: .bold))
+                .foregroundColor(Color.primaryBlue)
             Text(isHebrew ? "אין עדיין הוצאות קבועות" : "No fixed expenses yet")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))

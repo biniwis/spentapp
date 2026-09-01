@@ -73,17 +73,27 @@ public enum WalletIngestCoordinator {
 
             try await DatabaseService.shared.save(transaction: newTransaction)
 
-            log.outcome = newTransaction.isConfirmed ? "נשמר בהצלחה" : "נשמר — ממתין לאישור"
+            let isRefund = newTransaction.note?.contains("זיכוי") == true || newTransaction.amount < 0
+            if isRefund {
+                log.outcome = "נשמר — זוהה זיכוי (ממתין לבדיקתך)"
+            } else {
+                log.outcome = newTransaction.isConfirmed ? "נשמר בהצלחה" : "נשמר — ממתין לאישור"
+            }
             log.resolvedAmount = newTransaction.amount
             log.resolvedMerchant = newTransaction.merchant
             log.categoryDetected = newTransaction.category.shortName
             log.failureReason = nil
             DatabaseService.shared.persist()
 
-            let amountString = String(format: "%.2f", newTransaction.amount)
-            let message = newTransaction.isConfirmed
-                ? "נרשמה עסקה ע״ס \(finalCurrency)\(amountString) ב-\(newTransaction.merchant) (\(newTransaction.category.shortName))"
-                : "נרשמה עסקה ע״ס \(finalCurrency)\(amountString) ב-\(newTransaction.merchant). הסיווג לא ודאי — ממתין לאישור."
+            let amountString = String(format: "%.2f", abs(newTransaction.amount))
+            let message: String
+            if isRefund {
+                message = "זוהה זיכוי ע״ס \(finalCurrency)\(amountString) ב-\(newTransaction.merchant). ממתין לבדיקתך בהיסטוריה."
+            } else if newTransaction.isConfirmed {
+                message = "נרשמה עסקה ע״ס \(finalCurrency)\(amountString) ב-\(newTransaction.merchant) (\(newTransaction.category.shortName))"
+            } else {
+                message = "נרשמה עסקה ע״ס \(finalCurrency)\(amountString) ב-\(newTransaction.merchant). הסיווג לא ודאי — ממתין לאישור."
+            }
 
             return WalletIngestResult(message: message, succeeded: true)
 

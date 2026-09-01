@@ -16,10 +16,7 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     }
 
     public var flagEmoji: String {
-        switch self {
-        case .hebrew: return "🇮🇱"
-        case .english: return "🇺🇸"
-        }
+        return ""
     }
 
     public var isRTL: Bool {
@@ -161,7 +158,7 @@ public final class LocalizationManager: ObservableObject {
         case "weekly_expenses": return isHebrew ? "הוצאות שבועיות" : "Weekly Expenses"
         case "by_category": return isHebrew ? "לפי קטגוריה" : "By Category"
         case "quick_settings": return isHebrew ? "הגדרות מהירות" : "Quick Settings"
-        case "all_settings": return isHebrew ? "כל ההגדרות ❯" : "All Settings ❯"
+        case "all_settings": return isHebrew ? "כל ההגדרות" : "All Settings"
         case "city_upgrades": return isHebrew ? "שדרוגי העיר שלך" : "Your City Upgrades"
         case "yearly_breakdown": return isHebrew ? "שבירת הוצאות השנה" : "Yearly Spending Breakdown"
 

@@ -2,16 +2,16 @@ import SwiftUI
 
 /// The definitive 9 core financial categories for V1 (based on standard financial taxonomy).
 public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Sendable {
-    case housing = "housing"               // 🏠 בית (שכירות, חשמל, מים, אינטרנט, תחזוקה)
-    case food = "food"                     // 🍔 אוכל (סופר, מסעדות, משלוחים, קפה)
-    case transport = "transport"           // 🚗 תחבורה (דלק, חניה, אוטובוס/רכבת, Gett, תיקונים)
-    case shopping = "shopping"             // 🛍️ קניות (בגדים, אלקטרוניקה, דברים לבית)
-    case entertainment = "entertainment"   // 🎭 בילויים (קולנוע, הופעות, ברים, משחקים, תחביבים)
-    case health = "health"                 // ❤️ בריאות (רופא, תרופות, שיניים, טיפוח, כושר)
-    case subscriptions = "subscriptions"   // 📱 מנויים וחשבונות (Netflix, Spotify, אפליקציות, סלולר)
-    case other = "other"                   // 🎁 אחרים (מתנות, תרומות, הוצאות חד־פעמיות)
-    case finance = "finance"               // 💳 כספים (עמלות, ריבית, החזרי חוב)
-    case savings = "savings"               // 🌱 חיסכון והשקעות (קרנות, S&P500, חיסכון חודשי)
+    case housing = "housing"               // בית (שכירות, חשמל, מים, אינטרנט, תחזוקה)
+    case food = "food"                     // אוכל (סופר, מסעדות, משלוחים, קפה)
+    case transport = "transport"           // תחבורה (דלק, חניה, אוטובוס/רכבת, Gett, תיקונים)
+    case shopping = "shopping"             // קניות (בגדים, אלקטרוניקה, דברים לבית)
+    case entertainment = "entertainment"   // בילויים (קולנוע, הופעות, ברים, משחקים, תחביבים)
+    case health = "health"                 // בריאות (רופא, תרופות, שיניים, טיפוח, כושר)
+    case subscriptions = "subscriptions"   // מנויים וחשבונות (Netflix, Spotify, אפליקציות, סלולר)
+    case other = "other"                   // אחרים (מתנות, תרומות, הוצאות חד־פעמיות)
+    case finance = "finance"               // כספים (עמלות, ריבית, החזרי חוב)
+    case savings = "savings"               // חיסכון והשקעות (קרנות, S&P500, חיסכון חודשי)
     
     // Legacy aliases for backward compatibility
     case groceries = "groceries"
@@ -35,52 +35,57 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         [.housing, .food, .transport, .shopping, .entertainment, .health, .subscriptions, .savings, .finance, .other]
     }
     
-    /// User-facing display name in Hebrew
+    /// User-facing localized category name (Hebrew)
     public var displayName: String {
-        switch self {
-        case .housing: return "דיור ומגורים"
+        switch canonical {
+        case .housing: return "דיור ובית"
         case .food, .groceries, .coffee: return "אוכל ומסעדות"
         case .transport: return "תחבורה ורכב"
-        case .shopping: return "קניות ואופנה"
+        case .shopping: return "קניות ומוצרים"
         case .entertainment: return "בילויים ופנאי"
-        case .health: return "בריאות וספורט"
-        case .subscriptions: return "מנויים וסטרימינג"
-        case .other: return "שונות ומתנות"
-        case .finance: return "פיננסים ועמלות"
+        case .health: return "בריאות וכושר"
+        case .subscriptions: return "מנויים וחשבונות"
+        case .other: return "הוצאות שונות"
+        case .finance: return "עמלות ובנקים"
         case .savings: return "חיסכון והשקעות"
         }
     }
     
-    /// Short badge label
+    /// User-facing display name in English
+    public var displayNameEn: String {
+        switch canonical {
+        case .housing: return "Housing & Home"
+        case .food, .groceries, .coffee: return "Food & Dining"
+        case .transport: return "Transportation"
+        case .shopping: return "Shopping & Goods"
+        case .entertainment: return "Entertainment & Leisure"
+        case .health: return "Health & Fitness"
+        case .subscriptions: return "Subscriptions & Bills"
+        case .other: return "Other Expenses"
+        case .finance: return "Bank & Fees"
+        case .savings: return "Savings & Investments"
+        }
+    }
+    
+    /// User-facing short name for compact badges
     public var shortName: String {
-        switch self {
-        case .housing: return "בית"
+        switch canonical {
+        case .housing: return "דיור ובית"
         case .food, .groceries, .coffee: return "אוכל"
         case .transport: return "תחבורה"
         case .shopping: return "קניות"
         case .entertainment: return "בילויים"
         case .health: return "בריאות"
         case .subscriptions: return "מנויים"
-        case .other: return "אחר"
-        case .finance: return "כספים"
+        case .other: return "שונות"
+        case .finance: return "בנק ועמלות"
         case .savings: return "חיסכון"
         }
     }
     
-    /// Emoji representation
+    /// System icon representation
     public var emoji: String {
-        switch self {
-        case .housing: return "🏠"
-        case .food, .groceries, .coffee: return "🍔"
-        case .transport: return "🚗"
-        case .shopping: return "🛍️"
-        case .entertainment: return "🎭"
-        case .health: return "❤️"
-        case .subscriptions: return "📱"
-        case .other: return "🎁"
-        case .finance: return "💳"
-        case .savings: return "🌱"
-        }
+        return ""
     }
     
     /// Classification of expense behavior for City Diorama architectural morphology

@@ -232,3 +232,87 @@ final class RecurringExpenseTests: XCTestCase {
         XCTAssertEqual(RecurringExpense(merchant: "x", amount: 1, category: .other, dayOfMonth: 0).dayOfMonth, 1)
     }
 }
+
+
+/// Resuming a paused fixed expense used to skip the month it was resumed in, because every
+/// launch while paused stamped the marker onto the current month — marking it settled before
+/// the user had resumed.
+final class RecurringPauseResumeTests: XCTestCase {
+
+    private var calendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(identifier: "Asia/Jerusalem") ?? .current
+        return c
+    }()
+
+    private func date(_ y: Int, _ m: Int, _ d: Int) -> Date {
+        calendar.date(from: DateComponents(year: y, month: m, day: d, hour: 9))!
+    }
+
+    private func marker(_ current: String?, _ now: Date) -> String? {
+        RecurringExpenseService.pausedMarker(current: current, now: now, calendar: calendar)
+    }
+
+    func testPausedMarkerStopsOneMonthShortOfToday() {
+        XCTAssertEqual(marker(nil, date(2026, 9, 2)), "2026-08")
+    }
+
+    func testMarkerIsNeverDraggedBackwards() {
+        // Already settled through September; a launch in September must not undo that.
+        XCTAssertEqual(marker("2026-09", date(2026, 9, 20)), "2026-09")
+    }
+
+    func testResumeMonthIsStillDueAfterALongPause() {
+        // Paused since May, app opened repeatedly through the summer.
+        var current: String? = "2026-05"
+        for month in 6...9 {
+            current = marker(current, date(2026, month, 3))
+        }
+        XCTAssertEqual(current, "2026-08")
+
+        // Resumed on 2 September: September is still ahead of the marker, so it posts.
+        let due = RecurringExpenseService.duePeriods(
+            lastGeneratedPeriod: current,
+            createdAt: date(2026, 1, 10),
+            dayOfMonth: 10,
+            now: date(2026, 9, 20),
+            calendar: calendar
+        )
+        XCTAssertEqual(due, ["2026-09"])
+    }
+
+    func testPausingAndResumingInsideOneMonthDoesNotRepost() {
+        // June already posted, then paused on the 5th and resumed on the 20th.
+        let current = marker("2026-06", date(2026, 6, 5))
+        XCTAssertEqual(current, "2026-06")
+        let due = RecurringExpenseService.duePeriods(
+            lastGeneratedPeriod: current,
+            createdAt: date(2026, 1, 10),
+            dayOfMonth: 10,
+            now: date(2026, 6, 20),
+            calendar: calendar
+        )
+        XCTAssertTrue(due.isEmpty)
+    }
+
+    func testPauseDoesNotBackfillTheMonthsItCovered() {
+        // The whole point of the marker: a summer pause owes nothing when it ends.
+        var current: String? = "2026-05"
+        for month in 6...9 { current = marker(current, date(2026, month, 3)) }
+        let due = RecurringExpenseService.duePeriods(
+            lastGeneratedPeriod: current,
+            createdAt: date(2026, 1, 10),
+            dayOfMonth: 10,
+            now: date(2026, 9, 20),
+            calendar: calendar
+        )
+        XCTAssertFalse(due.contains("2026-06"))
+        XCTAssertFalse(due.contains("2026-07"))
+        XCTAssertFalse(due.contains("2026-08"))
+    }
+
+    func testMarkerCrossesTheYearBoundary() {
+        XCTAssertEqual(marker(nil, date(2027, 1, 4)), "2026-12")
+        XCTAssertEqual(marker("2026-12", date(2027, 1, 4)), "2026-12")
+    }
+}

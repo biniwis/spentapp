@@ -434,43 +434,10 @@ public struct DioramaExpandVectorIcon: View {
     }
     
     public var body: some View {
-        ZStack {
-            CornerBracketShape()
-                .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-                .frame(width: 6, height: 6)
-                .offset(x: isExpanded ? -3.5 : -5, y: isExpanded ? -3.5 : -5)
-                .rotationEffect(.degrees(isExpanded ? 180 : 0))
-            
-            CornerBracketShape()
-                .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-                .frame(width: 6, height: 6)
-                .offset(x: isExpanded ? 3.5 : 5, y: isExpanded ? -3.5 : -5)
-                .rotationEffect(.degrees(isExpanded ? 270 : 90))
-            
-            CornerBracketShape()
-                .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-                .frame(width: 6, height: 6)
-                .offset(x: isExpanded ? 3.5 : 5, y: isExpanded ? 3.5 : 5)
-                .rotationEffect(.degrees(isExpanded ? 0 : 180))
-            
-            CornerBracketShape()
-                .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-                .frame(width: 6, height: 6)
-                .offset(x: isExpanded ? -3.5 : -5, y: isExpanded ? 3.5 : 5)
-                .rotationEffect(.degrees(isExpanded ? 90 : 270))
-        }
-        .frame(width: 20, height: 20)
-        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isExpanded)
-    }
-}
-
-private struct CornerBracketShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        return p
+        Image(systemName: isExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundColor(color)
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isExpanded)
     }
 }
 

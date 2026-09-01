@@ -54,6 +54,14 @@ public struct RecordTransactionIntent: AppIntent {
     @Parameter(title: "תאריך ושעה", description: "זמן ביצוע העסקה")
     public var transactionDate: Date?
 
+    public static var parameterSummary: some ParameterSummary {
+        Summary("קלוט עסקה של \(\.$amount) ב-\(\.$merchant)") {
+            \.$currency
+            \.$transactionDate
+            \.$amountText
+        }
+    }
+
     public init() {}
 
     public init(

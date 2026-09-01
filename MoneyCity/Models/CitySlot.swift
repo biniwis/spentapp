@@ -24,7 +24,7 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
             name: "מרכז פארק השמורה",
             subtitle: "כיכר המים והטבע המרכזית בלב הירוק",
             districtId: "savings",
-            icon: "🌲",
+            icon: "tree.fill",
             defaultItemId: "fountain_marble"
         ),
         CitySlot(
@@ -32,7 +32,7 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
             name: "מצפה גבעת האגם",
             subtitle: "נקודת תצפית פסטורלית מעל המים",
             districtId: "savings",
-            icon: "🪵",
+            icon: "water.waves",
             defaultItemId: "pet_cat_rooftop"
         ),
         CitySlot(
@@ -40,7 +40,7 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
             name: "רחבת רובע האוכל",
             subtitle: "כיכר הטיילת מול המסעדות ובתי הקפה",
             districtId: "food",
-            icon: "🍽️",
+            icon: "fork.knife",
             defaultItemId: "cafe_stand"
         ),
         CitySlot(
@@ -48,7 +48,7 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
             name: "שדרת הקניות והאופנה",
             subtitle: "מרכז המדרחוב לצד הבוטיקים וחלונות הראווה",
             districtId: "shopping",
-            icon: "🛍️",
+            icon: "bag.fill",
             defaultItemId: "tree_sakura"
         ),
         CitySlot(
@@ -56,7 +56,7 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
             name: "טרסת גן המגורים",
             subtitle: "רחבת הגן השלווה למרגלות מגדל המגורים",
             districtId: "housing",
-            icon: "🏡",
+            icon: "house.fill",
             defaultItemId: "flower_bed_plaza"
         ),
         CitySlot(
@@ -64,7 +64,7 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
             name: "כיכר מתחם ההייטק",
             subtitle: "רחבה מודרנית ליד חלל החדשנות",
             districtId: "shopping",
-            icon: "💻",
+            icon: "desktopcomputer",
             defaultItemId: "public_art_sculpture"
         )
     ]

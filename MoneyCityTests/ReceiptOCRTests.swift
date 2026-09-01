@@ -173,3 +173,76 @@ final class ReceiptOCRTests: XCTestCase {
         XCTAssertEqual(result?.category, .transport)
     }
 }
+
+// MARK: - Regressions
+
+/// Every amount over three digits without a thousands comma used to be divided by ten and
+/// still look plausible, because the amount pattern's first alternative matched 1-3 digits
+/// on its own and alternation is leftmost-first. OCR almost never produces a thousands
+/// comma, so this hit most real receipts over ₪999.
+final class ReceiptAmountTruncationTests: XCTestCase {
+
+    private func amount(_ line: String) -> Double? {
+        ReceiptOCRService.extractAmount(from: ["חשבונית מס", line, "תודה ולהתראות"])
+    }
+
+    func testFourDigitTotalIsNotTruncated() {
+        XCTAssertEqual(amount("סך הכל לתשלום 1450.50 ₪"), 1450.50)
+    }
+
+    func testRoundThousandsTotalIsNotTruncated() {
+        XCTAssertEqual(amount("סך הכל לתשלום ₪3200.00"), 3200.00)
+    }
+
+    func testWholeShekelThousandsTotalIsNotTruncated() {
+        XCTAssertEqual(amount("סכום החיוב ₪ 8500"), 8500.00)
+    }
+
+    func testFiveDigitTotalIsNotTruncated() {
+        XCTAssertEqual(amount("סה\"כ לתשלום 12500"), 12500.00)
+    }
+
+    func testGroupedThousandsStillParse() {
+        XCTAssertEqual(amount("סך הכל לתשלום ₪1,450.50"), 1450.50)
+    }
+
+    func testCommaAsDecimalIsOneNumberNotTwo() {
+        XCTAssertEqual(amount("סכום לתשלום 140,50 ₪"), 140.50)
+    }
+
+    func testSmallAmountsAreUnaffected() {
+        XCTAssertEqual(amount("סה\"כ לתשלום ₪45.90"), 45.90)
+        XCTAssertEqual(amount("סה\"כ לתשלום ₪999"), 999.00)
+    }
+
+    func testCardNumberDoesNotBecomeAnAmount() {
+        // A 16-digit run used to be chopped into six plausible three-digit "amounts".
+        XCTAssertNil(amount("כרטיס 4580123456781234"))
+    }
+}
+
+/// Merchant keys as short as two Hebrew letters were matched with a plain `contains` over
+/// the whole receipt, so "כרטיס אשראי" — which is on nearly every Israeli card slip —
+/// matched "יס" and filed the purchase under a TV provider.
+final class ReceiptMerchantTokenTests: XCTestCase {
+
+    private func merchant(_ lines: [String]) -> String? {
+        ReceiptOCRService.extractMerchant(from: lines)
+    }
+
+    func testCreditCardWordingIsNotReadAsYES() {
+        XCTAssertNotEqual(merchant(["מסעדת הבית", "כרטיס אשראי 1234", "סה\"כ 120"]), "YES")
+    }
+
+    func testCardNumberLabelIsNotReadAsYES() {
+        XCTAssertNotEqual(merchant(["פיצה מאמא", "מספר כרטיס", "סה\"כ 60"]), "YES")
+    }
+
+    func testRealYesBillIsStillRecognised() {
+        XCTAssertEqual(merchant(["יס", "חיוב חודשי", "סה\"כ 219"]), "YES")
+    }
+
+    func testLongMerchantKeySurvivesHebrewPrefix() {
+        XCTAssertEqual(merchant(["קניתי בסופרפארם דיזנגוף", "סה\"כ 88"]), "סופר-פארם")
+    }
+}

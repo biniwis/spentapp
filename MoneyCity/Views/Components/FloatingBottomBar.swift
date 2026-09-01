@@ -27,10 +27,16 @@ public struct FloatingBottomBar: View {
                 onQuickAdd()
             }) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: MoneyCityTheme.radiusSmall + 5, style: .continuous)
                         .fill(Color.primaryBlue)
                         .frame(width: 52, height: 52)
-                        .shadow(color: Color.primaryBlue.opacity(0.35), radius: 10, y: 5)
+                        .background(
+                            RoundedRectangle(cornerRadius: MoneyCityTheme.radiusSmall + 5, style: .continuous)
+                                .fill(MoneyCityTheme.edgeBlue)
+                                .frame(width: 52, height: 52)
+                                .offset(y: MoneyCityTheme.edgeThickness)
+                        )
+                        .cityFloat()
                     
                     // Tactile Bold Plus Symbol
                     ZStack {
@@ -58,9 +64,12 @@ public struct FloatingBottomBar: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 36))
-        .overlay(RoundedRectangle(cornerRadius: 36).stroke(Color.borderSubtle, lineWidth: 1.5))
-        .shadow(color: Color.deepNavy.opacity(0.06), radius: 16, y: 6)
+        .clipShape(RoundedRectangle(cornerRadius: MoneyCityTheme.radiusHero, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: MoneyCityTheme.radiusHero, style: .continuous)
+                .stroke(Color.borderSubtle, lineWidth: 1)
+        )
+        .cityFloat()
         .padding(.horizontal, 20)
     }
 

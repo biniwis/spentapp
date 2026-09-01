@@ -63,7 +63,9 @@ public struct IngestLogSheet: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Text("📡").font(.system(size: 44, design: .rounded))
+            Image(systemName: "antenna.radiowaves.left.and.right")
+                .font(.system(size: 38, weight: .bold))
+                .foregroundColor(Color.primaryBlue)
             Text(isHebrew ? "עוד לא הופעל האינטנט" : "The intent has not run yet")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
             Text(isHebrew

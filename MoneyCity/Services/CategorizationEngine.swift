@@ -165,11 +165,12 @@ public final class CategorizationEngine: Sendable {
             return "savings_sanctuary"
             
         case .transport:
-            // Its own building. Mapping this onto shop_travel put every fill-up in the
-            // shopping district as well as the transport district, double counting it.
             return "trans_station"
             
-        case .health, .other, .finance:
+        case .other:
+            return "city_sorting_hub"
+            
+        case .health, .finance:
             return "shop_boutique"
         }
     }

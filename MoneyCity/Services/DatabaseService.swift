@@ -46,6 +46,15 @@ public final class DatabaseService {
     public var isEphemeral: Bool { storageMode == .memoryOnly }
 
     private init() {
+        // Both of these have to happen before the container exists, and in this order.
+        //
+        // A restore swaps the store file, which is only safe while nothing has it open — and
+        // a snapshot is worthless if it is taken after a migration has already reshaped the
+        // file it was meant to preserve. This is the one moment in the app's life when
+        // neither is true yet.
+        StoreSnapshotService.applyPendingRestoreIfNeeded()
+        StoreSnapshotService.snapshotIfBuildChanged()
+
         // Built from the versioned schema, not a bare model list, so the store carries the
         // version identifier the migration plan matches against. V1 is 1.0.0, which is also
         // what an unversioned schema defaulted to — so an existing store opens unchanged.
@@ -54,6 +63,14 @@ public final class DatabaseService {
         self.container = outcome.container
         self.storageMode = outcome.mode
         self.storageFailure = outcome.failure
+
+        // A snapshot cannot count its own rows — opening it to look would migrate the very
+        // file it exists to preserve — so the count is banked here, from the store that just
+        // opened, and the next snapshot carries it as its label.
+        if outcome.mode == .persistent {
+            let count = (try? container.mainContext.fetchCount(FetchDescriptor<Transaction>())) ?? 0
+            StoreSnapshotService.recordTransactionCount(count)
+        }
     }
 
     // MARK: - Container recovery

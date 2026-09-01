@@ -297,8 +297,18 @@ public enum ReceiptOCRService {
     }
 
     private static func extractNumbersFromLine(_ text: String) -> [Double] {
-        // Matches numbers like "140.00", "140,00", "1,450.50", "32.90", "140"
-        let pattern = #"(?:₪|\$|€|ILS|NIS)?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
+        // Matches numbers like "140.00", "140,00", "1,450.50", "32.90", "140".
+        //
+        // The comma group is `+`, not `*`, and that is the whole point. With `*` the first
+        // alternative matched any 1-3 digits on its own, and since alternation is
+        // leftmost-first it always won before the second alternative was ever tried — so
+        // "1450.50" came back as 145 (and then 0.50), "3200.00" as 320, "8500" as 850.
+        // Every scanned receipt over ₪999 without a thousands comma — which is nearly all
+        // of them, OCR rarely produces one — was silently divided by ten and still looked
+        // like a plausible amount. Requiring at least one ",ddd" group means the first
+        // alternative only claims genuinely grouped numbers and everything else falls
+        // through to the second, which takes the digit run whole.
+        let pattern = #"(?:₪|\$|€|ILS|NIS)?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
         let nsString = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsString.length))
@@ -454,8 +464,10 @@ public enum ReceiptOCRService {
             // Pharmacies & Health
             ("סופר-פארם", "סופר-פארם"),
             ("סופר פארם", "סופר-פארם"),
+            ("סופרפארם", "סופר-פארם"),
             ("super-pharm", "Super-Pharm"),
             ("super pharm", "Super-Pharm"),
+            ("superpharm", "Super-Pharm"),
             ("be פארם", "Be"),
             ("ניו פארם", "Be"),
             ("כללית", "שירותי בריאות כללית"),
@@ -566,13 +578,32 @@ public enum ReceiptOCRService {
             ("ארנונה", "עירייה - ארנונה")
         ]
 
-        for (key, display) in dictionary {
-            if lower.contains(key) {
+        // Longest key first, so a specific entry is not stolen by a shorter one that
+        // happens to sit higher in the table.
+        for (key, display) in dictionary.sorted(by: { $0.0.count > $1.0.count }) {
+            if containsMerchantToken(lower, key: key) {
                 return display
             }
         }
 
         return nil
+    }
+
+    /// Whether `key` appears as a standalone token rather than inside a longer word.
+    ///
+    /// The table holds keys as short as two Hebrew letters — "יס" for YES, "דן", "גט" —
+    /// and a plain `contains` over the entire receipt text made them match almost anything.
+    /// "כרטיס אשראי" appears on essentially every Israeli card slip and contains "יס", so
+    /// receipt after receipt was filed under a TV provider. That is worse than a wrong
+    /// label: the merchant name is what MerchantRuleService keys its learned rules on, so
+    /// one user correction taught a rule that mislabelled every future scan the same way.
+    private static func containsMerchantToken(_ text: String, key: String) -> Bool {
+        // Long, distinctive keys stay plain substrings — that is what lets them survive
+        // Hebrew prefixes like "בסופרפארם". Short keys have to stand on their own.
+        if key.count >= 4 { return text.contains(key) }
+        let escaped = NSRegularExpression.escapedPattern(for: key)
+        let bounded = "(?<![\\p{L}\\p{N}])" + escaped + "(?![\\p{L}\\p{N}])"
+        return text.range(of: bounded, options: .regularExpression) != nil
     }
 
     private static func normalizeMerchantName(_ name: String) -> String {

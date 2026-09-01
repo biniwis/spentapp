@@ -275,4 +275,99 @@ final class TransactionIngestTests: XCTestCase {
         XCTAssertGreaterThan(tx.amount, 12.0)
         XCTAssertEqual(tx.category, .subscriptions)
     }
+
+    func testRefundFromApplePayIsParkedForUserReview() throws {
+        let tx = try TransactionIngest.makeTransaction(
+            amount: -145.0,
+            amountText: nil,
+            merchant: "IKEA זיכוי",
+            currency: "₪",
+            date: Date(),
+            existing: []
+        )
+        XCTAssertEqual(tx.amount, -145.0)
+        XCTAssertFalse(tx.isConfirmed)
+        XCTAssertTrue(tx.note?.contains("זיכוי") == true)
+        XCTAssertEqual(tx.confidenceScore, 0.5)
+    }
+
+    // MARK: - Phase 1: Structured Transaction Tests (Direct AppIntent -> Coordinator)
+
+    func testDirectStructuredWoltTransactionIngest() throws {
+        let date = Date()
+        let salvaged = TransactionIngest.salvage(
+            amount: 47.0,
+            amountText: nil,
+            merchant: "Wolt"
+        )
+        XCTAssertEqual(salvaged.amount, 47.0)
+        XCTAssertEqual(salvaged.merchant, "Wolt")
+
+        let tx = try TransactionIngest.makeTransaction(
+            amount: salvaged.amount,
+            amountText: nil,
+            merchant: salvaged.merchant,
+            currency: "ILS",
+            date: date,
+            existing: []
+        )
+        XCTAssertEqual(tx.amount, 47.0)
+        XCTAssertEqual(tx.merchant, "Wolt")
+        XCTAssertEqual(tx.category, .food)
+        XCTAssertEqual(tx.buildingId, "food_wolt")
+        XCTAssertTrue(tx.isConfirmed)
+        XCTAssertFalse(tx.isManual)
+    }
+
+    func testDirectStructuredZaraTransactionIngest() throws {
+        let date = Date()
+        let salvaged = TransactionIngest.salvage(
+            amount: 199.90,
+            amountText: nil,
+            merchant: "ZARA"
+        )
+        XCTAssertEqual(salvaged.amount, 199.90)
+        XCTAssertEqual(salvaged.merchant, "ZARA")
+
+        let tx = try TransactionIngest.makeTransaction(
+            amount: salvaged.amount,
+            amountText: nil,
+            merchant: salvaged.merchant,
+            currency: "ILS",
+            date: date,
+            existing: []
+        )
+        XCTAssertEqual(tx.amount, 199.90)
+        XCTAssertEqual(tx.merchant, "ZARA")
+        XCTAssertEqual(tx.category, .shopping)
+        XCTAssertEqual(tx.buildingId, "shop_boutique")
+    }
+
+    func testStructuredTransactionDeduplicationWithin90Seconds() throws {
+        let date = Date()
+        let tx1 = try TransactionIngest.makeTransaction(
+            amount: 47.0,
+            amountText: nil,
+            merchant: "Wolt",
+            currency: "ILS",
+            date: date,
+            existing: []
+        )
+        XCTAssertEqual(tx1.amount, 47.0)
+
+        // Second identical purchase 10 seconds later -> Throws duplicate error
+        let date2 = date.addingTimeInterval(10)
+        XCTAssertThrowsError(
+            try TransactionIngest.makeTransaction(
+                amount: 47.0,
+                amountText: nil,
+                merchant: "Wolt",
+                currency: "ILS",
+                date: date2,
+                existing: [tx1]
+            )
+        ) { error in
+            XCTAssertEqual(error as? TransactionIngestError, .duplicate)
+        }
+    }
 }

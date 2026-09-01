@@ -154,7 +154,8 @@
       food:     { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: -6.2, lookY: 0.65, lookZ: -6.8 },
       shopping: { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: 6.8,  lookY: 0.65, lookZ: -6.8 },
       housing:  { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: 6.8,  lookY: 0.65, lookZ: 6.0 },
-      savings:  { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: -6.2, lookY: 0.65, lookZ: 6.0 }
+      savings:  { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: -6.2, lookY: 0.65, lookZ: 6.0 },
+      civic:    { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: 0.0,  lookY: 0.65, lookZ: 8.6, lookX: -3.2 }
     };
 
     let currentMode = "city";
@@ -1691,30 +1692,67 @@
     root.add(mesh(new THREE.BoxGeometry(0.18, 0.11, 23.0), gutterMat, -1.55, 0.055, 0));
     root.add(mesh(new THREE.BoxGeometry(0.18, 0.11, 23.0), gutterMat, 2.75, 0.055, 0));
 
-    // Painted Centerline Dashes (Pure White Crisp Line)
-    for (let rx = -10.5; rx < 11.5; rx += 2.8) {
-      root.add(mesh(new THREE.BoxGeometry(1.5, 0.11, 0.14), mat(0xffffff, 0.85), rx, 0.06, -0.8, false, false));
+        // ════════════════════════════════════════════════════════════════
+    // 🛣️ CRISP ART-DIRECTED ROAD MARKINGS & ZEBRA CROSSWALKS (מעברי חצייה וסימוני כביש)
+    // ════════════════════════════════════════════════════════════════
+    const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+    const roadY = 0.105; // Slightly elevated above 0.05 asphalt for zero z-fighting
+
+    // A. Solid White Road Shoulder Boundaries
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.015, 0.12), whiteLineMat, 0, roadY, -2.8));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.015, 0.12), whiteLineMat, 0, roadY, 1.2));
+    root.add(mesh(new THREE.BoxGeometry(0.12, 0.015, 23.0), whiteLineMat, -1.4, roadY, 0));
+    root.add(mesh(new THREE.BoxGeometry(0.12, 0.015, 23.0), whiteLineMat, 2.6, roadY, 0));
+
+    // B. Dashed Centerlines along Horizontal & Vertical Avenues
+    for (let rx = -10.5; rx < 10.5; rx += 2.4) {
+      if (Math.abs(rx - 0.6) > 2.2) { // Skip center intersection box
+        root.add(mesh(new THREE.BoxGeometry(1.2, 0.015, 0.14), whiteLineMat, rx, roadY, -0.8));
+      }
     }
-    for (let rz = -10.5; rz < 11.5; rz += 2.8) {
-      root.add(mesh(new THREE.BoxGeometry(0.14, 0.11, 1.5), mat(0xffffff, 0.85), 0.6, 0.06, rz, false, false));
+    for (let rz = -10.5; rz < 10.5; rz += 2.4) {
+      if (Math.abs(rz - (-0.8)) > 2.2) { // Skip center intersection box
+        root.add(mesh(new THREE.BoxGeometry(0.14, 0.015, 1.2), whiteLineMat, 0.6, roadY, rz));
+      }
     }
 
-    // High-Visibility Zebra Crosswalks (Sunflower Yellow + Crisp White Stripes)
-    for (let i = -1.6; i <= 1.6; i += 0.42) {
-      root.add(mesh(new THREE.BoxGeometry(0.24, 0.11, 3.8), mat(0xfacc15, 0.85), -2.6 + i, 0.06, -0.8, false, false));
-      root.add(mesh(new THREE.BoxGeometry(0.24, 0.11, 3.8), mat(0xfacc15, 0.85), 3.8 + i, 0.06, -0.8, false, false));
-      root.add(mesh(new THREE.BoxGeometry(3.8, 0.11, 0.24), mat(0xfacc15, 0.85), 0.6, 0.06, -3.8 + i, false, false));
-      root.add(mesh(new THREE.BoxGeometry(3.8, 0.11, 0.24), mat(0xfacc15, 0.85), 0.6, 0.06, 2.2 + i, false, false));
+    // C. Bold Crisp White Zebra Crosswalks (מעברי חצייה קלאסיים)
+    function createZebraCrossing(centerX, centerZ, isHorizontal, width, length) {
+      const g = new THREE.Group(); g.position.set(centerX, roadY, centerZ); root.add(g);
+      const numStripes = 7;
+      const step = width / (numStripes - 1);
+      for (let i = 0; i < numStripes; i++) {
+        const offset = -width / 2 + i * step;
+        if (isHorizontal) {
+          // Stripes along X, crossing Z
+          g.add(mesh(new THREE.BoxGeometry(0.32, 0.015, length), whiteLineMat, offset, 0, 0));
+        } else {
+          // Stripes along Z, crossing X
+          g.add(mesh(new THREE.BoxGeometry(length, 0.015, 0.32), whiteLineMat, 0, 0, offset));
+        }
+      }
+      // Stop Line before crosswalk (Thick solid white bar)
+      if (isHorizontal) {
+        g.add(mesh(new THREE.BoxGeometry(width * 1.05, 0.015, 0.22), whiteLineMat, 0, 0, -length / 2 - 0.35));
+        g.add(mesh(new THREE.BoxGeometry(width * 1.05, 0.015, 0.22), whiteLineMat, 0, 0, length / 2 + 0.35));
+      } else {
+        g.add(mesh(new THREE.BoxGeometry(0.22, 0.015, width * 1.05), whiteLineMat, -length / 2 - 0.35, 0, 0));
+        g.add(mesh(new THREE.BoxGeometry(0.22, 0.015, width * 1.05), whiteLineMat, length / 2 + 0.35, 0, 0));
+      }
+      return g;
     }
 
-    // Yellow Cross-Hatched Intersection Box (No Stopping Zone)
-    const hatchMat = mat(0xfacc15, 0.8);
-    for (let hi = -1.8; hi <= 1.8; hi += 0.45) {
-      const hLine1 = mesh(new THREE.BoxGeometry(0.10, 0.11, 3.4), hatchMat, 0.6 + hi * 0.7, 0.055, -0.8);
-      hLine1.rotation.y = Math.PI / 4; root.add(hLine1);
-      const hLine2 = mesh(new THREE.BoxGeometry(0.10, 0.11, 3.4), hatchMat, 0.6 + hi * 0.7, 0.055, -0.8);
-      hLine2.rotation.y = -Math.PI / 4; root.add(hLine2);
-    }
+    // 1. North Crossing (Food Plaza <-> Shopping Promenade)
+    createZebraCrossing(0.6, -3.4, false, 3.2, 3.4);
+    // 2. South Crossing (Park Sanctuary <-> Residence District)
+    createZebraCrossing(0.6, 1.8, false, 3.2, 3.4);
+    // 3. West Crossing (Food Plaza <-> Park Sanctuary)
+    createZebraCrossing(-2.2, -0.8, true, 3.2, 3.4);
+    // 4. East Crossing (Shopping Promenade <-> Residence District)
+    createZebraCrossing(3.4, -0.8, true, 3.2, 3.4);
+    // 5. Postal Island Road Crossing (Crossing to Sorting Hub)
+    createZebraCrossing(0.6, 6.8, false, 3.0, 3.4);
 
     // ════════════════════════════════════════════════════════════════
     // 🧱 3D PHYSICAL BEVELED GRANITE CURBS (True Architectural Elevation)
@@ -2488,6 +2526,90 @@
 
     // ────────────────────────────────────────────────────────────────
     // ────────────────────────────────────────────────────────────────
+    
+    // ────────────────────────────────────────────────────────────────
+            // ────────────────────────────────────────────────────────────────
+    // 📮 ROADSIDE POSTAL ISLAND & SORTING HUB (אי בית דואר עצמאי בצד הכביש)
+    // Sits in a dedicated roadside bay (x: -3.2, z: 8.6) with its own curb & delivery parking bay!
+    // ────────────────────────────────────────────────────────────────
+    const civicZone = new THREE.Group();
+    civicZone.position.set(-3.2, 0.08, 8.6);
+    root.add(civicZone);
+
+    function createCitySortingHub(parent) {
+      const g = new THREE.Group(); g.position.set(0, 0.22, 0); parent.add(g);
+      buildingRoots["city_sorting_hub"] = g; g.userData = { targetScaleY: 1.0, targetScaleXZ: 1.0 };
+      const bGroup = new THREE.Group(); g.add(bGroup);
+      const sGroup = createTier1Stall("postal"); g.add(sGroup);
+      g.userData.buildingGroup = bGroup; g.userData.stallGroup = sGroup;
+
+      // 1. Raised Roadside Island Paved Platform with Granite Curb
+      const islandBase = mesh(roundedBox(3.2, 0.16, 2.8, 0.25), mat(0x475569, 0.85), 0, 0.08, 0);
+      islandBase.add(mesh(new THREE.BoxGeometry(3.25, 0.08, 0.08), mat(0xfacc15, 0.9), 0, 0.08, 1.4)); // Safety yellow curb
+      bGroup.add(islandBase);
+
+      // 2. Distinctive European Brick Post Office Building (בית דואר קלאסי)
+      const brickPost = mesh(roundedBox(2.0, 1.35, 1.6, 0.12), new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 }), -0.4, 0.75, -0.3);
+      bGroup.add(brickPost);
+      addWindows(bGroup, 1, 2, 2.0, 1.35, 1.6, 0.80);
+
+      // Royal Navy Hip Roof with Copper Trim
+      const roof = mesh(new THREE.ConeGeometry(1.5, 0.65, 4), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5, metalness: 0.2 }), -0.4, 1.65, -0.3);
+      roof.rotation.y = Math.PI / 4;
+      bGroup.add(roof);
+
+      // 3D Golden Post Horn / Envelope Emblem on Rooftop Spire
+      const spire = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 8), mat(0xfacc15, 0.2, 0.8), -0.4, 2.15, -0.3);
+      const emblem = mesh(new THREE.TorusGeometry(0.16, 0.04, 8, 16), mat(0xfacc15, 0.2, 0.9), -0.4, 2.45, -0.3);
+      emblem.rotation.y = Math.PI / 4;
+      bGroup.add(spire, emblem);
+
+      // High-Contrast Postal Front Sign ("📮 בית הדואר ומרכז המיון")
+      bGroup.add(mesh(new THREE.BoxGeometry(1.8, 0.38, 0.08), new THREE.MeshStandardMaterial({ map: signTex("📮 בית הדואר ומרכז המיון", "Sorting Hub • שונות", "#ffffff", "#ea580c"), emissive: 0xea580c, emissiveIntensity: 0.45 }), -0.4, 1.20, 0.55));
+
+      // Classic British Red Post Pillar Box (תיבת דואר אדומה קלאסית)
+      const postBox = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.48, 12), mat(0xdc2626, 0.4), 0.85, 0.32, 0.75);
+      postBox.add(mesh(new THREE.SphereGeometry(0.14, 10, 8), mat(0xdc2626, 0.4), 0, 0.24, 0));
+      postBox.add(mesh(new THREE.BoxGeometry(0.12, 0.04, 0.02), mat(0xfacc15, 0.3), 0, 0.12, 0.13)); // Letter Slot
+      bGroup.add(postBox);
+
+      // Loading Dock / Wooden Pallet with Stacked Parcels (חבילות למיון)
+      const crateGroup = new THREE.Group(); bGroup.add(crateGroup);
+      g.userData.crateGroup = crateGroup;
+      
+      const pallet = mesh(new THREE.BoxGeometry(0.85, 0.06, 0.65), mat(0x78350f, 0.9), -0.5, 0.19, 0.75);
+      bGroup.add(pallet);
+      const p1 = mesh(new THREE.BoxGeometry(0.32, 0.28, 0.28), mat(0xd97706, 0.8), -0.65, 0.34, 0.75);
+      const p2 = mesh(new THREE.BoxGeometry(0.26, 0.22, 0.24), mat(0xb45309, 0.8), -0.35, 0.31, 0.80);
+      const p3 = mesh(new THREE.BoxGeometry(0.22, 0.18, 0.22), mat(0xf59e0b, 0.8), -0.50, 0.54, 0.75);
+      crateGroup.add(p1, p2, p3);
+
+      // Yellow Postal Delivery Van in Dedicated Roadside Delivery Bay
+      const bayLines = mesh(new THREE.BoxGeometry(1.2, 0.015, 1.8), whiteLineMat, 0.85, 0.165, -0.2);
+      bGroup.add(bayLines);
+
+      const van = new THREE.Group(); van.position.set(0.85, 0.16, -0.2); bGroup.add(van);
+      const vanBody = mesh(roundedBox(0.65, 0.55, 1.2, 0.06), mat(0xf59e0b, 0.4), 0, 0.35, 0);
+      const vanCab = mesh(roundedBox(0.62, 0.48, 0.45, 0.04), mat(0x0f172a, 0.2), 0, 0.42, 0.35);
+      van.add(vanBody, vanCab);
+      [-0.34, 0.34].forEach(wx => {
+        [-0.35, 0.35].forEach(wz => {
+          const wh = mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.06, 10), mat(0x1e293b, 0.9), wx, 0.10, wz);
+          wh.rotation.z = Math.PI / 2;
+          van.add(wh);
+        });
+      });
+
+      const hubData = { id: "city_sorting_hub", district: "civic", name: "בית הדואר ומרכז המיון", emoji: "📮", amount: 0, visits: 0, trend: "הוצאות למיון" };
+      islandBase.userData = hubData;
+      brickPost.userData = hubData;
+      return brickPost;
+    }
+
+    const sortingHubBody = createCitySortingHub(civicZone);
+    interactiveBuildings.push(sortingHubBody);
+    createPlotSite("city_sorting_hub", "בית הדואר ומרכז המיון", "מיון הוצאות ושונות", 0, 0, civicZone, sortingHubBody.userData);
+
     // 🌱  SAVINGS PARK SANCTUARY
     // ────────────────────────────────────────────────────────────────
     const parkZone = new THREE.Group();
@@ -3185,6 +3307,7 @@
     addDistrictBuildingTag("housing", "house_tower", "🏠", "מגורים ושכירות", 0, "#253CC4", 4.5, 5.2, 4.6);
     addDistrictBuildingTag("housing", "house_util", "⚡", "חשמל וארנונה", 0, "#F59E0B", 9.1, 4.2, 4.6);
     addDistrictBuildingTag("housing", "house_subs", "📺", "מנויים וסטרימינג", 0, "#7C72FF", 6.8, 3.8, 8.8);
+    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", -3.2, 2.2, 8.6); 
 
     // ================================================================
     // 🏗️ SIMS-STYLE DEDICATED CITY UPGRADE SLOTS (Interactive Pads)
@@ -4110,6 +4233,11 @@
         return { scaleY: 0.05, scaleXZ: 0.05, tier: 0, tierName: "מגרש פנוי", ratio: 0 };
       }
       
+      if (buildingId === "city_sorting_hub") {
+        // Strict low-rise height cap: sorting hub is always a compact 1-story post booth
+        return { scaleY: 1.0, scaleXZ: 1.0, tier: 2, tierName: "מרכז מיון ודואר", ratio: 1.0 };
+      }
+      
       const baseline = CATEGORY_BASELINES[buildingId] || 350;
       const ratio = amount / baseline;
       
@@ -4342,6 +4470,12 @@
         syncBuilding("house_tower", rTower, towerBody, "חיוב קבוע");
         syncBuilding("house_util", rUtil, utilBody, "-2% מחודש שעבר");
         syncBuilding("house_subs", rSubs, subMediaBody, "מנויים פעילים");
+
+        // 4. Standalone Civic Sorting Hub
+        const otherSpend = (data.otherAmount !== undefined) ? data.otherAmount : 0;
+        const pendingCount = (data.pendingSortingCount !== undefined) ? data.pendingSortingCount : 0;
+        const sortingTrend = pendingCount > 0 ? (pendingCount + " חבילות למיון 📦") : "הכל ממוין ומסודר ✨";
+        syncBuilding("city_sorting_hub", otherSpend, sortingHubBody, sortingTrend);
 
         // Traffic should arrive with the city rather than greet an empty island. A user
         // on day one has one resident and empty plots; a taxi, a bus and a delivery

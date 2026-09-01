@@ -14,16 +14,14 @@ public struct DistrictBuildingInfo: Identifiable, Sendable {
     public let id: String
     public let districtId: String
     public let name: String
-    public let emoji: String
     public let amount: Double
     public let visitCount: Int
     public let trendText: String
     
-    public init(id: String, districtId: String, name: String, emoji: String, amount: Double, visitCount: Int, trendText: String) {
+    public init(id: String, districtId: String, name: String, amount: Double, visitCount: Int, trendText: String) {
         self.id = id
         self.districtId = districtId
         self.name = name
-        self.emoji = emoji
         self.amount = amount
         self.visitCount = visitCount
         self.trendText = trendText
@@ -133,6 +131,8 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let housingSub: HousingSub
         public let transport: Double
         public let savings: Double
+        public let otherAmount: Double?
+        public let pendingSortingCount: Int?
         public let targetDistrict: String?
         public let language: String
         public let enrichments: [String]
@@ -161,6 +161,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         
         let transport = categoryTotals[.transport] ?? 0
         let savings = totalSavings
+        let otherSpend = buildingTotals["city_sorting_hub"] ?? (categoryTotals[.other] ?? 0)
         
         let payload = DioramaDataPayload(
             food: food,
@@ -171,6 +172,8 @@ public struct ThreeDioramaView: ViewRepresentable {
             housingSub: .init(rent: towerSpend, utilities: utilSpend, subs: subsSpend),
             transport: transport,
             savings: savings,
+            otherAmount: otherSpend,
+            pendingSortingCount: (categoryTotals[.other] ?? 0) > 0 ? 1 : 0,
             targetDistrict: selectedDistrict,
             language: language,
             enrichments: enrichmentIds,
@@ -325,12 +328,11 @@ public struct ThreeDioramaView: ViewRepresentable {
                 let id = dict["id"] as? String ?? "b1"
                 let district = dict["district"] as? String ?? "food"
                 let name = dict["name"] as? String ?? "מסעדה"
-                let emoji = dict["emoji"] as? String ?? "🍽️"
                 let amount = dict["amount"] as? Double ?? 520.0
                 let visits = dict["visits"] as? Int ?? 8
                 let trend = dict["trend"] as? String ?? "+12% מחודש שעבר"
                 
-                let info = DistrictBuildingInfo(id: id, districtId: district, name: name, emoji: emoji, amount: amount, visitCount: visits, trendText: trend)
+                let info = DistrictBuildingInfo(id: id, districtId: district, name: name, amount: amount, visitCount: visits, trendText: trend)
                 parent.onBuildingSelected(info)
             }
         }

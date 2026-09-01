@@ -81,8 +81,8 @@ public struct BudgetSheet: View {
 
             if income > 0 {
                 HStack(spacing: 6) {
-                    Text(verbatim: unbudgeted >= 0 ? "✓" : "⚠️")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
+                    Image(systemName: unbudgeted >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 12, weight: .bold))
                     Text(unbudgeted >= 0
                          ? (isHebrew ? "\(symbol)\(Int(unbudgeted.rounded())) עוד לא מתוקצבים" : "\(symbol)\(Int(unbudgeted.rounded())) not yet budgeted")
                          : (isHebrew ? "התקציבים חורגים מההכנסה ב-\(symbol)\(Int(-unbudgeted.rounded()))" : "Budgets exceed income by \(symbol)\(Int(-unbudgeted.rounded()))"))
@@ -123,8 +123,8 @@ public struct BudgetSheet: View {
                         Circle()
                             .fill(Color.primaryBlue.opacity(0.12))
                             .frame(width: 26, height: 26)
-                        Text(verbatim: showIncomeEditor ? "−" : "+")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                        Image(systemName: showIncomeEditor ? "minus" : "plus")
+                            .font(.system(size: 13, weight: .bold))
                             .foregroundColor(Color.primaryBlue)
                     }
                 }
@@ -142,7 +142,9 @@ public struct BudgetSheet: View {
 
             ForEach(incomeSources) { source in
                 HStack(spacing: 10) {
-                    Text("💰").font(.system(size: 17, design: .rounded))
+                    Image(systemName: "banknote.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(Color.themeMint)
                     Text(source.name)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                     Spacer()
@@ -153,8 +155,8 @@ public struct BudgetSheet: View {
                         try? modelContext.save()
                         Haptics.impact(.light)
                     } label: {
-                        Text(verbatim: "✕")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(Color.slate300)
                             .frame(width: 24, height: 24)
                     }

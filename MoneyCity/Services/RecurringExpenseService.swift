@@ -72,6 +72,28 @@ public enum RecurringExpenseService {
     /// A month is owed once its occurrence date has passed. The template's own creation
     /// month is included even if the day already went by, because that charge did happen —
     /// duplicate protection at insert time is what stops it colliding with a manual entry.
+    /// Where a paused template's marker should sit: last month, never moving backwards.
+    ///
+    /// Stamping the *current* month — which is what this used to do on every launch — marked
+    /// the resume month as already settled. Pause the gym in June, open the app a few times
+    /// in September while it is still paused, tap Resume on the 2nd, and the September charge
+    /// never posts; the first one is in October. The template was active on its own charge
+    /// date and nothing told the user a month had been skipped. Stopping one month short
+    /// leaves the month they resume in to be decided on its own merits, while still meaning
+    /// "a pause skips months, it does not owe them later".
+    public static func pausedMarker(
+        current: String?,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> String? {
+        guard let lastMonth = period(periodKey(for: now, calendar: calendar), offsetByMonths: -1) else {
+            return current
+        }
+        guard let current else { return lastMonth }
+        // "yyyy-MM" sorts chronologically as text, so this is simply the later of the two.
+        return max(current, lastMonth)
+    }
+
     public static func duePeriods(
         lastGeneratedPeriod: String?,
         createdAt: Date,
@@ -196,10 +218,22 @@ public enum RecurringExpenseService {
         )
         var existing = (try? context.fetch(existingDescriptor)) ?? []
 
-        // A pause means "skip these months", not "owe them later". Without this, resuming
-        // a template paused for the summer posts every paused month at once.
+        // A pause means "skip these months", not "owe them later" — without this, resuming a
+        // template paused for the summer posts every paused month at once.
+        //
+        // The marker stops one month short of today, and that matters. Stamping the current
+        // month meant the resume month was already marked done: pause the gym in June, open
+        // the app a few times in September while it is still paused, tap Resume on the 2nd,
+        // and the September charge never posts — the first one is in October. The template
+        // was active on its own charge date and the user got no sign anything was skipped.
+        // Stopping at last month leaves the month they resume in still to be decided on its
+        // own merits. `max` keeps it monotonic so a marker is never dragged backwards.
         for template in templates where !template.isActive {
-            template.lastGeneratedPeriod = periodKey(for: now, calendar: calendar)
+            template.lastGeneratedPeriod = pausedMarker(
+                current: template.lastGeneratedPeriod,
+                now: now,
+                calendar: calendar
+            )
         }
 
         var created = 0
@@ -241,7 +275,14 @@ public enum RecurringExpenseService {
             try context.save()
         } catch {
             // Never report a phantom success — the caller shows the user a confirmation.
+            //
+            // Returning 0 was not enough on its own: the inserts and the marker updates had
+            // already been made on the shared main context, so the next successful save
+            // anywhere in the app committed the charges the user had just been told did not
+            // happen — and by then they may have re-entered this month's rent by hand.
+            // Rolling back makes the failure mean what it says.
             MoneyCityLog.error("RecurringExpenseService: save failed: \(error)")
+            context.rollback()
             return 0
         }
         return created

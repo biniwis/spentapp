@@ -42,8 +42,10 @@ public enum SavingsGoalService {
         return left / Double(months)
     }
 
-    /// A deposit toward a goal is also a real savings transfer, so it is recorded as one.
+    /// A deposit toward a goal is also a real savings transfer, so it is recorded as one —
+    /// carrying the goal's id, so the two records can never disagree about what happened.
     public static func makeDepositTransaction(
+        goalId: UUID,
         goalName: String,
         amount: Double,
         currency: String,
@@ -59,8 +61,64 @@ public enum SavingsGoalService {
             isManual: true,
             isConfirmed: true,
             note: "הפקדה ליעד חיסכון",
-            buildingId: "savings_sanctuary"
+            buildingId: "savings_sanctuary",
+            savingsGoalId: goalId
         )
+    }
+
+    // MARK: - Reconciliation
+
+    /// What a goal should hold, given the deposits that still exist.
+    ///
+    /// Pure so the rule can be tested without a store: the banked baseline plus every
+    /// surviving linked transfer. Deleting a deposit from history therefore lowers the
+    /// goal by exactly that deposit, and editing one moves it by exactly the difference.
+    public static func reconciledAmount(baseline: Double, linkedDeposits: [Double]) -> Double {
+        max(0, baseline) + linkedDeposits.reduce(0, +)
+    }
+
+    /// Recomputes each goal from the deposits that still exist, and reports whether
+    /// anything moved.
+    ///
+    /// The goal's total used to be a second, independent copy of the money: a deposit
+    /// incremented `savedAmount` and separately inserted a transaction, with nothing tying
+    /// them together. Deleting the transfer from history shrank the city's savings park and
+    /// left the goal bar untouched — and a goal could stay "complete", holding a permanent
+    /// landmark, on deposits the user had since removed.
+    ///
+    /// A goal that predates the link has deposits that cannot be identified any more, so
+    /// the first pass banks its current total as a baseline instead of wiping it.
+    @discardableResult
+    public static func reconcile(goals: [SavingsGoal], transactions: [Transaction]) -> Bool {
+        guard !goals.isEmpty else { return false }
+
+        var depositsByGoal: [UUID: [Double]] = [:]
+        for tx in transactions {
+            guard let goalId = tx.savingsGoalId else { continue }
+            depositsByGoal[goalId, default: []].append(tx.amount)
+        }
+
+        var changed = false
+        for goal in goals {
+            if !goal.baselineCaptured {
+                // Everything it holds today came from deposits that were never linked.
+                goal.unlinkedBaseline = max(0, goal.savedAmount - (depositsByGoal[goal.id]?.reduce(0, +) ?? 0))
+                goal.baselineCaptured = true
+                changed = true
+            }
+            let expected = reconciledAmount(
+                baseline: goal.unlinkedBaseline,
+                linkedDeposits: depositsByGoal[goal.id] ?? []
+            )
+            if abs(goal.savedAmount - expected) > 0.005 {
+                goal.savedAmount = expected
+                changed = true
+            }
+            // `completedAt` is deliberately left alone. Clearing it would let the goal be
+            // "completed" a second time and insert the same landmark twice; the progress
+            // the user sees comes from `savedAmount`, which is now correct either way.
+        }
+        return changed
     }
 
     /// The landmark a finished goal earns in the city, reusing the enrichment machinery

@@ -6,11 +6,34 @@ public final class CitySimulationEngine: Sendable {
     
     private init() {}
     
+    /// How much of a month's budget has been "earned" by the calendar so far: 0 on the
+    /// first day, 1 for any month that has already ended.
+    ///
+    /// Completed days, not elapsed ones — nobody has saved anything on the morning of the
+    /// first, and crediting a whole day before it has passed is how the fabricated figure
+    /// crept in.
+    static func budgetAccruedFraction(
+        for monthDate: Date,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> Double {
+        // A month in the past is fully accrued; a month in the future has accrued nothing.
+        if !calendar.isDate(monthDate, equalTo: now, toGranularity: .month) {
+            return monthDate < now ? 1.0 : 0.0
+        }
+        guard let range = calendar.range(of: .day, in: .month, for: now), range.count > 0 else {
+            return 1.0
+        }
+        let completedDays = calendar.component(.day, from: now) - 1
+        return min(1.0, max(0.0, Double(completedDays) / Double(range.count)))
+    }
+
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
     public func generateCity(
         for monthDate: Date,
         transactions: [Transaction],
-        estimatedMonthlyBudget: Double = 8000.0
+        estimatedMonthlyBudget: Double = 8000.0,
+        now: Date = Date()
     ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]
         for cat in SpendingCategory.allCases {
@@ -66,11 +89,25 @@ public final class CitySimulationEngine: Sendable {
             }
         }
         
-        let totalSpent = transactions.filter { $0.category != .savings }.reduce(0.0) { $0 + $1.amount }
+        let spendingTransactions = transactions.filter { $0.category != .savings }
+        let totalSpent = spendingTransactions.reduce(0.0) { $0 + $1.amount }
         let directSavings = totals[.savings] ?? 0.0
-        // Money moved into savings has already left the budget, so it must be subtracted
-        // before it is added back — otherwise every deposit is counted twice.
-        let unspentBudget = max(0.0, estimatedMonthlyBudget - totalSpent - directSavings)
+
+        // Unspent budget only counts for the part of the month that has actually gone by,
+        // and only once the month has something recorded in it.
+        //
+        // The old line credited the entire monthly budget the instant the month began, so
+        // a brand-new user with no transactions opened the app to a fully grown savings
+        // park and a five-figure "saved" number they had not earned — the one figure the
+        // app is proudest of, fabricated on day one. Accruing it day by day turns the same
+        // mechanic into something true: the park grows through the month as the user
+        // underspends, and starts at nothing.
+        //
+        // Money moved into savings has already left the budget, so it is subtracted before
+        // being added back — otherwise every deposit is counted twice.
+        let accrued = estimatedMonthlyBudget * CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
+        let hasActivity = !spendingTransactions.isEmpty || directSavings > 0
+        let unspentBudget = hasActivity ? max(0.0, accrued - totalSpent - directSavings) : 0.0
         let totalSavings = unspentBudget + directSavings
         buildingTotals["savings_sanctuary"] = totalSavings
         
@@ -177,22 +214,22 @@ public final class CitySimulationEngine: Sendable {
     
     private func generateHeadlineStory(highestCat: SpendingCategory, totalSpent: Double, totalSavings: Double, habits: BehavioralHabits) -> String {
         if totalSpent == 0 {
-            return "🌱 העיר פתוחה ורעננה — טרם נרשמו הוצאות החודש."
+            return "העיר פתוחה ורעננה — טרם נרשמו הוצאות החודש."
         }
         var highlights: [String] = []
         if habits.woltDeliveryCount >= 10 {
-            highlights.append("🛵 \(habits.woltDeliveryCount) משלוחי Wolt ברחובות")
+            highlights.append("\(habits.woltDeliveryCount) משלוחי Wolt ברחובות")
         }
         if habits.coffeeCount >= 8 {
-            highlights.append("☕ \(habits.coffeeCount) כוסות קפה בבתי הקפה")
+            highlights.append("\(habits.coffeeCount) כוסות קפה בבתי הקפה")
         }
         if habits.onlinePackagesCount >= 3 {
-            highlights.append("📦 \(habits.onlinePackagesCount) חבילות בפתח המגדל")
+            highlights.append("\(habits.onlinePackagesCount) חבילות בפתח המגדל")
         }
         
         let habitString = highlights.joined(separator: " • ")
         return habitString.isEmpty
-            ? "🏙️ הוצאה מרכזית ב\(highestCat.displayName) לצד ₪\(Int(totalSavings)) שנשמרו בפארק החיסכון."
-            : "\(habitString) • ₪\(Int(totalSavings)) נשמרו בטבע 🌱"
+            ? "הוצאה מרכזית ב\(highestCat.displayName) לצד ₪\(Int(totalSavings)) שנשמרו בפארק החיסכון."
+            : "\(habitString) • ₪\(Int(totalSavings)) נשמרו בטבע"
     }
 }

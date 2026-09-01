@@ -18,7 +18,7 @@ public final class CityEnrichment: Identifiable {
     public var itemId: String = "" // Unique ID e.g. "fountain_plaza", "cat_rooftop"
     public var name: String = ""
     public var subtitle: String = ""
-    public var icon: String = "🏛️"
+    public var icon: String = "building.columns.fill"
     public var typeRawValue: String = EnrichmentType.nature.rawValue
     public var tierRawValue: String = "small" // "small", "medium", "large"
     public var unlockedDate: Date = Date()
@@ -35,47 +35,30 @@ public final class CityEnrichment: Identifiable {
     public var resolvedIcon: String {
         // 1. Match by itemId first
         switch itemId {
-        case "tree_sakura": return "🌸"
-        case "flower_bed_plaza": return "🌷"
-        case "repair_bench": return "🪑"
-        case "repair_lamp": return "🏮"
-        case "resident_artist": return "🎨"
-        case "pet_cat_rooftop": return "🐱"
-        case "bike_station": return "🚲"
-        case "cafe_stand": return "☕"
-        case "repair_sidewalk": return "🧱"
-        case "fountain_marble": return "⛲"
-        case "pet_golden_dog": return "🐕"
+        case "tree_sakura": return "leaf.fill"
+        case "flower_bed_plaza": return "camera.macro"
+        case "repair_bench": return "chair.lounge.fill"
+        case "repair_lamp": return "lamp.desk.fill"
+        case "resident_artist": return "paintpalette.fill"
+        case "pet_cat_rooftop": return "pawprint.fill"
+        case "bike_station": return "bicycle"
+        case "cafe_stand": return "cup.and.saucer.fill"
+        case "repair_sidewalk": return "square.grid.2x2.fill"
+        case "fountain_marble": return "drop.fill"
+        case "pet_golden_dog": return "pawprint.fill"
+        case "park_bridge": return "building.2.fill"
+        case "public_art_sculpture": return "cube.transparent.fill"
         default: break
         }
         
-        // 2. Match by Hebrew/English name keywords
-        let lowerName = name.lowercased()
-        if lowerName.contains("פרח") || lowerName.contains("flower") { return "🌷" }
-        if lowerName.contains("סקורה") || lowerName.contains("sakura") || lowerName.contains("עץ") || lowerName.contains("tree") { return "🌸" }
-        if lowerName.contains("אמנית") || lowerName.contains("artist") || lowerName.contains("ציור") { return "🎨" }
-        if lowerName.contains("ספסל") || lowerName.contains("bench") { return "🪑" }
-        if lowerName.contains("פנס") || lowerName.contains("lamp") { return "🏮" }
-        if lowerName.contains("חתול") || lowerName.contains("cat") { return "🐱" }
-        if lowerName.contains("אופניים") || lowerName.contains("bike") { return "🚲" }
-        if lowerName.contains("קפה") || lowerName.contains("cafe") || lowerName.contains("coffee") { return "☕" }
-        if lowerName.contains("מדרכה") || lowerName.contains("sidewalk") || lowerName.contains("ריצוף") { return "🧱" }
-        if lowerName.contains("מזרקה") || lowerName.contains("fountain") { return "⛲" }
-        if lowerName.contains("כלב") || lowerName.contains("dog") { return "🐕" }
-
-        // 3. Check if stored icon is a valid clean emoji
-        if !icon.isEmpty && !icon.contains("?") && !icon.contains("\u{FFFD}") && icon != "✨" && icon.count <= 2 {
-            return icon
-        }
-
-        // 4. Fallback to enrichment type
+        // 2. Fallback to enrichment type
         switch type {
-        case .nature: return "🌸"
-        case .resident: return "🎨"
-        case .pet: return "🐱"
-        case .decoration: return "☕"
-        case .repair: return "🪑"
-        case .landmark: return "⛲"
+        case .nature: return "leaf.fill"
+        case .resident: return "person.fill"
+        case .pet: return "pawprint.fill"
+        case .decoration: return "building.columns.fill"
+        case .repair: return "hammer.fill"
+        case .landmark: return "building.2.fill"
         }
     }
     

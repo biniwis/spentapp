@@ -40,6 +40,9 @@ struct MoneyCityApp: App {
                         enabled: NotificationService.isEnabled,
                         isHebrew: l10n.language == .hebrew
                     )
+                    
+                    MoneyCityShortcuts.updateAppShortcutParameters()
+                    syncPendingWidgetTransactions()
                 }
                 .onOpenURL { url in
                     Task {
@@ -60,6 +63,29 @@ struct MoneyCityApp: App {
                 }
         }
         .modelContainer(DatabaseService.shared.container)
+    }
+    
+    private func syncPendingWidgetTransactions() {
+        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? UserDefaults.standard
+        guard let pending = defaults.array(forKey: "pending_widget_transactions") as? [[String: Any]], !pending.isEmpty else { return }
+        defaults.removeObject(forKey: "pending_widget_transactions")
+        Task {
+            for item in pending {
+                let amount = item["amount"] as? Double
+                let merchant = item["merchant"] as? String
+                let timestamp = (item["date"] as? TimeInterval).map { Date(timeIntervalSince1970: $0) } ?? Date()
+                if amount != nil || merchant != nil {
+                    _ = await WalletIngestCoordinator.run(
+                        amount: amount,
+                        amountText: nil,
+                        merchant: merchant,
+                        currency: nil,
+                        transactionDate: timestamp,
+                        intentName: "QuickExpenseWidgetIntent"
+                    )
+                }
+            }
+        }
     }
 }
 #endif

@@ -1688,9 +1688,9 @@
         buildingId: buildingId,
         group: g,
         workers: [w1, w2],
-        timer: opts.timer || 75.0,
+        timer: opts.timer || 7.5,
         isTemporary: true,
-        speechTimer: 4.0,
+        speechTimer: 2.5,
         crane: crane,
         scaffold: scaffold,
         buildTarget: null,
@@ -1704,9 +1704,9 @@
     /// Puts a crew on a plot and has them raise the building over a few seconds,
     /// instead of the building simply popping into existence at full height.
     function startConstruction(id, bg, wp) {
-      const crew = createConstructionCrew(id, wp.x, wp.z, root, { withRig: true, timer: 9.2 });
+      const crew = createConstructionCrew(id, wp.x, wp.z, root, { withRig: true, timer: 6.5 });
       crew.buildTarget = bg;
-      crew.buildDuration = 7.4;
+      crew.buildDuration = 4.8;
       crew.buildElapsed = 0;
       bg.userData.underConstruction = true;
       bg.scale.set(0.06, 0.02, 0.06);
@@ -3797,86 +3797,27 @@
     }
     const scooterZoomer = buildElectricScooterFigure();
 
-    // 2. 👮‍♂️ Municipal Parking Inspector
-    function buildParkingInspector() {
-      const g = new THREE.Group();
-      g.position.set(1.5, 0.22, -1.8);
-      root.add(g);
+    // 2. 👮‍♂️ Municipal Parking Inspector (Patrolling streets with walking animations)
+    addWalkingCitizen({
+      shirtColor: 0x1e3a8a, pantsColor: 0x0f172a, hairColor: 0x18181b,
+      isStarter: true,
+      hasPhone: true,
+      speed: 0.22, initialProgress: 0.5,
+      path: [
+        {x: 1.5, z: -1.8}, {x: 1.5, z: 3.5}, {x: -2.5, z: 3.5}, {x: -2.5, z: -1.8}
+      ]
+    });
 
-      const insp = createMiniFigure({
-        shirtColor: 0x1e3a8a, pantsColor: 0x0f172a, hairColor: 0x18181b
-      });
-      g.add(insp);
-
-      // Inspector Cap
-      const cap = mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.04, 10), mat(0x1e3a8a, 0.8), 0, 0.72, 0);
-      const visor = mesh(new THREE.BoxGeometry(0.11, 0.015, 0.06), mat(0x09090b, 0.9), 0, 0.70, 0.06);
-      insp.add(cap, visor);
-
-      const terminal = mesh(new THREE.BoxGeometry(0.045, 0.08, 0.02), mat(0x09090b, 0.8), 0, -0.16, 0.06);
-      if (insp.userData && insp.userData.armL) insp.userData.armL.add(terminal);
-
-      const uData = {
-        fig: g,
-        phrases: [
-          "אחי, רק שתי דקות על כחול-לבן!",
-          "חנית על אדום-לבן, אל תתווכח",
-          "קנס 250 ש״ח על פריקת סחורה",
-          "אין פה פנגו? תשלם דוח"
-        ],
-        phrasesEn: [
-          "Bro, only stepped out for 2 mins!",
-          "Parked on red-and-white, don't argue",
-          "₪250 fine for double parking",
-          "No parking app active? That's a ticket"
-        ],
-        hopTimer: 0
-      };
-      g.userData = uData;
-      insp.userData = uData;
-      return g;
-    }
-    const parkingInspector = buildParkingInspector();
-
-    // 3. 📸 Influencer with Selfie Stick & Coffee
-    function buildInfluencer() {
-      const g = new THREE.Group();
-      g.position.set(-0.7, 0.22, -3.8);
-      root.add(g);
-
-      const figure = createMiniFigure({
-        shirtColor: 0xf43f5e, pantsColor: 0xf8fafc, hairColor: 0xfde047, hasCoffee: true
-      });
-      g.add(figure);
-
-      const stick = mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.35, 6), mat(0xd1d5db, 0.5), 0, -0.15, 0.16);
-      stick.rotation.x = -Math.PI / 3;
-      const phone = mesh(new THREE.BoxGeometry(0.05, 0.09, 0.012), mat(0xec4899, 0.3, 0.8), 0, 0.16, 0);
-      phone.rotation.x = Math.PI / 6;
-      stick.add(phone);
-      if (figure.userData && figure.userData.armR) figure.userData.armR.add(stick);
-
-      const uData = {
-        fig: g,
-        phrases: [
-          "רק עוד 40 תמונות לאינסטגרם",
-          "הקפה כבר קר אבל התאורה מושלמת!",
-          "חייבת לתייג את בית הקפה בשביל הנחה",
-          "מי מצלם אותי ספונטני עכשיו?"
-        ],
-        phrasesEn: [
-          "Just 40 more takes for Insta",
-          "Coffee is cold but lighting is fire!",
-          "Tagging the cafe for that 10% discount",
-          "Can someone take a 'candid' photo of me?"
-        ],
-        hopTimer: 0
-      };
-      g.userData = uData;
-      figure.userData = uData;
-      return g;
-    }
-    const influencerFigure = buildInfluencer();
+    // 3. 📸 Influencer with Coffee (Walking down the promenade)
+    addWalkingCitizen({
+      shirtColor: 0xf43f5e, pantsColor: 0xf8fafc, hairColor: 0xfde047,
+      isStarter: true,
+      hasCoffee: true,
+      speed: 0.24, initialProgress: 0.3,
+      path: [
+        {x: -0.7, z: -3.8}, {x: 4.8, z: -3.8}, {x: 4.8, z: -8.5}, {x: -0.7, z: -8.5}
+      ]
+    });
 
     // 4. 🧑‍💻 Tech Worker with Laptop on Park Bench
     function buildTechWorkerOnBench() {

@@ -598,6 +598,7 @@ public struct MainCityView: View {
     }
     
     private func districtBuildingPills(for dist: String) -> [BuildingPillItem] {
+        let isHe = l10n.language == .hebrew
         switch dist {
         case "food":
             let r = currentCity.buildingTotals["food_bistro"] ?? 0
@@ -605,10 +606,10 @@ public struct MainCityView: View {
             let c = currentCity.buildingTotals["food_coffee"] ?? 0
             let d = currentCity.buildingTotals["food_wolt"] ?? 0
             return [
-                BuildingPillItem(id: "food_bistro", title: "מסעדות", amount: r, info: DistrictBuildingInfo(id: "food_bistro", districtId: "food", name: "ביסטרו ומסעדות", amount: r, visitCount: buildingVisitCount(for: "food_bistro"), trendText: buildingTrendText(for: "food_bistro"))),
-                BuildingPillItem(id: "food_super", title: "סופרמרקט", amount: g, info: DistrictBuildingInfo(id: "food_super", districtId: "food", name: "סופרמרקט ומזון", amount: g, visitCount: buildingVisitCount(for: "food_super"), trendText: buildingTrendText(for: "food_super"))),
-                BuildingPillItem(id: "food_coffee", title: "קפה", amount: c, info: DistrictBuildingInfo(id: "food_coffee", districtId: "food", name: "אספרסו בר", amount: c, visitCount: buildingVisitCount(for: "food_coffee"), trendText: buildingTrendText(for: "food_coffee"))),
-                BuildingPillItem(id: "food_wolt", title: "משלוחים", amount: d, info: DistrictBuildingInfo(id: "food_wolt", districtId: "food", name: "וולט ומשלוחי אוכל", amount: d, visitCount: buildingVisitCount(for: "food_wolt"), trendText: buildingTrendText(for: "food_wolt")))
+                BuildingPillItem(id: "food_bistro", title: isHe ? "מסעדות" : "Dining", amount: r, info: DistrictBuildingInfo(id: "food_bistro", districtId: "food", name: isHe ? "ביסטרו ומסעדות" : "Bistro & Dining", amount: r, visitCount: buildingVisitCount(for: "food_bistro"), trendText: buildingTrendText(for: "food_bistro"))),
+                BuildingPillItem(id: "food_super", title: isHe ? "סופרמרקט" : "Groceries", amount: g, info: DistrictBuildingInfo(id: "food_super", districtId: "food", name: isHe ? "סופרמרקט ומזון" : "Supermarket & Food", amount: g, visitCount: buildingVisitCount(for: "food_super"), trendText: buildingTrendText(for: "food_super"))),
+                BuildingPillItem(id: "food_coffee", title: isHe ? "קפה" : "Coffee", amount: c, info: DistrictBuildingInfo(id: "food_coffee", districtId: "food", name: isHe ? "אספרסו בר" : "Espresso Bar", amount: c, visitCount: buildingVisitCount(for: "food_coffee"), trendText: buildingTrendText(for: "food_coffee"))),
+                BuildingPillItem(id: "food_wolt", title: isHe ? "משלוחים" : "Delivery", amount: d, info: DistrictBuildingInfo(id: "food_wolt", districtId: "food", name: isHe ? "משלוחי אוכל" : "Food Delivery", amount: d, visitCount: buildingVisitCount(for: "food_wolt"), trendText: buildingTrendText(for: "food_wolt")))
             ]
         case "shopping":
             let f = currentCity.buildingTotals["shop_boutique"] ?? 0
@@ -616,31 +617,31 @@ public struct MainCityView: View {
             let tr = currentCity.buildingTotals["shop_travel"] ?? 0
             let a = currentCity.buildingTotals["shop_arcade"] ?? 0
             return [
-                BuildingPillItem(id: "shop_boutique", title: "ביגוד ואופנה", amount: f, info: DistrictBuildingInfo(id: "shop_boutique", districtId: "shopping", name: "בוטיק אופנה", amount: f, visitCount: buildingVisitCount(for: "shop_boutique"), trendText: buildingTrendText(for: "shop_boutique"))),
-                BuildingPillItem(id: "shop_tech", title: "טכנולוגיה", amount: t, info: DistrictBuildingInfo(id: "shop_tech", districtId: "shopping", name: "חנות אלקטרוניקה", amount: t, visitCount: buildingVisitCount(for: "shop_tech"), trendText: buildingTrendText(for: "shop_tech"))),
-                BuildingPillItem(id: "shop_travel", title: "חופשות", amount: tr, info: DistrictBuildingInfo(id: "shop_travel", districtId: "shopping", name: "סוכנות נסיעות", amount: tr, visitCount: buildingVisitCount(for: "shop_travel"), trendText: buildingTrendText(for: "shop_travel"))),
-                BuildingPillItem(id: "shop_arcade", title: "פנאי ובידור", amount: a, info: DistrictBuildingInfo(id: "shop_arcade", districtId: "shopping", name: "מתחם ארקייד", amount: a, visitCount: buildingVisitCount(for: "shop_arcade"), trendText: buildingTrendText(for: "shop_arcade")))
+                BuildingPillItem(id: "shop_boutique", title: isHe ? "ביגוד" : "Fashion", amount: f, info: DistrictBuildingInfo(id: "shop_boutique", districtId: "shopping", name: isHe ? "בוטיק אופנה" : "Fashion Boutique", amount: f, visitCount: buildingVisitCount(for: "shop_boutique"), trendText: buildingTrendText(for: "shop_boutique"))),
+                BuildingPillItem(id: "shop_tech", title: isHe ? "טכנולוגיה" : "Tech", amount: t, info: DistrictBuildingInfo(id: "shop_tech", districtId: "shopping", name: isHe ? "חנות אלקטרוניקה" : "Electronics Store", amount: t, visitCount: buildingVisitCount(for: "shop_tech"), trendText: buildingTrendText(for: "shop_tech"))),
+                BuildingPillItem(id: "shop_travel", title: isHe ? "חופשות" : "Travel", amount: tr, info: DistrictBuildingInfo(id: "shop_travel", districtId: "shopping", name: isHe ? "סוכנות נסיעות" : "Travel Agency", amount: tr, visitCount: buildingVisitCount(for: "shop_travel"), trendText: buildingTrendText(for: "shop_travel"))),
+                BuildingPillItem(id: "shop_arcade", title: isHe ? "פנאי ובידור" : "Arcade", amount: a, info: DistrictBuildingInfo(id: "shop_arcade", districtId: "shopping", name: isHe ? "מתחם ארקייד" : "Arcade Complex", amount: a, visitCount: buildingVisitCount(for: "shop_arcade"), trendText: buildingTrendText(for: "shop_arcade")))
             ]
         case "housing":
             let rent = currentCity.buildingTotals["house_tower"] ?? 0
             let util = currentCity.buildingTotals["house_util"] ?? 0
             let subs = currentCity.buildingTotals["house_subs"] ?? 0
             return [
-                BuildingPillItem(id: "house_tower", title: "שכירות", amount: rent, info: DistrictBuildingInfo(id: "house_tower", districtId: "housing", name: "מגדל מגורים", amount: rent, visitCount: buildingVisitCount(for: "house_tower"), trendText: buildingTrendText(for: "house_tower"))),
-                BuildingPillItem(id: "house_util", title: "חשבונות", amount: util, info: DistrictBuildingInfo(id: "house_util", districtId: "housing", name: "חשמל ומים", amount: util, visitCount: buildingVisitCount(for: "house_util"), trendText: buildingTrendText(for: "house_util"))),
-                BuildingPillItem(id: "house_subs", title: "מנויים", amount: subs, info: DistrictBuildingInfo(id: "house_subs", districtId: "housing", name: "שירותי סטרימינג", amount: subs, visitCount: buildingVisitCount(for: "house_subs"), trendText: buildingTrendText(for: "house_subs")))
+                BuildingPillItem(id: "house_tower", title: isHe ? "שכירות" : "Rent", amount: rent, info: DistrictBuildingInfo(id: "house_tower", districtId: "housing", name: isHe ? "מגדל מגורים" : "Residential Tower", amount: rent, visitCount: buildingVisitCount(for: "house_tower"), trendText: buildingTrendText(for: "house_tower"))),
+                BuildingPillItem(id: "house_util", title: isHe ? "חשבונות" : "Utilities", amount: util, info: DistrictBuildingInfo(id: "house_util", districtId: "housing", name: isHe ? "חשמל ומים" : "Power & Water", amount: util, visitCount: buildingVisitCount(for: "house_util"), trendText: buildingTrendText(for: "house_util"))),
+                BuildingPillItem(id: "house_subs", title: isHe ? "מנויים" : "Subscriptions", amount: subs, info: DistrictBuildingInfo(id: "house_subs", districtId: "housing", name: isHe ? "שירותי סטרימינג" : "Streaming & Subs", amount: subs, visitCount: buildingVisitCount(for: "house_subs"), trendText: buildingTrendText(for: "house_subs")))
             ]
         case "savings":
             let sav = currentCity.totalSavings
             let savVisits = displayTransactions.filter { $0.category == .savings }.count
             return [
-                BuildingPillItem(id: "savings_sanctuary", title: "שמורת החיסכון", amount: sav, info: DistrictBuildingInfo(id: "savings_sanctuary", districtId: "savings", name: "שמורת הטבע והחיסכון", amount: sav, visitCount: savVisits, trendText: sav > 0 ? (l10n.language == .hebrew ? "צמיחה ירוקה החודש" : "Growing green this month") : (l10n.language == .hebrew ? "התחל לחסוך כדי להצמיח את השמורה" : "Start saving to grow the park")))
+                BuildingPillItem(id: "savings_sanctuary", title: isHe ? "שמורת החיסכון" : "Savings Park", amount: sav, info: DistrictBuildingInfo(id: "savings_sanctuary", districtId: "savings", name: isHe ? "שמורת הטבע והחיסכון" : "Nature & Savings Park", amount: sav, visitCount: savVisits, trendText: sav > 0 ? (isHe ? "צמיחה ירוקה החודש" : "Growing green this month") : (isHe ? "התחל לחסוך כדי להצמיח את השמורה" : "Start saving to grow the park")))
             ]
         default:
             let tr = currentCity.categoryTotals[.transport] ?? 0
             let transVisits = displayTransactions.filter { $0.category == .transport }.count
             return [
-                BuildingPillItem(id: "trans_station", title: "תחבורה ודלק", amount: tr, info: DistrictBuildingInfo(id: "trans_station", districtId: "transport", name: "תחבורה וחניה", amount: tr, visitCount: transVisits, trendText: transVisits == 0 ? (l10n.language == .hebrew ? "טרם נרשמו עסקאות החודש" : "No visits this month") : (l10n.language == .hebrew ? "\(transVisits) עסקאות החודש" : "\(transVisits) visits this month")))
+                BuildingPillItem(id: "trans_station", title: isHe ? "תחבורה ודלק" : "Transit & Fuel", amount: tr, info: DistrictBuildingInfo(id: "trans_station", districtId: "transport", name: isHe ? "תחבורה וחניה" : "Transit & Parking", amount: tr, visitCount: transVisits, trendText: transVisits == 0 ? (isHe ? "טרם נרשמו עסקאות החודש" : "No visits this month") : (isHe ? "\(transVisits) עסקאות החודש" : "\(transVisits) visits this month")))
             ]
         }
     }

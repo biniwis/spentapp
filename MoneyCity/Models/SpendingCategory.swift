@@ -35,8 +35,11 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         [.housing, .food, .transport, .shopping, .entertainment, .health, .subscriptions, .savings, .finance, .other]
     }
     
-    /// User-facing localized category name (Hebrew)
-    public var displayName: String {
+    /// User-facing localized category name (Hebrew or English)
+    public func displayName(for language: AppLanguage) -> String {
+        if language == .english {
+            return displayNameEn
+        }
         switch canonical {
         case .housing: return "דיור ובית"
         case .food, .groceries, .coffee: return "אוכל ומסעדות"
@@ -49,6 +52,12 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .finance: return "עמלות ובנקים"
         case .savings: return "חיסכון והשקעות"
         }
+    }
+
+    /// User-facing localized category name using current app preference
+    public var displayName: String {
+        let isEn = UserDefaults.standard.string(forKey: "app_language_pref") == AppLanguage.english.rawValue
+        return displayName(for: isEn ? .english : .hebrew)
     }
     
     /// User-facing display name in English
@@ -67,8 +76,11 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         }
     }
     
-    /// User-facing short name for compact badges
-    public var shortName: String {
+    /// User-facing short name for compact badges & buttons in given language
+    public func shortName(for language: AppLanguage) -> String {
+        if language == .english {
+            return shortNameEn
+        }
         switch canonical {
         case .housing: return "דיור ובית"
         case .food, .groceries, .coffee: return "אוכל"
@@ -80,6 +92,28 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .other: return "שונות"
         case .finance: return "בנק ועמלות"
         case .savings: return "חיסכון"
+        }
+    }
+
+    /// User-facing short name for compact badges using current app preference
+    public var shortName: String {
+        let isEn = UserDefaults.standard.string(forKey: "app_language_pref") == AppLanguage.english.rawValue
+        return shortName(for: isEn ? .english : .hebrew)
+    }
+
+    /// Short name in English
+    public var shortNameEn: String {
+        switch canonical {
+        case .housing: return "Housing"
+        case .food, .groceries, .coffee: return "Food"
+        case .transport: return "Transport"
+        case .shopping: return "Shopping"
+        case .entertainment: return "Fun"
+        case .health: return "Health"
+        case .subscriptions: return "Bills"
+        case .other: return "Other"
+        case .finance: return "Bank"
+        case .savings: return "Savings"
         }
     }
     

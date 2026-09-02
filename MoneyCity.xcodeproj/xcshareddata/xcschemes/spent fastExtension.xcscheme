@@ -16,7 +16,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C2D83DABE42544CEB791ABD5"
+               BlueprintIdentifier = "47C860A5DAF24131A6643188"
                BuildableName = "spent fastExtension.appex"
                BlueprintName = "spent fastExtension"
                ReferencedContainer = "container:MoneyCity.xcodeproj">
@@ -30,7 +30,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "CB3A01E9835B48C8BFA9C8C4"
+               BlueprintIdentifier = "3E2B1B03E35740EA8EEEBB51"
                BuildableName = "MoneyCity.app"
                BlueprintName = "MoneyCity"
                ReferencedContainer = "container:MoneyCity.xcodeproj">
@@ -65,7 +65,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "CB3A01E9835B48C8BFA9C8C4"
+            BlueprintIdentifier = "3E2B1B03E35740EA8EEEBB51"
             BuildableName = "MoneyCity.app"
             BlueprintName = "MoneyCity"
             ReferencedContainer = "container:MoneyCity.xcodeproj">
@@ -84,7 +84,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "CB3A01E9835B48C8BFA9C8C4"
+            BlueprintIdentifier = "3E2B1B03E35740EA8EEEBB51"
             BuildableName = "MoneyCity.app"
             BlueprintName = "MoneyCity"
             ReferencedContainer = "container:MoneyCity.xcodeproj">

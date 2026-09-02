@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "CB3A01E9835B48C8BFA9C8C4"
+               BlueprintIdentifier = "3E2B1B03E35740EA8EEEBB51"
                BuildableName = "MoneyCity.app"
                BlueprintName = "MoneyCity"
                ReferencedContainer = "container:MoneyCity.xcodeproj">
@@ -44,7 +44,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "CB3A01E9835B48C8BFA9C8C4"
+            BlueprintIdentifier = "3E2B1B03E35740EA8EEEBB51"
             BuildableName = "MoneyCity.app"
             BlueprintName = "MoneyCity"
             ReferencedContainer = "container:MoneyCity.xcodeproj">
@@ -61,7 +61,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "CB3A01E9835B48C8BFA9C8C4"
+            BlueprintIdentifier = "3E2B1B03E35740EA8EEEBB51"
             BuildableName = "MoneyCity.app"
             BlueprintName = "MoneyCity"
             ReferencedContainer = "container:MoneyCity.xcodeproj">

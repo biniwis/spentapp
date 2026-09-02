@@ -246,3 +246,63 @@ final class ReceiptMerchantTokenTests: XCTestCase {
         XCTAssertEqual(merchant(["קניתי בסופרפארם דיזנגוף", "סה\"כ 88"]), "סופר-פארם")
     }
 }
+
+// MARK: - Spatial Layout & Multi-Transaction Tests
+
+final class SpatialReceiptTests: XCTestCase {
+
+    func testAliExpressMultiStoreScreenshotWithCoupons() {
+        let tokens: [OCRSpatialToken] = [
+            // Store 1 Block (y: 0.10 -> 0.35)
+            OCRSpatialToken(text: "Storage Global Store", boundingBox: CGRect(x: 0.05, y: 0.10, width: 0.40, height: 0.03), confidence: 0.99),
+            OCRSpatialToken(text: "100% Original SanDisk Extreme PRO SD Card", boundingBox: CGRect(x: 0.05, y: 0.14, width: 0.70, height: 0.03), confidence: 0.98),
+            OCRSpatialToken(text: "128GB", boundingBox: CGRect(x: 0.05, y: 0.18, width: 0.20, height: 0.02), confidence: 0.95),
+            OCRSpatialToken(text: "₪133.37", boundingBox: CGRect(x: 0.70, y: 0.22, width: 0.25, height: 0.03), confidence: 0.99),
+            OCRSpatialToken(text: "x1", boundingBox: CGRect(x: 0.75, y: 0.25, width: 0.10, height: 0.02), confidence: 0.95),
+            OCRSpatialToken(text: "₪4 coupon if delayed", boundingBox: CGRect(x: 0.05, y: 0.28, width: 0.45, height: 0.02), confidence: 0.94),
+            OCRSpatialToken(text: "Track status", boundingBox: CGRect(x: 0.50, y: 0.32, width: 0.20, height: 0.03), confidence: 0.95),
+            OCRSpatialToken(text: "Confirm received", boundingBox: CGRect(x: 0.72, y: 0.32, width: 0.25, height: 0.03), confidence: 0.95),
+
+            // Store 2 Block (y: 0.45 -> 0.70)
+            OCRSpatialToken(text: "SU CHENG ZI Store", boundingBox: CGRect(x: 0.05, y: 0.45, width: 0.38, height: 0.03), confidence: 0.99),
+            OCRSpatialToken(text: "1Pc 35mm Universal Wired In-Ear Earphones", boundingBox: CGRect(x: 0.05, y: 0.49, width: 0.65, height: 0.03), confidence: 0.97),
+            OCRSpatialToken(text: "F-White-1.1m", boundingBox: CGRect(x: 0.05, y: 0.53, width: 0.22, height: 0.02), confidence: 0.92),
+            OCRSpatialToken(text: "₪8.11", boundingBox: CGRect(x: 0.70, y: 0.57, width: 0.20, height: 0.03), confidence: 0.99),
+            OCRSpatialToken(text: "x1", boundingBox: CGRect(x: 0.75, y: 0.60, width: 0.10, height: 0.02), confidence: 0.95),
+            OCRSpatialToken(text: "Track status", boundingBox: CGRect(x: 0.60, y: 0.65, width: 0.25, height: 0.03), confidence: 0.95)
+        ]
+
+        let tagged = ReceiptOCRService.classifyTokenRoles(tokens)
+        let blocks = ReceiptOCRService.clusterAdaptiveBlocks(tokens: tagged)
+        let candidates = ReceiptOCRService.extractCandidates(from: blocks, fallbackTokens: tagged, rules: [])
+
+        XCTAssertEqual(candidates.count, 2, "Should identify exactly 2 distinct store transactions")
+        
+        let first = candidates[0]
+        XCTAssertEqual(first.merchant, "Storage Global Store")
+        XCTAssertEqual(first.amount, 133.37)
+        XCTAssertEqual(first.currency, "ILS")
+
+        let second = candidates[1]
+        XCTAssertEqual(second.merchant, "SU CHENG ZI Store")
+        XCTAssertEqual(second.amount, 8.11)
+        XCTAssertEqual(second.currency, "ILS")
+    }
+
+    func testApplePaySpatialScreenshot() {
+        let tokens: [OCRSpatialToken] = [
+            OCRSpatialToken(text: "Super-Pharm", boundingBox: CGRect(x: 0.10, y: 0.15, width: 0.40, height: 0.04), confidence: 0.99),
+            OCRSpatialToken(text: "דיזנגוף סנטר תל אביב", boundingBox: CGRect(x: 0.10, y: 0.20, width: 0.50, height: 0.03), confidence: 0.95),
+            OCRSpatialToken(text: "₪ 84.90", boundingBox: CGRect(x: 0.10, y: 0.28, width: 0.35, height: 0.05), confidence: 0.99),
+            OCRSpatialToken(text: "שולם באמצעות Apple Pay", boundingBox: CGRect(x: 0.10, y: 0.35, width: 0.60, height: 0.03), confidence: 0.97)
+        ]
+
+        let tagged = ReceiptOCRService.classifyTokenRoles(tokens)
+        let blocks = ReceiptOCRService.clusterAdaptiveBlocks(tokens: tagged)
+        let candidates = ReceiptOCRService.extractCandidates(from: blocks, fallbackTokens: tagged, rules: [])
+
+        XCTAssertEqual(candidates.count, 1)
+        XCTAssertEqual(candidates.first?.merchant, "Super-Pharm")
+        XCTAssertEqual(candidates.first?.amount, 84.90)
+    }
+}

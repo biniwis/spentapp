@@ -39,36 +39,59 @@ public struct ScanReceiptIntent: AppIntent {
 
         do {
             let scanResult = try await ReceiptOCRService.scanImage(data: imageData, rules: rules)
+            guard !scanResult.candidates.isEmpty else {
+                throw ReceiptOCRService.OCRError.parsingFailed
+            }
 
-            // Persist the transaction into SwiftData
-            let transaction = Transaction(
-                amount: scanResult.amount,
-                merchant: scanResult.merchant,
-                category: scanResult.category,
-                timestamp: scanResult.date ?? Date(),
-                confidenceScore: scanResult.confidence,
-                isConfirmed: scanResult.confidence >= 0.85,
-                buildingId: scanResult.buildingId
-            )
+            for candidate in scanResult.candidates {
+                let transaction = Transaction(
+                    amount: candidate.amount,
+                    merchant: candidate.merchant,
+                    category: candidate.category,
+                    timestamp: candidate.date ?? Date(),
+                    confidenceScore: candidate.confidence,
+                    isConfirmed: candidate.confidence >= 0.85,
+                    buildingId: candidate.buildingId
+                )
+                try await DatabaseService.shared.save(transaction: transaction)
+            }
 
-            try await DatabaseService.shared.save(transaction: transaction)
+            if scanResult.candidates.count == 1, let primary = scanResult.primary {
+                #if canImport(UserNotifications)
+                NotificationService.sendExpenseLoggedNotification(
+                    amount: primary.amount,
+                    categoryName: primary.category.displayName,
+                    merchant: primary.merchant
+                )
+                #endif
 
-            // Dispatch immediate local notification
-            #if canImport(UserNotifications)
-            NotificationService.sendExpenseLoggedNotification(
-                amount: scanResult.amount,
-                categoryName: scanResult.category.displayName,
-                merchant: scanResult.merchant
-            )
-            #endif
+                let formattedAmount = "₪" + (primary.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", primary.amount) : String(format: "%.2f", primary.amount))
+                let successMessage = "נוספו \(formattedAmount) ל\(primary.category.displayName) — \(primary.merchant)"
 
-            let formattedAmount = "₪" + (scanResult.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", scanResult.amount) : String(format: "%.2f", scanResult.amount))
-            let successMessage = "נוספו \(formattedAmount) ל\(scanResult.category.displayName) — \(scanResult.merchant)"
+                return .result(
+                    value: successMessage,
+                    dialog: "\(successMessage)"
+                )
+            } else {
+                let count = scanResult.candidates.count
+                let totalSum = scanResult.candidates.reduce(0.0) { $0 + $1.amount }
+                let formattedTotal = "₪" + (totalSum.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", totalSum) : String(format: "%.2f", totalSum))
+                let storesSummary = scanResult.candidates.map { "\($0.merchant) (₪\($0.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", $0.amount) : String(format: "%.2f", $0.amount)))" }.joined(separator: ", ")
+                let successMessage = "נוספו \(count) עסקאות מתוך צילום המסך (סך הכל \(formattedTotal)): \(storesSummary)"
 
-            return .result(
-                value: successMessage,
-                dialog: "\(successMessage)"
-            )
+                #if canImport(UserNotifications)
+                NotificationService.sendExpenseLoggedNotification(
+                    amount: totalSum,
+                    categoryName: scanResult.candidates.first?.category.displayName ?? "קניות",
+                    merchant: "\(count) חנויות: \(scanResult.candidates.map(\.merchant).joined(separator: ", "))"
+                )
+                #endif
+
+                return .result(
+                    value: successMessage,
+                    dialog: "\(successMessage)"
+                )
+            }
         } catch {
             return .result(
                 value: "שגיאה בפענוח צילום המסך",

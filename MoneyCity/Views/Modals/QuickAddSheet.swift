@@ -36,6 +36,7 @@ public struct QuickAddSheet: View {
     @State private var showPhotoPicker = false
     #endif
     @State private var isScanningScreenshot = false
+    @State private var scannedMultiCandidates: [ParsedTransactionCandidate] = []
 
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isAmountFocused: Bool
@@ -75,6 +76,9 @@ public struct QuickAddSheet: View {
                                 .padding(.horizontal, 20)
                                 .padding(.top, 4)
                         }
+
+                        // 0. MULTI-TRANSACTION CARDS (if multiple detected in screenshot)
+                        multiTransactionReviewSection
 
                         // 1. HERO AMOUNT CARD (Integrated Currency Dropdown)
                         amountHeroCard
@@ -526,6 +530,153 @@ public struct QuickAddSheet: View {
         dismiss()
     }
 
+    // MARK: - Multi-Transaction Review Card
+
+    @ViewBuilder @MainActor
+    private var multiTransactionReviewSection: some View {
+        if scannedMultiCandidates.count > 1 {
+            VStack(alignment: .leading, spacing: 10) {
+                multiHeaderView
+                multiCandidatesListView
+                multiSaveAllButton
+            }
+            .padding(14)
+            .background(Color.themeLavenderSoft.opacity(0.35))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    @ViewBuilder @MainActor
+    private var multiHeaderView: some View {
+        HStack {
+            Image(systemName: "sparkles.rectangle.stack.fill")
+                .foregroundColor(Color.primaryBlue)
+                .font(.system(size: 14))
+            Text(l10n.language == .hebrew ? "זוהו \(scannedMultiCandidates.count) עסקאות בצילום המסך" : "Found \(scannedMultiCandidates.count) Purchases")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+            Spacer()
+            Button(action: {
+                withAnimation(.spring(response: 0.25)) {
+                    scannedMultiCandidates = []
+                }
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(Color.slate400)
+                    .font(.system(size: 16))
+            }
+        }
+        .padding(.horizontal, 4)
+    }
+
+    @ViewBuilder @MainActor
+    private var multiCandidatesListView: some View {
+        VStack(spacing: 8) {
+            ForEach(scannedMultiCandidates) { candidate in
+                multiCandidateRow(for: candidate)
+            }
+        }
+    }
+
+    @ViewBuilder @MainActor
+    private func multiCandidateRow(for candidate: ParsedTransactionCandidate) -> some View {
+        let isInt = candidate.amount.truncatingRemainder(dividingBy: 1) == 0
+        let displayAmt = isInt ? String(format: "%.0f", candidate.amount) : String(format: "%.2f", candidate.amount)
+
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(candidate.category.themeColor.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: candidate.category.sfSymbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(candidate.category.themeColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(candidate.merchant)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                Text(candidate.category.displayName)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.slate500)
+            }
+
+            Spacer()
+
+            Text("₪\(displayAmt)")
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+        }
+        .padding(10)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.slate200, lineWidth: 0.8)
+        )
+        .onTapGesture {
+            withAnimation(.spring(response: 0.25)) {
+                amountText = displayAmt
+                note = candidate.merchant
+                selectedCategory = candidate.category
+                selectedBuildingId = candidate.buildingId
+                isAmountFocused = false
+                scannedMultiCandidates = []
+            }
+        }
+    }
+
+    @ViewBuilder @MainActor
+    private var multiSaveAllButton: some View {
+        let totalSum = scannedMultiCandidates.reduce(0.0) { $0 + $1.amount }
+        let isTotalInt = totalSum.truncatingRemainder(dividingBy: 1) == 0
+        let formattedTotal = "₪" + (isTotalInt ? String(format: "%.0f", totalSum) : String(format: "%.2f", totalSum))
+
+        Button(action: {
+            saveAllScannedMultiTransactions()
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 14, weight: .bold))
+                Text(l10n.language == .hebrew ? "שמור את כל \(scannedMultiCandidates.count) העסקאות (\(formattedTotal))" : "Save All \(scannedMultiCandidates.count) Purchases (\(formattedTotal))")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                LinearGradient(
+                    colors: [Color.primaryBlue, Color.primaryBlue.opacity(0.85)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .padding(.top, 2)
+    }
+
+    private func saveAllScannedMultiTransactions() {
+        for candidate in scannedMultiCandidates {
+            let tx = Transaction(
+                amount: candidate.amount,
+                merchant: candidate.merchant,
+                category: candidate.category,
+                timestamp: candidate.date ?? Date(),
+                confidenceScore: candidate.confidence,
+                isConfirmed: candidate.confidence >= 0.85,
+                buildingId: candidate.buildingId
+            )
+            modelContext.insert(tx)
+        }
+        try? modelContext.save()
+        Haptics.notify(.success)
+        dismiss()
+    }
+
     #if canImport(PhotosUI)
     private func processPickedPhoto(_ item: PhotosPickerItem) async {
         await MainActor.run { isScanningScreenshot = true }
@@ -537,11 +688,18 @@ public struct QuickAddSheet: View {
         do {
             let result = try await ReceiptOCRService.scanImage(data: data, rules: rules)
             await MainActor.run {
-                amountText = (result.amount.truncatingRemainder(dividingBy: 1) == 0) ? String(format: "%.0f", result.amount) : String(format: "%.2f", result.amount)
-                note = result.merchant
-                selectedCategory = result.category
-                isAmountFocused = false
-                Haptics.notify(.success)
+                if result.candidates.count > 1 {
+                    scannedMultiCandidates = result.candidates
+                    Haptics.notify(.success)
+                } else if let single = result.primary {
+                    scannedMultiCandidates = []
+                    amountText = (single.amount.truncatingRemainder(dividingBy: 1) == 0) ? String(format: "%.0f", single.amount) : String(format: "%.2f", single.amount)
+                    note = single.merchant
+                    selectedCategory = single.category
+                    selectedBuildingId = single.buildingId
+                    isAmountFocused = false
+                    Haptics.notify(.success)
+                }
             }
         } catch {
             await MainActor.run {

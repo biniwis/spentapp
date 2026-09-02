@@ -60,6 +60,8 @@ public extension Color {
     static let themeTurquoiseSoft = MoneyCityTheme.turquoiseSoft
     static let themeOrange = MoneyCityTheme.orange
     static let themeOrangeSoft = MoneyCityTheme.orangeSoft
+    static let accentOrange = MoneyCityTheme.orange
+    static let backgroundElevated = MoneyCityTheme.cardSurface
     static let themeLavender = MoneyCityTheme.lavender
     static let themeLavenderSoft = MoneyCityTheme.lavenderSoft
     static let themeMint = MoneyCityTheme.mint

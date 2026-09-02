@@ -162,6 +162,7 @@ public struct QuickAddSheet: View {
     }
 
     // MARK: - 1. Hero Amount Card (Amount + Currency Selector)
+    @ViewBuilder @MainActor
     private var amountHeroCard: some View {
         VStack(spacing: 6) {
             HStack(spacing: 8) {
@@ -243,6 +244,7 @@ public struct QuickAddSheet: View {
     }
 
     // MARK: - 2. Unified 3x3 Category Grid (Single-layer clean cards)
+    @ViewBuilder @MainActor
     private var categoryGridSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
@@ -359,6 +361,7 @@ public struct QuickAddSheet: View {
     }
 
     // MARK: - 3. Expandable More Options (Note, Installments)
+    @ViewBuilder @MainActor
     private var expandableMoreOptionsSection: some View {
         VStack(spacing: 8) {
             Button(action: {
@@ -406,7 +409,7 @@ public struct QuickAddSheet: View {
                             if paymentCount > 1, let total = parseAmount(amountText), total > 0 {
                                 Text(l10n.language == .hebrew ? "\(l10n.format(amount: total / Double(paymentCount))) לחודש" : "\(l10n.format(amount: total / Double(paymentCount)))/mo")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color.primaryBlue)
+                                    .foregroundColor(Color.accentOrange)
                             }
                         }
                         
@@ -419,22 +422,18 @@ public struct QuickAddSheet: View {
                                 }) {
                                     Text(count == 1 ? (l10n.language == .hebrew ? "תשלום 1" : "1x") : "\(count)x")
                                         .font(.system(size: 12, weight: isSelected ? .black : .semibold, design: .rounded))
-                                        .foregroundColor(isSelected ? Color.primaryBlue : Color.deepNavy)
+                                        .foregroundColor(isSelected ? .white : Color.deepNavy)
                                         .frame(maxWidth: .infinity)
-                                        .frame(height: 32)
-                                        .background(isSelected ? Color.primaryBlue.opacity(0.12) : Color.appBackground)
+                                        .padding(.vertical, 7)
+                                        .background(isSelected ? Color.accentOrange : Color.backgroundElevated)
                                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .stroke(isSelected ? Color.primaryBlue.opacity(0.5) : Color.borderSubtle, lineWidth: 1)
-                                        )
                                 }
                                 .bouncyPress(scale: 0.94)
                             }
                         }
                     }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    .padding(.vertical, 10)
                     .background(Color.cardBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
@@ -445,7 +444,8 @@ public struct QuickAddSheet: View {
         }
     }
 
-    // MARK: - 4. Save Button
+    // MARK: - 4. Big Save Button
+    @ViewBuilder @MainActor
     private var saveTransactionButton: some View {
         Button(action: {
             if let cat = selectedCategory {

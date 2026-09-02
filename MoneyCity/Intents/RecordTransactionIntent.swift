@@ -31,8 +31,7 @@ public struct RecordTransactionIntent: AppIntent {
 
     @Parameter(
         title: "סכום העסקה",
-        description: "סכום העסקה שהועבר מ-Wallet",
-        inputConnectionBehavior: .connectToPreviousIntentResult
+        description: "סכום העסקה שהועבר מ-Wallet"
     )
     public var amount: Double?
 
@@ -43,8 +42,7 @@ public struct RecordTransactionIntent: AppIntent {
 
     @Parameter(
         title: "שם בית העסק",
-        description: "שם העסק (Merchant) שהתקבל ב-Apple Pay",
-        inputConnectionBehavior: .connectToPreviousIntentResult
+        description: "שם העסק (Merchant) שהתקבל ב-Apple Pay"
     )
     public var merchant: String?
 

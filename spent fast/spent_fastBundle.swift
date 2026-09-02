@@ -5,6 +5,5 @@ import SwiftUI
 struct spent_fastBundle: WidgetBundle {
     var body: some Widget {
         spent_fast()
-        spent_fastControl()
     }
 }

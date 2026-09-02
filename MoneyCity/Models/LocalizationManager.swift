@@ -104,9 +104,14 @@ public final class LocalizationManager: ObservableObject {
         didSet { objectWillChange.send() }
     }
 
-    public var language: AppLanguage {
-        get { AppLanguage(rawValue: currentLanguageRaw) ?? .hebrew }
-        set { currentLanguageRaw = newValue.rawValue }
+    nonisolated public var language: AppLanguage {
+        get {
+            let raw = UserDefaults.standard.string(forKey: "app_language_pref") ?? AppLanguage.hebrew.rawValue
+            return AppLanguage(rawValue: raw) ?? .hebrew
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "app_language_pref")
+        }
     }
 
     public var baseCurrency: CurrencyType {

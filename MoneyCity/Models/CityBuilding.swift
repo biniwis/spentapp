@@ -199,6 +199,8 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                     descriptionEn: "Fees, banking & miscellaneous"
                 )
             ]
+        case .groceries, .coffee:
+            return buildings(for: .food)
         @unknown default:
             return []
         }

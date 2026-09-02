@@ -387,7 +387,6 @@ public struct ProfileView: View {
 
     private var yearChartCard: some View {
         let maxAmt = max(monthlyTotals.map(\.amount).max() ?? 1, 100)
-        let peakAmt = monthlyTotals.map(\.amount).max() ?? 0
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text(l10n.language == .hebrew ? "הוצאות 12 חודשים" : "12-Month Overview")
@@ -402,7 +401,6 @@ public struct ProfileView: View {
             HStack(alignment: .bottom, spacing: 5) {
                 ForEach(Array(monthlyTotals.enumerated()), id: \.element.label) { idx, month in
                     let isCurrentMonth = (idx == monthlyTotals.count - 1)
-                    let isPeak = month.amount == peakAmt && peakAmt > 0
                     let isSelected = (selectedMonth == month.label)
                     let frac = maxAmt > 0 ? CGFloat(month.amount / maxAmt) : 0
                     

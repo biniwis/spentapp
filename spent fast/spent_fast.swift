@@ -5,7 +5,6 @@
 
 import WidgetKit
 import SwiftUI
-import AppIntents
 
 // MARK: - Timeline Entry
 

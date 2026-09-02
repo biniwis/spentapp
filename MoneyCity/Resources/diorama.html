@@ -4593,18 +4593,20 @@
     // constant half-lane apart and can never drive through one another.
     // `tier` is how much of the city has to exist before a vehicle joins: 0 is the baseline service that
     // any inhabited city has, higher tiers arrive as spending builds the place out.
+    // Six vehicles across four lanes, at most two per lane. Eight on a 23-unit island read as
+    // rush hour on a village. `tier` is the spend at which a vehicle joins: the thresholds are
+    // set against a real month, not a few hundred shekels, so the streets fill over months
+    // rather than in the first week.
     const vehicleFleet = [
-      { id: "taxi",     lane: "westbound",  obj: buildTaxi(),                                                  route: CALM_LANES[0], speed: 0.040, initialProg: 0.10, isBus: false, tier: 0 },
-      { id: "sedan",    lane: "westbound",  obj: buildCar({ length: 1.90, color: 0xf8fafc, roofColor: 0x1e293b }), route: CALM_LANES[0], speed: 0.040, initialProg: 0.60, isBus: false, tier: 1 },
+      { id: "taxi",   lane: "westbound",  obj: buildTaxi(),                                                    route: CALM_LANES[0], speed: 0.040, initialProg: 0.10, isBus: false, tier: 0 },
+      { id: "van",    lane: "westbound",  obj: buildDeliveryVan({ color: 0x6366f1, boxColor: 0xf8fafc }),       route: CALM_LANES[0], speed: 0.040, initialProg: 0.60, isBus: false, tier: 3 },
 
-      { id: "wolt",     lane: "eastbound",  obj: buildWoltScooter(),                                           route: CALM_LANES[1], speed: 0.048, initialProg: 0.55, isBus: false, tier: 0 },
-      { id: "hatchRed", lane: "eastbound",  obj: buildCar({ length: 1.62, width: 0.84, color: 0xf43f5e, roofColor: 0x881337 }), route: CALM_LANES[1], speed: 0.048, initialProg: 0.05, isBus: false, tier: 1 },
+      { id: "wolt",   lane: "eastbound",  obj: buildWoltScooter(),                                             route: CALM_LANES[1], speed: 0.048, initialProg: 0.55, isBus: false, tier: 0 },
+      { id: "sedan",  lane: "eastbound",  obj: buildCar({ length: 1.90, color: 0xf8fafc, roofColor: 0x1e293b }), route: CALM_LANES[1], speed: 0.048, initialProg: 0.05, isBus: false, tier: 1 },
 
-      { id: "bus",      lane: "northbound", obj: buildCityBus(),                                               route: CALM_LANES[2], speed: 0.035, initialProg: 0.85, isBus: true,  tier: 0 },
-      { id: "van",      lane: "northbound", obj: buildDeliveryVan({ color: 0x6366f1, boxColor: 0xf8fafc }),     route: CALM_LANES[2], speed: 0.035, initialProg: 0.35, isBus: false, tier: 2 },
+      { id: "bus",    lane: "northbound", obj: buildCityBus(),                                                 route: CALM_LANES[2], speed: 0.035, initialProg: 0.85, isBus: true,  tier: 0 },
 
-      { id: "hatchSky", lane: "southbound", obj: buildCar({ length: 1.68, color: 0x38bdf8, roofColor: 0x0c4a6e, roofRack: true }), route: CALM_LANES[3], speed: 0.042, initialProg: 0.20, isBus: false, tier: 1 },
-      { id: "moto",     lane: "southbound", obj: buildMotorbike({ color: 0x334155, riderColor: 0xf59e0b }),     route: CALM_LANES[3], speed: 0.042, initialProg: 0.70, isBus: false, tier: 2 }
+      { id: "moto",   lane: "southbound", obj: buildMotorbike({ color: 0x334155, riderColor: 0xf59e0b }),       route: CALM_LANES[3], speed: 0.042, initialProg: 0.20, isBus: false, tier: 2 }
     ];
 
     const vehicleState = [];
@@ -5117,9 +5119,11 @@
           } else if (v.tier === 0) {
             show = cityIsAlive;
           } else if (v.tier === 1) {
-            show = cityIsAlive && trafficTotal >= 250;
+            show = cityIsAlive && trafficTotal >= 1200;
+          } else if (v.tier === 2) {
+            show = cityIsAlive && trafficTotal >= 3000;
           } else {
-            show = cityIsAlive && trafficTotal >= 900;
+            show = cityIsAlive && trafficTotal >= 6000;
           }
           if (v.obj.visible !== show) v.obj.visible = show;
         });
@@ -5463,6 +5467,12 @@
               if (cp.z > -0.8 && cp.z < 0.4 && cp.x > currentX + 0.2 && cp.x < currentX + 2.2) {
                 pedestrianInPath = true; break;
               }
+            } else if (v.lane === "southbound") {
+              // Southbound lane sits at X = 0.0 and travels +Z; without this case it drove
+              // straight through anyone on the crossing.
+              if (cp.x > -0.7 && cp.x < 0.7 && cp.z > currentZ + 0.2 && cp.z < currentZ + 2.2) {
+                pedestrianInPath = true; break;
+              }
             }
           }
         }
@@ -5497,8 +5507,28 @@
           v.stuckTimer = 0;
         }
 
-        // 5. Drive forward continuously & smoothly
-        v.progress = (v.progress + dt * v.speed) % 1.0;
+        // 5. Drive forward, but never into the back of the vehicle ahead.
+        //
+        // Sharing a lane used to rely on the two vehicles having identical speeds. That holds
+        // right up until one of them yields to a pedestrian or pauses at the bus stop; from then
+        // on they converge, end up occupying the same space, and z-fight — which is what reads
+        // as flickering. Vehicles now keep a real following distance and queue instead.
+        const laneLen = Math.hypot(pB.x - pA.x, pB.z - pA.z) || 1;
+        const minGap = 3.6 / laneLen;          // world units expressed as lane progress
+        let nextProgress = (v.progress + dt * v.speed) % 1.0;
+
+        let gapToLead = Infinity;
+        for (let oi = 0; oi < vehicleState.length; oi++) {
+          const other = vehicleState[oi];
+          if (other === v || other.route !== v.route || !other.obj.visible) continue;
+          // Distance forward around the loop to the other vehicle.
+          const g = ((other.progress - nextProgress) % 1.0 + 1.0) % 1.0;
+          if (g < gapToLead) gapToLead = g;
+        }
+        // Hold station rather than reversing: the vehicle ahead is moving, so the gap reopens.
+        if (gapToLead < minGap) nextProgress = v.progress;
+
+        v.progress = nextProgress;
         v.obj.position.x = pA.x + (pB.x - pA.x) * v.progress;
         v.obj.position.z = pA.z + (pB.z - pA.z) * v.progress;
         v.obj.rotation.y = Math.atan2(-(pB.z - pA.z), pB.x - pA.x);

@@ -289,8 +289,8 @@ public struct MonthlyRecapSheet: View {
                         .opacity(animateBeat ? 1 : 0)
                     
                     Text(isHebrew
-                         ? "₪" + String(Int(district.amount)) + " (" + String(pct) + "% מכלל העיר)"
-                         : l10n.baseCurrency.symbol + String(Int(district.amount)) + " (" + String(pct) + "% of total)")
+                         ? "\(l10n.format(amount: district.amount)) (\(pct)% מכלל העיר)"
+                         : "\(l10n.format(amount: district.amount)) (\(pct)% of total)")
                         .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundColor(Color.textSecondary)
                         .offset(y: animateBeat ? 0 : 25)

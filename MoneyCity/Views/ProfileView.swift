@@ -414,7 +414,7 @@ public struct ProfileView: View {
                     }) {
                         VStack(spacing: 4) {
                             if isSelected {
-                                Text("\(l10n.baseCurrency.symbol)\(Int(month.amount))")
+                                Text(l10n.format(amount: month.amount))
                                     .font(.system(size: 10, weight: .black, design: .rounded))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 6)
@@ -694,6 +694,13 @@ public struct SettingsSheet: View {
                     VStack(spacing: 18) {
                         // 1. Language & Currency
                         settingsGroup(title: l10n.language == .hebrew ? "שפה ומטבעות" : "Language & Currency") {
+                            // The English translation is not finished: the onboarding wizard, the
+                            // month header on the City screen, every Siri and Shortcuts action and
+                            // the transaction-capture notifications are all Hebrew-only. Offering
+                            // the switch would send an English user into a Hebrew setup flow for
+                            // the app's headline feature. The picker comes back when the
+                            // translation does; the setting itself still works underneath.
+                            #if DEBUG
                             HStack {
                                 Text(l10n.language == .hebrew ? "שפת ממשק" : "Interface Language")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -710,6 +717,7 @@ public struct SettingsSheet: View {
                             .padding(.vertical, 4)
 
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
+                            #endif
 
                             HStack {
                                 Text(l10n.language == .hebrew ? "מטבע ראשי" : "Base Currency")

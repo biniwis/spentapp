@@ -89,7 +89,7 @@ public struct HistoryView: View {
                             Text(l10n.language == .hebrew ? "היסטוריה" : "History")
                                 .font(.system(size: 26, weight: .black, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
-                            Text(l10n.language == .hebrew ? "\(filtered.count) עסקאות • \(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(totalFiltered))" : "\(filtered.count) transactions • \(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(totalFiltered))")
+                            Text(l10n.language == .hebrew ? "\(filtered.count) עסקאות • \(l10n.format(amount: totalFiltered))" : "\(filtered.count) transactions • \(l10n.format(amount: totalFiltered))")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.textMuted)
                         }
@@ -306,7 +306,7 @@ public struct HistoryView: View {
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textSecondary)
                 Spacer()
-                Text("\(l10n.baseCurrency.symbol)\(Int(txs.reduce(0) { $0 + $1.amount }))")
+                Text(l10n.format(amount: txs.reduce(0) { $0 + $1.amount }))
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
             }
@@ -364,11 +364,11 @@ public struct HistoryView: View {
 
             let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
             if isRefund {
-                Text("-\(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(abs(tx.amount)))")
+                Text("-\(l10n.format(amount: abs(tx.amount)))")
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(Color.themeMint)
             } else {
-                Text("\(l10n.baseCurrency.symbol)\(Int(tx.amount))")
+                Text(l10n.format(amount: tx.amount))
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
             }

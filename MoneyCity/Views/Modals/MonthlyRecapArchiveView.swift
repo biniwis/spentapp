@@ -114,7 +114,7 @@ public struct MonthlyRecapArchiveView: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(l10n.baseCurrency.symbol)\(Int(recap.totalSpent))")
+                Text(l10n.format(amount: recap.totalSpent))
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 

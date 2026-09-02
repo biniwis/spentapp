@@ -104,12 +104,12 @@ public struct MerchantDetailSheet: View {
                             )
                             statBox(
                                 title: l10n.language == .hebrew ? "סך הכל" : "Total Spent",
-                                value: "\(l10n.baseCurrency.symbol)\(Int(totalSpent))",
+                                value: l10n.format(amount: totalSpent),
                                 color: Color.primaryBlue
                             )
                             statBox(
                                 title: l10n.language == .hebrew ? "ממוצע" : "Average",
-                                value: "\(l10n.baseCurrency.symbol)\(Int(avgSpent))",
+                                value: l10n.format(amount: avgSpent),
                                 color: Color.themeTurquoise
                             )
                         }
@@ -201,7 +201,7 @@ public struct MerchantDetailSheet: View {
                                             
                                             Spacer()
                                             
-                                            Text("\(l10n.baseCurrency.symbol)\(Int(tx.amount))")
+                                            Text(l10n.format(amount: tx.amount))
                                                 .font(.system(size: 15, weight: .black, design: .rounded))
                                                 .foregroundColor(Color.deepNavy)
                                             

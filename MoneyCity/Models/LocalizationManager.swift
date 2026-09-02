@@ -122,14 +122,43 @@ public final class LocalizationManager: ObservableObject {
 
     // MARK: - Currency Formatting
 
+    /// The single place money becomes text.
+    ///
+    /// Amounts used to be assembled by string concatenation — the symbol glued to `Int(value)` —
+    /// which had three consequences. Wherever a ₪ was written literally the user's chosen
+    /// currency was ignored. There were never thousands separators, so five figures ran together.
+    /// And a negative amount produced a mixed-direction run inside right-to-left text, where the
+    /// minus is a neutral character that bidi resolution can move to the other side of the
+    /// number; a sign that wanders is not a cosmetic bug in a finance app.
+    ///
+    /// The symbol still leads, as the app's layouts expect. What changed is that the digits are
+    /// grouped by a real formatter and the whole amount is wrapped in a first-strong isolate so
+    /// it stays one unit whichever direction the text around it runs.
     public func format(amount: Double, currency: CurrencyType? = nil, showDecimals: Bool = false) -> String {
         let cur = currency ?? baseCurrency
         let converted = currency == nil ? amount : CurrencyType.convert(amount: amount, from: currency!, to: baseCurrency)
-        if showDecimals {
-            return "\(cur.symbol)\(String(format: "%.2f", converted))"
-        } else {
-            return "\(cur.symbol)\(Int(converted.rounded()))"
-        }
+        let safe = converted.isFinite ? converted : 0
+        let digits = Self.groupingFormatter(decimals: showDecimals)
+            .string(from: NSNumber(value: abs(safe))) ?? "0"
+        let sign = safe < 0 ? "-" : ""
+        return "\u{2068}" + sign + cur.symbol + digits + "\u{2069}"
+    }
+
+    private static let formatterCache = NSCache<NSString, NumberFormatter>()
+
+    private static func groupingFormatter(decimals: Bool) -> NumberFormatter {
+        let key = (decimals ? "d2" : "d0") as NSString
+        if let cached = formatterCache.object(forKey: key) { return cached }
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.usesGroupingSeparator = true
+        f.groupingSeparator = ","
+        f.decimalSeparator = "."
+        f.minimumFractionDigits = decimals ? 2 : 0
+        f.maximumFractionDigits = decimals ? 2 : 0
+        f.roundingMode = .halfUp
+        formatterCache.setObject(f, forKey: key)
+        return f
     }
 
     // MARK: - Localized String Translation Engine

@@ -373,6 +373,7 @@ public struct MainCityView: View {
                     }
                 }
             )
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showOnboarding) {
             OnboardingWizardView(
@@ -681,7 +682,7 @@ public struct MainCityView: View {
                             .font(.system(size: 13, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                         
-                        Text("סה״כ ₪\(Int(districtTotal(for: dist))) החודש")
+                        Text("סה״כ \(l10n.format(amount: districtTotal(for: dist))) החודש")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(Color.primaryBlue)
                     }
@@ -704,7 +705,7 @@ public struct MainCityView: View {
                                             .font(.system(size: 10, weight: .bold, design: .rounded))
                                             .foregroundColor(Color.textSecondary)
                                         
-                                        Text("₪\(Int(pill.amount))")
+                                        Text(l10n.format(amount: pill.amount))
                                             .font(.system(size: 12, weight: .black, design: .rounded))
                                             .foregroundColor(Color.deepNavy)
                                     }
@@ -760,7 +761,7 @@ public struct MainCityView: View {
                                 .foregroundColor(Color.textMuted)
                         }
                         
-                        Text("\(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(currentCity.totalSpent))")
+                        Text(l10n.format(amount: currentCity.totalSpent))
                             .font(.system(size: 26, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                     }
@@ -772,7 +773,7 @@ public struct MainCityView: View {
                         DistrictParkVectorIcon(color: Color.themeMint)
                             .frame(width: 14, height: 14)
                             .scaleEffect(0.65)
-                        Text("\(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(currentCity.totalSavings)) \(l10n.language == .hebrew ? "בפארק" : "in Park")")
+                        Text("\(l10n.format(amount: currentCity.totalSavings)) \(l10n.language == .hebrew ? "בפארק" : "in Park")")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(Color.themeMint)
@@ -826,7 +827,7 @@ public struct MainCityView: View {
                         
                         Spacer()
                         
-                        Text("-\(l10n.baseCurrency.symbol)\(Int(progressReport.savedAmount)) \(l10n.language == .hebrew ? "השבוע" : "this week")")
+                        Text("-\(l10n.format(amount: progressReport.savedAmount)) \(l10n.language == .hebrew ? "השבוע" : "this week")")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(Color.themeMint)
                             .padding(.horizontal, 8)
@@ -942,7 +943,7 @@ public struct MainCityView: View {
                 
                 Spacer()
                 
-                Text("₪\(Int(amount))")
+                Text(l10n.format(amount: amount))
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 
@@ -1212,7 +1213,7 @@ struct InspectorModalView: View {
                     .foregroundColor(Color.deepNavy)
                 if isSortingHub {
                     if info.amount > 0 {
-                        Text("\(l10n.baseCurrency.symbol)\(Int(info.amount)) \(l10n.language == .hebrew ? "שונות למיון" : "to triage") • \(info.visitCount) \(l10n.language == .hebrew ? "חבילות" : "packages")")
+                        Text("\(l10n.format(amount: info.amount)) \(l10n.language == .hebrew ? "שונות למיון" : "to triage") • \(info.visitCount) \(l10n.language == .hebrew ? "חבילות" : "packages")")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 234/255, green: 88/255, blue: 12/255))
                     } else {
@@ -1225,11 +1226,11 @@ struct InspectorModalView: View {
                         }
                     }
                 } else if info.amount > 0 {
-                    Text("\(l10n.baseCurrency.symbol)\(Int(info.amount)) \(l10n.language == .hebrew ? "החודש" : "this month") • \(info.visitCount) \(l10n.language == .hebrew ? "פעולות" : "items")")
+                    Text("\(l10n.format(amount: info.amount)) \(l10n.language == .hebrew ? "החודש" : "this month") • \(info.visitCount) \(l10n.language == .hebrew ? "פעולות" : "items")")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(Color.primaryBlue)
                 } else {
-                    Text(l10n.language == .hebrew ? "מגרש פנוי • ₪0 החודש" : "Vacant Lot • \(l10n.baseCurrency.symbol)0")
+                    Text(l10n.language == .hebrew ? "מגרש פנוי • \(l10n.format(amount: 0)) החודש" : "Vacant Lot • \(l10n.baseCurrency.symbol)0")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textMuted)
                 }

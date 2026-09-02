@@ -227,7 +227,7 @@ public struct SavingsGoalsSheet: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(goal.name)
                         .font(.system(size: 15, weight: .black, design: .rounded))
-                    Text("\(symbol)\(Int(goal.savedAmount.rounded())) \(isHebrew ? "מתוך" : "of") \(symbol)\(Int(goal.targetAmount.rounded()))")
+                    Text("\(l10n.format(amount: goal.savedAmount.rounded())) \(isHebrew ? "מתוך" : "of") \(l10n.format(amount: goal.targetAmount.rounded()))")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.slate400)
                 }
@@ -270,7 +270,7 @@ public struct SavingsGoalsSheet: View {
                     .foregroundColor(goal.isComplete ? Color.themeMint : Color.primaryBlue)
                 Spacer()
                 if !goal.isComplete {
-                    Text(isHebrew ? "נשאר \(symbol)\(Int(left.rounded()))" : "\(symbol)\(Int(left.rounded())) to go")
+                    Text(isHebrew ? "נשאר \(l10n.format(amount: left.rounded()))" : "\(l10n.format(amount: left.rounded())) to go")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.slate400)
                 }

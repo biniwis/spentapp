@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Joyful modal allowing the user to choose an enrichment, resident, pet, or infrastructure repair unlocked by personal progress.
 public struct CityProgressSheet: View {
+    @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
     
     public let report: WeeklyProgressReport
@@ -37,7 +38,7 @@ public struct CityProgressSheet: View {
                         .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     
-                    Text("חיסכון של ₪\(Int(report.savedAmount)) משבוע שעבר")
+                    Text("חיסכון של \(l10n.format(amount: report.savedAmount)) משבוע שעבר")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.themeMint)
                     

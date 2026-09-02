@@ -121,7 +121,7 @@ public struct EditTransactionSheet: View {
                                     Image(systemName: "clock.arrow.circlepath")
                                         .font(.system(size: 12, weight: .bold))
                                         .foregroundColor(Color.primaryBlue)
-                                    Text(l10n.language == .hebrew ? "ביקרת כאן \(merchantVisitsCount) פעמים (סה״כ \(l10n.baseCurrency.symbol)\(Int(merchantTotalSpent))) • צפה בהיסטוריה" : "\(merchantVisitsCount) visits (\(l10n.baseCurrency.symbol)\(Int(merchantTotalSpent)) total) • View Details")
+                                    Text(l10n.language == .hebrew ? "ביקרת כאן \(merchantVisitsCount) פעמים (סה״כ \(l10n.format(amount: merchantTotalSpent))) • צפה בהיסטוריה" : "\(merchantVisitsCount) visits (\(l10n.format(amount: merchantTotalSpent)) total) • View Details")
                                         .font(.system(size: 11, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.primaryBlue)
                                     Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")

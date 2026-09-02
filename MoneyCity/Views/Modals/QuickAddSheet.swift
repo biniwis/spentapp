@@ -224,7 +224,7 @@ public struct QuickAddSheet: View {
                 let inILS = val * selectedCurrency.rateToILS
                 HStack(spacing: 4) {
                     ExchangeVectorIcon(color: Color.themeMint)
-                    Text(l10n.language == .hebrew ? "שווה ערך ל-₪\(String(format: "%.2f", inILS))" : "≈ ₪\(String(format: "%.2f", inILS))")
+                    Text(l10n.language == .hebrew ? "שווה ערך ל-\(l10n.format(amount: inILS, showDecimals: true))" : "≈ \(l10n.format(amount: inILS, showDecimals: true))")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                 }
                 .foregroundColor(Color.themeMint)
@@ -404,7 +404,7 @@ public struct QuickAddSheet: View {
                             Spacer()
                             
                             if paymentCount > 1, let total = parseAmount(amountText), total > 0 {
-                                Text(l10n.language == .hebrew ? "₪\(String(format: "%.0f", total / Double(paymentCount))) לחודש" : "₪\(String(format: "%.0f", total / Double(paymentCount)))/mo")
+                                Text(l10n.language == .hebrew ? "\(l10n.format(amount: total / Double(paymentCount))) לחודש" : "\(l10n.format(amount: total / Double(paymentCount)))/mo")
                                     .font(.system(size: 11, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.primaryBlue)
                             }

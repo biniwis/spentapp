@@ -113,7 +113,7 @@ public struct RecurringExpensesSheet: View {
                 Text(isHebrew ? "סה״כ קבוע בחודש" : "Fixed monthly total")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundColor(Color.slate400)
-                Text("\(l10n.baseCurrency.symbol)\(Int(monthlyTotal))")
+                Text(l10n.format(amount: monthlyTotal))
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
             }

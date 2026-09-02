@@ -84,8 +84,8 @@ public struct BudgetSheet: View {
                     Image(systemName: unbudgeted >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .font(.system(size: 12, weight: .bold))
                     Text(unbudgeted >= 0
-                         ? (isHebrew ? "\(symbol)\(Int(unbudgeted.rounded())) עוד לא מתוקצבים" : "\(symbol)\(Int(unbudgeted.rounded())) not yet budgeted")
-                         : (isHebrew ? "התקציבים חורגים מההכנסה ב-\(symbol)\(Int(-unbudgeted.rounded()))" : "Budgets exceed income by \(symbol)\(Int(-unbudgeted.rounded()))"))
+                         ? (isHebrew ? "\(l10n.format(amount: unbudgeted.rounded())) עוד לא מתוקצבים" : "\(l10n.format(amount: unbudgeted.rounded())) not yet budgeted")
+                         : (isHebrew ? "התקציבים חורגים מההכנסה ב-\(l10n.format(amount: -unbudgeted.rounded()))" : "Budgets exceed income by \(l10n.format(amount: -unbudgeted.rounded()))"))
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                     Spacer()
                 }
@@ -103,7 +103,7 @@ public struct BudgetSheet: View {
             Text(label)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundColor(Color.slate400)
-            Text("\(symbol)\(Int(value.rounded()))")
+            Text("\(l10n.format(amount: value.rounded()))")
                 .font(.system(size: 21, weight: .black, design: .rounded))
                 .foregroundColor(color)
         }
@@ -148,7 +148,7 @@ public struct BudgetSheet: View {
                     Text(source.name)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                     Spacer()
-                    Text("\(symbol)\(Int(source.amount.rounded()))")
+                    Text("\(l10n.format(amount: source.amount.rounded()))")
                         .font(.system(size: 15, weight: .black, design: .rounded))
                     Button {
                         modelContext.delete(source)
@@ -286,7 +286,7 @@ public struct BudgetSheet: View {
                     .frame(height: 6)
 
                     HStack {
-                        Text("\(symbol)\(Int(spent.rounded())) \(isHebrew ? "מתוך" : "of") \(symbol)\(Int(limit.rounded()))")
+                        Text("\(l10n.format(amount: spent.rounded())) \(isHebrew ? "מתוך" : "of") \(l10n.format(amount: limit.rounded()))")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundColor(Color.slate400)
                         Spacer()
@@ -318,11 +318,11 @@ public struct BudgetSheet: View {
     private func statusLabel(_ usage: BudgetUsage) -> String {
         switch usage.status {
         case .over:
-            return isHebrew ? "חריגה של \(symbol)\(Int(usage.overspend.rounded()))" : "\(symbol)\(Int(usage.overspend.rounded())) over"
+            return isHebrew ? "חריגה של \(l10n.format(amount: usage.overspend.rounded()))" : "\(l10n.format(amount: usage.overspend.rounded())) over"
         case .approaching:
-            return isHebrew ? "נשאר \(symbol)\(Int(usage.remaining.rounded()))" : "\(symbol)\(Int(usage.remaining.rounded())) left"
+            return isHebrew ? "נשאר \(l10n.format(amount: usage.remaining.rounded()))" : "\(l10n.format(amount: usage.remaining.rounded())) left"
         default:
-            return isHebrew ? "נשאר \(symbol)\(Int(usage.remaining.rounded()))" : "\(symbol)\(Int(usage.remaining.rounded())) left"
+            return isHebrew ? "נשאר \(l10n.format(amount: usage.remaining.rounded()))" : "\(l10n.format(amount: usage.remaining.rounded())) left"
         }
     }
 

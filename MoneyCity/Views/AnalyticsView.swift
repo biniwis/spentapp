@@ -203,7 +203,7 @@ public struct AnalyticsView: View {
                     if let sel = selectedSlice,
                        let item = categoryTotals.first(where: { $0.category == sel }) {
                         CategoryVectorIcon(category: sel, size: 28)
-                        Text("\(l10n.baseCurrency.symbol)\(Int(item.amount))")
+                        Text(l10n.format(amount: item.amount))
                             .font(.system(size: 22, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                         Text(sel.displayName)
@@ -211,7 +211,7 @@ public struct AnalyticsView: View {
                             .foregroundColor(Color.textMuted)
                             .lineLimit(1)
                     } else {
-                        Text("\(l10n.baseCurrency.symbol)\(Int(totalSpent))")
+                        Text(l10n.format(amount: totalSpent))
                             .font(.system(size: 28, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                         Text(l10n.language == .hebrew ? "החודש" : "Total This Month")
@@ -246,7 +246,7 @@ public struct AnalyticsView: View {
 
                                 Spacer()
 
-                                Text("\(l10n.baseCurrency.symbol)\(Int(item.amount))")
+                                Text(l10n.format(amount: item.amount))
                                     .font(.system(size: 13, weight: .black, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
 
@@ -302,7 +302,7 @@ public struct AnalyticsView: View {
                         VStack(spacing: 8) {
                             // Interactive floating tooltip
                             if isSelected {
-                                Text("\(l10n.baseCurrency.symbol)\(Int(week.amount))")
+                                Text(l10n.format(amount: week.amount))
                                     .font(.system(size: 11, weight: .black, design: .rounded))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 8)
@@ -390,7 +390,7 @@ public struct AnalyticsView: View {
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     Spacer()
-                    Text("\(l10n.baseCurrency.symbol)\(Int(amount))")
+                    Text(l10n.format(amount: amount))
                         .font(.system(size: 14, weight: .black, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     Text("\(pctInt)%")

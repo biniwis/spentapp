@@ -152,9 +152,9 @@ public struct OnboardingWizardView: View {
                             onComplete()
                         }) {
                             HStack(spacing: 8) {
-                                Image(systemName: "cup.and.saucer.fill")
+                                Image(systemName: "sparkles")
                                     .font(.system(size: 15, weight: .bold))
-                                Text("שתול זרע ראשון (קפה בדיקה ב-₪14)")
+                                Text("בוא נתחיל לבנות את העיר")
                                     .font(.system(size: 15, weight: .bold))
                             }
                             .foregroundColor(.white)

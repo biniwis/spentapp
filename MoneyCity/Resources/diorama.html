@@ -1040,8 +1040,12 @@
         en: { title: "Subscriptions & Media", sub: "Digital & Streaming", tag: "Subscriptions", header: "🏗️ Vacant Plot" }
       },
       "city_sorting_hub": {
-        he: { title: "בית הדואר ומרכז המיון", sub: "מיון הוצאות ושונות", tag: "בית הדואר ומרכז המיון", header: "🏗️ מגרש פנוי לבנייה" },
-        en: { title: "Postal Sorting Hub", sub: "Package & Expense Triage", tag: "Sorting Hub", header: "🏗️ Vacant Plot" }
+        he: { title: "בית הדואר ומרכז המיון", sub: "מיון הוצאות לא מזוהות", tag: "בית הדואר ומרכז המיון", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Postal Sorting Hub", sub: "Unsorted Expenses & Triage", tag: "Sorting Hub", header: "🏗️ Vacant Plot" }
+      },
+      "museum_curiosities": {
+        he: { title: "מוזיאון הדברים המשונים", sub: "מתנות, תרומות, פריטים מיוחדים ושונות", tag: "מוזיאון ושונות", header: "🏗️ מגרש פנוי לבנייה" },
+        en: { title: "Museum of Curiosities", sub: "Gifts, Donations & Special Oddities", tag: "Museum of Curiosities", header: "🏗️ Vacant Plot" }
       }
     };
 
@@ -2955,6 +2959,94 @@
     interactiveBuildings.push(sortingHubBody);
     createPlotSite("city_sorting_hub", 0, 0, civicZone, sortingHubBody.userData);
 
+    // ────────────────────────────────────────────────────────────────
+    // 🏛️ GRAND MUSEUM OF CURIOSITIES (מוזיאון הדברים המשונים — שונות)
+    // Neoclassical marble columns, glowing amethyst crystal dome & exhibits
+    // ────────────────────────────────────────────────────────────────
+    const museumZone = new THREE.Group();
+    museumZone.position.set(-6.8, 0, 8.8);
+    root.add(museumZone);
+
+    function createMuseumOfCuriosities(parent) {
+      const g = new THREE.Group(); g.position.set(0, 0.22, 0); parent.add(g);
+      buildingRoots["museum_curiosities"] = g; g.userData = { targetScaleY: 1.0, targetScaleXZ: 1.0 };
+      const bGroup = new THREE.Group(); g.add(bGroup);
+      const sGroup = createTier1Stall("postal"); g.add(sGroup);
+      g.userData.buildingGroup = bGroup; g.userData.stallGroup = sGroup;
+
+      // 1. Raised Neoclassical Marble Plinth & Steps
+      const plinth = mesh(roundedBox(3.0, 0.10, 2.6, 0.15), mat(0xe2e8f0, 0.6), 0, 0.05, 0);
+      bGroup.add(plinth);
+
+      // Granite Steps leading to grand entrance
+      const step1 = mesh(new THREE.BoxGeometry(2.2, 0.05, 0.5), mat(0xcbd5e1, 0.7), 0, 0.08, 1.15);
+      const step2 = mesh(new THREE.BoxGeometry(2.0, 0.05, 0.35), mat(0x94a3b8, 0.7), 0, 0.13, 1.0);
+      bGroup.add(step1, step2);
+
+      // 2. Main Classical Museum Hall
+      const museumBody = mesh(roundedBox(2.2, 1.40, 1.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }), 0, 0.78, -0.1);
+      bGroup.add(museumBody);
+
+      // 3. Classical Marble Columns across the Portico Facade
+      [-0.8, -0.27, 0.27, 0.8].forEach(colX => {
+        const col = mesh(new THREE.CylinderGeometry(0.08, 0.09, 1.30, 12), mat(0xe2e8f0, 0.3), colX, 0.75, 0.82);
+        col.add(mesh(new THREE.BoxGeometry(0.22, 0.06, 0.22), mat(0xfacc15, 0.2, 0.8), 0, 0.65, 0));
+        bGroup.add(col);
+      });
+
+      // 4. Grand Triangular Pediment / Frieze
+      const pedimentG = new THREE.Group();
+      pedimentG.position.set(0, 1.55, 0.78);
+      const friezeBase = mesh(new THREE.BoxGeometry(2.2, 0.12, 0.35), mat(0xe2e8f0, 0.4), 0, 0, 0);
+      const triangleRoof = mesh(new THREE.ConeGeometry(1.4, 0.65, 4), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4 }), 0, 0.35, 0);
+      triangleRoof.rotation.y = Math.PI / 4;
+      pedimentG.add(friezeBase, triangleRoof);
+      bGroup.add(pedimentG);
+
+      // 5. Glowing Geodesic Violet / Crystal Glass Dome
+      const domeBase = mesh(new THREE.CylinderGeometry(0.68, 0.72, 0.18, 16), mat(0xfacc15, 0.3, 0.9), 0, 1.55, -0.2);
+      const crystalDome = mesh(new THREE.SphereGeometry(0.62, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.MeshStandardMaterial({
+        color: 0x8b5cf6,
+        emissive: 0x7c3aed,
+        emissiveIntensity: 0.65,
+        roughness: 0.15,
+        metalness: 0.3,
+        transparent: true,
+        opacity: 0.88
+      }), 0, 1.64, -0.2);
+      bGroup.add(domeBase, crystalDome);
+
+      // 6. Glowing Museum Front Sign
+      bGroup.add(mesh(new THREE.BoxGeometry(1.9, 0.35, 0.08), new THREE.MeshStandardMaterial({
+        map: signTex("🏛️ מוזיאון הדברים המשונים", "Museum of Curiosities • שונות", "#ffffff", "#7c3aed"),
+        emissive: 0x7c3aed,
+        emissiveIntensity: 0.55
+      }), 0, 1.25, 0.88));
+
+      // 7. Exhibition Pedestals with Glowing Curiosities
+      [-1.15, 1.15].forEach((pedX, idx) => {
+        const ped = mesh(roundedBox(0.28, 0.42, 0.28, 0.04), mat(0x334155, 0.7), pedX, 0.30, 0.85);
+        const glassJar = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.24, 12), new THREE.MeshStandardMaterial({
+          color: 0xa78bfa,
+          transparent: true,
+          opacity: 0.5,
+          roughness: 0.1
+        }), 0, 0.32, 0);
+        const gem = mesh(new THREE.OctahedronGeometry(0.06), mat(idx === 0 ? 0xfacc15 : 0xec4899, 0.2, 0.9), 0, 0.30, 0);
+        ped.add(glassJar, gem);
+        bGroup.add(ped);
+      });
+
+      const musData = { id: "museum_curiosities", district: "civic", name: "מוזיאון הדברים המשונים", emoji: "🏛️", amount: 0, visits: 0, trend: "שונות ופריטים מיוחדים" };
+      plinth.userData = musData;
+      museumBody.userData = musData;
+      return museumBody;
+    }
+
+    const museumBody = createMuseumOfCuriosities(museumZone);
+    interactiveBuildings.push(museumBody);
+    createPlotSite("museum_curiosities", 0, 0, museumZone, museumBody.userData);
+
     // 🌱  SAVINGS PARK SANCTUARY
     // ────────────────────────────────────────────────────────────────
     const parkZone = new THREE.Group();
@@ -3635,7 +3727,8 @@
     addDistrictBuildingTag("housing", "house_tower", "🏠", "מגורים ושכירות", 0, "#253CC4", 4.5, 5.2, 4.6);
     addDistrictBuildingTag("housing", "house_util", "⚡", "חשמל וארנונה", 0, "#F59E0B", 9.1, 4.2, 4.6);
     addDistrictBuildingTag("housing", "house_subs", "📺", "מנויים וסטרימינג", 0, "#7C72FF", 6.8, 3.8, 8.8);
-    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", -3.2, 2.2, 8.6); 
+    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", -3.2, 2.2, 8.6);
+    addDistrictBuildingTag("civic", "museum_curiosities", "🏛️", "מוזיאון הדברים המשונים", 0, "#8B5CF6", -6.8, 3.8, 8.6); 
 
     // ================================================================
     // 🏗️ SIMS-STYLE DEDICATED CITY UPGRADE SLOTS (Interactive Pads)
@@ -4841,7 +4934,8 @@
       "shop_arcade":    200,  // Entertainment & Arcade
       "house_tower":   4000,  // Rent & Housing (₪3800 is standard building, ₪8500 is skyscraper)
       "house_util":     400,  // Utilities & Bills
-      "house_subs":     120   // Monthly Subscriptions (₪40 is booth, ₪350 is satellite tower)
+      "house_subs":     120,  // Monthly Subscriptions (₪40 is booth, ₪350 is satellite tower)
+      "museum_curiosities": 250 // Museum of Curiosities / Miscellaneous
     };
 
     function calcBuildingTransform(amount, buildingId) {
@@ -5091,11 +5185,14 @@
         syncBuilding("house_util", rUtil, utilBody, "-2% מחודש שעבר");
         syncBuilding("house_subs", rSubs, subMediaBody, "מנויים פעילים");
 
-        // 4. Standalone Civic Sorting Hub
+        // 4. Standalone Civic Sorting Hub & Museum of Curiosities
         const otherSpend = (data.otherAmount !== undefined) ? data.otherAmount : 0;
         const pendingCount = (data.pendingSortingCount !== undefined) ? data.pendingSortingCount : 0;
         const sortingTrend = pendingCount > 0 ? (pendingCount + " חבילות למיון 📦") : "הכל ממוין ומסודר ✨";
         syncBuilding("city_sorting_hub", otherSpend, sortingHubBody, sortingTrend);
+
+        const museumSpend = (data.museumAmount !== undefined) ? data.museumAmount : 0;
+        syncBuilding("museum_curiosities", museumSpend, museumBody, "מוזיאון הדברים המשונים 🏛️");
 
         // Traffic should arrive with the city rather than greet an empty island. A user
         // on day one has one resident and empty plots; a taxi, a bus and a delivery

@@ -251,9 +251,10 @@ public extension SpendingCategory {
             case .entertainment: return "Entertainment"
             case .health: return "Health & Wellness"
             case .subscriptions: return "Subscriptions"
-            case .other: return "Other"
             case .finance: return "Finance & Fees"
             case .savings: return "Savings & Reserve"
+            case .miscellaneous, .misc: return "Miscellaneous"
+            case .other: return "Unsorted (Post Office)"
             }
         } else {
             return self.displayName
@@ -270,9 +271,10 @@ public extension SpendingCategory {
             case .entertainment: return "Fun"
             case .health: return "Health"
             case .subscriptions: return "Subs"
-            case .other: return "Other"
             case .finance: return "Finance"
             case .savings: return "Savings"
+            case .miscellaneous, .misc: return "Misc"
+            case .other: return "Unsorted"
             }
         } else {
             return self.shortName

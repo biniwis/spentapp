@@ -44,5 +44,20 @@ final class CitySortingHubTests: XCTestCase {
         XCTAssertEqual(engine.mapToBuildingId(category: .shopping, merchant: "זארה"), "shop_boutique")
         XCTAssertEqual(engine.mapToBuildingId(category: .housing, merchant: "שכירות"), "house_tower")
         XCTAssertEqual(engine.mapToBuildingId(category: .transport, merchant: "פנגו"), "trans_station")
+        XCTAssertEqual(engine.mapToBuildingId(category: .miscellaneous, merchant: "מתנה לחג"), "museum_curiosities")
+    }
+
+    func testMiscellaneousCategoryMapsToMuseumOfCuriosities() {
+        let engine = CategorizationEngine.shared
+        let buildingId = engine.mapToBuildingId(category: .miscellaneous, merchant: "תרומה לקהילה")
+        XCTAssertEqual(buildingId, "museum_curiosities", "Miscellaneous expenses must be assigned to the Museum of Curiosities")
+
+        let gift = engine.classify(merchant: "מתנה ליום הולדת", amount: 200)
+        XCTAssertEqual(gift.category, .miscellaneous)
+        XCTAssertEqual(gift.buildingId, "museum_curiosities")
+
+        let fine = engine.classify(merchant: "קנס חניה עיריית תל אביב", amount: 100)
+        XCTAssertEqual(fine.category, .miscellaneous)
+        XCTAssertEqual(fine.buildingId, "museum_curiosities")
     }
 }

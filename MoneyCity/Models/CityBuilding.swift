@@ -186,17 +186,43 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                     descriptionEn: "Investments & savings funds"
                 )
             ]
-        case .finance, .other:
+        case .finance:
+            return [
+                CityBuilding(
+                    id: "shop_boutique",
+                    category: .finance,
+                    nameHe: "עמלות ובנקים",
+                    nameEn: "Banking & Fees",
+                    emoji: "💳",
+                    sfSymbol: "creditcard.fill",
+                    descriptionHe: "עמלות, ריביות ודמי ניהול",
+                    descriptionEn: "Banking fees & charges"
+                )
+            ]
+        case .miscellaneous, .misc:
+            return [
+                CityBuilding(
+                    id: "museum_curiosities",
+                    category: .miscellaneous,
+                    nameHe: "מוזיאון הדברים המשונים",
+                    nameEn: "Museum of Curiosities",
+                    emoji: "🏛️",
+                    sfSymbol: "building.columns.fill",
+                    descriptionHe: "מתנות, תרומות, פריטים מיוחדים והוצאות שלא מצאו שכונה משלהן",
+                    descriptionEn: "Gifts, donations, oddities & special one-off expenses"
+                )
+            ]
+        case .other:
             return [
                 CityBuilding(
                     id: "city_sorting_hub",
-                    category: category,
-                    nameHe: "מרכז מיון ושונות",
-                    nameEn: "Sorting Hub & Other",
-                    emoji: "📦",
+                    category: .other,
+                    nameHe: "בית הדואר ומרכז המיון",
+                    nameEn: "Post Office & Sorting Hub",
+                    emoji: "📮",
                     sfSymbol: "shippingbox.fill",
-                    descriptionHe: "עמלות, בנקים ושונות",
-                    descriptionEn: "Fees, banking & miscellaneous"
+                    descriptionHe: "עסקאות לא מזוהות הממתינות למיון וחלוקה לשכונות",
+                    descriptionEn: "Unrecognized expenses waiting to be sorted into districts"
                 )
             ]
         case .groceries, .coffee:

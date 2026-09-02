@@ -9,30 +9,30 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
     case entertainment = "entertainment"   // בילויים (קולנוע, הופעות, ברים, משחקים, תחביבים)
     case health = "health"                 // בריאות (רופא, תרופות, שיניים, טיפוח, כושר)
     case subscriptions = "subscriptions"   // מנויים וחשבונות (Netflix, Spotify, אפליקציות, סלולר)
-    case other = "other"                   // אחרים (מתנות, תרומות, הוצאות חד־פעמיות)
     case finance = "finance"               // כספים (עמלות, ריבית, החזרי חוב)
     case savings = "savings"               // חיסכון והשקעות (קרנות, S&P500, חיסכון חודשי)
+    case miscellaneous = "miscellaneous"   // שונות — מוזיאון הדברים המשונים (מתנות, תרומות, קנסות, פריטים מיוחדים)
+    case other = "other"                   // אחר — בית הדואר ומרכז המיון (עסקאות שממתינות למיון)
     
     // Legacy aliases for backward compatibility
     case groceries = "groceries"
     case coffee = "coffee"
+    case misc = "misc"
 
     public var id: String { rawValue }
     
-    /// Collapses the legacy `groceries` / `coffee` aliases onto `.food`.
-    ///
-    /// Every aggregation must key on this. Keying on the raw case produced two or three
-    /// separate rows all labelled "אוכל", each holding a fraction of the real total.
+    /// Collapses legacy aliases onto their canonical representation.
     public var canonical: SpendingCategory {
         switch self {
         case .groceries, .coffee: return .food
+        case .misc: return .miscellaneous
         default: return self
         }
     }
 
-    /// Distinct 10 primary categories for UI selectors (excludes legacy aliases)
+    /// Distinct primary categories for UI selectors (excludes legacy aliases)
     public static var primaryCategories: [SpendingCategory] {
-        [.housing, .food, .transport, .shopping, .entertainment, .health, .subscriptions, .savings, .finance, .other]
+        [.housing, .food, .transport, .shopping, .entertainment, .health, .subscriptions, .savings, .finance, .miscellaneous, .other]
     }
     
     /// User-facing localized category name (Hebrew or English)
@@ -48,9 +48,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return "בילויים ופנאי"
         case .health: return "בריאות וכושר"
         case .subscriptions: return "מנויים וחשבונות"
-        case .other: return "הוצאות שונות"
         case .finance: return "עמלות ובנקים"
         case .savings: return "חיסכון והשקעות"
+        case .miscellaneous, .misc: return "שונות"
+        case .other: return "אחר (למיון)"
         }
     }
 
@@ -70,9 +71,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return "Entertainment & Leisure"
         case .health: return "Health & Fitness"
         case .subscriptions: return "Subscriptions & Bills"
-        case .other: return "Other Expenses"
         case .finance: return "Bank & Fees"
         case .savings: return "Savings & Investments"
+        case .miscellaneous, .misc: return "Miscellaneous"
+        case .other: return "Unsorted (Post Office)"
         }
     }
     
@@ -89,9 +91,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return "בילויים"
         case .health: return "בריאות"
         case .subscriptions: return "מנויים"
-        case .other: return "שונות"
         case .finance: return "בנק ועמלות"
         case .savings: return "חיסכון"
+        case .miscellaneous, .misc: return "שונות"
+        case .other: return "דואר"
         }
     }
 
@@ -111,9 +114,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return "Fun"
         case .health: return "Health"
         case .subscriptions: return "Bills"
-        case .other: return "Other"
         case .finance: return "Bank"
         case .savings: return "Savings"
+        case .miscellaneous, .misc: return "Misc"
+        case .other: return "Unsorted"
         }
     }
     
@@ -131,8 +135,8 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
             return .dailyLifestyle        // רחוב שוקק: חנויות, מסעדות, בתי קפה ובוטיק
         case .transport:
             return .mobilityMovement      // תנועה ורכבים: כבישים, מוניות, רכבים וקורקינטים
-        case .other, .finance:
-            return .occasionalSpecial     // מבנים ודוכנים מיוחדים
+        case .other, .finance, .miscellaneous, .misc:
+            return .occasionalSpecial     // מבנים ודוכנים מיוחדים (מוזיאון, דואר)
         case .savings:
             return .naturePreserve        // שטחים פתוחים, פארקים, אגמים ומזרקות
         }
@@ -147,9 +151,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return "ENTERTAINMENT"
         case .health: return "HEALTH & WELLNESS"
         case .subscriptions: return "SUBSCRIPTIONS"
-        case .other: return "SPECIAL"
         case .finance: return "FINANCE"
         case .savings: return "SAVINGS PARK"
+        case .miscellaneous, .misc: return "MUSEUM OF CURIOSITIES"
+        case .other: return "POST OFFICE"
         }
     }
     
@@ -162,9 +167,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return "gamecontroller.fill"
         case .health: return "heart.fill"
         case .subscriptions: return "play.tv.fill"
-        case .other: return "gift.fill"
         case .finance: return "creditcard.fill"
         case .savings: return "tree.fill"
+        case .miscellaneous, .misc: return "building.columns.fill"
+        case .other: return "shippingbox.fill"
         }
     }
     
@@ -177,9 +183,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return Color(red: 245/255, green: 158/255, blue: 11/255)// Soft Amber #F59E0B
         case .health: return Color(red: 236/255, green: 72/255, blue: 153/255)       // Soft Pink #EC4899
         case .subscriptions: return Color(red: 59/255, green: 130/255, blue: 246/255) // Ocean Blue #3B82F6
-        case .other: return Color(red: 139/255, green: 92/255, blue: 246/255)        // Purple #8B5CF6
         case .finance: return Color(red: 100/255, green: 116/255, blue: 139/255)     // Slate Navy #64748B
         case .savings: return Color(red: 16/255, green: 185/255, blue: 129/255)      // Mint Green #10B981
+        case .miscellaneous, .misc: return Color(red: 139/255, green: 92/255, blue: 246/255) // Royal Violet #8B5CF6
+        case .other: return Color(red: 249/255, green: 115/255, blue: 22/255)        // Postal Amber Orange #F97316
         }
     }
 
@@ -192,9 +199,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return Color(red: 255/255, green: 240/255, blue: 199/255)// #FFF0C7
         case .health: return Color(red: 249/255, green: 225/255, blue: 232/255)        // #F9E1E8
         case .subscriptions: return Color(red: 239/255, green: 246/255, blue: 255/255)// #EFF6FF
-        case .other: return Color(red: 245/255, green: 243/255, blue: 255/255)         // #F5F3FF
         case .finance: return Color(red: 241/255, green: 245/255, blue: 249/255)       // #F1F5F9
         case .savings: return Color(red: 221/255, green: 243/255, blue: 234/255)       // #DDF3EA
+        case .miscellaneous, .misc: return Color(red: 245/255, green: 243/255, blue: 255/255) // #F5F3FF
+        case .other: return Color(red: 255/255, green: 247/255, blue: 237/255)         // #FFF7ED
         }
     }
 }

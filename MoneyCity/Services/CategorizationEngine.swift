@@ -19,7 +19,7 @@ public final class CategorizationEngine: Sendable {
     
     private let dictionary: [SpendingCategory: [String]] = [
         .housing: [
-            "שכירות", "rent", "ארנונה", "עיריית", "חברת חשמל", "חשמל", "אינטרנט",
+            "שכירות", "rent", "ארנונה", "ארנונת", "חברת חשמל", "חשמל", "אינטרנט",
             "מי אביבים", "מי כרמל", "מי תל אביב", "מי שבע", "גינדי", "עזריאלי מגורים", "ועד בית",
             "בזק", "bezeq", "hot", "הוט", "partner fiber", "cellcom fiber", "פזגז", "אמישראגז", "סופרגז"
         ],
@@ -46,7 +46,7 @@ public final class CategorizationEngine: Sendable {
         .entertainment: [
             "cinema city", "סינמה סיטי", "yes planet", "יס פלאנט", "rav hen", "רב חן", "hot cinema", "הוט סינמה",
             "zappa", "זאפה", "pub", "פאב", "הופעה", "כרטיסים", "eventim", "קופת בראבו",
-            "playstation", "sony", "xbox", "steam", "nintendo", "קולנוע", "באולינג", "מוזיאון", "לונה פארק"
+            "playstation", "sony", "xbox", "steam", "nintendo", "קולנוע", "באולינג", "לונה פארק"
         ],
         .health: [
             "super-pharm", "סופר פארם", "be", "be פארם", "good pharm", "גוד פארם", "מכבי", "maccabi", "כללית", "clalit",
@@ -66,8 +66,11 @@ public final class CategorizationEngine: Sendable {
         .savings: [
             "חיסכון", "savings", "קופת גמל", "קרן השתלמות", "s&p", "s&p500", "הפקדה", "deposit", "בורסה", "ibkr", "interactive"
         ],
-        .other: [
-            "מתנה", "gift", "פרחים", "תרומה", "donation", "bit", "ביט", "paybox", "פייבוקס"
+        .miscellaneous: [
+            "מתנה", "gift", "פרחים", "flowers", "תרומה", "donation",
+            "קנס", "דוח", "קנס חניה", "קנס עירייה", "fine", "משטרה", "police", "עורך דין", "lawyer", "נוטריון", "notary",
+            "אגרה", "fee", "שונות", "misc", "כללי", "general", "וינטג'", "vintage",
+            "מכירה פומבית", "auction"
         ]
     ]
     
@@ -78,7 +81,7 @@ public final class CategorizationEngine: Sendable {
     public func classify(merchant: String, amount: Double) -> ClassificationResult {
         let clean = merchant.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if clean.isEmpty {
-            return ClassificationResult(category: .other, buildingId: "food_bistro", confidence: 0.0)
+            return ClassificationResult(category: .other, buildingId: "city_sorting_hub", confidence: 0.0)
         }
         
         // Tokenize merchant into distinct words
@@ -113,9 +116,8 @@ public final class CategorizationEngine: Sendable {
             }
         }
         
-        // An unknown merchant is not food. Defaulting to a category built a restaurant in
-        // the city for every shop the dictionary had never heard of; "other" is honest, and
-        // the low confidence sends it to the review list where the user can correct it once.
+        // An unknown merchant defaults honestly to .other (Post Office / Sorting Hub)
+        // with low confidence so the user can easily route it in the sorting hub.
         let finalCat = bestCategory ?? .other
         let confidence = bestCategory != nil ? 0.95 : 0.50
         let buildingId = mapToBuildingId(category: finalCat, merchant: clean)
@@ -166,6 +168,9 @@ public final class CategorizationEngine: Sendable {
             
         case .transport:
             return "trans_station"
+            
+        case .miscellaneous, .misc:
+            return "museum_curiosities"
             
         case .other:
             return "city_sorting_hub"

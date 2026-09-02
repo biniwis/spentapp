@@ -57,7 +57,7 @@ public struct QuickAddSheet: View {
 
     /// The 9 primary distinct categories for the 3x3 grid (no duplicate aliases)
     private var allCategories: [SpendingCategory] {
-        [.food, .shopping, .transport, .housing, .entertainment, .health, .subscriptions, .savings, .other]
+        [.food, .shopping, .transport, .housing, .entertainment, .health, .subscriptions, .savings, .miscellaneous]
     }
     
     public var body: some View {

@@ -177,9 +177,11 @@ public struct CitySortingHubSheet: View {
                         categoryQuickButton(tx: tx, cat: .shopping, icon: "bag.fill", label: isHebrew ? "קניות" : "Shop", color: Color.themeLavender)
                         categoryQuickButton(tx: tx, cat: .housing, icon: "house.fill", label: isHebrew ? "בית" : "Home", color: Color.primaryBlue)
                         categoryQuickButton(tx: tx, cat: .transport, icon: "car.fill", label: isHebrew ? "תחבורה" : "Transit", color: Color.themeOrange)
+                        categoryQuickButton(tx: tx, cat: .entertainment, icon: "gamecontroller.fill", label: isHebrew ? "בילויים" : "Fun", color: Color.themeOrange)
                         categoryQuickButton(tx: tx, cat: .health, icon: "heart.fill", label: isHebrew ? "בריאות" : "Health", color: Color.themeMint)
-                        categoryQuickButton(tx: tx, cat: .subscriptions, icon: "tv.fill", label: isHebrew ? "מנויים" : "Subs", color: Color.themeLavender)
+                        categoryQuickButton(tx: tx, cat: .subscriptions, icon: "play.tv.fill", label: isHebrew ? "מנויים" : "Subs", color: Color.themeLavender)
                         categoryQuickButton(tx: tx, cat: .finance, icon: "creditcard.fill", label: isHebrew ? "פיננסים" : "Finance", color: Color.deepNavy)
+                        categoryQuickButton(tx: tx, cat: .miscellaneous, icon: "building.columns.fill", label: isHebrew ? "שונות (מוזיאון)" : "Museum", color: Color(red: 139/255, green: 92/255, blue: 246/255))
                     }
                     .padding(.vertical, 2)
                 }

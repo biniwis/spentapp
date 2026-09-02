@@ -464,6 +464,21 @@ private struct TriangleShape: Shape {
     }
 }
 
+/// 14. District Museum Vector Icon (מוזיאון הדברים המשונים)
+public struct DistrictMuseumVectorIcon: View {
+    public let color: Color
+    public init(color: Color = Color(red: 139/255, green: 92/255, blue: 246/255)) {
+        self.color = color
+    }
+    
+    public var body: some View {
+        Image(systemName: "building.columns.fill")
+            .font(.system(size: 15, weight: .bold))
+            .foregroundColor(color)
+            .frame(width: 24, height: 24)
+    }
+}
+
 // MARK: - Global Category Vector Icon & Category Badge Components
 
 /// Unified Vector Icon for any SpendingCategory (Zero Apple Emojis)
@@ -500,6 +515,8 @@ public struct CategoryVectorIcon: View {
                 DistrictParkVectorIcon(color: tint)
             case .finance:
                 DistrictFinanceVectorIcon(color: tint)
+            case .miscellaneous, .misc:
+                DistrictMuseumVectorIcon(color: tint)
             case .other:
                 DistrictOtherVectorIcon(color: tint)
             }

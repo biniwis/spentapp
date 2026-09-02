@@ -132,6 +132,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let transport: Double
         public let savings: Double
         public let otherAmount: Double?
+        public let museumAmount: Double?
         public let pendingSortingCount: Int?
         public let targetDistrict: String?
         public let language: String
@@ -162,6 +163,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         let transport = categoryTotals[.transport] ?? 0
         let savings = totalSavings
         let otherSpend = buildingTotals["city_sorting_hub"] ?? (categoryTotals[.other] ?? 0)
+        let museumSpend = buildingTotals["museum_curiosities"] ?? (categoryTotals[.miscellaneous] ?? 0)
         
         let payload = DioramaDataPayload(
             food: food,
@@ -173,6 +175,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             transport: transport,
             savings: savings,
             otherAmount: otherSpend,
+            museumAmount: museumSpend,
             pendingSortingCount: (categoryTotals[.other] ?? 0) > 0 ? 1 : 0,
             targetDistrict: selectedDistrict,
             language: language,

@@ -144,7 +144,7 @@ public final class LocalizationManager: ObservableObject {
         case "tab_profile": return isHebrew ? "פרופיל" : "Profile"
 
         // Headers
-        case "city_title": return isHebrew ? "עיר הכסף שלי" : "My Money City"
+        case "city_title": return isHebrew ? "עיר ההוצאות שלי" : "My SPENT City"
         case "analytics_title": return isHebrew ? "ניתוח הוצאות" : "Spending Analytics"
         case "analytics_subtitle": return isHebrew ? "פירוט החודש הנוכחי" : "Current Month Breakdown"
         case "history_title": return isHebrew ? "היסטוריה" : "History"
@@ -195,7 +195,6 @@ public final class LocalizationManager: ObservableObject {
         case "recurring_expenses": return isHebrew ? "הוצאות קבועות" : "Fixed Expenses"
         case "recurring_expenses_hint": return isHebrew ? "שכר דירה, ארנונה, מנויים — הגדרה אחת, נרשמות לבד כל חודש." : "Rent, bills, subscriptions — set once, posted automatically every month."
         case "export_csv": return isHebrew ? "ייצוא עסקאות לקובץ CSV / Excel" : "Export Transactions to CSV / Excel"
-        case "load_demo": return isHebrew ? "טען עסקאות דוגמה לעיר" : "Load Sample City Transactions"
         case "reset_city": return isHebrew ? "איפוס כל נתוני העיר וההוצאות" : "Reset All City & Expense Data"
         case "privacy_note": return isHebrew ? "כל הנתונים הכספיים נשמרים מקומית על המכשיר שלך בלבד ומאובטחים לחלוטין." : "All financial data is strictly stored locally on your device with SwiftData and is 100% private."
 

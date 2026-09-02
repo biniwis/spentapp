@@ -32,7 +32,7 @@ public final class CitySimulationEngine: Sendable {
     public func generateCity(
         for monthDate: Date,
         transactions: [Transaction],
-        estimatedMonthlyBudget: Double = 8000.0,
+        estimatedMonthlyBudget: Double = 0,
         now: Date = Date()
     ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]

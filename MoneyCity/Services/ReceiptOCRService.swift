@@ -78,14 +78,17 @@ public enum ReceiptOCRService {
     public static func recognizeTextLines(from data: Data) async throws -> [String] {
         #if canImport(Vision) && canImport(CoreGraphics)
         return try await withCheckedThrowingContinuation { continuation in
+            // perform() invokes the request completion with the error *and* throws, so without a
+            // latch a corrupt image resumes the continuation twice and traps the process.
+            let resumed = OCRResumeLatch()
             let request = VNRecognizeTextRequest { req, error in
                 if let error = error {
-                    continuation.resume(throwing: error)
+                    if resumed.claim() { continuation.resume(throwing: error) }
                     return
                 }
 
                 guard let observations = req.results as? [VNRecognizedTextObservation] else {
-                    continuation.resume(returning: [])
+                    if resumed.claim() { continuation.resume(returning: []) }
                     return
                 }
 
@@ -100,7 +103,7 @@ public enum ReceiptOCRService {
                 let lines = sortedObs.compactMap { obs -> String? in
                     obs.topCandidates(1).first?.string
                 }
-                continuation.resume(returning: lines)
+                if resumed.claim() { continuation.resume(returning: lines) }
             }
 
             request.recognitionLevel = .accurate
@@ -111,7 +114,7 @@ public enum ReceiptOCRService {
             do {
                 try handler.perform([request])
             } catch {
-                continuation.resume(throwing: error)
+                if resumed.claim() { continuation.resume(throwing: error) }
             }
         }
         #else
@@ -652,3 +655,18 @@ public enum ReceiptOCRService {
     }
 }
 
+/// Guarantees a checked continuation is resumed exactly once. Vision can report a failure through
+/// both the request completion and a thrown error for the same image.
+private final class OCRResumeLatch {
+    private let lock = NSLock()
+    private var used = false
+
+    /// Returns true exactly once, for the first caller.
+    func claim() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if used { return false }
+        used = true
+        return true
+    }
+}

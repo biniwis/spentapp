@@ -59,12 +59,13 @@ public enum MerchantRuleService {
     public static func ruleAfterCorrection(
         merchant: String,
         category: SpendingCategory,
+        buildingId: String? = nil,
         existing: [MerchantRule]
     ) -> MerchantRule? {
         let key = normalizedKey(merchant)
         guard !key.isEmpty else { return nil }
 
-        let building = CategorizationEngine.shared.mapToBuildingId(category: category, merchant: merchant)
+        let building = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: category, merchant: merchant)
 
         if let match = existing.first(where: { $0.merchantKey == key }) {
             match.category = category

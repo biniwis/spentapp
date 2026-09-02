@@ -5,7 +5,7 @@ import SwiftData
 /// App Intent for scanning payment confirmation screenshots and receipts via Apple Shortcuts or iOS Share Sheet.
 public struct ScanReceiptIntent: AppIntent {
 
-    public static var title: LocalizedStringResource = "סרוק צילום מסך / קבלה ל-Money City"
+    public static var title: LocalizedStringResource = "סרוק צילום מסך / קבלה ל-SPENT"
     public static var description = IntentDescription(
         "מזהה אוטומטית סכום, בית עסק, תאריך וקטגוריה מתוך צילום מסך או קבלה ושומר את ההוצאה בעיר."
     )

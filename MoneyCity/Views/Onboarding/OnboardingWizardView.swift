@@ -51,6 +51,25 @@ public struct OnboardingWizardView: View {
                         .padding(.horizontal, 32)
                 }
                 
+                if currentStep == 2 {
+                    VStack(alignment: .leading, spacing: 12) {
+                        onboardingStepRow(num: "1", title: "הורד את הקיצור המוכן", desc: "הקיצור כבר מוגדר עם כל הפעולות הנדרשות לקליטה חלקה.")
+                        onboardingStepRow(num: "2", title: "צור אוטומציה ב'קיצורים'", desc: "פתח את 'קיצורים' > לשונית 'אוטומציה' > בחר 'עסקה' (Transaction).")
+                        onboardingStepRow(num: "3", title: "בחר 'הפעל מיד'", desc: "סמן 'הפעל מיד' (ללא אישור ידני) ובחר להריץ את הקיצור שהורדת.")
+                    }
+                    .padding(16)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+                    .padding(.horizontal, 24)
+
+                    Text("💡 הקיצור יהיה זמין להורדה תמיד גם במסך הפרופיל וההגדרות")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.textMuted)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+
                 if currentStep == 3 {
                     HStack(spacing: 8) {
                         Text(l10n.baseCurrency.symbol)
@@ -90,18 +109,19 @@ public struct OnboardingWizardView: View {
                                 .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
                         }
                     } else if currentStep == 2 {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 10) {
                             #if os(iOS)
-                            if let url = URL(string: "https://www.icloud.com/shortcuts/") {
+                            if let url = URL(string: "https://www.icloud.com/shortcuts/62f2a9f1d7324f9d872bbd30fd9ea8c3") {
                                 Link(destination: url) {
-                                    HStack(spacing: 6) {
+                                    HStack(spacing: 8) {
                                         Image(systemName: "arrow.down.app.fill")
-                                        Text("התקן קיצור מוכן ל-SPENT (קליק אחד)")
+                                            .font(.system(size: 17, weight: .bold))
+                                        Text("הורד קיצור מוכן ל-SPENT (קליק אחד)")
                                             .font(.system(size: 15, weight: .bold))
                                     }
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 14)
+                                    .padding(.vertical, 16)
                                     .background(Capsule().fill(Color(red: 16/255, green: 185/255, blue: 129/255)))
                                     .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
                                 }
@@ -109,11 +129,11 @@ public struct OnboardingWizardView: View {
                             #endif
                             
                             Button(action: { currentStep = 3 }) {
-                                Text("המשך להגדרת הכנסה")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(Color.textMuted)
+                                Text("המשך לשלב הבא")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(Color.textDark)
                                     .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 10)
                             }
                         }
                     } else if currentStep == 3 {
@@ -187,6 +207,28 @@ public struct OnboardingWizardView: View {
         case 2: return "דרך Personal Automation של אפל, תשלומים בחנות נתפסים ברקע ישירות מהמכשיר. רכישות אונליין תזין ידנית — iOS לא חושף אותן לאף אפליקציה."
         case 3: return "זה המספר היחיד שהאפליקציה לא יכולה לנחש. בלעדיו גודל העיר ופארק החיסכון מבוססים על הערכה. אפשר לשנות בכל רגע בהגדרות."
         default: return "לחץ כדי להזרים עסקת הדגמה ראשונה ולראות את בית הקפה הראשון נבנה בעיר!"
+        }
+    }
+    
+    private func onboardingStepRow(num: String, title: String, desc: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(red: 16/255, green: 185/255, blue: 129/255))
+                    .frame(width: 22, height: 22)
+                Text(num)
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                Text(desc)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+            }
         }
     }
 }

@@ -33,7 +33,7 @@ public enum TransactionIngest {
     /// returns nil so the caller refuses the payload, rather than guessing a number.
     /// A dropped transaction the user can re-enter beats a wrong one they never notice.
     public static func normalizedAmount(_ amount: Double?, _ amountText: String?) -> Double? {
-        if let a = amount, a > 0, a.isFinite {
+        if let a = MoneyAmount.sanitized(amount) {
             return a
         }
 
@@ -84,7 +84,9 @@ public enum TransactionIngest {
             return nil
         }
 
-        guard let value = parseGrouped(token), value > 0, value.isFinite else { return nil }
+        // The permissive text path is where "Kokpit 67" style noise arrives, so it gets the
+        // same ceiling as every other entry point.
+        guard let value = MoneyAmount.sanitized(parseGrouped(token)) else { return nil }
         return value
     }
 

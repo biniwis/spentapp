@@ -117,40 +117,6 @@ public enum NotificationService {
         center.add(request, withCompletionHandler: nil)
     }
 
-    /// Schedules a realistic simulated Apple Pay transaction notification to fire on the lock screen after a delay.
-    public static func scheduleLockScreenFakePurchase(
-        amount: Double = 142.50,
-        merchant: String = "שופרסל דיל",
-        categoryName: String = "קניות וסופרמרקט",
-        delaySeconds: TimeInterval = 4.0,
-        completion: (@Sendable (Bool) -> Void)? = nil
-    ) {
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            guard granted else {
-                completion?(false)
-                return
-            }
-            
-            let content = UNMutableNotificationContent()
-            let formattedAmount = "₪" + (amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", amount) : String(format: "%.2f", amount))
-            content.title = "Apple Pay • \(merchant)"
-            content.subtitle = "עסקה ע״ס \(formattedAmount) אושרה בהצלחה"
-            content.body = "נקלט ונצבר ב-SPENT • \(categoryName)"
-            content.sound = .default
-            
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1.0, delaySeconds), repeats: false)
-            let request = UNNotificationRequest(
-                identifier: "moneycity.fake.purchase.\(UUID().uuidString)",
-                content: content,
-                trigger: trigger
-            )
-            
-            center.add(request) { error in
-                completion?(error == nil)
-            }
-        }
-    }
     #endif
 }
 

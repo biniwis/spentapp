@@ -313,7 +313,7 @@ public enum DataPortabilityService {
         for dto in envelope.transactions {
             guard !txIds.contains(dto.id) else { summary.skipped += 1; continue }
             let t = Transaction(
-                amount: dto.amount,
+                amount: MoneyAmount.sanitizedSigned(dto.amount) ?? 0,
                 merchant: dto.merchant,
                 category: SpendingCategory(rawValue: dto.category) ?? .other
             )
@@ -338,7 +338,7 @@ public enum DataPortabilityService {
         for dto in envelope.recurring {
             guard !recIds.contains(dto.id) else { summary.skipped += 1; continue }
             let r = RecurringExpense(
-                merchant: dto.merchant, amount: dto.amount,
+                merchant: dto.merchant, amount: MoneyAmount.sanitized(dto.amount) ?? 0,
                 category: SpendingCategory(rawValue: dto.category) ?? .other,
                 dayOfMonth: dto.dayOfMonth
             )
@@ -355,7 +355,7 @@ public enum DataPortabilityService {
         let incIds = mode == .replace ? Set<UUID>() : existingIds(IncomeSource.self) { $0.id }
         for dto in envelope.income {
             guard !incIds.contains(dto.id) else { summary.skipped += 1; continue }
-            let i = IncomeSource(name: dto.name, amount: dto.amount, dayOfMonth: dto.dayOfMonth)
+            let i = IncomeSource(name: dto.name, amount: MoneyAmount.sanitized(dto.amount) ?? 0, dayOfMonth: dto.dayOfMonth)
             i.id = dto.id
             i.currency = dto.currency
             i.isActive = dto.isActive
@@ -400,7 +400,7 @@ public enum DataPortabilityService {
             guard !planIds.contains(dto.id) else { summary.skipped += 1; continue }
             let p = InstallmentPlan(
                 merchant: dto.merchant,
-                totalAmount: dto.totalAmount,
+                totalAmount: MoneyAmount.sanitized(dto.totalAmount) ?? 0,
                 numberOfPayments: dto.numberOfPayments,
                 firstChargeDate: dto.firstChargeDate,
                 category: SpendingCategory(rawValue: dto.category) ?? .other
@@ -452,7 +452,14 @@ public enum DataPortabilityService {
             summary.added += 1
         }
 
-        try context.save()
+        do {
+            try context.save()
+        } catch {
+            // In .replace mode every existing row has already been deleted on this context. Leaving
+            // that staged means the next unrelated save in the app silently commits the wipe.
+            context.rollback()
+            throw error
+        }
         return summary
     }
 }

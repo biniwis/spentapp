@@ -101,3 +101,33 @@ extension Transaction {
         return formatter.string(from: timestamp)
     }
 }
+
+/// One place decides what a storable money amount is.
+///
+/// Without this, a long pasted number becomes a Double like 1e20, passes a bare `> 0` check and
+/// is persisted. Every `Int(someDouble)` money display then traps — including the ones on the
+/// root City screen — which bricks the app on launch with no way for the user to delete the row.
+public enum MoneyAmount {
+    /// Ceiling for anything the app will store. Far above any plausible personal transaction and
+    /// far below the point where `Int(Double)` can overflow.
+    public static let maximum: Double = 100_000_000
+
+    /// The only way an amount should enter the store. Returns nil when the input cannot be trusted.
+    public static func sanitized(_ value: Double?) -> Double? {
+        guard let v = value, v.isFinite, v > 0, v <= maximum else { return nil }
+        return (v * 100).rounded() / 100
+    }
+
+    /// Same rule, but keeps the sign — refunds are stored negative.
+    public static func sanitizedSigned(_ value: Double?) -> Double? {
+        guard let v = value, v.isFinite, v != 0, abs(v) <= maximum else { return nil }
+        return (v * 100).rounded() / 100
+    }
+
+    /// Safe `Int` for display. A row that predates this guard, or arrives from an edited backup
+    /// file, must never be able to trap the UI.
+    public static func displayInt(_ value: Double) -> Int {
+        guard value.isFinite else { return 0 }
+        return Int(min(max(value, -maximum), maximum))
+    }
+}

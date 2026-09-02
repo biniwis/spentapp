@@ -150,12 +150,19 @@
     let camera = new THREE.OrthographicCamera(-FR, FR, FR, -FR, -100, 200);
 
     const CAM_MODES = {
-      city:     { az: Math.PI * 0.25, el: 0.52, zoom: 0.95, lookX: 0,    lookY: 0.20, lookZ: 0 },
-      food:     { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: -6.2, lookY: 0.65, lookZ: -6.8 },
-      shopping: { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: 6.8,  lookY: 0.65, lookZ: -6.8 },
-      housing:  { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: 6.8,  lookY: 0.65, lookZ: 6.0 },
-      savings:  { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: -6.2, lookY: 0.65, lookZ: 6.0 },
-      civic:    { az: Math.PI * 0.25, el: 0.48, zoom: 2.10, lookX: 0.0,  lookY: 0.65, lookZ: 8.6, lookX: -3.2 }
+      // FRAMING HISTORY — the original build used zoom 0.98 with a width-derived frustum,
+      // which worked out to a half-width of 6.96 world units on a 390x780 phone. The frustum
+      // now fits the narrow axis instead, so the same number meant 14.8 and the city looked
+      // half the size. 2.00 puts the half-width back at 7.40 — the original framing, a touch
+      // wider — and the sides crop on purpose: rotating is how you reach the far districts.
+      // tuneCityZoomForViewport() below relaxes this on wide screens, which have no vertical
+      // slack to spend. Pinch still spans 0.60 .. 3.80.
+      city:     { az: Math.PI * 0.25, el: 0.60, zoom: 2.00, lookX: 0,    lookY: 0.45, lookZ: 0 },
+      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -6.55, lookY: 0.35, lookZ: -7.25 },
+      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: -7.25 },
+      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: 6.45 },
+      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -6.55, lookY: 0.35, lookZ: 6.45 },
+      civic:    { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -3.4, lookY: 0.35, lookZ: 8.8 }
     };
 
     let currentMode = "city";
@@ -172,14 +179,33 @@
       camera.lookAt(currentCam.lookX, currentCam.lookY, currentCam.lookZ);
     }
 
+    let cityZoomTuned = false;
+    function tuneCityZoomForViewport(w, h) {
+      if (cityZoomTuned || !w || !h) return;
+      cityZoomTuned = true;
+      const a = w / h;
+      // A tall phone has vertical slack to spend, so the city can fill the frame and let the
+      // sides run off — the user rotates to reach them. A wide viewport (iPad, landscape) has
+      // no such slack, and the same zoom would crop the city top and bottom as well.
+      const z = a < 0.72 ? 2.00 : 1.15;
+      CAM_MODES.city.zoom = z;
+      if (currentMode === "city") { targetCam.zoom = z; currentCam.zoom = z; }
+    }
+
     function resize() {
       const w = stage.clientWidth  || window.innerWidth  || 320;
       const h = stage.clientHeight || window.innerHeight || 380;
       if (!w || !h || w <= 0 || h <= 0) return;
+      tuneCityZoomForViewport(w, h);
       const a = w / h;
       const z = Math.max(0.1, currentCam.zoom || 1.1);
-      camera.left = -FR * a / z; camera.right = FR * a / z;
-      camera.top  =  FR / z;     camera.bottom = -FR / z;
+      // Fit the frustum to the NARROW axis. Deriving it from width alone meant a portrait
+      // phone showed roughly 14 world units across while the 45°-rotated city spans 32 —
+      // half the map was simply cropped away. Aspect is still preserved exactly.
+      const halfW = (a >= 1 ? FR * a : FR) / z;
+      const halfH = (a >= 1 ? FR : FR / a) / z;
+      camera.left = -halfW; camera.right = halfW;
+      camera.top  =  halfH; camera.bottom = -halfH;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h, false);
     }
@@ -1872,17 +1898,44 @@
     }
 
     // ════════════════════════════════════════════════════════════════
+    // 📏 CITY DATUM — the single source of truth for every height in the scene.
+    // roundedBox() is an extruded shape: it spans y = [pos - 0.05, pos + h + 0.05] and its
+    // footprint is inflated by 0.05 on every side by the bevel. Every number below accounts
+    // for that, which is why blocks, pavement, people and traffic finally share one datum.
+    const Y_PODIUM = -0.05;                        // top face of the plinth
+    const Y_ROAD   =  0.12;                        // top face of the asphalt
+    const Y_WALK   =  0.22;                        // top face of every block / pavement
+    const PAD_H    =  Y_WALK - Y_PODIUM - 0.10;    // 0.17 nominal -> spans podium .. walk exactly
+    const PAD_R    =  0.55;
+    const DECK_Y   =  Y_WALK + 0.05;               // a roundedBox deck resting ON a block
+
+    // Blocks are fitted to the quadrants the (fixed) road cross actually leaves behind.
+    // Horizontal avenue occupies z = [-3.0, 1.4]; vertical avenue occupies x = [-1.6, 2.8].
+    // Each block runs from the podium rim right up to the kerb, so no bare plinth shows through.
+    const BLK_W_WEST  =  9.90 - 0.10, BLK_CX_WEST  = -6.55;  // real x span [-11.50, -1.60]
+    const BLK_W_EAST  =  8.70 - 0.10, BLK_CX_EAST  =  7.15;  // real x span [  2.80, 11.50]
+    const BLK_D_NORTH =  8.50 - 0.10, BLK_CZ_NORTH = -7.25;  // real z span [-11.50, -3.00]
+    const BLK_D_SOUTH = 10.10 - 0.10, BLK_CZ_SOUTH =  6.45;  // real z span [  1.40, 11.50]
+
+    // True surface height under any point. The asphalt is recessed a kerb below the pavement,
+    // so anything that walks or rolls has to follow it — otherwise it floats over the road and
+    // sinks into the blocks, which is precisely what every figure in the scene used to do.
+    function surfaceYAt(x, z) {
+      const onAvenueH = (z > -3.0 && z < 1.4);
+      const onAvenueV = (x > -1.6 && x < 2.8);
+      return (onAvenueH || onAvenueV) ? Y_ROAD : Y_WALK;
+    }
+
     // 🌍 ARCHITECTURAL DIORAMA PODIUM (High-End Titanium & Obsidian Plinth)
     // ════════════════════════════════════════════════════════════════
     // 1. Titanium Slate Sub-Base (Sleek Modern Charcoal with Chamfered Corners - Top at y = 0.00)
-    root.add(mesh(roundedBox(23.2, 0.45, 23.2, 1.4), mat(0x0f172a, 0.95, 0.1), 0, -0.55, 0, false, true));
+    root.add(mesh(roundedBox(23.2, 0.22, 23.2, 0.75), mat(0x0f172a, 0.95, 0.1), 0, -0.32, 0, false, true));
     
     // 2. Chiseled Anthracite Foundation Layer
-    root.add(mesh(roundedBox(23.0, 0.90, 23.0, 1.5), mat(0x18181b, 0.90, 0.2), 0, -1.50, 0, false, true));
+    root.add(mesh(roundedBox(22.9, 0.16, 22.9, 0.72), mat(0x18181b, 0.90, 0.2), 0, -0.62, 0, false, true));
     
     // 3. Luxurious Chamfered Base Plinth with Warm Golden Brass Trim Ring
-    root.add(mesh(roundedBox(23.6, 0.22, 23.6, 1.6), mat(0xf59e0b, 0.35, 0.85, 0xb45309, 0.2), 0, -1.80, 0, false, false));
-    root.add(mesh(roundedBox(22.6, 0.80, 22.6, 1.3), mat(0x09090b, 0.95), 0, -2.70, 0, false, false));
+    root.add(mesh(roundedBox(23.5, 0.06, 23.5, 0.80), mat(0xf59e0b, 0.35, 0.85, 0xb45309, 0.2), 0, -0.42, 0, false, false));
 
     // ════════════════════════════════════════════════════════════════
     // 🛣️ RECESSED ASPHALT ROADS, RAIN GUTTERS & HIGH-CONTRAST MARKINGS
@@ -1902,15 +1955,15 @@
       roughness: 0.85,
       metalness: 0.15
     });
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.12, 4.4), asphaltMatH, 0, 0.06, -0.8, false, true));
-    root.add(mesh(new THREE.BoxGeometry(4.4, 0.12, 23.0), asphaltMatV, 0.6, 0.06, 0, false, true));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.17, 4.4), asphaltMatH, 0, 0.035, -0.8, false, true));
+    root.add(mesh(new THREE.BoxGeometry(4.4, 0.17, 23.0), asphaltMatV, 0.6, 0.035, 0, false, true));
 
     // Stone Drainage Gutter Channels along road curbs
     const gutterMat = mat(0x1e293b, 0.9);
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.13, 0.18), gutterMat, 0, 0.07, -2.95));
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.13, 0.18), gutterMat, 0, 0.07, 1.35));
-    root.add(mesh(new THREE.BoxGeometry(0.18, 0.13, 23.0), gutterMat, -1.55, 0.07, 0));
-    root.add(mesh(new THREE.BoxGeometry(0.18, 0.13, 23.0), gutterMat, 2.75, 0.07, 0));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.18, 0.18), gutterMat, 0, 0.04, -2.95));
+    root.add(mesh(new THREE.BoxGeometry(23.0, 0.18, 0.18), gutterMat, 0, 0.04, 1.35));
+    root.add(mesh(new THREE.BoxGeometry(0.18, 0.18, 23.0), gutterMat, -1.55, 0.04, 0));
+    root.add(mesh(new THREE.BoxGeometry(0.18, 0.18, 23.0), gutterMat, 2.75, 0.04, 0));
 
     // ════════════════════════════════════════════════════════════════
     // 🛣️ CRISP ART-DIRECTED ROAD MARKINGS & ZEBRA CROSSWALKS
@@ -2060,31 +2113,31 @@
 
         if (isVertical) {
           const cz = pStart.z + (s + 0.5) * (pEnd.z > pStart.z ? segLen : -segLen);
-          const cb = mesh(new THREE.BoxGeometry(0.20, 0.20, segLen * 0.96), segMat, pStart.x, 0.18, cz, false, true);
+          const cb = mesh(new THREE.BoxGeometry(0.20, 0.15, segLen * 0.96), segMat, pStart.x, 0.195, cz, false, true);
           root.add(cb);
         } else {
           const cx = pStart.x + (s + 0.5) * (pEnd.x > pStart.x ? segLen : -segLen);
-          const cb = mesh(new THREE.BoxGeometry(segLen * 0.96, 0.20, 0.20), segMat, cx, 0.18, pStart.z, false, true);
+          const cb = mesh(new THREE.BoxGeometry(segLen * 0.96, 0.15, 0.20), segMat, cx, 0.195, pStart.z, false, true);
           root.add(cb);
         }
       }
     }
 
     // 1. Food District Curbs (North-West) - Blue & White for dining parking
-    add3DCurbLine({x: -11.0, z: -3.0}, {x: -1.6, z: -3.0}, false, "blue_white");
-    add3DCurbLine({x: -1.6, z: -3.0}, {x: -1.6, z: -11.0}, true, "blue_white");
+    add3DCurbLine({x: -11.5, z: -3.0}, {x: -1.6, z: -3.0}, false, "blue_white");
+    add3DCurbLine({x: -1.6, z: -3.0}, {x: -1.6, z: -11.5}, true, "blue_white");
 
     // 2. Shopping District Curbs (North-East) - Red & White near bus stop, Blue & White for shopping
-    add3DCurbLine({x: 2.8, z: -3.0}, {x: 11.0, z: -3.0}, false, "blue_white");
-    add3DCurbLine({x: 2.8, z: -3.0}, {x: 2.8, z: -11.0}, true, "red_white");
+    add3DCurbLine({x: 2.8, z: -3.0}, {x: 11.5, z: -3.0}, false, "blue_white");
+    add3DCurbLine({x: 2.8, z: -3.0}, {x: 2.8, z: -11.5}, true, "red_white");
 
     // 3. Housing District Curbs (South-East) - Blue & White for resident parking
-    add3DCurbLine({x: 2.8, z: 1.4}, {x: 11.0, z: 1.4}, false, "blue_white");
-    add3DCurbLine({x: 2.8, z: 1.4}, {x: 2.8, z: 11.0}, true, "blue_white");
+    add3DCurbLine({x: 2.8, z: 1.4}, {x: 11.5, z: 1.4}, false, "blue_white");
+    add3DCurbLine({x: 2.8, z: 1.4}, {x: 2.8, z: 11.5}, true, "blue_white");
 
     // 4. Park District Curbs (South-West) - Red & White near park sanctuary
-    add3DCurbLine({x: -11.0, z: 1.4}, {x: -1.6, z: 1.4}, false, "red_white");
-    add3DCurbLine({x: -1.6, z: 1.4}, {x: -1.6, z: 11.0}, true, "red_white");
+    add3DCurbLine({x: -11.5, z: 1.4}, {x: -1.6, z: 1.4}, false, "red_white");
+    add3DCurbLine({x: -1.6, z: 1.4}, {x: -1.6, z: 11.5}, true, "red_white");
 
     // ================================================================
     // BUILDING CREATORS – PROPORTIONALLY SPACED & DETAILED
@@ -2094,13 +2147,13 @@
     // 🍽️  FOOD DISTRICT (Bright Piazza & Travertine Dining Terrace)
     // ────────────────────────────────────────────────────────────────
     const foodZone = new THREE.Group();
-    foodZone.position.set(-6.2, 0.08, -6.8);
+    foodZone.position.set(BLK_CX_WEST, 0, BLK_CZ_NORTH);
     root.add(foodZone);
-    foodZone.add(mesh(roundedBox(8.8, 0.22, 8.8, 0.6), new THREE.MeshStandardMaterial({ map: foodPlazaTex(), bumpMap: foodPlazaBump(), bumpScale: 0.12, roughness: 0.78 }), 0, 0.11, 0, false, true));
+    foodZone.add(mesh(roundedBox(BLK_W_WEST, PAD_H, BLK_D_NORTH, PAD_R), new THREE.MeshStandardMaterial({ map: foodPlazaTex(), bumpMap: foodPlazaBump(), bumpScale: 0.12, roughness: 0.78 }), 0, 0, 0, false, true));
 
     // Raised Outdoor Dining Travertine Stone Terrace with White Marble Trim
-    const diningTerrace = mesh(roundedBox(4.5, 0.08, 4.0, 0.2), new THREE.MeshStandardMaterial({ map: shopPlazaTex(), bumpMap: shopPlazaBump(), bumpScale: 0.08, roughness: 0.72 }), -2.2, 0.22, -2.2, false, true);
-    diningTerrace.add(mesh(new THREE.BoxGeometry(4.6, 0.02, 0.15), mat(0xe2e8f0, 0.9), 0, 0.04, 2.0));
+    const diningTerrace = mesh(roundedBox(4.2, 0.08, 3.2, 0.2), new THREE.MeshStandardMaterial({ map: shopPlazaTex(), bumpMap: shopPlazaBump(), bumpScale: 0.08, roughness: 0.72 }), -2.2, DECK_Y, -2.0, false, true);
+    diningTerrace.add(mesh(new THREE.BoxGeometry(4.3, 0.02, 0.15), mat(0xe2e8f0, 0.9), 0, 0.04, 1.6));
     foodZone.add(diningTerrace);
 
     // 🥐 THE NEST DINING (Width: 2.6, Depth: 2.4 - Spaced at x: -2.3, z: -2.2)
@@ -2385,13 +2438,13 @@
     // 🛍️  SHOPPING PROMENADE (Paved Plaza & Teak Boardwalk)
     // ────────────────────────────────────────────────────────────────
     const shopZone = new THREE.Group();
-    shopZone.position.set(6.8, 0.08, -6.8);
+    shopZone.position.set(BLK_CX_EAST, 0, BLK_CZ_NORTH);
     root.add(shopZone);
-    shopZone.add(mesh(roundedBox(8.8, 0.22, 8.8, 0.6), new THREE.MeshStandardMaterial({ map: shopPlazaTex(), bumpMap: shopPlazaBump(), bumpScale: 0.12, roughness: 0.72 }), 0, 0.11, 0, false, true));
+    shopZone.add(mesh(roundedBox(BLK_W_EAST, PAD_H, BLK_D_NORTH, PAD_R), new THREE.MeshStandardMaterial({ map: shopPlazaTex(), bumpMap: shopPlazaBump(), bumpScale: 0.12, roughness: 0.72 }), 0, 0, 0, false, true));
 
     // Inlaid Raised Teak Boardwalk Strip across the shops
-    const boardwalk = mesh(roundedBox(8.2, 0.04, 1.8, 0.15), mat(0x78350f, 0.8, 0.3), 0, 0.24, 0);
-    for (let bx = -3.8; bx <= 3.8; bx += 0.40) {
+    const boardwalk = mesh(roundedBox(7.0, 0.04, 1.8, 0.15), mat(0x78350f, 0.8, 0.3), 0, DECK_Y, 0);
+    for (let bx = -3.2; bx <= 3.2; bx += 0.40) {
       boardwalk.add(mesh(new THREE.BoxGeometry(0.02, 0.045, 1.8), mat(0x451a03, 0.9), bx, 0, 0));
     }
     shopZone.add(boardwalk);
@@ -2641,16 +2694,16 @@
     // 🏠  RESIDENCE DISTRICT (Garden Terraces & Brick Courtyards)
     // ────────────────────────────────────────────────────────────────
     const houseZone = new THREE.Group();
-    houseZone.position.set(6.8, 0.08, 6.0);
+    houseZone.position.set(BLK_CX_EAST, 0, BLK_CZ_SOUTH);
     root.add(houseZone);
-    houseZone.add(mesh(roundedBox(8.8, 0.22, 8.8, 0.6), new THREE.MeshStandardMaterial({ map: housePlazaTex(), bumpMap: housePlazaBump(), bumpScale: 0.12, roughness: 0.78 }), 0, 0.11, 0, false, true));
+    houseZone.add(mesh(roundedBox(BLK_W_EAST, PAD_H, BLK_D_SOUTH, PAD_R), new THREE.MeshStandardMaterial({ map: housePlazaTex(), bumpMap: housePlazaBump(), bumpScale: 0.12, roughness: 0.78 }), 0, 0, 0, false, true));
 
     // Raised Garden Courtyard with Grass & Brick Retaining Border
-    const gardenBed = mesh(roundedBox(4.4, 0.08, 4.4, 0.2), mat(0x15803d, 0.9), 2.2, 0.24, 2.2, false, true);
-    gardenBed.add(mesh(new THREE.BoxGeometry(4.5, 0.12, 0.14), mat(0x9a3412, 0.8), 0, 0.02, 2.2));
-    gardenBed.add(mesh(new THREE.BoxGeometry(4.5, 0.12, 0.14), mat(0x9a3412, 0.8), 0, 0.02, -2.2));
-    gardenBed.add(mesh(new THREE.BoxGeometry(0.14, 0.12, 4.4), mat(0x9a3412, 0.8), 2.2, 0.02, 0));
-    gardenBed.add(mesh(new THREE.BoxGeometry(0.14, 0.12, 4.4), mat(0x9a3412, 0.8), -2.2, 0.02, 0));
+    const gardenBed = mesh(roundedBox(4.0, 0.08, 4.0, 0.2), mat(0x15803d, 0.9), 1.6, DECK_Y, 2.2, false, true);
+    gardenBed.add(mesh(new THREE.BoxGeometry(4.1, 0.12, 0.14), mat(0x9a3412, 0.8), 0, 0.02, 2.0));
+    gardenBed.add(mesh(new THREE.BoxGeometry(4.1, 0.12, 0.14), mat(0x9a3412, 0.8), 0, 0.02, -2.0));
+    gardenBed.add(mesh(new THREE.BoxGeometry(0.14, 0.12, 4.0), mat(0x9a3412, 0.8), 2.0, 0.02, 0));
+    gardenBed.add(mesh(new THREE.BoxGeometry(0.14, 0.12, 4.0), mat(0x9a3412, 0.8), -2.0, 0.02, 0));
     houseZone.add(gardenBed);
 
     // 🏢 GRAND RESIDENCE TOWER (Width: 2.6, Depth: 2.6 - Spaced at x: -2.2, z: -2.0)
@@ -2825,7 +2878,7 @@
     // Sits in a dedicated roadside bay (x: -3.2, z: 8.6) with its own curb & delivery parking bay!
     // ────────────────────────────────────────────────────────────────
     const civicZone = new THREE.Group();
-    civicZone.position.set(-3.2, 0.08, 8.6);
+    civicZone.position.set(-3.4, 0, 8.8);
     root.add(civicZone);
 
     function createCitySortingHub(parent) {
@@ -2836,7 +2889,7 @@
       g.userData.buildingGroup = bGroup; g.userData.stallGroup = sGroup;
 
       // 1. Raised Roadside Island Paved Platform with Granite Curb
-      const islandBase = mesh(roundedBox(3.2, 0.16, 2.8, 0.25), mat(0x475569, 0.85), 0, 0.08, 0);
+      const islandBase = mesh(roundedBox(3.2, 0.06, 2.8, 0.25), mat(0x475569, 0.85), 0, 0.05, 0);
       islandBase.add(mesh(new THREE.BoxGeometry(3.25, 0.08, 0.08), mat(0xfacc15, 0.9), 0, 0.08, 1.4)); // Safety yellow curb
       bGroup.add(islandBase);
 
@@ -2905,20 +2958,32 @@
     // 🌱  SAVINGS PARK SANCTUARY
     // ────────────────────────────────────────────────────────────────
     const parkZone = new THREE.Group();
-    parkZone.position.set(-6.2, 0.08, 6.0);
+    parkZone.position.set(BLK_CX_WEST, 0, BLK_CZ_SOUTH);
     root.add(parkZone);
     
-    const parkBase = mesh(roundedBox(8.8, 0.26, 8.8, 0.8), new THREE.MeshStandardMaterial({ map: parkGrassTex(), bumpMap: parkGrassBump(), bumpScale: 0.08, roughness: 0.85 }), 0, 0.13, 0, false, true);
+    const parkBase = mesh(roundedBox(BLK_W_WEST, PAD_H, BLK_D_SOUTH, PAD_R), new THREE.MeshStandardMaterial({ map: parkGrassTex(), bumpMap: parkGrassBump(), bumpScale: 0.08, roughness: 0.85 }), 0, 0, 0, false, true);
     parkZone.add(parkBase);
 
     // Upper Hill Tier with Sculpted Terraced Stone Wall
-    const upperHill = mesh(roundedBox(5.6, 0.16, 5.6, 0.6), new THREE.MeshStandardMaterial({ map: parkGrassTex(), bumpMap: parkGrassBump(), bumpScale: 0.08, roughness: 0.85 }), 1.2, 0.30, -1.2, false, true);
-    upperHill.add(mesh(new THREE.BoxGeometry(5.7, 0.20, 0.16), mat(0x64748b, 0.85), 0, 0.02, 2.8));
-    upperHill.add(mesh(new THREE.BoxGeometry(0.16, 0.20, 5.7), mat(0x64748b, 0.85), -2.8, 0.02, 0));
+    // A paved terrace flush with the lawn instead of a second raised tier: a raised inner
+    // platform is exactly the "uneven surface" problem, and every prop in the park was
+    // authored at a single height anyway.
+    const upperHill = mesh(roundedBox(5.2, 0.02, 5.2, 0.6), new THREE.MeshStandardMaterial({ map: parkGrassTex(), bumpMap: parkGrassBump(), bumpScale: 0.08, roughness: 0.85 }), 1.0, DECK_Y - 0.06, -1.0, false, true);
+    upperHill.add(mesh(new THREE.BoxGeometry(5.3, 0.06, 0.14), mat(0x64748b, 0.85), 0, 0.02, 2.6));
+    upperHill.add(mesh(new THREE.BoxGeometry(0.14, 0.06, 5.3), mat(0x64748b, 0.85), -2.6, 0.02, 0));
     parkZone.add(upperHill);
 
-    const parkSign = mesh(new THREE.BoxGeometry(2.4, 0.48, 0.10), new THREE.MeshStandardMaterial({ map: signTex("🌱 חיסכון והשקעות", "Savings & Investments", "#ffffff", "#166534"), emissive: 0x166534, emissiveIntensity: 0.45 }), 0, 1.25, 2.8);
-    parkZone.add(parkSign);
+    // The board used to hang in mid-air with nothing holding it up. It now stands on a pair
+    // of posts planted in the lawn, like every other sign in the city.
+    const parkSignG = new THREE.Group();
+    parkSignG.position.set(0, Y_WALK, 2.8);
+    [-0.95, 0.95].forEach(px => {
+      parkSignG.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.95, 8), mat(0x78350f, 0.9), px, 0.475, 0));
+      parkSignG.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.06, 8), mat(0x57534e, 0.9), px, 0.03, 0));
+    });
+    const parkSign = mesh(new THREE.BoxGeometry(2.4, 0.48, 0.10), new THREE.MeshStandardMaterial({ map: signTex("🌱 חיסכון והשקעות", "Savings & Investments", "#ffffff", "#166534"), emissive: 0x166534, emissiveIntensity: 0.45 }), 0, 0.86, 0);
+    parkSignG.add(parkSign);
+    parkZone.add(parkSignG);
 
     const parkData = { id: "savings_sanctuary", district: "savings", name: "חיסכון והשקעות", emoji: "🌱", amount: 1800, visits: 1, trend: "צמיחה ירוקה" };
     parkBase.userData = parkData;
@@ -2927,12 +2992,12 @@
 
     const trShape = new THREE.Shape(); trShape.absellipse(0, 0, 2.7, 1.9, 0, Math.PI * 2);
     const trMesh = new THREE.Mesh(new THREE.ShapeGeometry(trShape, 40), mat(0xd4b886, 0.95));
-    trMesh.rotation.x = -Math.PI / 2; trMesh.position.y = 0.28; parkZone.add(trMesh);
+    trMesh.rotation.x = -Math.PI / 2; trMesh.position.y = Y_WALK + 0.004; parkZone.add(trMesh);
 
     const pondShape = new THREE.Shape(); pondShape.absellipse(-0.5, 0, 1.7, 1.2, 0, Math.PI * 2);
     const pondMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.02, metalness: 0.4, emissive: 0x0284c7, emissiveIntensity: 1.5 });
     const pondM = new THREE.Mesh(new THREE.ShapeGeometry(pondShape, 48), pondMat);
-    pondM.rotation.x = -Math.PI / 2; pondM.position.y = 0.30; parkZone.add(pondM);
+    pondM.rotation.x = -Math.PI / 2; pondM.position.y = Y_WALK + 0.008; parkZone.add(pondM);
     animObjects.push({ type: "pond_shimmer", ref: pondMat, phase: 0 });
     addLight("point", 0x38bdf8, 1.0, 5.0, -0.5, 0.6, 0, parkZone);
 
@@ -2941,7 +3006,7 @@
     for (let pa = 0; pa < Math.PI * 2; pa += 0.32) {
       const px = -0.5 + Math.cos(pa) * 1.75;
       const pz = Math.sin(pa) * 1.25;
-      const peb = mesh(new THREE.DodecahedronGeometry(0.10 + (Math.sin(pa*4)*0.03), 0), shorePebbleMat, px, 0.32, pz);
+      const peb = mesh(new THREE.DodecahedronGeometry(0.10 + (Math.sin(pa*4)*0.03), 0), shorePebbleMat, px, Y_WALK, pz);
       parkZone.add(peb);
     }
 
@@ -2949,20 +3014,20 @@
     const lilyMat = mat(0x16a34a, 0.9);
     const lotusMat = new THREE.MeshStandardMaterial({ color: 0xfdf2f8, emissive: 0xf472b6, emissiveIntensity: 1.2 });
     [[-0.85, -0.25], [-0.35, 0.38], [-1.05, 0.20]].forEach(([lx, lz]) => {
-      const pad = mesh(new THREE.CircleGeometry(0.18, 12, 0, Math.PI * 1.8), lilyMat, lx, 0.31, lz);
+      const pad = mesh(new THREE.CircleGeometry(0.18, 12, 0, Math.PI * 1.8), lilyMat, lx, Y_WALK + 0.016, lz);
       pad.rotation.x = -Math.PI / 2; parkZone.add(pad);
-      const lotus = mesh(new THREE.SphereGeometry(0.065, 8, 8), lotusMat, lx + 0.04, 0.35, lz + 0.04);
+      const lotus = mesh(new THREE.SphereGeometry(0.065, 8, 8), lotusMat, lx + 0.04, Y_WALK + 0.05, lz + 0.04);
       parkZone.add(lotus);
     });
 
     // River Stepping Stones Crossing the Stream
     const stoneMat = mat(0x64748b, 0.9);
     [[-0.60, -0.62], [-0.42, -0.85], [-0.22, -1.05]].forEach(([sx, sz], i) => {
-      const st = mesh(new THREE.CylinderGeometry(0.15 - i * 0.02, 0.17 - i * 0.02, 0.06, 8), stoneMat, sx, 0.31, sz);
+      const st = mesh(new THREE.CylinderGeometry(0.15 - i * 0.02, 0.17 - i * 0.02, 0.06, 8), stoneMat, sx, Y_WALK, sz);
       parkZone.add(st);
     });
 
-    const fount = new THREE.Group(); fount.position.set(-0.5, 0.30, 0); parkZone.add(fount);
+    const fount = new THREE.Group(); fount.position.set(-0.5, Y_WALK, 0); parkZone.add(fount);
     fount.add(mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.28, 12), mat(0x94a3b8, 0.65), 0, 0.14, 0));
     fount.add(mesh(new THREE.SphereGeometry(0.10, 8, 8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 1.8 }), 0, 0.36, 0));
     [0, Math.PI * 0.66, Math.PI * 1.32].forEach(a => {
@@ -2970,7 +3035,7 @@
       arc.rotation.y = a; arc.rotation.x = -0.5; fount.add(arc);
     });
 
-    const bridgeG = new THREE.Group(); bridgeG.position.set(0.85, 0.30, -0.2); parkZone.add(bridgeG);
+    const bridgeG = new THREE.Group(); bridgeG.position.set(0.85, Y_WALK, -0.2); parkZone.add(bridgeG);
     bridgeG.add(mesh(new THREE.BoxGeometry(0.62, 0.10, 1.90), mat(0xb91c1c, 0.75), 0, 0.22, 0));
     bridgeG.rotation.x = -0.18;
     for (let bi = -3; bi <= 3; bi++) {
@@ -2981,7 +3046,7 @@
 
     // 🌳 Sculpted Low-Poly Organic Trees (Branching Trunks, Layered Foliage Tones, Fallen Petals)
     function createTree(x, z, scale, isSakura) {
-      const g = new THREE.Group(); g.position.set(x, 0.28, z);
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z);
       
       const trunkMat = mat(isSakura ? 0x451a03 : 0x5c381e, 0.95);
       // Root base
@@ -3055,7 +3120,7 @@
 
     // 🚒 Realistic NYC/Tel Aviv Red Fire Hydrant (Food District Sidewalk Curb)
     function createFireHydrant(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       const redM = mat(0xdc2626, 0.4, 0.6);
       const metalM = mat(0x94a3b8, 0.3, 0.8);
       g.add(mesh(new THREE.CylinderGeometry(0.08, 0.10, 0.34, 10), redM, 0, 0.17, 0));
@@ -3071,7 +3136,7 @@
 
     // 💡 4 Symmetrical Victorian Street Lamps at 4 District Corner Curbs
     function createStreetLamp(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       const ironM = mat(0x18181b, 0.4, 0.8);
       g.add(mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.22, 8), ironM, 0, 0.11, 0));
       g.add(mesh(new THREE.CylinderGeometry(0.028, 0.040, 1.75, 8), ironM, 0, 1.05, 0));
@@ -3091,7 +3156,7 @@
 
     // 🚲 Stainless Steel Bike Rack with Commuter Bike (Shopping Sidewalk)
     function createBikeRack(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       const chromeM = mat(0x94a3b8, 0.2, 0.9);
       [-0.22, 0.22].forEach(rx => {
         g.add(mesh(new THREE.TorusGeometry(0.16, 0.020, 6, 12, Math.PI), chromeM, rx, 0.32, 0));
@@ -3114,7 +3179,7 @@
 
     // 🚒 3D High-Detail Fire Hydrants at Sidewalk Corners
     function createFireHydrant(x, z) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z);
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z);
       const redM = mat(0xdc2626, 0.4, 0.6);
       const chromeM = mat(0xd1d5db, 0.2, 0.9);
       g.add(mesh(new THREE.CylinderGeometry(0.08, 0.10, 0.45, 10), redM, 0, 0.22, 0));
@@ -3130,7 +3195,7 @@
 
     // 📬 Red Postal Mailbox (Housing Sidewalk)
     function createMailbox(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.40, 6), mat(0x18181b, 0.8), 0, 0.20, 0));
       g.add(mesh(roundedBox(0.24, 0.32, 0.20, 0.05), mat(0xef4444, 0.4, 0.6), 0, 0.50, 0));
       g.add(mesh(new THREE.BoxGeometry(0.16, 0.02, 0.02), mat(0x18181b, 0.9), 0, 0.56, 0.11));
@@ -3149,7 +3214,7 @@
 
     // 🚦 2 Sleek Traffic Signals at Crosswalk Curb Posts
     function createTrafficSignal(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       const blackM = mat(0x18181b, 0.4, 0.8);
       g.add(mesh(new THREE.CylinderGeometry(0.035, 0.05, 1.75, 8), blackM, 0, 0.88, 0));
       g.add(mesh(roundedBox(0.22, 0.62, 0.16, 0.04), blackM, 0, 1.40, 0.08));
@@ -3159,12 +3224,12 @@
       g.add(redLens); g.add(ambLens); g.add(grnLens);
       root.add(g);
     }
-    createTrafficSignal(3.2, -2.2, 0);
-    createTrafficSignal(-2.2, 1.4, Math.PI);
+    createTrafficSignal(3.2, -3.3, 0);
+    createTrafficSignal(-2.2, 1.75, Math.PI);
 
     // 🗑️ Public Slatted Trash & Recycling Bins (Clean Park & Cafe Curbs)
     function createTrashCan(x, z) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z);
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z);
       g.add(mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.32, 10), mat(0x166534, 0.7), 0, 0.16, 0));
       g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 10), mat(0x0f172a, 0.5), 0, 0.32, 0));
       root.add(g);
@@ -3219,7 +3284,7 @@
 
     // 🚏 Modern Glass Bus Stop Shelter with Boarding Platform, Signpost & Bench
     function createBusShelter(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       const steelM = mat(0x0f172a, 0.3, 0.85);
       const glassM = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.50, roughness: 0.05 });
       const concreteM = mat(0xe2e8f0, 0.8);
@@ -3265,11 +3330,11 @@
 
       root.add(g);
     }
-    createBusShelter(3.35, -4.8, -Math.PI / 2);
+    createBusShelter(2.95, -4.8, -Math.PI / 2);
 
     // 📰 Street Magazine, Newspaper & Cold Drinks Heritage Kiosk
     function createStreetKiosk(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       const kioskGreen = mat(0x14532d, 0.7);
       const copperRoof = mat(0x0f766e, 0.5, 0.6);
       
@@ -3294,39 +3359,10 @@
     }
     createStreetKiosk(-3.4, 2.6, Math.PI / 4);
 
-    // 🍨 Retro Italian Gelato Ice Cream Cart
-    function createGelatoCart(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.22, z); g.rotation.y = ry || 0;
-      const cartMat = mat(0xffedd5, 0.7);
-      const chromeMat = mat(0xd1d5db, 0.2, 0.9);
-      
-      g.add(mesh(roundedBox(0.85, 0.55, 0.55, 0.05), cartMat, 0, 0.38, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.90, 0.04, 0.60), mat(0x9a3412, 0.8), 0, 0.67, 0));
-      
-      [-0.22, 0, 0.22].forEach(tx => {
-        g.add(mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.04, 10), chromeMat, tx, 0.70, 0));
-        g.add(mesh(new THREE.SphereGeometry(0.025, 6, 6), mat(0xfacc15, 0.2, 0.9), tx, 0.73, 0));
-      });
-      
-      [-0.45, 0.45].forEach(wx => {
-        const wh = mesh(new THREE.TorusGeometry(0.24, 0.02, 8, 16), mat(0x18181b, 0.9), wx, 0.24, 0);
-        wh.rotation.y = Math.PI / 2; g.add(wh);
-      });
-      
-      g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.2, 6), chromeMat, 0, 1.25, 0));
-      const umb = mesh(new THREE.ConeGeometry(0.65, 0.28, 10), new THREE.MeshStandardMaterial({ map: stripeTex("#f43f5e", "#ffffff", 6) }), 0, 1.85, 0);
-      g.add(umb);
-      
-      const chalk = mesh(new THREE.BoxGeometry(0.35, 0.45, 0.03), new THREE.MeshStandardMaterial({ map: menuTex() }), 0.55, 0.25, 0.35);
-      chalk.rotation.y = -0.5; g.add(chalk);
-      
-      root.add(g);
-    }
-    createGelatoCart(-5.2, -2.6, 0.2);
 
     // 🛴 Shared Electric Kick-Scooter Fleet Station (Lime/Bird Style)
     function createScooterStation(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       
       const bay = mesh(new THREE.PlaneGeometry(1.6, 0.75), new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.9 }), 0, 0.015, 0);
       bay.rotation.x = -Math.PI / 2; g.add(bay);
@@ -3356,10 +3392,10 @@
 
     // 🪵 Rustic Wooden Footbridge over Park Creek
     function createParkFootbridge(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.28, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry || 0;
       const woodM = mat(0x78350f, 0.85);
       
-      const arch = mesh(new THREE.BoxGeometry(0.65, 0.08, 1.8), woodM, 0, 0.18, 0);
+      const arch = mesh(new THREE.BoxGeometry(0.65, 0.08, 1.8), woodM, 0, 0.12, 0);
       arch.rotation.x = -0.08; g.add(arch);
       
       [-0.30, 0.30].forEach(rx => {
@@ -3374,7 +3410,7 @@
 
     // 🧺 Wooden Picnic Table with Red-Checkered Cloth & Slices
     function createPicnicSpot(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.28, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry || 0;
       const woodM = mat(0xa16207, 0.8);
       
       g.add(mesh(new THREE.BoxGeometry(0.95, 0.04, 0.65), woodM, 0, 0.42, 0));
@@ -3397,7 +3433,7 @@
 
     // 🍄 Red Amanita Polka-Dot Mushrooms
     function createMushroomCluster(x, z) {
-      const g = new THREE.Group(); g.position.set(x, 0.28, z);
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z);
       const capM = mat(0xef4444, 0.7);
       const stemM = mat(0xffedd5, 0.9);
       
@@ -3445,7 +3481,7 @@
     // 🐦 Cute Ground Pigeons Pecking for Crumbs (Food District Promenade)
     const pigeonList = [];
     function createPigeon(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.14, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, surfaceYAt(x, z), z); g.rotation.y = ry || 0;
       g.add(mesh(new THREE.SphereGeometry(0.055, 8, 6), mat(0x64748b, 0.6), 0, 0.055, 0));
       g.add(mesh(new THREE.SphereGeometry(0.035, 8, 6), mat(0x475569, 0.6), 0, 0.095, 0.04));
       g.add(mesh(new THREE.ConeGeometry(0.012, 0.035, 4), mat(0xf59e0b, 0.7), 0, 0.095, 0.08));
@@ -3461,7 +3497,7 @@
     addLight("point", 0xffb8d4, 0.8, 6.0, -1.0, 2.0, -3.0, parkZone);
 
     // 🐿️ High-Detail Waiting Squirrel on the Park Bench
-    const lonelySquirrel = new THREE.Group(); lonelySquirrel.position.set(-1.9, 0.54, 1.9); parkZone.add(lonelySquirrel);
+    const lonelySquirrel = new THREE.Group(); lonelySquirrel.position.set(-1.9, Y_WALK, 1.9); parkZone.add(lonelySquirrel);
     lonelySquirrel.add(mesh(new THREE.BoxGeometry(0.15, 0.20, 0.15), mat(0x78350f, 0.85), 0, 0.10, 0));
     lonelySquirrel.add(mesh(new THREE.BoxGeometry(0.11, 0.15, 0.03), mat(0xfef3c7, 0.9), 0, 0.10, 0.08));
     const sqHead = new THREE.Group(); sqHead.position.set(0, 0.24, 0.04); lonelySquirrel.add(sqHead);
@@ -3482,7 +3518,7 @@
     parkZone.userData.squirrel = lonelySquirrel;
 
     function addBench(x, z, ry, addSittingPerson, enrichmentId) {
-      const b = new THREE.Group(); b.position.set(x, 0.28, z); b.rotation.y = ry;
+      const b = new THREE.Group(); b.position.set(x, Y_WALK, z); b.rotation.y = ry;
       b.add(mesh(new THREE.BoxGeometry(0.82, 0.05, 0.28), mat(0x854d0e, 0.8), 0, 0.26, 0));
       b.add(mesh(new THREE.BoxGeometry(0.82, 0.30, 0.05), mat(0x854d0e, 0.8), 0, 0.43, -0.11));
       [-0.36, 0.36].forEach(lx => b.add(mesh(new THREE.BoxGeometry(0.04, 0.26, 0.28), mat(0x1e293b, 0.5), lx, 0.13, 0)));
@@ -3641,7 +3677,7 @@
 
     // 1. Central Park Sanctuary Marble Fountain (fountain_marble)
     function buildCentralPlazaFountain() {
-      const g = new THREE.Group(); g.position.set(-6.2, 0.28, 6.0);
+      const g = new THREE.Group(); g.position.set(-6.2, Y_WALK, 6.0);
       g.add(mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.28, 24), mat(0xe2e8f0, 0.3, 0.8), 0, 0.14, 0));
       const poolMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.2, roughness: 0.1 });
       const poolWater = mesh(new THREE.CylinderGeometry(0.85, 0.85, 0.08, 20), poolMat, 0, 0.26, 0);
@@ -3674,7 +3710,7 @@
       const g = new THREE.Group(); g.position.set(6.8, 0.22, 3.6);
       
       // Low stone garden wall base with wooden cap
-      const wallBase = mesh(roundedBox(0.95, 0.46, 0.58, 0.08), mat(0x64748b, 0.8), 0, 0.23, 0);
+      const wallBase = mesh(roundedBox(0.95, 0.69, 0.58, 0.08), mat(0x64748b, 0.8), 0, 0, 0);
       g.add(wallBase);
       const woodCap = mesh(roundedBox(1.02, 0.06, 0.65, 0.03), mat(0xa16207, 0.7), 0, 0.49, 0);
       g.add(woodCap);
@@ -3754,7 +3790,7 @@
     // 4. Colorful Flower Beds (flower_bed_plaza)
     function buildFlowerBeds() {
       const g = new THREE.Group(); g.position.set(-4.2, 0.22, -4.8);
-      g.add(mesh(roundedBox(1.4, 0.18, 0.55, 0.08), mat(0x78350f, 0.9), 0, 0.09, 0));
+      g.add(mesh(roundedBox(1.4, 0.27, 0.55, 0.08), mat(0x78350f, 0.9), 0, 0, 0));
       const flowerCols = [0xec4899, 0xfacc15, 0xef4444, 0xa855f7, 0x38bdf8];
       for (let fx = -0.5; fx <= 0.5; fx += 0.25) {
         for (let fz = -0.12; fz <= 0.12; fz += 0.24) {
@@ -3770,7 +3806,7 @@
 
     // 5. Bicycle Rack Station (bike_station)
     function buildBikeStation() {
-      const g = new THREE.Group(); g.position.set(4.8, 0.22, -2.8);
+      const g = new THREE.Group(); g.position.set(4.8, Y_WALK, -3.5);
       g.add(mesh(new THREE.BoxGeometry(1.4, 0.05, 0.6), mat(0x334155, 0.9), 0, 0.025, 0));
       for (let bx = -0.40; bx <= 0.40; bx += 0.40) {
         g.add(mesh(new THREE.TorusGeometry(0.16, 0.018, 6, 12, Math.PI), mat(0x94a3b8, 0.4), bx, 0.18, 0));
@@ -3789,7 +3825,7 @@
     // 6. Modern Public Art Sculpture (public_art_sculpture)
     function buildArtSculpture() {
       const g = new THREE.Group(); g.position.set(8.8, 0.22, -4.8);
-      g.add(mesh(roundedBox(0.85, 0.40, 0.85, 0.08), mat(0x0f172a, 0.3, 0.8), 0, 0.20, 0));
+      g.add(mesh(roundedBox(0.85, 0.60, 0.85, 0.08), mat(0x0f172a, 0.3, 0.8), 0, 0, 0));
       const torusMesh = mesh(new THREE.TorusKnotGeometry(0.26, 0.075, 36, 8), mat(0xfacc15, 0.2, 0.9), 0, 0.72, 0);
       g.add(torusMesh);
       animObjects.push({ type: "rotate_y", ref: torusMesh, speed: 0.4 });
@@ -3808,7 +3844,7 @@
     // 7. Artisan Coffee Stand (cafe_stand)
     function buildArtisanCafeStand() {
       const g = new THREE.Group(); g.position.set(-4.5, 0.22, -4.8);
-      g.add(mesh(roundedBox(1.05, 0.60, 0.60, 0.06), mat(0x78350f, 0.8), 0, 0.30, 0));
+      g.add(mesh(roundedBox(1.05, 0.90, 0.60, 0.06), mat(0x78350f, 0.8), 0, 0, 0));
       const awn = mesh(new THREE.BoxGeometry(1.15, 0.07, 0.70), mat(0xd97706, 0.6), 0, 0.82, 0);
       awn.rotation.x = 0.12; g.add(awn);
       g.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.08, 8), mat(0xffffff, 0.4), 0.2, 0.64, 0.1));
@@ -4130,8 +4166,14 @@
     // 4. 🧑‍💻 Tech Worker with Laptop on Park Bench
     function buildTechWorkerOnBench() {
       const g = new THREE.Group();
-      g.position.set(-4.8, 0.22, 7.4);
+      g.position.set(-4.8, Y_WALK, 7.4);
       root.add(g);
+
+      // The bench in this prop's name never actually existed — he was seated on nothing.
+      const benchG = new THREE.Group(); benchG.rotation.y = -0.35; g.add(benchG);
+      benchG.add(mesh(new THREE.BoxGeometry(0.86, 0.05, 0.30), mat(0x854d0e, 0.8), 0, 0.12, 0));
+      benchG.add(mesh(new THREE.BoxGeometry(0.86, 0.30, 0.05), mat(0x854d0e, 0.8), 0, 0.29, -0.13));
+      [-0.38, 0.38].forEach(lx => benchG.add(mesh(new THREE.BoxGeometry(0.05, 0.12, 0.28), mat(0x1e293b, 0.6), lx, 0.06, 0)));
 
       const worker = createMiniFigure({
         shirtColor: 0x0284c7, pantsColor: 0x1e293b, hairColor: 0x1f2937, isSitting: true
@@ -4348,24 +4390,230 @@
       return g;
     }
 
+
+    // ═══════════════════════════════════════════════════
+    // 🧱 KERBS, PAVEMENT & STREET FURNITURE
+    // ═══════════════════════════════════════════════════
+    // Every block now ends exactly at the asphalt, so the join needs to read as
+    // pavement -> kerb stone -> road rather than as a slab dropped next to a slab.
+    const kerbShadowMat = mat(0x94a3b8, 0.9);
+    const pavementMat   = mat(0xd8dee9, 0.92);
+    const furnWoodMat   = mat(0x92400e, 0.85);
+    const furnMetalMat  = mat(0x475569, 0.55, 0.5);
+    const planterMat    = mat(0xcbd5e1, 0.8);
+    const shrubMat      = mat(0x15803d, 0.9);
+
+    const KERB_W    = 0.16;
+    const BAND_W    = 0.58;             // width of the lighter pavement strip
+    const FURN_OFF  = 0.30;             // furniture centreline, measured in from the block edge
+
+    function addStreetBench(parent, x, z, ry) {
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry || 0;
+      g.add(mesh(new THREE.BoxGeometry(0.70, 0.05, 0.24), furnWoodMat, 0, 0.20, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.70, 0.22, 0.05), furnWoodMat, 0, 0.32, -0.10));
+      [-0.28, 0.28].forEach(lx => g.add(mesh(new THREE.BoxGeometry(0.05, 0.20, 0.22), furnMetalMat, lx, 0.10, 0)));
+      parent.add(g);
+    }
+    function addStreetBin(parent, x, z) {
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z);
+      g.add(mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.30, 10), furnMetalMat, 0, 0.15, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 10), mat(0x1e293b, 0.8), 0, 0.31, 0));
+      parent.add(g);
+    }
+    function addStreetPlanter(parent, x, z) {
+      const g = new THREE.Group(); g.position.set(x, Y_WALK, z);
+      g.add(mesh(roundedBox(0.46, 0.18, 0.46, 0.06), planterMat, 0, 0.05, 0));
+      g.add(mesh(new THREE.DodecahedronGeometry(0.19, 0), shrubMat, 0, 0.34, 0));
+      parent.add(g);
+    }
+
+    // side: "east" | "west" | "north" | "south" — which edge of the block faces a road.
+    function dressBlockEdge(zone, halfX, halfZ, side) {
+      const along  = (side === "east" || side === "west") ? 2 * halfZ : 2 * halfX;
+      const sx     = (side === "east") ? halfX : (side === "west") ? -halfX : 0;
+      const sz     = (side === "south") ? halfZ : (side === "north") ? -halfZ : 0;
+      const vertical = (side === "east" || side === "west");
+      const inward = (side === "east" || side === "south") ? -1 : 1;
+
+      // A darker shadow line just inside the painted kerb, so the edge reads in flat light.
+      const lineGeo = vertical ? new THREE.BoxGeometry(0.03, 0.012, along)
+                               : new THREE.BoxGeometry(along, 0.012, 0.03);
+      zone.add(mesh(lineGeo, kerbShadowMat,
+        sx + (vertical ? inward * (KERB_W + 0.015) : 0), Y_WALK + 0.006,
+        sz + (vertical ? 0 : inward * (KERB_W + 0.015)), false, false));
+
+      // Pavement strip inset from the kerb.
+      const bandGeo = vertical ? new THREE.BoxGeometry(BAND_W, 0.008, along)
+                               : new THREE.BoxGeometry(along, 0.008, BAND_W);
+      zone.add(mesh(bandGeo, pavementMat,
+        sx + (vertical ? inward * BAND_W / 2 : 0), Y_WALK + 0.004,
+        sz + (vertical ? 0 : inward * BAND_W / 2), false, true));
+
+      // Furniture ribbon: bench / bin / planter at even intervals down the strip.
+      const slots = Math.max(2, Math.round(along / 2.4));
+      for (let i = 0; i < slots; i++) {
+        const t = (i + 0.5) / slots - 0.5;
+        const ax = vertical ? sx + inward * FURN_OFF : t * along;
+        const az = vertical ? t * along : sz + inward * FURN_OFF;
+        const kind = (i + (vertical ? 0 : 1)) % 3;
+        if (kind === 0) addStreetBench(zone, ax, az, vertical ? (inward > 0 ? Math.PI / 2 : -Math.PI / 2) : (inward > 0 ? 0 : Math.PI));
+        else if (kind === 1) addStreetBin(zone, ax, az);
+        else addStreetPlanter(zone, ax, az);
+      }
+    }
+
+    const HALF_W_WEST  = BLK_W_WEST  / 2 + 0.05, HALF_W_EAST  = BLK_W_EAST  / 2 + 0.05;
+    const HALF_D_NORTH = BLK_D_NORTH / 2 + 0.05, HALF_D_SOUTH = BLK_D_SOUTH / 2 + 0.05;
+    dressBlockEdge(foodZone,  HALF_W_WEST, HALF_D_NORTH, "east");
+    dressBlockEdge(foodZone,  HALF_W_WEST, HALF_D_NORTH, "south");
+    dressBlockEdge(shopZone,  HALF_W_EAST, HALF_D_NORTH, "west");
+    dressBlockEdge(shopZone,  HALF_W_EAST, HALF_D_NORTH, "south");
+    dressBlockEdge(houseZone, HALF_W_EAST, HALF_D_SOUTH, "west");
+    dressBlockEdge(houseZone, HALF_W_EAST, HALF_D_SOUTH, "north");
+    dressBlockEdge(parkZone,  HALF_W_WEST, HALF_D_SOUTH, "east");
+    dressBlockEdge(parkZone,  HALF_W_WEST, HALF_D_SOUTH, "north");
+
     // 3 Dedicated Non-Overlapping Road Lanes:
+
+    // ────────────────────────────────────────────────────────────────
+    // 🚗 GENERIC ROAD VEHICLES
+    // ────────────────────────────────────────────────────────────────
+    // Three hand-modelled vehicles on three lanes read as the same loop every time you look at
+    // the city. These parameterised bodies give the streets real variety without another
+    // several hundred lines of bespoke geometry: length, width and colour do the work, and the
+    // proportions match the existing taxi so nothing looks like it came from a different set.
+
+    function buildCar(opts) {
+      opts = opts || {};
+      const len   = opts.length !== undefined ? opts.length : 1.85;
+      const wid   = opts.width  !== undefined ? opts.width  : 0.88;
+      const body  = opts.color  !== undefined ? opts.color  : 0xe2e8f0;
+      const roof  = opts.roofColor !== undefined ? opts.roofColor : 0x0f172a;
+      const g = new THREE.Group();
+
+      g.add(mesh(roundedBox(len, 0.40, wid, 0.16), mat(body, 0.25, 0.55), 0, 0.21, 0));
+      // Cabin set back from the nose so the car reads as having a bonnet.
+      g.add(mesh(roundedBox(len * 0.55, 0.32, wid * 0.88, 0.12), mat(roof, 0.1, 0.9), -len * 0.07, 0.56, 0));
+      // A colour flash along the sill keeps flat-lit bodies from reading as blocks.
+      g.add(mesh(new THREE.BoxGeometry(len * 0.86, 0.05, wid + 0.02), mat(roof, 0.6), 0, 0.30, 0));
+
+      const chrome = mat(0x94a3b8, 0.2, 0.9);
+      g.add(mesh(new THREE.BoxGeometry(0.06, 0.11, wid * 0.78), chrome,  len / 2 - 0.02, 0.19, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.06, 0.11, wid * 0.78), chrome, -len / 2 + 0.02, 0.19, 0));
+
+      const headM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const tailM = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      [wid * 0.30, -wid * 0.30].forEach(hz => {
+        g.add(mesh(new THREE.BoxGeometry(0.04, 0.09, 0.16), headM,  len / 2 - 0.01, 0.30, hz));
+        g.add(mesh(new THREE.BoxGeometry(0.04, 0.08, 0.16), tailM, -len / 2 + 0.01, 0.30, hz));
+      });
+
+      if (opts.roofRack) {
+        g.add(mesh(roundedBox(len * 0.42, 0.10, wid * 0.62, 0.03), mat(opts.rackColor || 0x334155, 0.8), -len * 0.05, 0.92, 0));
+      }
+
+      const wr = 0.18;
+      [[len * 0.32, wid / 2], [-len * 0.32, wid / 2], [len * 0.32, -wid / 2], [-len * 0.32, -wid / 2]].forEach(pt => {
+        const wh = mesh(new THREE.CylinderGeometry(wr, wr, 0.10, 14), mat(0x09090b, 0.9), pt[0], wr, pt[1]);
+        wh.rotation.x = Math.PI / 2; g.add(wh);
+        const hub = mesh(new THREE.CylinderGeometry(wr * 0.5, wr * 0.5, 0.11, 10), mat(0xd1d5db, 0.2, 0.9), pt[0], wr, pt[1]);
+        hub.rotation.x = Math.PI / 2; g.add(hub);
+      });
+      return g;
+    }
+
+    function buildDeliveryVan(opts) {
+      opts = opts || {};
+      const cab   = opts.color !== undefined ? opts.color : 0x6366f1;
+      const box   = opts.boxColor !== undefined ? opts.boxColor : 0xf8fafc;
+      const g = new THREE.Group();
+
+      // Cargo body sits high and square; the cab is lower and rounded, which is what makes a van
+      // read as a van from across the city rather than as a long car.
+      g.add(mesh(roundedBox(1.55, 0.78, 1.02, 0.08), mat(box, 0.55), -0.38, 0.24, 0));
+      g.add(mesh(roundedBox(0.80, 0.46, 0.98, 0.14), mat(cab, 0.3, 0.5), 0.72, 0.22, 0));
+      g.add(mesh(roundedBox(0.62, 0.30, 0.90, 0.10), mat(0x0f172a, 0.1, 0.9), 0.70, 0.62, 0));
+      // Roller-shutter ribs on the cargo sides.
+      for (let rx = -1.05; rx <= 0.25; rx += 0.20) {
+        g.add(mesh(new THREE.BoxGeometry(0.03, 0.62, 1.04), mat(0xcbd5e1, 0.8), rx, 0.32, 0));
+      }
+      g.add(mesh(new THREE.BoxGeometry(0.05, 0.11, 0.80), mat(0x94a3b8, 0.2, 0.9), 1.12, 0.19, 0));
+      const headM = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const tailM = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+      [0.30, -0.30].forEach(hz => {
+        g.add(mesh(new THREE.BoxGeometry(0.04, 0.09, 0.16), headM,  1.12, 0.30, hz));
+        g.add(mesh(new THREE.BoxGeometry(0.04, 0.09, 0.16), tailM, -1.16, 0.34, hz));
+      });
+      [[0.62, 0.52], [-0.72, 0.52], [0.62, -0.52], [-0.72, -0.52]].forEach(pt => {
+        const wh = mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.11, 14), mat(0x09090b, 0.9), pt[0], 0.19, pt[1]);
+        wh.rotation.x = Math.PI / 2; g.add(wh);
+      });
+      return g;
+    }
+
+    function buildMotorbike(opts) {
+      opts = opts || {};
+      const frameCol = opts.color !== undefined ? opts.color : 0x334155;
+      const riderCol = opts.riderColor !== undefined ? opts.riderColor : 0xef4444;
+      const g = new THREE.Group();
+
+      [[0.36, 0.15], [-0.36, 0.15]].forEach(pt => {
+        const wh = mesh(new THREE.TorusGeometry(pt[1], 0.045, 8, 16), mat(0x18181b, 0.9), pt[0], pt[1], 0);
+        wh.rotation.y = Math.PI / 2; g.add(wh);
+      });
+      g.add(mesh(roundedBox(0.62, 0.16, 0.20, 0.06), mat(frameCol, 0.4, 0.6), 0, 0.24, 0));
+      g.add(mesh(roundedBox(0.30, 0.09, 0.22, 0.04), mat(0x0f172a, 0.7), -0.10, 0.40, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 6), mat(0x475569, 0.5), 0.30, 0.42, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.03, 0.03, 0.40), mat(0x18181b, 0.7), 0.30, 0.58, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.05, 0.07, 0.12), new THREE.MeshBasicMaterial({ color: 0xffffff }), 0.42, 0.36, 0));
+
+      // Rider, kept to a silhouette — at this scale anything more is noise.
+      g.add(mesh(roundedBox(0.20, 0.30, 0.22, 0.07), mat(riderCol, 0.75), -0.04, 0.46, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.115, 10, 10), mat(0x0f172a, 0.35, 0.4), 0.02, 0.86, 0));
+      [0.11, -0.11].forEach(az => {
+        g.add(mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.30, 6), mat(riderCol, 0.75), 0.14, 0.62, az));
+      });
+      return g;
+    }
+
+    // Israel drives on the right, so each lane sits on the correct side of its road centre
+    // for the direction it travels: main avenue centre z = -0.8, cross avenue centre x = 0.6.
     const CALM_LANES = [
-      // Lane 1: East-to-West (North lane of main avenue)
+      // Lane 1: East-to-West (north side of the main avenue)
       [{x: 12.0, z: -1.6}, {x: -12.0, z: -1.6}],
-      // Lane 2: West-to-East (South lane of main avenue)
+      // Lane 2: West-to-East (south side of the main avenue)
       [{x: -12.0, z: -0.2}, {x: 12.0, z: -0.2}],
-      // Lane 3: South-to-North (East lane of cross avenue)
-      [{x: 1.2, z: 12.0}, {x: 1.2, z: -12.0}]
+      // Lane 3: South-to-North (east side of the cross avenue)
+      [{x: 1.2, z: 12.0}, {x: 1.2, z: -12.0}],
+      // Lane 4: North-to-South (west side of the cross avenue)
+      [{x: 0.0, z: -12.0}, {x: 0.0, z: 12.0}]
     ];
 
+    // Two vehicles share a lane only at identical speed with staggered progress, so they hold a
+    // constant half-lane apart and can never drive through one another.
+    // `tier` is how much of the city has to exist before a vehicle joins: 0 is the baseline service that
+    // any inhabited city has, higher tiers arrive as spending builds the place out.
     const vehicleFleet = [
-      { id: "taxi", lane: "westbound", obj: buildTaxi(), route: CALM_LANES[0], speed: 0.040, initialProg: 0.1, isBus: false },
-      { id: "wolt", lane: "eastbound", obj: buildWoltScooter(), route: CALM_LANES[1], speed: 0.048, initialProg: 0.55, isBus: false },
-      { id: "bus", lane: "northbound", obj: buildCityBus(), route: CALM_LANES[2], speed: 0.035, initialProg: 0.85, isBus: true }
+      { id: "taxi",     lane: "westbound",  obj: buildTaxi(),                                                  route: CALM_LANES[0], speed: 0.040, initialProg: 0.10, isBus: false, tier: 0 },
+      { id: "sedan",    lane: "westbound",  obj: buildCar({ length: 1.90, color: 0xf8fafc, roofColor: 0x1e293b }), route: CALM_LANES[0], speed: 0.040, initialProg: 0.60, isBus: false, tier: 1 },
+
+      { id: "wolt",     lane: "eastbound",  obj: buildWoltScooter(),                                           route: CALM_LANES[1], speed: 0.048, initialProg: 0.55, isBus: false, tier: 0 },
+      { id: "hatchRed", lane: "eastbound",  obj: buildCar({ length: 1.62, width: 0.84, color: 0xf43f5e, roofColor: 0x881337 }), route: CALM_LANES[1], speed: 0.048, initialProg: 0.05, isBus: false, tier: 1 },
+
+      { id: "bus",      lane: "northbound", obj: buildCityBus(),                                               route: CALM_LANES[2], speed: 0.035, initialProg: 0.85, isBus: true,  tier: 0 },
+      { id: "van",      lane: "northbound", obj: buildDeliveryVan({ color: 0x6366f1, boxColor: 0xf8fafc }),     route: CALM_LANES[2], speed: 0.035, initialProg: 0.35, isBus: false, tier: 2 },
+
+      { id: "hatchSky", lane: "southbound", obj: buildCar({ length: 1.68, color: 0x38bdf8, roofColor: 0x0c4a6e, roofRack: true }), route: CALM_LANES[3], speed: 0.042, initialProg: 0.20, isBus: false, tier: 1 },
+      { id: "moto",     lane: "southbound", obj: buildMotorbike({ color: 0x334155, riderColor: 0xf59e0b }),     route: CALM_LANES[3], speed: 0.042, initialProg: 0.70, isBus: false, tier: 2 }
     ];
 
     const vehicleState = [];
     vehicleFleet.forEach(vf => {
+      vf.obj.position.y = Y_ROAD;   // wheel contact patch is the group origin
+      // Hidden until the first payload decides. Otherwise a brand-new empty city opens with all
+      // eight vehicles already circling it, which is exactly the "finished before it is built"
+      // look the staging exists to avoid.
+      vf.obj.visible = false;
       root.add(vf.obj);
       vehicleState.push({
         id: vf.id,
@@ -4376,6 +4624,7 @@
         progress: vf.initialProg,
         pauseTimer: 0,
         isBus: vf.isBus,
+        tier: vf.tier || 0,
         hasPausedAtBusStop: false,
         lastYieldTime: 0
       });
@@ -4497,63 +4746,85 @@
       isDragging = false;
     }
 
-    // Touch events for iOS with 2-finger pinch zoom
-    stage.addEventListener("touchstart", e => {
-      if (e.touches && e.touches.length === 2) {
+    // ────────────────────────────────────────────────────────────────
+    // UNIFIED POINTER GESTURE ENGINE (iOS 17/18 Touch + Pinch + Mouse)
+    // ────────────────────────────────────────────────────────────────
+    const activePointers = new Map();
+    let initialPinchDistance = 0;
+    let initialPinchZoom = 1.0;
+
+    function getDistance(p1, p2) {
+      return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    }
+
+    stage.addEventListener("pointerdown", e => {
+      activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+      
+      if (activePointers.size === 1) {
+        onDown(e.clientX, e.clientY);
+      } else if (activePointers.size === 2) {
+        const pts = Array.from(activePointers.values());
+        initialPinchDistance = getDistance(pts[0], pts[1]);
+        initialPinchZoom = (targetCam && targetCam.zoom) || 0.98;
         isPinching = true;
         isDown = false;
         isDragging = false;
-        startPinchDist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        startPinchZoom = (targetCam && targetCam.zoom) || 1.35;
-      } else if (e.touches && e.touches.length === 1) {
-        isPinching = false;
-        onDown(e.touches[0].clientX, e.touches[0].clientY);
       }
-    }, { passive: true });
+      try { stage.setPointerCapture(e.pointerId); } catch(err) {}
+    });
 
-    stage.addEventListener("touchmove", e => {
-      if (e.touches && e.touches.length === 2 && isPinching && startPinchDist > 0) {
-        const dist = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        const scale = dist / startPinchDist;
-        if (isFinite(scale) && scale > 0) {
-          targetCam.zoom = Math.max(0.60, Math.min(3.80, startPinchZoom * scale));
+    stage.addEventListener("pointermove", e => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+      if (activePointers.size === 2) {
+        const pts = Array.from(activePointers.values());
+        const currentDist = getDistance(pts[0], pts[1]);
+        if (initialPinchDistance > 0) {
+          const factor = currentDist / initialPinchDistance;
+          if (isFinite(factor) && factor > 0) {
+            targetCam.zoom = Math.max(0.60, Math.min(3.80, initialPinchZoom * factor));
+          }
         }
-      } else if (e.touches && e.touches.length === 1 && !isPinching) {
-        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      } else if (activePointers.size === 1 && isDown) {
+        onMove(e.clientX, e.clientY);
       }
-    }, { passive: true });
+    });
 
-    stage.addEventListener("touchend", e => {
-      if (!e.touches || e.touches.length < 2) isPinching = false;
-      if (e.changedTouches && e.changedTouches.length > 0) {
-        onUp(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-      } else {
-        isDown = false; isDragging = false;
+    function handlePointerEnd(e) {
+      const wasDown = isDown;
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
+      activePointers.delete(e.pointerId);
+      try { stage.releasePointerCapture(e.pointerId); } catch(err) {}
+
+      if (activePointers.size === 0) {
+        if (wasDown) onUp(clientX, clientY);
+        isPinching = false;
+      } else if (activePointers.size === 1) {
+        const remaining = Array.from(activePointers.values())[0];
+        onDown(remaining.clientX, remaining.clientY);
+        isPinching = false;
       }
-    }, { passive: true });
+    }
 
-    stage.addEventListener("touchcancel", () => { isDown = false; isDragging = false; isPinching = false; }, { passive: true });
+    stage.addEventListener("pointerup", handlePointerEnd);
+    stage.addEventListener("pointercancel", handlePointerEnd);
 
-    // Pointer & Wheel events for desktop Xcode Canvas & Simulator
-    stage.addEventListener("pointerdown", e => { onDown(e.clientX, e.clientY); });
-    window.addEventListener("pointermove", e => { onMove(e.clientX, e.clientY); });
-    window.addEventListener("pointerup", e => { onUp(e.clientX, e.clientY); });
-    window.addEventListener("pointercancel", () => { isDown = false; isDragging = false; });
-    window.addEventListener("wheel", e => {
+    // Mouse wheel zoom
+    stage.addEventListener("wheel", e => {
       if (e.deltaY) {
-        targetCam.zoom = Math.max(0.60, Math.min(3.80, (targetCam.zoom || 1.35) - e.deltaY * 0.002));
+        targetCam.zoom = Math.max(0.60, Math.min(3.80, (targetCam.zoom || 0.98) - e.deltaY * 0.002));
       }
     }, { passive: true });
 
-    function setDistrict(id) {
-      currentMode = (id && CAM_MODES[id]) ? id : "city";
-      targetCam = Object.assign({}, CAM_MODES[currentMode]);
+    function setDistrict(id, force) {
+      const newMode = (id && CAM_MODES[id]) ? id : "city";
+      if (newMode !== currentMode || force) {
+        currentMode = newMode;
+        targetCam = Object.assign({}, CAM_MODES[currentMode]);
+      }
     }
     window.setDistrict = setDistrict;
 
@@ -4838,8 +5109,18 @@
         const cityIsAlive = trafficTotal > 0 || savingsForTraffic > 0;
         vehicleState.forEach(v => {
           // The delivery scooter stays tied to delivery spending — that is what it is for,
-          // not a gate on how developed the city is.
-          const show = (v.id === "wolt") ? (fWolt > 0) : cityIsAlive;
+          // not a gate on how developed the city is. Everything else arrives by tier, so the
+          // streets get busier as the city fills instead of eight vehicles appearing at once.
+          let show;
+          if (v.id === "wolt") {
+            show = fWolt > 0;
+          } else if (v.tier === 0) {
+            show = cityIsAlive;
+          } else if (v.tier === 1) {
+            show = cityIsAlive && trafficTotal >= 250;
+          } else {
+            show = cityIsAlive && trafficTotal >= 900;
+          }
           if (v.obj.visible !== show) v.obj.visible = show;
         });
 
@@ -4965,6 +5246,11 @@
     let situationClock = 0;
     let nextSituationTime = 6.0;
     var isRenderingPaused = false;
+    // rAF hands every callback scheduled for the same frame an identical timestamp, so this
+    // is how a duplicate render chain is detected and retired. Resuming used to kick a fresh
+    // requestAnimationFrame while the old chain was still self-scheduling, which doubled the
+    // number of live loops on every tab switch.
+    var lastFrameTimestamp = -1;
 
     window.pauseDioramaRendering = function(pause) {
       const shouldPause = !!pause;
@@ -4977,25 +5263,21 @@
       }
     };
 
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        isRenderingPaused = true;
-      } else {
-        isRenderingPaused = false;
-        last = performance.now();
-        requestAnimationFrame(loop);
-      }
-    });
-
     function loop(t) {
-      if (isRenderingPaused || (typeof document !== "undefined" && document.hidden)) {
-        return; // 0% GPU/CPU overhead when tab is not visible
+      // Second chain in the same frame: let it die here so exactly one loop survives.
+      if (t === lastFrameTimestamp) return;
+      lastFrameTimestamp = t;
+
+      if (isRenderingPaused) {
+        requestAnimationFrame(loop);
+        return;
       }
       const dt = Math.min(0.05, (t - last) / 1000); last = t;
       const T = t * 0.001;
 
-      // Dynamic Building Scaling Lerp
-      for (const bId in buildingRoots) {
+      try {
+        // Dynamic Building Scaling Lerp
+        for (const bId in buildingRoots) {
         const bg = buildingRoots[bId];
         // While a crew is raising it, the crew owns its scale. Letting the lerp run too
         // would snap the building to full height in half a second and leave the workers
@@ -5008,6 +5290,13 @@
         bg.scale.z += (tXZ - bg.scale.z) * Math.min(1, dt * 5.0);
       }
 
+      if (isNaN(targetCam.az)) targetCam.az = Math.PI * 0.25;
+      if (isNaN(targetCam.el)) targetCam.el = 0.60;
+      if (isNaN(targetCam.zoom) || targetCam.zoom <= 0) targetCam.zoom = CAM_MODES.city.zoom;
+      if (isNaN(targetCam.lookX)) targetCam.lookX = 0;
+      if (isNaN(targetCam.lookY)) targetCam.lookY = 0.45;
+      if (isNaN(targetCam.lookZ)) targetCam.lookZ = 0;
+
       // Camera lerp
       currentCam.az    += (targetCam.az    - currentCam.az)    * Math.min(1, dt * 6);
       currentCam.el    += (targetCam.el    - currentCam.el)    * Math.min(1, dt * 6);
@@ -5016,13 +5305,12 @@
       currentCam.lookY += (targetCam.lookY - currentCam.lookY) * Math.min(1, dt * 6);
       currentCam.lookZ += (targetCam.lookZ - currentCam.lookZ) * Math.min(1, dt * 6);
       
-      if (isNaN(currentCam.az)) currentCam.az = Math.PI * 0.25;
-      if (isNaN(currentCam.el)) currentCam.el = 0.52;
-      if (isNaN(currentCam.zoom) || currentCam.zoom <= 0) currentCam.zoom = 1.35;
-      if (isNaN(targetCam.zoom) || targetCam.zoom <= 0) targetCam.zoom = 1.35;
-      if (isNaN(currentCam.lookX)) currentCam.lookX = 0;
-      if (isNaN(currentCam.lookY)) currentCam.lookY = 0.28;
-      if (isNaN(currentCam.lookZ)) currentCam.lookZ = 0;
+      if (isNaN(currentCam.az)) currentCam.az = targetCam.az;
+      if (isNaN(currentCam.el)) currentCam.el = targetCam.el;
+      if (isNaN(currentCam.zoom) || currentCam.zoom <= 0) currentCam.zoom = targetCam.zoom;
+      if (isNaN(currentCam.lookX)) currentCam.lookX = targetCam.lookX;
+      if (isNaN(currentCam.lookY)) currentCam.lookY = targetCam.lookY;
+      if (isNaN(currentCam.lookZ)) currentCam.lookZ = targetCam.lookZ;
 
       placeCam(); resize();
 
@@ -5124,7 +5412,6 @@
 
       const busObj = vehicleState.find(v => v.isBus);
       const busZ = busObj ? busObj.obj.position.z : 999;
-      const scooterX = (typeof scooterZoomer !== "undefined" && scooterZoomer && scooterZoomer.userData) ? scooterZoomer.position.x : 999;
 
       vehicleState.forEach((v, vIdx) => {
         if (v.pauseTimer > 0) {
@@ -5139,7 +5426,7 @@
         // 1. Bus Stop Routine: City Bus stops at roadside shelter at z = -4.8 (Shopping promenade)
         if (v.isBus) {
           if (!v.hasPausedAtBusStop && Math.abs(currentZ - (-4.8)) < 0.45) {
-            v.pauseTimer = 2.8;
+            v.pauseTimer = 2.6;
             v.hasPausedAtBusStop = true;
             const ph = getDioramaPhrases();
             popEmojiBubble(v.obj, ph.busStop, 2.4);
@@ -5148,61 +5435,66 @@
           if (currentZ < -8.0 || currentZ > 8.0) {
             v.hasPausedAtBusStop = false;
           }
+        }
 
-          // 2. Bus Yields to Electric Scooter Rider on the North Promenade Crossing (Z = -3.4)
-          if (typeof scooterZoomer !== "undefined" && scooterZoomer && scooterZoomer.userData) {
-            // If scooter is currently traversing the bus lane (X between 0.2 and 2.2)
-            if (scooterX > 0.2 && scooterX < 2.2) {
-              // If bus is approaching the crosswalk stop line
-              if (currentZ > -3.2 && currentZ < -2.0) {
-                return; // Bus waits safely at the stop line
+        // 2. Pedestrian Crossing Yielding (Vehicles stop BEFORE crosswalk if pedestrian is directly in lane)
+        let pedestrianInPath = false;
+        // Never freeze if vehicle has already entered the central intersection box
+        const insideIntersection = (currentX > -1.2 && currentX < 2.4 && currentZ > -2.4 && currentZ < 0.8);
+
+        if (!insideIntersection) {
+          for (let ci = 0; ci < walkingCitizens.length; ci++) {
+            const cit = walkingCitizens[ci];
+            if (!cit.obj || !cit.obj.visible) continue;
+            const cp = cit.obj.position;
+
+            if (v.lane === "northbound") {
+              // Northbound bus: corridor X [0.4..2.0], pedestrian in front Z [currentZ-2.2 .. currentZ-0.1]
+              if (cp.x > 0.4 && cp.x < 2.0 && cp.z < currentZ - 0.2 && cp.z > currentZ - 2.2) {
+                pedestrianInPath = true; break;
+              }
+            } else if (v.lane === "westbound") {
+              // Westbound taxi: corridor Z [-2.2 .. -1.0], pedestrian in front X [currentX-2.2 .. currentX-0.2]
+              if (cp.z > -2.2 && cp.z < -1.0 && cp.x < currentX - 0.2 && cp.x > currentX - 2.2) {
+                pedestrianInPath = true; break;
+              }
+            } else if (v.lane === "eastbound") {
+              // Eastbound wolt: corridor Z [-0.8 .. 0.4], pedestrian in front X [currentX+0.2 .. currentX+2.2]
+              if (cp.z > -0.8 && cp.z < 0.4 && cp.x > currentX + 0.2 && cp.x < currentX + 2.2) {
+                pedestrianInPath = true; break;
               }
             }
           }
         }
 
-        // 3. Vehicles Yield for Pedestrians Crossing Ahead on Crosswalks
-        let pedestrianInPath = false;
-        for (let ci = 0; ci < walkingCitizens.length; ci++) {
-          const cit = walkingCitizens[ci];
-          if (!cit.obj || !cit.obj.visible) continue;
-          const cp = cit.obj.position;
-
-          if (v.lane === "northbound") {
-            // Northbound bus: corridor X [0.3..2.1], pedestrian ahead in Z [currentZ-2.4 .. currentZ-0.1]
-            if (cp.x > 0.3 && cp.x < 2.1 && cp.z < currentZ - 0.1 && cp.z > currentZ - 2.4) {
-              pedestrianInPath = true; break;
-            }
-          } else if (v.lane === "westbound") {
-            // Westbound taxi: corridor Z [-2.4 .. -0.8], pedestrian ahead in X [currentX-2.4 .. currentX-0.1]
-            if (cp.z > -2.4 && cp.z < -0.8 && cp.x < currentX - 0.1 && cp.x > currentX - 2.4) {
-              pedestrianInPath = true; break;
-            }
-          } else if (v.lane === "eastbound") {
-            // Eastbound wolt: corridor Z [-0.9 .. 0.5], pedestrian ahead in X [currentX+0.1 .. currentX+2.4]
-            if (cp.z > -0.9 && cp.z < 0.5 && cp.x > currentX + 0.1 && cp.x < currentX + 2.4) {
-              pedestrianInPath = true; break;
+        // 3. Hierarchical Intersection Precedence:
+        // Bus has KING OF THE ROAD right-of-way and NEVER yields to cars or scooters.
+        // Smaller vehicles (Taxi/Wolt) yield to Bus when approaching intersection if Bus is passing through.
+        let yieldForBus = false;
+        if (!v.isBus) {
+          const busItem = vehicleState.find(item => item.isBus);
+          if (busItem && busItem.obj) {
+            const busZ = busItem.obj.position.z;
+            const busPassingIntersection = (busZ > -3.0 && busZ < 0.6);
+            if (busPassingIntersection) {
+              if (v.lane === "westbound" && currentX > 1.8 && currentX < 4.2) {
+                yieldForBus = true;
+              } else if (v.lane === "eastbound" && currentX < 0.4 && currentX > -2.2) {
+                yieldForBus = true;
+              }
             }
           }
         }
 
-        if (pedestrianInPath) {
-          return; // Vehicle yields right-of-way to pedestrian!
-        }
-
-        // 4. Perpendicular Intersection Yielding (Westbound Taxi / Eastbound Wolt vs Northbound Bus)
-        if (!v.isBus && busObj) {
-          if (v.lane === "westbound") {
-            // Taxi crosses bus lane at (1.2, -1.6)
-            if (busZ > -2.4 && busZ < -0.6 && currentX > 1.2 && currentX < 2.8) {
-              return; // Yield while bus clears the crossing
-            }
-          } else if (v.lane === "eastbound") {
-            // Wolt crosses bus lane at (1.2, -0.2)
-            if (busZ > -1.2 && busZ < 0.6 && currentX < 1.2 && currentX > -0.4) {
-              return; // Yield while bus clears the crossing
-            }
+        // 4. Anti-Deadlock Failsafe:
+        // If a vehicle is held in yield for > 1.8 seconds, force it to creep forward and clear the jam!
+        if (pedestrianInPath || yieldForBus) {
+          v.stuckTimer = (v.stuckTimer || 0) + dt;
+          if (v.stuckTimer < 1.8) {
+            return; // Wait politely
           }
+        } else {
+          v.stuckTimer = 0;
         }
 
         // 5. Drive forward continuously & smoothly
@@ -5420,19 +5712,19 @@
         const currentScooterX = scooterZoomer.position.x;
         const movingEast = Math.cos(su.progress || 0) >= 0;
 
-        // Check if City Bus is approaching the North promenade crosswalk (Z = -3.4, X = 1.2)
+        // 🛴 Electric Scooter: Yields to Bus approaching North crosswalk (Bus has right of way)
         const busObj = vehicleState.find(v => v.isBus);
         let shouldYieldForBus = false;
         if (busObj) {
           const busZ = busObj.obj.position.z;
-          // Bus is in approaching zone (-5.4 < Z < -1.6)
-          if (busZ > -5.4 && busZ < -1.6) {
-            // If scooter is heading East and approaching bus lane from West (X between -0.8 and 0.9)
-            if (movingEast && currentScooterX > -0.8 && currentScooterX < 0.9) {
+          // If bus is actively passing the North crosswalk (-4.8 < Z < -2.0)
+          if (busZ > -4.8 && busZ < -2.0) {
+            // Scooter approaches bus lane from West
+            if (movingEast && currentScooterX > -1.2 && currentScooterX < 0.6) {
               shouldYieldForBus = true;
             }
-            // If scooter is heading West and approaching bus lane from East (X between 1.5 and 3.0)
-            if (!movingEast && currentScooterX < 3.0 && currentScooterX > 1.5) {
+            // Scooter approaches bus lane from East
+            if (!movingEast && currentScooterX < 3.0 && currentScooterX > 1.8) {
               shouldYieldForBus = true;
             }
           }
@@ -5451,12 +5743,25 @@
           }
         }
 
+        // Anti-deadlock watchdog for scooter.
+        // NOTE: never `return` from here. This block runs directly in loop(), so an early
+        // return skips renderer.render() AND requestAnimationFrame(loop) and kills the whole
+        // scene permanently (frozen city, dead drag-to-rotate). Use a flag instead.
+        let scooterIsYielding = false;
         if (shouldYieldForBus || shouldYieldForPed) {
-          // Scooter smoothly stops and yields right of way!
-          scooterZoomer.rotation.x = 0;
-          scooterZoomer.rotation.z = 0;
-          scooterZoomer.position.y = 0.22;
+          su.stuckTimer = (su.stuckTimer || 0) + dt;
+          if (su.stuckTimer < 1.8) {
+            // Scooter smoothly stops and yields right of way!
+            scooterZoomer.rotation.x = 0;
+            scooterZoomer.rotation.z = 0;
+            scooterZoomer.position.y = surfaceYAt(scooterZoomer.position.x, scooterZoomer.position.z);
+            scooterIsYielding = true;
+          }
         } else {
+          su.stuckTimer = 0;
+        }
+
+        if (!scooterIsYielding) {
           // Advance scooter smoothly
           su.progress = (su.progress || 0) + dt * 0.16;
           const scooterP = (Math.sin(su.progress) + 1) * 0.5; // 0..1 smooth glide
@@ -5469,9 +5774,11 @@
         if (su.hopTimer > 0) {
           su.hopTimer -= dt;
           const hopP = Math.max(0, su.hopTimer / 0.40);
-          scooterZoomer.position.y = 0.22 + Math.sin(hopP * Math.PI) * 0.25;
-        } else if (!shouldYieldForBus && !shouldYieldForPed) {
-          scooterZoomer.position.y = 0.22;
+          scooterZoomer.position.y = surfaceYAt(scooterZoomer.position.x, scooterZoomer.position.z) + Math.sin(hopP * Math.PI) * 0.25;
+        } else {
+          // Unconditional: while creeping out of a deadlock neither branch used to fire, so the
+          // scooter kept a stale height and rode the kerb at road level.
+          scooterZoomer.position.y = surfaceYAt(scooterZoomer.position.x, scooterZoomer.position.z);
         }
       }
 
@@ -5511,9 +5818,8 @@
         }
       }
 
-      try {
-        // Calm, natural pedestrians with physically-coupled kinematic locomotion (Zero Foot Sliding)
-        walkingCitizens.forEach(c => {
+      // Calm, natural pedestrians with physically-coupled kinematic locomotion (Zero Foot Sliding)
+      walkingCitizens.forEach(c => {
           if (!c.obj || !c.obj.visible) return;
 
           const wps = c.waypoints;
@@ -5622,7 +5928,9 @@
           }
 
           // Update position & heading angle
-          c.obj.position.set(posX, 0.22, posZ);
+          const groundTargetY = surfaceYAt(posX, posZ);
+          c.groundY = (c.groundY === undefined) ? groundTargetY : c.groundY + (groundTargetY - c.groundY) * Math.min(1, dt * 9);
+          c.obj.position.set(posX, c.groundY, posZ);
           const targetAngle = Math.atan2(-segDz, segDx) + Math.PI / 2;
           c.obj.rotation.y = targetAngle;
 
@@ -5797,10 +6105,15 @@
         }
       } catch (loopErr) {
         console.warn("Loop internal caught:", loopErr);
+      } finally {
+        // Scheduling the next frame lives in `finally` deliberately: an early `return` or an
+        // uncaught throw anywhere in the loop body must never be able to strand the render
+        // chain. A stranded chain freezes the whole city AND kills drag-to-rotate, because
+        // the camera lerp and placeCam() only run from inside here.
+        requestAnimationFrame(loop);
       }
 
       renderer.render(scene, camera);
-      requestAnimationFrame(loop);
     }
 
     window.addEventListener("resize", resize);

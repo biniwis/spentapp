@@ -328,9 +328,11 @@ public struct ThreeDioramaView: ViewRepresentable {
                 let id = dict["id"] as? String ?? "b1"
                 let district = dict["district"] as? String ?? "food"
                 let name = dict["name"] as? String ?? "מסעדה"
-                let amount = dict["amount"] as? Double ?? 520.0
-                let visits = dict["visits"] as? Int ?? 8
-                let trend = dict["trend"] as? String ?? "+12% מחודש שעבר"
+                // Zero, not an invented figure: MainCityView recomputes all three from the
+                // user's own transactions before anything is shown.
+                let amount = dict["amount"] as? Double ?? 0
+                let visits = dict["visits"] as? Int ?? 0
+                let trend = dict["trend"] as? String ?? ""
                 
                 let info = DistrictBuildingInfo(id: id, districtId: district, name: name, amount: amount, visitCount: visits, trendText: trend)
                 parent.onBuildingSelected(info)

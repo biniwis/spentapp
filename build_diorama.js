@@ -2887,35 +2887,6 @@ ${threeMinJs}
     }
     createStreetKiosk(-3.4, 2.6, Math.PI / 4);
 
-    // 🍨 Retro Italian Gelato Ice Cream Cart
-    function createGelatoCart(x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, 0.22, z); g.rotation.y = ry || 0;
-      const cartMat = mat(0xffedd5, 0.7);
-      const chromeMat = mat(0xd1d5db, 0.2, 0.9);
-      
-      g.add(mesh(roundedBox(0.85, 0.55, 0.55, 0.05), cartMat, 0, 0.38, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.90, 0.04, 0.60), mat(0x9a3412, 0.8), 0, 0.67, 0));
-      
-      [-0.22, 0, 0.22].forEach(tx => {
-        g.add(mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.04, 10), chromeMat, tx, 0.70, 0));
-        g.add(mesh(new THREE.SphereGeometry(0.025, 6, 6), mat(0xfacc15, 0.2, 0.9), tx, 0.73, 0));
-      });
-      
-      [-0.45, 0.45].forEach(wx => {
-        const wh = mesh(new THREE.TorusGeometry(0.24, 0.02, 8, 16), mat(0x18181b, 0.9), wx, 0.24, 0);
-        wh.rotation.y = Math.PI / 2; g.add(wh);
-      });
-      
-      g.add(mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.2, 6), chromeMat, 0, 1.25, 0));
-      const umb = mesh(new THREE.ConeGeometry(0.65, 0.28, 10), new THREE.MeshStandardMaterial({ map: stripeTex("#f43f5e", "#ffffff", 6) }), 0, 1.85, 0);
-      g.add(umb);
-      
-      const chalk = mesh(new THREE.BoxGeometry(0.35, 0.45, 0.03), new THREE.MeshStandardMaterial({ map: menuTex() }), 0.55, 0.25, 0.35);
-      chalk.rotation.y = -0.5; g.add(chalk);
-      
-      root.add(g);
-    }
-    createGelatoCart(-5.2, -2.6, 0.2);
 
     // 🛴 Shared Electric Kick-Scooter Fleet Station (Lime/Bird Style)
     function createScooterStation(x, z, ry) {

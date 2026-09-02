@@ -6,7 +6,7 @@ public struct MonthlyRecapArchiveView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
-    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 8000.0
+    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
     @Query private var incomeSources: [IncomeSource]
     
     private var effectiveMonthlyBudget: Double {

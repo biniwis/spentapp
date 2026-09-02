@@ -22,6 +22,7 @@
 		46C3D39DDFA747C2B1B1B760 /* MoneyCityShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3405643B8AF844C19F66CC7C /* MoneyCityShortcuts.swift */; };
 		4B8EFDBBB447457DBA4CAA57 /* SpendingCategory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F408465ACC3D49E7B4E682C5 /* SpendingCategory.swift */; };
 		4D20184FBEE945DD8FFCDA54 /* BuildingTile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67886ADF89264B1BBFC80657 /* BuildingTile.swift */; };
+		CB0100010000000000000001 /* CityBuilding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB0100020000000000000002 /* CityBuilding.swift */; };
 		4E68CBC4BE18404D8BE4A1B7 /* MonthlyRecapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5665468E4AF8474DA15D9D9E /* MonthlyRecapService.swift */; };
 		513BCF538B1D40BDA8A724CE /* CityEnrichment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87DD0AF1954E4977BCA3BC09 /* CityEnrichment.swift */; };
 		576332156D5947EC9D5DA135 /* CitySimulationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA3969AD93A46E980375BE9 /* CitySimulationEngine.swift */; };
@@ -106,6 +107,7 @@
 		6177E5168DB1414A9C14A117 /* RecurringExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RecurringExpense.swift; path = MoneyCity/Models/RecurringExpense.swift; sourceTree = "<group>"; };
 		66A09E20DEDB4007BECF3763 /* InstallmentPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = InstallmentPlan.swift; path = MoneyCity/Models/InstallmentPlan.swift; sourceTree = "<group>"; };
 		67886ADF89264B1BBFC80657 /* BuildingTile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = BuildingTile.swift; path = MoneyCity/Models/BuildingTile.swift; sourceTree = "<group>"; };
+		CB0100020000000000000002 /* CityBuilding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CityBuilding.swift; path = MoneyCity/Models/CityBuilding.swift; sourceTree = "<group>"; };
 		683917F1F511413DA459BCBC /* MerchantRule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MerchantRule.swift; path = MoneyCity/Models/MerchantRule.swift; sourceTree = "<group>"; };
 		6CCB7E9419B944208AF0E3B2 /* LogWalletPaymentIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LogWalletPaymentIntent.swift; path = MoneyCity/Intents/LogWalletPaymentIntent.swift; sourceTree = "<group>"; };
 		71631676F4F84A559BAD0E61 /* QuickAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickAddSheet.swift; path = MoneyCity/Views/Modals/QuickAddSheet.swift; sourceTree = "<group>"; };
@@ -175,6 +177,7 @@
 				A2E572A9B6A741799E54CD33 /* MoneyCityApp.swift */,
 				2A38B2A0735E420BAF91EC8F /* MoneyCityWidgets.swift */,
 				67886ADF89264B1BBFC80657 /* BuildingTile.swift */,
+				CB0100020000000000000002 /* CityBuilding.swift */,
 				611D6CA17851493E9F27B4CF /* CategoryBudget.swift */,
 				87DD0AF1954E4977BCA3BC09 /* CityEnrichment.swift */,
 				16659AF6C33C481FBF0717FD /* CitySlot.swift */,
@@ -330,6 +333,7 @@
 				C8F5CD835BF3444A8ED5D650 /* MoneyCityApp.swift in Sources */,
 				D4E1115E685C43CBA60C3628 /* MoneyCityWidgets.swift in Sources */,
 				4D20184FBEE945DD8FFCDA54 /* BuildingTile.swift in Sources */,
+				CB0100010000000000000001 /* CityBuilding.swift in Sources */,
 				D16B68373D934BF8B1AC07B8 /* CategoryBudget.swift in Sources */,
 				513BCF538B1D40BDA8A724CE /* CityEnrichment.swift in Sources */,
 				2EB367EBFFB04A85B56ED17A /* CitySlot.swift in Sources */,
@@ -476,6 +480,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = SPENT;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -507,6 +512,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = SPENT;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;

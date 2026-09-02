@@ -25,6 +25,9 @@ public struct HistoryView: View {
         let originalAmount: Double?
         let originalCurrency: String?
         let exchangeRate: Double?
+        /// Without this the restored row loses its link to a savings goal, and the next
+        /// reconciliation quietly subtracts the deposit again.
+        let savingsGoalId: UUID?
     }
 
     @State private var lastDeleted: DeletedSnapshot? = nil
@@ -86,7 +89,7 @@ public struct HistoryView: View {
                             Text(l10n.language == .hebrew ? "היסטוריה" : "History")
                                 .font(.system(size: 26, weight: .black, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
-                            Text(l10n.language == .hebrew ? "\(filtered.count) עסקאות • \(l10n.baseCurrency.symbol)\(Int(totalFiltered))" : "\(filtered.count) transactions • \(l10n.baseCurrency.symbol)\(Int(totalFiltered))")
+                            Text(l10n.language == .hebrew ? "\(filtered.count) עסקאות • \(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(totalFiltered))" : "\(filtered.count) transactions • \(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(totalFiltered))")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.textMuted)
                         }
@@ -361,7 +364,7 @@ public struct HistoryView: View {
 
             let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
             if isRefund {
-                Text("-\(l10n.baseCurrency.symbol)\(Int(abs(tx.amount)))")
+                Text("-\(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(abs(tx.amount)))")
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(Color.themeMint)
             } else {
@@ -480,7 +483,8 @@ public struct HistoryView: View {
             confidenceScore: tx.confidenceScore,
             originalAmount: tx.originalAmount,
             originalCurrency: tx.originalCurrency,
-            exchangeRate: tx.exchangeRate
+            exchangeRate: tx.exchangeRate,
+            savingsGoalId: tx.savingsGoalId
         )
         lastDeleted = snap
         let token = UUID()
@@ -516,6 +520,8 @@ public struct HistoryView: View {
             originalCurrency: snap.originalCurrency,
             exchangeRate: snap.exchangeRate
         )
+        // Restore the goal link too, or reconciliation will deduct this deposit from the goal.
+        restored.savingsGoalId = snap.savingsGoalId
         withAnimation {
             modelContext.insert(restored)
             try? modelContext.save()

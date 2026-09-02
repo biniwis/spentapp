@@ -13,6 +13,7 @@ public struct EditTransactionSheet: View {
     @State private var merchantText: String = ""
     @State private var amountText: String = ""
     @State private var selectedCategory: SpendingCategory = .food
+    @State private var selectedBuildingId: String = "food_bistro"
     @State private var showAmountError: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showMerchantDetails: Bool = false
@@ -176,13 +177,82 @@ public struct EditTransactionSheet: View {
 
                     // Category picker
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(l10n.language == .hebrew ? "קטגוריה" : "Category")
+                        Text(l10n.language == .hebrew ? "קטגוריה ראשית" : "Main Category")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(Color.slate400)
                             .padding(.leading, 4)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
                             ForEach(SpendingCategory.primaryCategories, id: \.self) { cat in
                                 categoryCell(cat)
+                            }
+                        }
+                    }
+
+                    // 3D Building Association Selector
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(l10n.language == .hebrew ? "שיוך לבניין בעיר" : "Assign to 3D Building")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.slate400)
+                            Spacer()
+                            if let b = CityBuilding.find(id: selectedBuildingId) {
+                                Text(b.displayName(for: l10n.language))
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundColor(selectedCategory.themeColor)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+
+                        let buildings = CityBuilding.buildings(for: selectedCategory)
+                        VStack(spacing: 8) {
+                            ForEach(buildings) { b in
+                                let isSelected = (selectedBuildingId == b.id)
+                                Button(action: {
+                                    withAnimation(.spring(response: 0.25)) {
+                                        selectedBuildingId = b.id
+                                    }
+                                    #if canImport(UIKit)
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    #endif
+                                }) {
+                                    HStack(spacing: 12) {
+                                        Text(b.emoji)
+                                            .font(.system(size: 20))
+                                            .frame(width: 38, height: 38)
+                                            .background(isSelected ? selectedCategory.themeColor.opacity(0.15) : Color.slate100)
+                                            .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(b.displayName(for: l10n.language))
+                                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                .foregroundColor(isSelected ? selectedCategory.themeColor : Color.deepNavy)
+                                            Text(b.description(for: l10n.language))
+                                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                                .foregroundColor(Color.slate400)
+                                        }
+
+                                        Spacer()
+
+                                        if isSelected {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.system(size: 18, weight: .bold))
+                                                .foregroundColor(selectedCategory.themeColor)
+                                        } else {
+                                            Circle()
+                                                .stroke(Color.slate200, lineWidth: 1.5)
+                                                .frame(width: 18, height: 18)
+                                        }
+                                    }
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(isSelected ? selectedCategory.softBackgroundColor.opacity(0.6) : Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(isSelected ? selectedCategory.themeColor : Color.slate200, lineWidth: isSelected ? 1.5 : 1)
+                                    )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -235,6 +305,7 @@ public struct EditTransactionSheet: View {
             merchantText = transaction.merchant
             amountText = formatAmount(abs(transaction.amount))
             selectedCategory = transaction.category
+            selectedBuildingId = transaction.buildingIdRaw ?? transaction.buildingId
         }
     }
 
@@ -245,6 +316,7 @@ public struct EditTransactionSheet: View {
         return Button(action: {
             withAnimation(.spring(response: 0.25)) {
                 selectedCategory = cat
+                updateBuildingForCategory(cat)
             }
             #if canImport(UIKit)
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -262,6 +334,18 @@ public struct EditTransactionSheet: View {
             .animation(.spring(response: 0.25), value: isSelected)
         }
         .buttonStyle(.plain)
+    }
+
+    private func updateBuildingForCategory(_ cat: SpendingCategory) {
+        let available = CityBuilding.buildings(for: cat)
+        if available.contains(where: { $0.id == selectedBuildingId }) {
+            // Keep matching
+        } else {
+            selectedBuildingId = CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: merchantText)
+            if !available.contains(where: { $0.id == selectedBuildingId }), let first = available.first {
+                selectedBuildingId = first.id
+            }
+        }
     }
 
     // MARK: - Save
@@ -284,20 +368,17 @@ public struct EditTransactionSheet: View {
             transaction.note = "זיכוי מאושר"
         }
         // A correction here is knowledge about this merchant, not just this row.
-        if transaction.category != selectedCategory {
+        if transaction.category != selectedCategory || transaction.buildingIdRaw != selectedBuildingId {
             DatabaseService.shared.rememberCorrection(
                 merchant: transaction.merchant,
-                category: selectedCategory
+                category: selectedCategory,
+                buildingId: selectedBuildingId
             )
         }
         transaction.category = selectedCategory
+        transaction.buildingIdRaw = selectedBuildingId
         transaction.isConfirmed = true
         transaction.confidenceScore = 1.0
-        // The user's chosen category is authoritative, including its city building.
-        transaction.buildingIdRaw = CategorizationEngine.shared.mapToBuildingId(
-            category: selectedCategory,
-            merchant: transaction.merchant
-        )
         try? modelContext.save()
         #if canImport(UIKit)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -319,7 +400,7 @@ public struct EditTransactionSheet: View {
     }
 
     private func formatAmount(_ v: Double) -> String {
-        if v == v.rounded() { return "\(Int(v))" }
+        if v == v.rounded() { return "\(MoneyAmount.displayInt(v))" }
         return String(format: "%.2f", v)
     }
 }

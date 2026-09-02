@@ -11,11 +11,11 @@ public struct QuickAddSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
     public let initialOpenScan: Bool
-    public let onSave: (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?) -> Void
+    public let onSave: (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     
     public init(
         initialOpenScan: Bool = false,
-        onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?) -> Void
+        onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
         self.initialOpenScan = initialOpenScan
         self.onSave = onSave
@@ -25,6 +25,7 @@ public struct QuickAddSheet: View {
     @State private var note: String = ""
     @State private var selectedCurrency: CurrencyType = .ils
     @State private var selectedCategory: SpendingCategory? = nil
+    @State private var selectedBuildingId: String? = nil
     @State private var showErrorHint = false
     @State private var paymentCount: Int = 1
 
@@ -41,7 +42,9 @@ public struct QuickAddSheet: View {
     
     private func parseAmount(_ text: String) -> Double? {
         let clean = text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespacesAndNewlines)
-        return Double(clean)
+        // Everything the user can type goes through the shared ceiling. A long paste used to
+        // become 1e20, save fine, and then trap every Int() money display in the app.
+        return MoneyAmount.sanitized(Double(clean))
     }
 
     private func dismissKeyboard() {
@@ -262,6 +265,13 @@ public struct QuickAddSheet: View {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
                             selectedCategory = cat
                             showErrorHint = false
+                            let available = CityBuilding.buildings(for: cat)
+                            if !available.contains(where: { $0.id == selectedBuildingId }) {
+                                selectedBuildingId = CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
+                                if !available.contains(where: { $0.id == selectedBuildingId }), let first = available.first {
+                                    selectedBuildingId = first.id
+                                }
+                            }
                         }
                         // Dismiss keyboard so user has full view of save button & options
                         isAmountFocused = false
@@ -294,6 +304,57 @@ public struct QuickAddSheet: View {
                 }
             }
             .padding(.horizontal, 20)
+
+            // Dynamic Building Chips
+            if let cat = selectedCategory {
+                let buildings = CityBuilding.buildings(for: cat)
+                if buildings.count > 1 {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text(l10n.language == .hebrew ? "בניין בעיר:" : "3D Building:")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.slate400)
+                            Spacer()
+                            if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
+                                Text(building.displayName(for: l10n.language))
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundColor(cat.themeColor)
+                            }
+                        }
+                        .padding(.horizontal, 22)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(buildings) { b in
+                                    let isBSelected = (selectedBuildingId == b.id)
+                                    Button(action: {
+                                        Haptics.selection()
+                                        withAnimation(.spring(response: 0.25)) {
+                                            selectedBuildingId = b.id
+                                        }
+                                    }) {
+                                        HStack(spacing: 5) {
+                                            Text(b.emoji)
+                                                .font(.system(size: 13))
+                                            Text(b.displayName(for: l10n.language))
+                                                .font(.system(size: 11, weight: isBSelected ? .bold : .medium, design: .rounded))
+                                                .foregroundColor(isBSelected ? cat.themeColor : Color.deepNavy)
+                                        }
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(isBSelected ? cat.softBackgroundColor : Color.cardBackground)
+                                        .clipShape(Capsule())
+                                        .overlay(Capsule().stroke(isBSelected ? cat.themeColor : Color.borderSubtle, lineWidth: isBSelected ? 1.5 : 1))
+                                    }
+                                    .bouncyPress(scale: 0.95)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
         }
     }
 
@@ -434,7 +495,7 @@ public struct QuickAddSheet: View {
         let origCurr: String? = selectedCurrency == .ils ? nil : selectedCurrency.symbol
         let rate: Double? = selectedCurrency == .ils ? nil : selectedCurrency.rateToILS
 
-        onSave(converted, category, merchant, origAmt, origCurr, rate)
+        onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId)
         Haptics.notify(.success)
         dismiss()
     }

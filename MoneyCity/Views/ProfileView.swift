@@ -8,13 +8,12 @@ public struct ProfileView: View {
     @Query private var allEnrichments: [CityEnrichment]
     @Query private var budgets: [CategoryBudget]
 
-    @AppStorage("userName") private var userName = "בנימין"
-    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 8000.0
+    @AppStorage("userName") private var userName = ""
+    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
     @State private var showSettings = false
     @State private var showBudgetsSheet = false
     @State private var showRecurringSheet = false
     @State private var showGoalsSheet = false
-    @State private var showIngestLogSheet = false
     @State private var showApplePayGuideSheet = false
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
@@ -116,25 +115,29 @@ public struct ProfileView: View {
         return "\(pct)% " + (l10n.language == .hebrew ? "מהיעד" : "of goal")
     }
 
+    /// Empty until the user types their own name. There is no default person.
     private var displayName: String {
         var clean = userName.trimmingCharacters(in: .whitespacesAndNewlines)
         if clean.hasPrefix("העיר של ") {
             clean = String(clean.dropFirst("העיר של ".count))
         }
-        return clean.isEmpty ? (l10n.language == .hebrew ? "בנימין" : "Binyamin") : clean
+        return clean
     }
 
     private var greetingText: String {
         let hour = Calendar.current.component(.hour, from: Date())
         let isHe = l10n.language == .hebrew
         let name = displayName
+        let base: String
         if hour < 12 {
-            return isHe ? "בוקר טוב, \(name)" : "Good morning, \(name)"
+            base = isHe ? "בוקר טוב" : "Good morning"
         } else if hour < 17 {
-            return isHe ? "צהריים טובים, \(name)" : "Good afternoon, \(name)"
+            base = isHe ? "צהריים טובים" : "Good afternoon"
         } else {
-            return isHe ? "ערב טוב, \(name)" : "Good evening, \(name)"
+            base = isHe ? "ערב טוב" : "Good evening"
         }
+        // No name set yet: greet without one rather than inventing a person.
+        return name.isEmpty ? base : "\(base), \(name)"
     }
 
     private var transactionCount: Int { allTransactions.count }
@@ -198,10 +201,6 @@ public struct ProfileView: View {
         }
         .sheet(isPresented: $showGoalsSheet) {
             SavingsGoalsSheet()
-                .environmentObject(l10n)
-        }
-        .sheet(isPresented: $showIngestLogSheet) {
-            ApplePayDiagnosticsView()
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showApplePayGuideSheet) {
@@ -527,17 +526,6 @@ public struct ProfileView: View {
                 showApplePayGuideSheet = true
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 62)
-
-            menuRow(
-                title: l10n.language == .hebrew ? "אבחון Apple Pay ודיאגנוסטיקה" : "Apple Pay Diagnostics & Dev Hub",
-                subtitle: l10n.language == .hebrew ? "בדיקת Pipeline, נתונים גולמיים מ-Wallet ויצוא דוח" : "Pipeline steps, raw Wallet inspection & export",
-                iconBg: Color.themeYellowSoft
-            ) {
-                ScannerLensVectorIcon(color: Color.themeYellow)
-            } action: {
-                showIngestLogSheet = true
-            }
 
             Divider().background(Color.borderSubtle).padding(.leading, 62)
 
@@ -690,8 +678,8 @@ public struct SettingsSheet: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query private var allTransactions: [Transaction]
 
-    @AppStorage("userName") private var userName = "בנימין"
-    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 8000.0
+    @AppStorage("userName") private var userName = ""
+    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
     @AppStorage("notifications_enabled") private var notificationsEnabled = true
     @AppStorage("haptics_enabled") private var hapticsEnabled = true
     
@@ -761,7 +749,7 @@ public struct SettingsSheet: View {
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
-                                TextField("שם", text: $userName)
+                                TextField(l10n.language == .hebrew ? "שם" : "Name", text: $userName)
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .multilineTextAlignment(.trailing)
                                     .foregroundColor(Color.primaryBlue)
@@ -1347,24 +1335,42 @@ public struct ApplePayGuideSheet: View {
                     .background(Color.white)
                     .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
                     
-                    // Quick Action Link
+                    // Action Links
                     #if os(iOS)
-                    if let url = URL(string: "shortcuts://") {
-                        Link(destination: url) {
-                            HStack(spacing: 8) {
-                                DistrictFinanceVectorIcon(color: Color.white)
-                                Text(isHebrew ? "פתח את אפליקציית קיצורים עכשיו" : "Open Shortcuts App Now")
-                                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    VStack(spacing: 10) {
+                        if let shortcutUrl = URL(string: "https://www.icloud.com/shortcuts/62f2a9f1d7324f9d872bbd30fd9ea8c3") {
+                            Link(destination: shortcutUrl) {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "arrow.down.app.fill")
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text(isHebrew ? "הורד את הקיצור המוכן (קליק אחד)" : "Download Ready Shortcut (1-Click)")
+                                        .font(.system(size: 15, weight: .black, design: .rounded))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                .clipShape(Capsule())
+                                .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 15)
-                            .background(Color.primaryBlue)
-                            .clipShape(Capsule())
-                            .shadow(color: Color.primaryBlue.opacity(0.3), radius: 8, y: 3)
                         }
-                        .padding(.top, 6)
+
+                        if let url = URL(string: "shortcuts://") {
+                            Link(destination: url) {
+                                HStack(spacing: 8) {
+                                    DistrictFinanceVectorIcon(color: Color.primaryBlue)
+                                    Text(isHebrew ? "פתח את אפליקציית 'קיצורים'" : "Open Shortcuts App")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                }
+                                .foregroundColor(Color.primaryBlue)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(Color.primaryBlue.opacity(0.08))
+                                .clipShape(Capsule())
+                            }
+                        }
                     }
+                    .padding(.top, 6)
                     #endif
                     
                     Spacer(minLength: 30)

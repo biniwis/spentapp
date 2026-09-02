@@ -14,10 +14,10 @@ public struct MoneyCityWidgetEntry: TimelineEntry {
     
     public init(
         date: Date = Date(),
-        spentAmount: Double = 3420.0,
-        budgetAmount: Double = 8000.0,
-        savingsAmount: Double = 1850.0,
-        recentMerchant: String = "שופרסל",
+        spentAmount: Double = 0,
+        budgetAmount: Double = 0,
+        savingsAmount: Double = 0,
+        recentMerchant: String = "",
         isHebrew: Bool = true
     ) {
         self.date = date
@@ -44,10 +44,12 @@ public struct MoneyCityWidgetProvider: TimelineProvider {
 
     public func getTimeline(in context: Context, completion: @escaping (Timeline<MoneyCityWidgetEntry>) -> Void) {
         let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? UserDefaults.standard
-        let spent = defaults.double(forKey: "widget_monthly_spent") > 0 ? defaults.double(forKey: "widget_monthly_spent") : 3420.0
-        let budget = defaults.double(forKey: "widget_monthly_budget") > 0 ? defaults.double(forKey: "widget_monthly_budget") : 8000.0
-        let savings = defaults.double(forKey: "widget_monthly_savings") > 0 ? defaults.double(forKey: "widget_monthly_savings") : 1850.0
-        let merchant = defaults.string(forKey: "widget_recent_merchant") ?? "שופרסל"
+        // No invented figures. If the app has not published real numbers yet the widget shows
+        // zeros, which is true, rather than someone else's month.
+        let spent = defaults.double(forKey: "widget_monthly_spent")
+        let budget = defaults.double(forKey: "widget_monthly_budget")
+        let savings = defaults.double(forKey: "widget_monthly_savings")
+        let merchant = defaults.string(forKey: "widget_recent_merchant") ?? ""
         let isHebrew = (defaults.string(forKey: "app_language") ?? "he") == "he"
         
         let entry = MoneyCityWidgetEntry(

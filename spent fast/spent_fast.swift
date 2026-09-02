@@ -41,10 +41,10 @@ public struct SpentWidgetProvider: TimelineProvider {
 
     public func placeholder(in context: Context) -> SpentWidgetEntry {
         SpentWidgetEntry(
-            spentAmount: 3420.0,
-            budgetAmount: 8000.0,
-            savingsAmount: 1850.0,
-            recentMerchant: "סופרמרקט",
+            spentAmount: 0,
+            budgetAmount: 0,
+            savingsAmount: 0,
+            recentMerchant: "",
             isHebrew: true
         )
     }
@@ -70,9 +70,9 @@ public struct SpentWidgetProvider: TimelineProvider {
         
         return SpentWidgetEntry(
             date: Date(),
-            spentAmount: spent > 0 ? spent : 3420.0,
-            budgetAmount: budget > 0 ? budget : 8000.0,
-            savingsAmount: savings > 0 ? savings : 1850.0,
+            spentAmount: spent,
+            budgetAmount: budget,
+            savingsAmount: savings,
             recentMerchant: merchant,
             isHebrew: isHebrew
         )

@@ -56,7 +56,7 @@ public struct MainCityView: View {
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @Query(sort: \CityEnrichment.unlockedDate, order: .reverse) private var allEnrichments: [CityEnrichment]
     
-    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 8000.0
+    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
 
     @Query private var incomeSources: [IncomeSource]
     @Query private var categoryBudgets: [CategoryBudget]
@@ -182,11 +182,8 @@ public struct MainCityView: View {
 
                 // 2. Top Category Circles (Fixed at Top, hidden in Map Only mode)
                 if !isZenMode {
-                    VStack(spacing: 0) {
-                        districtSelectorRow
-                            .padding(.top, 2)
-                        Spacer()
-                    }
+                    districtSelectorRow
+                        .padding(.top, 2)
                 }
             }
             .opacity(activeTab == "city" ? 1.0 : 0.0)
@@ -206,44 +203,42 @@ public struct MainCityView: View {
 
             // Zen mode expand/collapse button (city only)
             if activeTab == "city" {
-                VStack {
-                    HStack {
-                        if isZenMode {
-                            HStack(spacing: 5) {
-                                Circle().fill(Color(red: 16/255, green: 185/255, blue: 129/255)).frame(width: 7, height: 7)
-                                Text(l10n.language == .hebrew ? "תצוגת מפה מלאה" : "Full Map View")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
-                            }
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 7)
-                            .background(Color.white.opacity(0.92))
-                            .clipShape(Capsule())
-                            .shadow(color: Color.black.opacity(0.10), radius: 6, y: 2)
-                            .padding(.leading, 16)
-                            .transition(.opacity)
+                HStack {
+                    if isZenMode {
+                        HStack(spacing: 5) {
+                            Circle().fill(Color(red: 16/255, green: 185/255, blue: 129/255)).frame(width: 7, height: 7)
+                            Text(l10n.language == .hebrew ? "תצוגת מפה מלאה" : "Full Map View")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                         }
-                        Spacer()
-                        Button(action: {
-                            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                                isZenMode.toggle()
-                            }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white.opacity(0.92))
-                                    .frame(width: 42, height: 42)
-                                    .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
-                                    .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
-                                DioramaExpandVectorIcon(isExpanded: isZenMode, color: Color.deepNavy)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 16)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.92))
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(0.10), radius: 6, y: 2)
+                        .padding(.leading, 16)
+                        .transition(.opacity)
                     }
-                    .padding(.top, isZenMode ? 56 : 94)
                     Spacer()
+                    Button(action: {
+                        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                            isZenMode.toggle()
+                        }
+                    }) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(0.92))
+                                .frame(width: 42, height: 42)
+                                .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
+                                .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                            DioramaExpandVectorIcon(isExpanded: isZenMode, color: Color.deepNavy)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 16)
                 }
+                .padding(.top, isZenMode ? 56 : 94)
+                .frame(maxHeight: .infinity, alignment: .top)
             }
 
             // ── Unified Floating Bottom Cards & Navigation Bar (Zero Overlap & Zero Dead Space) ──
@@ -312,9 +307,8 @@ public struct MainCityView: View {
             }
         }
         .sheet(isPresented: $showQuickAdd, onDismiss: { quickAddInitialScan = false }) {
-            QuickAddSheet(initialOpenScan: quickAddInitialScan) { amount, cat, note, origAmount, origCurrency, exchangeRate in
-                // The user picked the category, so the building must follow that choice —
-                // not the engine's guess about the note text.
+            QuickAddSheet(initialOpenScan: quickAddInitialScan) { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId in
+                let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
                 let tx = Transaction(
                     amount: amount,
                     currency: l10n.baseCurrency.symbol,
@@ -325,7 +319,7 @@ public struct MainCityView: View {
                     isManual: true,
                     isConfirmed: true,
                     note: nil,
-                    buildingId: CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note),
+                    buildingId: finalBuildingId,
                     originalAmount: origAmount,
                     originalCurrency: origCurrency,
                     exchangeRate: exchangeRate
@@ -387,15 +381,10 @@ public struct MainCityView: View {
                     showOnboarding = false
                 },
                 onTriggerSampleTransaction: {
-                    let seed = Transaction(
-                        amount: 14.0,
-                        merchant: "ארומה קפה",
-                        category: .food,
-                        timestamp: Date(),
-                        buildingId: "food_coffee"
-                    )
-                    modelContext.insert(seed)
-                    try? modelContext.save()
+                    // Deliberately empty. This used to write a real ₪14 "ארומה קפה" expense into
+                    // the ledger on first launch, so every user's first history entry, first
+                    // building total and first recap contained a purchase they never made.
+                    // The city starts empty and fills with the user's own spending.
                 }
             )
         }
@@ -455,8 +444,20 @@ public struct MainCityView: View {
     }
     
     private func handleSelectBuilding(_ building: DistrictBuildingInfo) {
+        // The 3D scene carries a `visits` count and a trend string baked into each mesh — they
+        // were authored as design placeholders and nothing ever updates them, so tapping the
+        // coffee shop always claimed "12 עסקאות • ‎+20%" whatever the user actually spent.
+        // Everything shown here is recomputed from the user's own transactions.
+        let real = DistrictBuildingInfo(
+            id: building.id,
+            districtId: building.districtId,
+            name: building.name,
+            amount: currentCity.buildingTotals[building.id] ?? 0,
+            visitCount: buildingVisitCount(for: building.id),
+            trendText: buildingTrendText(for: building.id)
+        )
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-            inspectedBuilding = building
+            inspectedBuilding = real
         }
     }
     
@@ -759,7 +760,7 @@ public struct MainCityView: View {
                                 .foregroundColor(Color.textMuted)
                         }
                         
-                        Text("\(l10n.baseCurrency.symbol)\(Int(currentCity.totalSpent))")
+                        Text("\(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(currentCity.totalSpent))")
                             .font(.system(size: 26, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                     }
@@ -771,7 +772,7 @@ public struct MainCityView: View {
                         DistrictParkVectorIcon(color: Color.themeMint)
                             .frame(width: 14, height: 14)
                             .scaleEffect(0.65)
-                        Text("\(l10n.baseCurrency.symbol)\(Int(currentCity.totalSavings)) \(l10n.language == .hebrew ? "בפארק" : "in Park")")
+                        Text("\(l10n.baseCurrency.symbol)\(MoneyAmount.displayInt(currentCity.totalSavings)) \(l10n.language == .hebrew ? "בפארק" : "in Park")")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(Color.themeMint)

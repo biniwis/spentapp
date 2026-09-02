@@ -396,30 +396,8 @@ public final class DatabaseService {
         return totals
     }
     
-    // MARK: - Sample Data & Reset
-    
-    public static var sampleTransactions: [Transaction] {
-        [
-            Transaction(amount: 650.0, merchant: "שופרסל מרקט", category: .food, buildingId: "food_super"),
-            Transaction(amount: 520.0, merchant: "מסעדת גוז׳ ודניאל", category: .food, buildingId: "food_bistro"),
-            Transaction(amount: 180.0, merchant: "ארומה אספרסו בר", category: .food, buildingId: "food_coffee"),
-            Transaction(amount: 130.0, merchant: "משלוח Wolt", category: .food, buildingId: "food_wolt"),
-            Transaction(amount: 820.0, merchant: "זארה בגדים ונעליים", category: .shopping, buildingId: "shop_boutique"),
-            Transaction(amount: 450.0, merchant: "KSP אלקטרוניקה וחשמל", category: .shopping, buildingId: "shop_tech"),
-            Transaction(amount: 150.0, merchant: "סינמה סיטי קולנוע", category: .shopping, buildingId: "shop_arcade"),
-            Transaction(amount: 320.0, merchant: "פז דלק ותדלוק", category: .transport),
-            Transaction(amount: 1850.0, merchant: "שכירות דירה חודשית", category: .housing, buildingId: "house_tower"),
-            Transaction(amount: 380.0, merchant: "חברת חשמל וארנונה", category: .housing, buildingId: "house_util"),
-            Transaction(amount: 140.0, merchant: "נטפליקס וספוטיפיי", category: .housing, buildingId: "house_subs"),
-            Transaction(amount: 1800.0, merchant: "הפקדה לחיסכון והשקעות", category: .savings, buildingId: "savings_sanctuary")
-        ]
-    }
-    
-    public func seedSampleData() async throws {
-        try await deleteAllTransactions()
-        try await save(transactions: Self.sampleTransactions)
-    }
-    
+    // MARK: - Reset
+
     public func resetAllData() async throws {
         try await deleteAllTransactions()
 
@@ -444,9 +422,9 @@ public final class DatabaseService {
 
     // MARK: - Learned Merchant Rules
     
-    public func rememberCorrection(merchant: String, category: SpendingCategory) {
+    public func rememberCorrection(merchant: String, category: SpendingCategory, buildingId: String? = nil) {
         let existing = fetchMerchantRules()
-        if let rule = MerchantRuleService.ruleAfterCorrection(merchant: merchant, category: category, existing: existing) {
+        if let rule = MerchantRuleService.ruleAfterCorrection(merchant: merchant, category: category, buildingId: buildingId, existing: existing) {
             context.insert(rule)
         }
         try? context.save()

@@ -101,9 +101,10 @@ public struct ProfileView: View {
 
     /// Effective budget limit across category caps or global budget
     private var effectiveBudgetLimit: Double {
-        let categoryTotal = budgets.reduce(0) { $0 + $1.monthlyLimit }
-        if categoryTotal > 0 { return categoryTotal }
-        return userMonthlyBudget > 0 ? userMonthlyBudget : 0
+        BudgetService.monthlySpendingBudget(
+            categoryBudgets: budgets,
+            overallBudget: userMonthlyBudget
+        )
     }
 
     private var budgetGoalText: String {
@@ -677,7 +678,6 @@ public struct SettingsSheet: View {
     @Query private var allTransactions: [Transaction]
 
     @AppStorage("userName") private var userName = ""
-    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
     @AppStorage("notifications_enabled") private var notificationsEnabled = true
     @AppStorage("haptics_enabled") private var hapticsEnabled = true
     
@@ -761,24 +761,20 @@ public struct SettingsSheet: View {
                                     .foregroundColor(Color.primaryBlue)
                             }
                             .padding(.vertical, 4)
-                            
+
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
-                            
+
+                            // The budget used to be editable here as well as on the budget
+                            // screen, and the two disagreed about what a budget even was.
+                            // It now has exactly one home.
                             HStack(spacing: 12) {
                                 Text(l10n.language == .hebrew ? "יעד תקציב חודשי" : "Monthly Budget Target")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
-                                HStack(spacing: 4) {
-                                    Text(l10n.baseCurrency.symbol)
-                                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                                        .foregroundColor(Color.primaryBlue)
-                                    TextField("8000", value: $userMonthlyBudget, format: .number)
-                                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                                        .multilineTextAlignment(.trailing)
-                                        .foregroundColor(Color.deepNavy)
-                                        .frame(width: 80)
-                                }
+                                Text(l10n.language == .hebrew ? "במסך התקציב" : "On the budget screen")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color.textMuted)
                             }
                             .padding(.vertical, 4)
                         }

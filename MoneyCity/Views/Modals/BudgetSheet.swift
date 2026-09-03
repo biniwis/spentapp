@@ -11,7 +11,10 @@ public struct BudgetSheet: View {
     @Query private var budgets: [CategoryBudget]
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
 
+    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
+
     @State private var drafts: [String: String] = [:]
+    @State private var overallDraft: String = ""
     @State private var newIncomeName: String = ""
     @State private var newIncomeAmount: String = ""
     @State private var showIncomeEditor = false
@@ -34,9 +37,40 @@ public struct BudgetSheet: View {
     }
 
     private var income: Double { BudgetService.expectedMonthlyIncome(incomeSources) }
-    private var totalBudgeted: Double { budgets.reduce(0) { $0 + $1.monthlyLimit } }
-    private var usages: [BudgetUsage] { BudgetService.usages(budgets: budgets, transactions: monthTransactions) }
     private var spendByCategory: [SpendingCategory: Double] { BudgetService.spentByCategory(monthTransactions) }
+    private var spentThisMonth: Double { BudgetService.totalSpent(monthTransactions) }
+
+    /// The ceilings as they are being typed, not as they were last saved — so the header
+    /// answers to the keyboard rather than lagging a save behind it.
+    private var draftedCeilings: Double {
+        budgetableCategories.reduce(0.0) { sum, cat in
+            sum + (TransactionIngest.normalizedAmount(nil, drafts[cat.rawValue] ?? "") ?? 0)
+        }
+    }
+
+    private var draftedOverall: Double {
+        TransactionIngest.normalizedAmount(nil, overallDraft) ?? 0
+    }
+
+    /// The number the city, the profile ring and the recap all read. Mirrors
+    /// `BudgetService.monthlySpendingBudget`, but from the drafts, so the page shows the
+    /// consequence of an edit while it is being made.
+    private var plannedSpending: Double {
+        draftedCeilings > 0 ? draftedCeilings : draftedOverall
+    }
+
+    private enum PlanBasis { case ceilings, overall, none }
+
+    private var planBasis: PlanBasis {
+        if draftedCeilings > 0 { return .ceilings }
+        if draftedOverall > 0 { return .overall }
+        return .none
+    }
+
+    /// Share of the month already gone, by completed days — the same clock the city uses.
+    private var monthElapsed: Double {
+        CitySimulationEngine.budgetAccruedFraction(for: Date(), now: Date())
+    }
 
     public var body: some View {
         NavigationStack {
@@ -81,25 +115,39 @@ public struct BudgetSheet: View {
     // MARK: - Summary
 
     private var summaryCard: some View {
-        let unbudgeted = income - totalBudgeted
-        return VStack(spacing: 12) {
+        VStack(spacing: 12) {
             HStack {
                 figure(isHebrew ? "הכנסה חודשית" : "Monthly income", income, Color.themeMint)
                 Divider().frame(height: 34)
-                figure(isHebrew ? "סך מתוקצב" : "Budgeted", totalBudgeted, Color.primaryBlue)
+                figure(isHebrew ? "תקציב הוצאות" : "Spending plan", plannedSpending, Color.primaryBlue)
+                Divider().frame(height: 34)
+                figure(isHebrew ? "הוצאת עד כה" : "Spent so far", spentThisMonth, paceColor)
             }
 
-            if income > 0 {
-                HStack(spacing: 6) {
-                    Image(systemName: unbudgeted >= 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 12, weight: .bold))
-                    Text(unbudgeted >= 0
-                         ? (isHebrew ? "\(l10n.format(amount: unbudgeted.rounded())) עוד לא מתוקצבים" : "\(l10n.format(amount: unbudgeted.rounded())) not yet budgeted")
-                         : (isHebrew ? "התקציבים חורגים מההכנסה ב-\(l10n.format(amount: -unbudgeted.rounded()))" : "Budgets exceed income by \(l10n.format(amount: -unbudgeted.rounded()))"))
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    Spacer()
-                }
-                .foregroundColor(unbudgeted >= 0 ? Color.themeMint : Color.red)
+            // Where the plan came from. Without this the page looked like it controlled
+            // something it did not, which is what made it feel broken.
+            noteRow(icon: planIcon, text: planExplanation, color: planBasis == .none ? Color.themeYellow : Color.slate400)
+
+            if plannedSpending > 0 {
+                noteRow(icon: paceIcon, text: paceExplanation, color: paceColor)
+            }
+
+            if income > 0 && plannedSpending > income {
+                noteRow(
+                    icon: "exclamationmark.triangle.fill",
+                    text: isHebrew
+                        ? "התוכנית גדולה מההכנסה ב-\(l10n.format(amount: (plannedSpending - income).rounded()))"
+                        : "The plan exceeds income by \(l10n.format(amount: (plannedSpending - income).rounded()))",
+                    color: Color.red
+                )
+            } else if income > 0 && plannedSpending > 0 {
+                noteRow(
+                    icon: "checkmark.circle.fill",
+                    text: isHebrew
+                        ? "\(l10n.format(amount: (income - plannedSpending).rounded())) נשארים לחיסכון אם תעמוד בתוכנית"
+                        : "\(l10n.format(amount: (income - plannedSpending).rounded())) left to save if you keep to the plan",
+                    color: Color.themeMint
+                )
             }
         }
         .padding(16)
@@ -108,13 +156,87 @@ public struct BudgetSheet: View {
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
     }
 
+    private func noteRow(icon: String, text: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .bold))
+            Text(text)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .foregroundColor(color)
+    }
+
+    private var planIcon: String {
+        switch planBasis {
+        case .ceilings: return "list.bullet"
+        case .overall:  return "target"
+        case .none:     return "questionmark.circle.fill"
+        }
+    }
+
+    private var planExplanation: String {
+        switch planBasis {
+        case .ceilings:
+            return isHebrew
+                ? "התוכנית היא סכום התקרות שהגדרת לקטגוריות. זה המספר שהעיר והפארק נמדדים מולו."
+                : "The plan is the sum of the ceilings you set below. This is the number the city and the park are measured against."
+        case .overall:
+            return isHebrew
+                ? "התוכנית היא הסכום החודשי הכולל שהגדרת. תקרה לקטגוריה תחליף אותו."
+                : "The plan is the overall monthly figure you set. Any category ceiling replaces it."
+        case .none:
+            return isHebrew
+                ? "לא הגדרת תוכנית, אז העיר נמדדת מול הממוצע של החודשים הקודמים שלך."
+                : "No plan set, so the city is measured against the average of your previous months."
+        }
+    }
+
+    /// Pace, not the raw total: two thirds of the budget on the fifth of the month is a very
+    /// different month from two thirds on the twenty-fifth.
+    private var expectedByNow: Double { plannedSpending * monthElapsed }
+
+    private var paceIcon: String {
+        if expectedByNow <= 0 { return "clock" }
+        return spentThisMonth > expectedByNow ? "hare.fill" : "tortoise.fill"
+    }
+
+    private var paceColor: Color {
+        guard plannedSpending > 0, expectedByNow > 0 else { return Color.deepNavy }
+        let ratio = spentThisMonth / expectedByNow
+        if ratio > 1.15 { return Color.red }
+        if ratio > 1.0  { return Color.themeYellow }
+        return Color.themeMint
+    }
+
+    private var paceExplanation: String {
+        let pct = Int((monthElapsed * 100).rounded())
+        guard expectedByNow > 0 else {
+            return isHebrew
+                ? "החודש רק התחיל — עוד אין מה למדוד מולו."
+                : "The month has only just started — nothing to measure against yet."
+        }
+        let diff = (spentThisMonth - expectedByNow).rounded()
+        if diff > 0 {
+            return isHebrew
+                ? "עברו \(pct)% מהחודש והוצאת \(l10n.format(amount: diff)) מעבר לקצב."
+                : "\(pct)% of the month has passed and you are \(l10n.format(amount: diff)) ahead of pace."
+        }
+        return isHebrew
+            ? "עברו \(pct)% מהחודש ואתה \(l10n.format(amount: -diff)) מתחת לקצב."
+            : "\(pct)% of the month has passed and you are \(l10n.format(amount: -diff)) under pace."
+    }
+
     private func figure(_ label: String, _ value: Double, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundColor(Color.slate400)
             Text("\(l10n.format(amount: value.rounded()))")
-                .font(.system(size: 21, weight: .black, design: .rounded))
+                .font(.system(size: 18, weight: .black, design: .rounded))
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
                 .foregroundColor(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -234,8 +356,18 @@ public struct BudgetSheet: View {
 
     private var budgetsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(isHebrew ? "תקציב חודשי לפי קטגוריה" : "Monthly budget by category")
+            Text(isHebrew ? "תקציב חודשי" : "Monthly budget")
                 .font(.system(size: 15, weight: .black, design: .rounded))
+
+            // This used to live alone in Settings, where nothing on this page reflected it.
+            overallRow
+
+            Text(isHebrew
+                 ? "או פרט לפי קטגוריה — כל תקרה שתמלא כאן מחליפה את הסכום הכולל."
+                 : "Or break it down by category — any ceiling you fill in here replaces the overall figure.")
+                .font(.system(size: 11, design: .rounded))
+                .foregroundColor(Color.slate400)
+                .fixedSize(horizontal: false, vertical: true)
 
             ForEach(budgetableCategories) { cat in
                 budgetRow(cat)
@@ -246,6 +378,49 @@ public struct BudgetSheet: View {
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
         .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+    }
+
+    private var overallRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "target")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(draftedCeilings > 0 ? Color.slate300 : Color.primaryBlue)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(isHebrew ? "סכום כולל" : "Overall")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                if draftedCeilings > 0 {
+                    Text(isHebrew ? "לא בשימוש — התקרות למטה גוברות" : "Not in use — the ceilings below take over")
+                        .font(.system(size: 10, design: .rounded))
+                        .foregroundColor(Color.slate400)
+                }
+            }
+            Spacer()
+            Text(symbol)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.slate400)
+
+            #if os(iOS)
+            TextField("—", text: $overallDraft)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.center)
+                .frame(width: 76)
+                .padding(.vertical, 6)
+                .background(sheetBg)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+            #else
+            TextField("—", text: $overallDraft)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+                .frame(width: 76)
+                .padding(.vertical, 6)
+                .background(sheetBg)
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+            #endif
+        }
+        .opacity(draftedCeilings > 0 ? 0.55 : 1.0)
+        .padding(.vertical, 5)
     }
 
     private func budgetRow(_ cat: SpendingCategory) -> some View {
@@ -344,6 +519,7 @@ public struct BudgetSheet: View {
             map[budget.category.rawValue] = String(format: "%.0f", budget.monthlyLimit)
         }
         drafts = map
+        overallDraft = userMonthlyBudget > 0 ? String(format: "%.0f", userMonthlyBudget) : ""
     }
 
     /// Written once on close rather than on every keystroke, so a half-typed "1" never
@@ -365,6 +541,7 @@ public struct BudgetSheet: View {
                 modelContext.delete(existing)
             }
         }
+        userMonthlyBudget = TransactionIngest.normalizedAmount(nil, overallDraft) ?? 0
         try? modelContext.save()
     }
 }

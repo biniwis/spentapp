@@ -7,11 +7,13 @@ public struct MonthlyRecapArchiveView: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
-    @Query private var incomeSources: [IncomeSource]
+    @Query private var categoryBudgets: [CategoryBudget]
     
     private var effectiveMonthlyBudget: Double {
-        let income = BudgetService.expectedMonthlyIncome(incomeSources)
-        return income > 0 ? income : userMonthlyBudget
+        BudgetService.monthlySpendingBudget(
+            categoryBudgets: categoryBudgets,
+            overallBudget: userMonthlyBudget
+        )
     }
     
     @State private var selectedRecap: MonthlyRecap? = nil

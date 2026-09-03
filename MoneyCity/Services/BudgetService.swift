@@ -89,6 +89,38 @@ public enum BudgetService {
         sources.filter(\.isActive).reduce(0) { $0 + $1.amount }
     }
 
+    // MARK: - The monthly spending plan
+
+    /// The one definition of "what I plan to spend this month".
+    ///
+    /// Three screens used to answer this question three different ways: the city took the
+    /// user's income, the profile ring took the sum of the category ceilings, and a field
+    /// buried in Settings held a third number almost nothing read. That is why the budget
+    /// screen felt broken — editing it moved none of the things it appeared to control.
+    ///
+    /// Income is deliberately not part of the answer. Using income as a spending budget
+    /// means spending every shekel you earn reads as perfectly on pace, which is the
+    /// opposite of what this app is for. Income stays what it is: the ceiling the plan
+    /// should fit inside.
+    ///
+    /// Priority: the ceilings the user set per category, because that is the most
+    /// deliberate statement of intent; then the single overall figure; then nothing, and
+    /// callers fall back to what the user's past months actually cost.
+    public static func monthlySpendingBudget(
+        categoryBudgets: [CategoryBudget],
+        overallBudget: Double
+    ) -> Double {
+        var ceilings: [SpendingCategory: Double] = [:]
+        for budget in categoryBudgets where budget.monthlyLimit > 0 {
+            let key = budget.category.canonical
+            guard key != .savings else { continue }
+            ceilings[key] = max(ceilings[key] ?? 0, budget.monthlyLimit)
+        }
+        let total = ceilings.values.reduce(0, +)
+        if total > 0 { return total }
+        return max(0, overallBudget)
+    }
+
     // MARK: - Usage
 
     /// One row per category the user has actually budgeted, ordered by urgency:

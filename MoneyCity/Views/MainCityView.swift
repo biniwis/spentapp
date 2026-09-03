@@ -58,7 +58,6 @@ public struct MainCityView: View {
     
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
 
-    @Query private var incomeSources: [IncomeSource]
     @Query private var categoryBudgets: [CategoryBudget]
 
     @State private var derived = CityDerivedCache()
@@ -83,9 +82,14 @@ public struct MainCityView: View {
 
     /// Real income wins over the stored fallback. The 8,000 default was a number the app
     /// invented for the user, and the whole savings figure was derived from it.
+    /// The city judges the month against the user's spending plan, not against their income —
+    /// see `BudgetService.monthlySpendingBudget`. Zero here means no plan was set, and the
+    /// engine falls back to what this user's own past months cost.
     private var effectiveMonthlyBudget: Double {
-        let income = BudgetService.expectedMonthlyIncome(incomeSources)
-        return income > 0 ? income : userMonthlyBudget
+        BudgetService.monthlySpendingBudget(
+            categoryBudgets: categoryBudgets,
+            overallBudget: userMonthlyBudget
+        )
     }
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     

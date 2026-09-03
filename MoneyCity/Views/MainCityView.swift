@@ -397,7 +397,11 @@ public struct MainCityView: View {
                                     inspectedBuilding = nil
                                 }
                             }, onShowFeed: { showFeed = true })
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .id(b.id)
+                            .transition(.asymmetric(
+                                insertion: .offset(y: 16).combined(with: .opacity),
+                                removal: .opacity
+                            ))
                         } else if let b = inspectedBuilding {
                             InspectorModalView(info: b, onClose: {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -413,7 +417,13 @@ public struct MainCityView: View {
                                     showFeed = true
                                 }
                             })
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            // Identity keyed on the building, so exchanging one card for
+                            // another is an insertion the transition can actually play.
+                            .id(b.id)
+                            .transition(.asymmetric(
+                                insertion: .offset(y: 16).combined(with: .opacity),
+                                removal: .opacity
+                            ))
                         } else if let dist = selectedDistrict {
                             DistrictDeepDiveCard(districtId: dist) {
                                 withAnimation { selectedDistrict = nil; inspectedBuilding = nil }
@@ -596,6 +606,7 @@ public struct MainCityView: View {
     }
     
     private func handleSelectDistrict(_ dist: String?) {
+        if dist != selectedDistrict { Haptics.selection() }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             selectedDistrict = dist
             if dist == nil {
@@ -632,7 +643,18 @@ public struct MainCityView: View {
             visitCount: buildingVisitCount(for: building.id),
             trendText: buildingTrendText(for: building.id)
         )
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+        // Selecting a different building only changed the numbers inside a card that was
+        // already on screen, so SwiftUI reused the same view: no transition ran, nothing moved,
+        // and the tap felt like it had missed. The `.id` on the card below makes a swap a real
+        // insertion so it animates, and the feedback here distinguishes the two cases —
+        // opening a card from nothing, and exchanging one for another.
+        let isSwap = inspectedBuilding != nil && inspectedBuilding?.id != real.id
+        if isSwap {
+            Haptics.selection()
+        } else if inspectedBuilding == nil {
+            Haptics.impact(.light)
+        }
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
             inspectedBuilding = real
         }
     }
@@ -718,6 +740,10 @@ public struct MainCityView: View {
         .frame(maxWidth: .infinity)
     }
     
+    private func isPillSelected(_ pill: BuildingPillItem) -> Bool {
+        inspectedBuilding?.id == pill.id
+    }
+
     private struct BuildingPillItem: Identifiable {
         let id: String
         let title: String
@@ -887,15 +913,24 @@ public struct MainCityView: View {
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(inspectedBuilding?.id == pill.id ? Color.themeLavenderSoft.opacity(0.5) : Color.white)
+                                .background(isPillSelected(pill) ? Color.themeLavenderSoft : Color.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(inspectedBuilding?.id == pill.id ? Color.primaryBlue : Color.borderSubtle, lineWidth: 1.2)
+                                        .stroke(isPillSelected(pill) ? Color.primaryBlue : Color.borderSubtle,
+                                                lineWidth: isPillSelected(pill) ? 2 : 1.2)
                                 )
-                                .shadow(color: Color.deepNavy.opacity(0.04), radius: 4, y: 2)
+                                // Lifted and slightly larger, so which one is selected reads
+                                // from the corner of the eye rather than needing to be looked
+                                // for. The tint and hairline border alone did not register.
+                                .scaleEffect(isPillSelected(pill) ? 1.05 : 1.0)
+                                .shadow(color: isPillSelected(pill) ? Color.primaryBlue.opacity(0.22) : Color.deepNavy.opacity(0.04),
+                                        radius: isPillSelected(pill) ? 7 : 4,
+                                        y: isPillSelected(pill) ? 3 : 2)
+                                .animation(.spring(response: 0.28, dampingFraction: 0.7), value: inspectedBuilding?.id)
                             }
                             .buttonStyle(.plain)
+                            .bouncyPress(scale: 0.94)
                         }
                     }
                     .padding(.horizontal, 12)

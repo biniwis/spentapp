@@ -5089,6 +5089,10 @@
         if (hits.length > 0) {
           const bData = hits[0].object.userData;
           if (bData) {
+            // Acknowledge the hit on the thing that was hit. Without this the only response
+            // to tapping a building is a card at the far end of the screen quietly changing
+            // its text, and a tap that lands reads exactly like a tap that missed.
+            pulseBuilding(hits[0].object);
             if (currentMode === "city" && CAM_MODES[bData.district]) {
               setDistrict(bData.district);
             }
@@ -5211,6 +5215,35 @@
         spinVel = 0; tiltVel = 0; panVelX = 0; panVelZ = 0;
       }
     }
+    /// A short bounce on a tapped building. Scale only, on the mesh's own parent group where
+    /// there is one, so nothing needs to know how a given building was assembled.
+    const buildingPulses = [];
+    function pulseBuilding(mesh) {
+      if (!mesh) return;
+      // Deliberately the mesh, not its group: a building's group scale is driven every frame
+      // by the growth lerp, so anything written there is gone by the next frame.
+      const existing = buildingPulses.find(p => p.obj === mesh);
+      if (existing) { existing.t = 0; return; }
+      buildingPulses.push({ obj: mesh, t: 0, baseY: mesh.scale.y, baseXZ: mesh.scale.x, baseZ: mesh.scale.z });
+    }
+
+    function stepBuildingPulses(dt) {
+      for (let i = buildingPulses.length - 1; i >= 0; i--) {
+        const p = buildingPulses[i];
+        p.t += dt;
+        const k = Math.min(1, p.t / 0.42);
+        // One squash-and-recover, easing out — enough to catch the eye, over before it annoys.
+        const amp = Math.sin(k * Math.PI) * (1 - k) * 0.16;
+        p.obj.scale.y  = p.baseY  * (1 + amp);
+        p.obj.scale.x  = p.baseXZ * (1 - amp * 0.45);
+        p.obj.scale.z  = p.baseZ  * (1 - amp * 0.45);
+        if (k >= 1) {
+          p.obj.scale.set(p.baseXZ, p.baseY, p.baseZ);
+          buildingPulses.splice(i, 1);
+        }
+      }
+    }
+
     window.setDistrict = setDistrict;
 
     // Returning to the city view has to work even when the camera is already in city mode —
@@ -5753,6 +5786,7 @@
         return;
       }
       const dt = Math.min(0.05, (t - last) / 1000); last = t;
+      stepBuildingPulses(dt);
       const T = t * 0.001;
 
       try {

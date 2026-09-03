@@ -121,14 +121,26 @@ public struct MainCityView: View {
         hasher.combine(currentDate.timeIntervalSinceReferenceDate)
         hasher.combine(effectiveMonthlyBudget)
         hasher.combine(typicalMonthlySpend)
+        hasher.combine(lifetimeSavings)
         return derived.city(key: hasher.finalize()) {
             CitySimulationEngine.shared.generateCity(
                 for: currentDate,
                 transactions: displayTransactions,
                 estimatedMonthlyBudget: effectiveMonthlyBudget,
-                typicalMonthlySpend: typicalMonthlySpend
+                typicalMonthlySpend: typicalMonthlySpend,
+                lifetimeSavings: lifetimeSavings
             )
         }
+    }
+
+    /// Everything put aside since the user started. Needs the whole history, not the month
+    /// on screen, which is why it is computed here and handed to the engine.
+    private var lifetimeSavings: Double {
+        CitySimulationEngine.lifetimeSavings(
+            allTransactions: allTransactions,
+            monthlyBudget: effectiveMonthlyBudget,
+            typicalMonthlySpend: typicalMonthlySpend
+        )
     }
     
     /// What a normal month costs this user, averaged over the months they have completed.
@@ -190,6 +202,8 @@ public struct MainCityView: View {
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
                     parkHealth: currentCity.parkHealth,
+                    reserveMaturity: currentCity.reserveMaturity,
+                    lifetimeSavings: currentCity.lifetimeSavings,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
                     habits: currentCity.habits,
@@ -271,7 +285,17 @@ public struct MainCityView: View {
                 VStack(spacing: 8) {
                     Spacer()
                     if activeTab == "city" {
-                        if let b = inspectedBuilding {
+                        if let b = inspectedBuilding, b.id == "savings_sanctuary" {
+                            // The reserve is the one place in the city that measures what was
+                            // NOT spent, so the spend-shaped card — amount, item count, trend —
+                            // had nothing true to put in any of its three slots.
+                            ReserveModalView(snapshot: reserveSnapshot, onClose: {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    inspectedBuilding = nil
+                                }
+                            }, onShowFeed: { showFeed = true })
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        } else if let b = inspectedBuilding {
                             InspectorModalView(info: b, onClose: {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                     inspectedBuilding = nil
@@ -469,6 +493,22 @@ public struct MainCityView: View {
         }
     }
     
+    /// Everything the reserve's card needs, taken from the same city model the 3D scene draws,
+    /// so the card and the land can never disagree.
+    private var reserveSnapshot: ReserveSnapshot {
+        let city = currentCity
+        let elapsed = CitySimulationEngine.budgetAccruedFraction(for: currentDate, now: Date())
+        return ReserveSnapshot(
+            savedThisMonth: city.totalSavings,
+            lifetimeSavings: city.lifetimeSavings,
+            basis: city.savingsBasis,
+            health: city.parkHealth,
+            monthElapsed: elapsed,
+            spentThisMonth: city.totalSpent,
+            plannedSpending: effectiveMonthlyBudget > 0 ? effectiveMonthlyBudget : typicalMonthlySpend
+        )
+    }
+
     private func handleSelectBuilding(_ building: DistrictBuildingInfo) {
         // The 3D scene carries a `visits` count and a trend string baked into each mesh — they
         // were authored as design placeholders and nothing ever updates them, so tapping the
@@ -1300,6 +1340,227 @@ struct InspectorModalView: View {
                 .background(isSortingHub ? Color(red: 234/255, green: 88/255, blue: 12/255) : Color.primaryBlue)
                 .clipShape(Capsule())
                 .shadow(color: (isSortingHub ? Color(red: 234/255, green: 88/255, blue: 12/255) : Color.primaryBlue).opacity(0.25), radius: 6, y: 2)
+            }
+            .buttonStyle(.plain)
+            .bouncyPress(scale: 0.94)
+        }
+    }
+}
+
+
+/// What the nature reserve knows about itself.
+struct ReserveSnapshot {
+    let savedThisMonth: Double
+    let lifetimeSavings: Double
+    let basis: CitySimulationEngine.SavingsBasis
+    let health: Double
+    let monthElapsed: Double
+    let spentThisMonth: Double
+    let plannedSpending: Double
+}
+
+/// The reserve's own card.
+///
+/// Every other building answers "how much did I spend here". The reserve answers the exact
+/// opposite — what stayed put — and it is the only thing in the city that carries over between
+/// months. Handing it the spending card meant three fields that were either meaningless
+/// (a visit count for a park) or actively wrong (a "trend" on money that was never spent).
+struct ReserveModalView: View {
+    let snapshot: ReserveSnapshot
+    let onClose: () -> Void
+    let onShowFeed: () -> Void
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    private var isHebrew: Bool { l10n.language == .hebrew }
+    private let reserveGreen = Color(red: 16/255, green: 185/255, blue: 129/255)
+
+    /// The condition of the land, in words. The number itself means nothing to anyone.
+    private var conditionText: String {
+        switch snapshot.health {
+        case 0.95...:     return isHebrew ? "פורחת" : "Flourishing"
+        case 0.80..<0.95: return isHebrew ? "משגשגת" : "Thriving"
+        case 0.68..<0.80: return isHebrew ? "מטופחת" : "Well kept"
+        case 0.45..<0.68: return isHebrew ? "מתחילה להתייבש" : "Drying out"
+        default:          return isHebrew ? "יבשה" : "Parched"
+        }
+    }
+
+    private var conditionColor: Color {
+        if snapshot.health >= 0.78 { return reserveGreen }
+        if snapshot.health >= 0.55 { return Color.themeYellow }
+        return Color.red
+    }
+
+    /// Where this month's figure came from — the question the old card never answered, and the
+    /// reason the number looked like it had been made up.
+    private var basisText: String {
+        switch snapshot.basis {
+        case .deposits:
+            return isHebrew ? "מהפקדות שהעברת לחיסכון" : "from deposits you moved to savings"
+        case .underBudget:
+            return isHebrew ? "ממה שלא הוצאת מהתקציב עד עכשיו" : "from budget you have not spent yet"
+        case .belowUsual:
+            return isHebrew ? "ממה שחסכת לעומת חודש רגיל אצלך" : "from spending less than your usual month"
+        case .noBaseline:
+            return isHebrew ? "עוד אין תקציב או היסטוריה להשוות אליהם" : "no budget or history to compare against yet"
+        }
+    }
+
+    /// Straight-line projection, and only once enough of the month has gone by to mean anything.
+    private var projection: Double? {
+        guard snapshot.monthElapsed >= 0.20, snapshot.savedThisMonth > 0 else { return nil }
+        return snapshot.savedThisMonth / snapshot.monthElapsed
+    }
+
+    private var paceText: String {
+        let pct = Int((snapshot.monthElapsed * 100).rounded())
+        guard snapshot.plannedSpending > 0, snapshot.monthElapsed > 0 else {
+            return isHebrew
+                ? "מוקדם מדי בחודש בשביל מסקנה — השמורה מחכה לנתונים."
+                : "Too early in the month to judge — the reserve is waiting for data."
+        }
+        let expected = snapshot.plannedSpending * snapshot.monthElapsed
+        let diff = (snapshot.spentThisMonth - expected).rounded()
+        if diff > 0 {
+            return isHebrew
+                ? "עברו \(pct)% מהחודש והוצאת \(l10n.format(amount: diff)) מעבר לקצב, ולכן היא מתייבשת."
+                : "\(pct)% of the month has gone and you are \(l10n.format(amount: diff)) ahead of pace, so it is drying out."
+        }
+        return isHebrew
+            ? "עברו \(pct)% מהחודש ואתה \(l10n.format(amount: -diff)) מתחת לקצב, ולכן היא ירוקה."
+            : "\(pct)% of the month has gone and you are \(l10n.format(amount: -diff)) under pace, so it is green."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            headerRow
+            figuresRow
+
+            Text(paceText)
+                .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                .foregroundColor(Color.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Divider().background(Color(red: 243/255, green: 244/255, blue: 246/255))
+            footerRow
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 28))
+        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(red: 243/255, green: 244/255, blue: 246/255), lineWidth: 1.5))
+        .shadow(color: Color.black.opacity(0.08), radius: 16, y: 6)
+        .padding(.horizontal, 20)
+    }
+
+    private var headerRow: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(reserveGreen.opacity(0.12))
+                    .frame(width: 46, height: 46)
+                CategoryVectorIcon(category: .savings, size: 24)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(isHebrew ? "שמורת הטבע והחיסכון" : "Nature & Savings Reserve")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                // The lifetime figure leads, because it is the thing the reserve actually is.
+                Text(snapshot.lifetimeSavings > 0
+                     ? (isHebrew
+                        ? "\(l10n.format(amount: snapshot.lifetimeSavings.rounded())) נצברו מאז שהתחלת"
+                        : "\(l10n.format(amount: snapshot.lifetimeSavings.rounded())) put aside since you started")
+                     : (isHebrew ? "עוד לא נצבר כלום — כאן זה מתחיל" : "Nothing put aside yet — this is where it starts"))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(reserveGreen)
+            }
+
+            Spacer()
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(Color.textMuted)
+                    .frame(width: 32, height: 32)
+                    .background(Color.appBackground)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var figuresRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isHebrew ? "החודש" : "This month")
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Text("\(l10n.format(amount: snapshot.savedThisMonth.rounded()))")
+                    .font(.system(size: 19, weight: .black, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text(basisText)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider().frame(height: 42)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isHebrew ? "מצב השמורה" : "Condition")
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Text(conditionText)
+                    .font(.system(size: 19, weight: .black, design: .rounded))
+                    .foregroundColor(conditionColor)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text(isHebrew ? "מתאפס בכל חודש — הקרקע נשארת" : "Resets each month — the land stays")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var footerRow: some View {
+        HStack(spacing: 8) {
+            if let projected = projection {
+                Text(isHebrew ? "בקצב הזה:" : "At this rate:")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Text(isHebrew
+                     ? "\(l10n.format(amount: projected.rounded())) עד סוף החודש"
+                     : "\(l10n.format(amount: projected.rounded())) by month end")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(reserveGreen)
+                    .lineLimit(1)
+            } else {
+                Text(isHebrew ? "כל שקל שלא יוצא נשאר כאן" : "Every shekel that stays put lands here")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button(action: onShowFeed) {
+                HStack(spacing: 5) {
+                    Text(isHebrew ? "הפקדות" : "Deposits")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    Text(verbatim: isHebrew ? "‹" : "›")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(Color.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(reserveGreen)
+                .clipShape(Capsule())
+                .shadow(color: reserveGreen.opacity(0.25), radius: 6, y: 2)
             }
             .buttonStyle(.plain)
             .bouncyPress(scale: 0.94)

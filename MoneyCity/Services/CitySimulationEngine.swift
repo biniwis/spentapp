@@ -28,6 +28,65 @@ public final class CitySimulationEngine: Sendable {
         return min(1.0, max(0.0, Double(completedDays) / Double(range.count)))
     }
 
+    /// Everything the user has put aside since they started, across every month.
+    ///
+    /// The reserve is the one part of the city that is not scoped to a month. Every other
+    /// district is rebuilt on the first, which is right for spending — last month's dinners
+    /// are not this month's problem — but wrong for savings. A patch of protected land that
+    /// vanishes every thirty days reads as a bug, not as a place, and it means a good year
+    /// of habits shows exactly the same as a good week.
+    ///
+    /// So the months that have finished are banked and never revisited, and only the month
+    /// in progress can still move. Within the current month the contribution can fall as the
+    /// user spends, but it is floored at zero, so a bad month costs them this month's growth
+    /// and nothing that came before it.
+    public static func lifetimeSavings(
+        allTransactions: [Transaction],
+        monthlyBudget: Double,
+        typicalMonthlySpend: Double,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Double {
+        let baseline = monthlyBudget > 0 ? monthlyBudget : typicalMonthlySpend
+
+        var byMonth: [Date: [Transaction]] = [:]
+        for tx in allTransactions {
+            guard let start = calendar.date(from: calendar.dateComponents([.year, .month], from: tx.timestamp))
+            else { continue }
+            byMonth[start, default: []].append(tx)
+        }
+
+        var total = 0.0
+        for (monthStart, txs) in byMonth {
+            let deposits = txs.filter { $0.category.canonical == .savings }.reduce(0.0) { $0 + $1.amount }
+            let spent = txs.filter { $0.category.canonical != .savings }.reduce(0.0) { $0 + $1.amount }
+            guard deposits > 0 || spent > 0 else { continue }
+
+            var restraint = 0.0
+            if baseline > 0 {
+                let accrued = baseline * budgetAccruedFraction(for: monthStart, now: now, calendar: calendar)
+                restraint = max(0.0, accrued - spent - deposits)
+            }
+            total += deposits + restraint
+        }
+        return total
+    }
+
+    /// How grown the reserve looks, 0 to just under 1.
+    ///
+    /// A saturating curve rather than a target, because a target needs a number to compare
+    /// against and any number picked here would be invented. This just keeps growing, quickly
+    /// at first and then more slowly, so an early deposit is visibly worth something and a
+    /// long-standing saver still sees movement. It never reaches 1, so there is always
+    /// somewhere left to go.
+    public static func reserveMaturity(lifetimeSavings: Double, monthlyBaseline: Double) -> Double {
+        guard lifetimeSavings > 0 else { return 0.0 }
+        // Half grown at roughly a month and a half of the user's own baseline, so the scale
+        // means the same thing to someone spending 3,000 a month and someone spending 30,000.
+        let anchor = monthlyBaseline > 0 ? monthlyBaseline * 1.5 : 4500.0
+        return lifetimeSavings / (lifetimeSavings + anchor)
+    }
+
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
     /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
     /// overspending pulls it down. This is the state a brand-new city opens in.
@@ -47,6 +106,7 @@ public final class CitySimulationEngine: Sendable {
         transactions: [Transaction],
         estimatedMonthlyBudget: Double = 0,
         typicalMonthlySpend: Double = 0,
+        lifetimeSavings: Double = 0,
         now: Date = Date()
     ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]
@@ -172,6 +232,15 @@ public final class CitySimulationEngine: Sendable {
                     - (CitySimulationEngine.healthyParkLevel - 0.12) * bad
             }
         }
+        // The first days of a month cannot support a verdict. On the 2nd, one day of budget is
+        // all that has accrued, so a single grocery run reads as triple the pace and the park
+        // browns overnight — which is what made it feel disconnected from anything the user did.
+        // Until roughly the first week is behind us the verdict is blended back towards normal,
+        // so the park settles into its judgement instead of lurching into one.
+        let verdictConfidence = min(1.0, accruedFraction / 0.20)
+        parkHealth = CitySimulationEngine.healthyParkLevel
+            + (parkHealth - CitySimulationEngine.healthyParkLevel) * verdictConfidence
+
         // Money actually moved into savings always helps, whatever the spending looked like.
         if directSavings > 0 {
             let depositTarget = baseline > 0 ? baseline * 0.10 : max(directSavings, 1.0)
@@ -180,6 +249,15 @@ public final class CitySimulationEngine: Sendable {
         // A full park means roughly a fifth of a month kept back — generous but reachable —
         // rather than an arbitrary fixed figure.
         let savingsTarget = baseline > 0 ? baseline * 0.20 : 0.0
+
+        // The reserve's size answers a different question from its colour: how much has been
+        // put aside over the whole time the user has been at this, rather than how this month
+        // is going. Passed in because it needs every month's transactions, not just this one's.
+        let reserve = max(lifetimeSavings, totalSavings)
+        let maturity = CitySimulationEngine.reserveMaturity(
+            lifetimeSavings: reserve,
+            monthlyBaseline: baseline
+        )
         buildingTotals["savings_sanctuary"] = totalSavings
         
         let highestCategory = totals.filter { $0.key != .savings && $0.key != .other }
@@ -279,6 +357,8 @@ public final class CitySimulationEngine: Sendable {
             savingsTarget: savingsTarget,
             savingsBasis: basis,
             parkHealth: parkHealth,
+            lifetimeSavings: reserve,
+            reserveMaturity: maturity,
             categoryTotals: totals,
             buildingTotals: buildingTotals,
             tiles: tiles,

@@ -282,6 +282,34 @@ public struct MainCityView: View {
             // Zen mode expand/collapse button (city only)
             if activeTab == "city" {
                 HStack {
+                    if isViewingPastMonth {
+                        // Deliberately not styled like the rest of the chrome: this is a state
+                        // the user did not choose to be in permanently, and it has to read as
+                        // temporary and reversible at a glance.
+                        Button(action: returnToCurrentMonth) {
+                            HStack(spacing: 7) {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .font(.system(size: 12, weight: .bold))
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(monthYearString)
+                                        .font(.system(size: 12.5, weight: .black, design: .rounded))
+                                    Text(l10n.language == .hebrew ? "חזרה לחודש הנוכחי" : "Back to this month")
+                                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                        .opacity(0.75)
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(Color.themeLavender)
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
+                        }
+                        .buttonStyle(.plain)
+                        .bouncyPress(scale: 0.94)
+                        .padding(.leading, 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
                     if isZenMode {
                         HStack(spacing: 5) {
                             Circle().fill(Color(red: 16/255, green: 185/255, blue: 129/255)).frame(width: 7, height: 7)
@@ -373,7 +401,10 @@ public struct MainCityView: View {
                             handleSelectDistrict(nil)
                             // Rotation, tilt, zoom and pan all live inside city mode, so
                             // clearing the district cannot undo them. This asks the map for
-                            // the opening view back.
+                            // the opening view back — and the opening view is this month, so
+                            // the tab is a way out of a past month as well as out of a
+                            // district.
+                            if isViewingPastMonth { currentDate = Date() }
                             cityViewResetToken &+= 1
                         }
                     )
@@ -1085,15 +1116,26 @@ public struct MainCityView: View {
     
     private var monthYearString: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "he_IL")
+        formatter.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
         formatter.dateFormat = "LLLL yyyy"
         return formatter.string(from: currentDate)
     }
-    
-    private func changeMonth(by delta: Int) {
-        if let newDate = Calendar.current.date(byAdding: .month, value: delta, to: currentDate) {
-            currentDate = newDate
+
+    /// The city can be shown for any month — the engine has always supported it — but nothing
+    /// on screen said which month was being shown, and there was no way back. Somebody sent to
+    /// a past month would have been stranded there with a screen that looked exactly like the
+    /// one they use every day.
+    private var isViewingPastMonth: Bool {
+        !Calendar.current.isDate(currentDate, equalTo: Date(), toGranularity: .month)
+    }
+
+    private func returnToCurrentMonth() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            currentDate = Date()
+            selectedDistrict = nil
+            inspectedBuilding = nil
         }
+        cityViewResetToken &+= 1
     }
     
     private var currentMonthTransactions: [Transaction] {

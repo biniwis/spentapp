@@ -29,6 +29,10 @@ public final class CitySimulationEngine: Sendable {
     }
 
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
+    /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
+    /// overspending pulls it down. This is the state a brand-new city opens in.
+    public static let healthyParkLevel: Double = 0.78
+
     /// What the savings park is actually measuring this month, so the app can say it plainly
     /// instead of showing a number with no explanation.
     public enum SavingsBasis: String, Sendable {
@@ -141,6 +145,38 @@ public final class CitySimulationEngine: Sendable {
         }
 
         let totalSavings = restraint + directSavings
+
+        // ── How the park LOOKS, which is a different question from how much was saved ────────
+        //
+        // The park used to accumulate from nothing: a new city opened onto bare ground and
+        // stayed bare until the user configured a budget. That is backwards. A city being looked
+        // after normally should look well kept, and the park should move in both directions from
+        // there — spending below your pace makes it flourish, overspending lets it go.
+        //
+        // So health is not the saved amount. It is where this month's pace sits relative to
+        // normal, and "normal" is a healthy, planted park.
+        var parkHealth = CitySimulationEngine.healthyParkLevel
+        let expectedByNow = baseline * accruedFraction
+        if baseline > 0, expectedByNow > 0, hasActivity {
+            let pace = totalSpent / expectedByNow
+            if pace <= 1.0 {
+                // Under your pace. Fully lush once you are 40% below it.
+                let good = min(1.0, (1.0 - pace) / 0.40)
+                parkHealth = CitySimulationEngine.healthyParkLevel
+                    + (1.0 - CitySimulationEngine.healthyParkLevel) * good
+            } else {
+                // Over it. Bottoms out at twice your pace, and never quite reaches nothing —
+                // a dead park is a punishment, not information.
+                let bad = min(1.0, (pace - 1.0) / 1.0)
+                parkHealth = CitySimulationEngine.healthyParkLevel
+                    - (CitySimulationEngine.healthyParkLevel - 0.12) * bad
+            }
+        }
+        // Money actually moved into savings always helps, whatever the spending looked like.
+        if directSavings > 0 {
+            let depositTarget = baseline > 0 ? baseline * 0.10 : max(directSavings, 1.0)
+            parkHealth = min(1.0, parkHealth + 0.22 * min(1.0, directSavings / depositTarget))
+        }
         // A full park means roughly a fifth of a month kept back — generous but reachable —
         // rather than an arbitrary fixed figure.
         let savingsTarget = baseline > 0 ? baseline * 0.20 : 0.0
@@ -242,6 +278,7 @@ public final class CitySimulationEngine: Sendable {
             totalSavings: totalSavings,
             savingsTarget: savingsTarget,
             savingsBasis: basis,
+            parkHealth: parkHealth,
             categoryTotals: totals,
             buildingTotals: buildingTotals,
             tiles: tiles,

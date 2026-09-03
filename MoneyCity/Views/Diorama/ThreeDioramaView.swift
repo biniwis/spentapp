@@ -34,6 +34,8 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let totalSavings: Double
     /// The amount that fills the savings park; 0 when the user has no baseline yet.
     public let savingsTarget: Double
+    /// How the park looks, 0 parched to 1 lush.
+    public let parkHealth: Double
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
     public let habits: BehavioralHabits
@@ -51,6 +53,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
+        parkHealth: Double = 0.78,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double] = [:],
         habits: BehavioralHabits = BehavioralHabits(),
@@ -67,6 +70,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
+        self.parkHealth = parkHealth
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.habits = habits
@@ -137,6 +141,8 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let savings: Double
         /// What a full savings park is worth for this user. 0 when there is no baseline.
         public let savingsTarget: Double
+        /// How the park looks, 0 parched to 1 lush.
+        public let parkHealth: Double
         public let otherAmount: Double?
         public let museumAmount: Double?
         public let pendingSortingCount: Int?
@@ -181,6 +187,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             transport: transport,
             savings: savings,
             savingsTarget: savingsTarget,
+            parkHealth: parkHealth,
             otherAmount: otherSpend,
             museumAmount: museumSpend,
             pendingSortingCount: (categoryTotals[.other] ?? 0) > 0 ? 1 : 0,

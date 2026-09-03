@@ -38,6 +38,8 @@ public struct MonthlyCity: Identifiable, Sendable {
     public var savingsTarget: Double
     /// What the savings figure is actually measuring, so the UI can explain it.
     public var savingsBasis: CitySimulationEngine.SavingsBasis
+    /// How the park looks, 0 parched to 1 lush. A normally-run month sits near 0.78.
+    public var parkHealth: Double
     public var categoryTotals: [SpendingCategory: Double]
     public var buildingTotals: [String: Double]
     public var tiles: [BuildingTile]
@@ -57,6 +59,7 @@ public struct MonthlyCity: Identifiable, Sendable {
         totalSavings: Double,
         savingsTarget: Double = 0,
         savingsBasis: CitySimulationEngine.SavingsBasis = .noBaseline,
+        parkHealth: Double = CitySimulationEngine.healthyParkLevel,
         categoryTotals: [SpendingCategory: Double] = [:],
         buildingTotals: [String: Double] = [:],
         tiles: [BuildingTile] = [],
@@ -71,6 +74,7 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.savingsBasis = savingsBasis
+        self.parkHealth = parkHealth
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.tiles = tiles

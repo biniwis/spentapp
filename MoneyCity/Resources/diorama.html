@@ -5415,17 +5415,22 @@
         // A real park does not change size. It fills in. The block stays exactly where it is and
         // the planting spreads outward from the middle as savings grow.
         ensureParkPlantings();
-        // A full park is a fifth of this user's own monthly baseline, sent from the app, rather
-        // than a fixed shekel figure that means something different to every user. With no
-        // baseline yet, any real deposit still shows as a half-planted park.
-        const savingsTarget = data.savingsTarget || 0;
-        const plantedFraction = savingsTarget > 0
-          ? Math.min(1, savings / savingsTarget)
-          : (savings > 0 ? 0.5 : 0);
-        const planted = 0.25 + 0.75 * plantedFraction;
+        // The app sends how the park is DOING, not how much was saved. A normally-run month
+        // arrives at about 0.78 — a well-kept park — and it moves both ways from there. A brand
+        // new city therefore opens onto a planted park rather than bare ground.
+        const health = (data.parkHealth !== undefined && isFinite(data.parkHealth))
+          ? Math.max(0, Math.min(1, data.parkHealth))
+          : 0.78;
+        const planted = 0.08 + 0.92 * health;
         for (let pi = 0; pi < parkPlantings.length; pi++) {
           const show = (pi / parkPlantings.length) < planted;
           if (parkPlantings[pi].obj.visible !== show) parkPlantings[pi].obj.visible = show;
+        }
+        // Below a healthy level the grass itself goes off, so a neglected park reads at a glance
+        // rather than only by counting what is missing. The tint multiplies the grass texture.
+        if (parkBase && parkBase.material && parkBase.material.color) {
+          const dry = Math.max(0, Math.min(1, (0.78 - health) / 0.66));
+          parkBase.material.color.setRGB(1.0 + dry * 0.10, 1.0 - dry * 0.22, 1.0 - dry * 0.45);
         }
         parkData.amount = Math.round(savings);
         parkData.trend = savings > 0 ? ("צמיחה ירוקה • ₪" + Math.round(savings)) : "התחל לחסוך כדי להצמיח את השמורה";

@@ -185,6 +185,7 @@ public struct MainCityView: View {
                     totalSpent: currentCity.totalSpent,
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
+                    parkHealth: currentCity.parkHealth,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
                     habits: currentCity.habits,

@@ -7,6 +7,7 @@ public struct DioramaReadyWrapper: View {
     public let totalSpent: Double
     public let totalSavings: Double
     public let savingsTarget: Double
+    public let parkHealth: Double
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
     public let habits: BehavioralHabits
@@ -26,6 +27,7 @@ public struct DioramaReadyWrapper: View {
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
+        parkHealth: Double = 0.78,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double],
         habits: BehavioralHabits,
@@ -42,6 +44,7 @@ public struct DioramaReadyWrapper: View {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
+        self.parkHealth = parkHealth
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.habits = habits
@@ -62,6 +65,7 @@ public struct DioramaReadyWrapper: View {
                 totalSpent: totalSpent,
                 totalSavings: totalSavings,
                 savingsTarget: savingsTarget,
+                parkHealth: parkHealth,
                 categoryTotals: categoryTotals,
                 buildingTotals: buildingTotals,
                 habits: habits,

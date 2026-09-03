@@ -63,8 +63,18 @@ public struct BudgetSheet: View {
                     Button(l10n.text(for: "close")) { commitDrafts(); dismiss() }
                         .foregroundColor(Color.primaryBlue)
                 }
+                // The sheet used to commit only from the close button, so swiping it down —
+                // which is how most people dismiss a sheet — threw away everything typed.
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(isHebrew ? "שמור" : "Save") { commitDrafts(); dismiss() }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.primaryBlue)
+                }
             }
             .onAppear(perform: loadDrafts)
+            // Belt and braces: a swipe-down, a background tap, or the app being backgrounded
+            // all still persist what the user typed.
+            .onDisappear(perform: commitDrafts)
         }
     }
 

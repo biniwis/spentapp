@@ -39,6 +39,10 @@ public struct ThreeDioramaView: ViewRepresentable {
     /// Everything put aside since the user started. Shown as a figure on the reserve's card;
     /// it deliberately has no say in how the garden looks, which is this month's business alone.
     public let lifetimeSavings: Double
+    /// Bumped by the app every time the user asks for the city view back. The map resets its
+    /// camera whenever this changes, which is the only way to reset a camera that is already
+    /// in city mode.
+    public let viewResetToken: Int
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
     public let habits: BehavioralHabits
@@ -58,6 +62,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
         lifetimeSavings: Double = 0,
+        viewResetToken: Int = 0,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double] = [:],
         habits: BehavioralHabits = BehavioralHabits(),
@@ -76,6 +81,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
         self.lifetimeSavings = lifetimeSavings
+        self.viewResetToken = viewResetToken
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.habits = habits
@@ -305,6 +311,7 @@ public struct ThreeDioramaView: ViewRepresentable {
           }
           // Always explicitly set district so zoom-out to city (null) never gets silently dropped
           \(districtJS)
+          if(window.resetCityView){ window.resetCityView(\(viewResetToken)); }
         }
         """
         // SwiftUI re-runs updateUIView on every parent body evaluation. Pushing an

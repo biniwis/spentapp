@@ -108,6 +108,10 @@ public struct MainCityView: View {
     @State private var inspectedBuilding: DistrictBuildingInfo? = nil
     @State private var showSortingHubSheet = false
     @State private var activeTab: String = "city"
+    /// Bumped on every press of the city tab. The map watches it and puts the camera back to
+    /// the view the app opens on — the district alone is not enough, because rotating and
+    /// panning happen inside city mode and leave nothing for a district change to undo.
+    @State private var cityViewResetToken: Int = 0
     
     public init() {}
     
@@ -203,6 +207,7 @@ public struct MainCityView: View {
                     savingsTarget: currentCity.savingsTarget,
                     parkHealth: currentCity.parkHealth,
                     lifetimeSavings: currentCity.lifetimeSavings,
+                    viewResetToken: cityViewResetToken,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
                     habits: currentCity.habits,
@@ -331,6 +336,10 @@ public struct MainCityView: View {
                         onTabTapped: { tab in
                             guard tab == "city" else { return }
                             handleSelectDistrict(nil)
+                            // Rotation, tilt, zoom and pan all live inside city mode, so
+                            // clearing the district cannot undo them. This asks the map for
+                            // the opening view back.
+                            cityViewResetToken &+= 1
                         }
                     )
                 }

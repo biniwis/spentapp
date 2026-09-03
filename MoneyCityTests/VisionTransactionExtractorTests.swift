@@ -156,9 +156,7 @@ final class VisionTransactionExtractorTests: XCTestCase {
     func testThreeRealReceiptsDiagnostics() async throws {
         let extractor = AppleVisionDocumentExtractor()
         let images = [
-            "media_1788467987523.png", // Google Play
-            "media_1788467987524.png", // Yesh Invoice
-            "media_1788467987547.png"  // Givatayim Arnona
+            "media_1788468814383.png" // The Yesh Invoice screenshot user uploaded
         ]
 
         let userDir = "/Users/bnymynwysmn/.gemini/antigravity/brain/e9943d74-3a89-462b-b134-96b059d8549e/.user_uploaded"

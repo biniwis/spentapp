@@ -810,10 +810,12 @@ public enum ReceiptOCRService {
         var highestScore: Int = -100
 
         let primaryTotalKeywords = [
-            "סה\"כ לתשלום", "סה״כ לתשלום", "סך הכל לתשלום", "סך-הכל לתשלום",
-            "סך הכל", "סה\"כ", "סה״כ", "סך-הכל", "סהכ",
+            "סה\"כ לתשלום בש\"ח", "סה״כ לתשלום בש״ח", "סה\"כ לתשלום", "סה״כ לתשלום",
+            "סך הכל לתשלום", "סך-הכל לתשלום", "סך לתשלום",
+            "סך הכל", "סה\"כ", "סה״כ", "סך-הכל", "סהכ", "ס'הכ", "ס״הכ", "ס\"הכ", "s'no",
+            "סה\"כ:", "סה״כ:", "סהכ:", "ס'הכ:", "סך הכל:", "סך-הכל:",
             "סכום לתשלום", "סכום החיוב", "סכום העסקה", "סכום שחויב", "סכום ההעברה",
-            "סכום סופי", "סך לתשלום", "לתשלום", "חויב", "חוייב", "חויבת בסך",
+            "סכום שובר", "סכום סופי", "לתשלום", "חויב", "חוייב", "חויבת בסך",
             "total amount", "grand total", "amount paid", "amount due",
             "total paid", "total due", "charged", "total"
         ]
@@ -957,8 +959,9 @@ public enum ReceiptOCRService {
 
     private static func isAmountIndicator(_ lower: String) -> Bool {
         return lower.contains("סך") || lower.contains("סה\"כ") || lower.contains("סה״כ") ||
-               lower.contains("לתשלום") || lower.contains("חויב") || lower.contains("total") ||
-               lower.contains("price") || lower.contains("מחיר")
+               lower.contains("סהכ") || lower.contains("ס'הכ") || lower.contains("s'no") ||
+               lower.contains("לתשלום") || lower.contains("חויב") || lower.contains("חוייב") ||
+               lower.contains("total") || lower.contains("price") || lower.contains("מחיר")
     }
 
     private static func detectCurrencySymbol(_ text: String) -> String? {

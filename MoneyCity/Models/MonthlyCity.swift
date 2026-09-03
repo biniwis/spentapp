@@ -33,6 +33,11 @@ public struct MonthlyCity: Identifiable, Sendable {
     public let monthDate: Date
     public var totalSpent: Double
     public var totalSavings: Double
+    /// The amount that fills the savings park completely — a fifth of the user's monthly
+    /// baseline. Zero when there is no baseline yet.
+    public var savingsTarget: Double
+    /// What the savings figure is actually measuring, so the UI can explain it.
+    public var savingsBasis: CitySimulationEngine.SavingsBasis
     public var categoryTotals: [SpendingCategory: Double]
     public var buildingTotals: [String: Double]
     public var tiles: [BuildingTile]
@@ -50,6 +55,8 @@ public struct MonthlyCity: Identifiable, Sendable {
         monthDate: Date,
         totalSpent: Double,
         totalSavings: Double,
+        savingsTarget: Double = 0,
+        savingsBasis: CitySimulationEngine.SavingsBasis = .noBaseline,
         categoryTotals: [SpendingCategory: Double] = [:],
         buildingTotals: [String: Double] = [:],
         tiles: [BuildingTile] = [],
@@ -62,6 +69,8 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.monthDate = monthDate
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
+        self.savingsTarget = savingsTarget
+        self.savingsBasis = savingsBasis
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.tiles = tiles

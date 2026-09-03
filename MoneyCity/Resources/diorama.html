@@ -5415,7 +5415,14 @@
         // A real park does not change size. It fills in. The block stays exactly where it is and
         // the planting spreads outward from the middle as savings grow.
         ensureParkPlantings();
-        const planted = 0.25 + 0.75 * Math.min(1, savings / 2500);
+        // A full park is a fifth of this user's own monthly baseline, sent from the app, rather
+        // than a fixed shekel figure that means something different to every user. With no
+        // baseline yet, any real deposit still shows as a half-planted park.
+        const savingsTarget = data.savingsTarget || 0;
+        const plantedFraction = savingsTarget > 0
+          ? Math.min(1, savings / savingsTarget)
+          : (savings > 0 ? 0.5 : 0);
+        const planted = 0.25 + 0.75 * plantedFraction;
         for (let pi = 0; pi < parkPlantings.length; pi++) {
           const show = (pi / parkPlantings.length) < planted;
           if (parkPlantings[pi].obj.visible !== show) parkPlantings[pi].obj.visible = show;
@@ -6297,17 +6304,51 @@
         // Scene environmental animations
         animObjects.forEach(a => {
           switch(a.type) {
+            // The cat registers itself as "cat_grounded_anim" and the dog as "dog_trot_anim";
+            // neither name had a case here, so both animals stood perfectly still. The hop also
+            // reset to 0.57, the height of the rooftop the cat used to sit on before it moved
+            // down to the lawn — it now returns to wherever it actually rests.
             case "cat_anim":
+            case "cat_grounded_anim":
               a.tail.rotation.z = Math.sin(T * 3.2) * 0.45;
               a.tail.rotation.x = -0.3 + Math.sin(T * 1.8) * 0.15;
               a.head.rotation.y = Math.sin(T * 1.4) * 0.35;
               a.head.rotation.x = Math.sin(T * 2.2) * 0.08;
               a.body.scale.y = 1.0 + Math.sin(T * 2.2) * 0.05;
+              if (a.restY === undefined) a.restY = a.root.position.y;
               if (a.userData && a.userData.hopTimer > 0) {
                 a.userData.hopTimer -= dt;
                 const hopP = Math.max(0, a.userData.hopTimer / 0.40);
-                a.root.position.y = 0.57 + Math.sin(hopP * Math.PI) * 0.24;
+                a.root.position.y = a.restY + Math.sin(hopP * Math.PI) * 0.24;
+              } else {
+                a.root.position.y = a.restY;
               }
+              break;
+            case "dog_trot_anim": {
+              // A sitting dog that sniffs about, with the legs padding only while it moves.
+              const trot = Math.sin(T * 6.4);
+              a.head.rotation.y = Math.sin(T * 1.1) * 0.5;
+              a.head.rotation.x = -0.05 + Math.sin(T * 2.6) * 0.12;
+              a.tail.rotation.z = Math.sin(T * 7.5) * 0.7;          // a busy tail
+              a.tail.rotation.x = -0.5 + Math.sin(T * 3.1) * 0.12;
+              if (a.legFL) a.legFL.rotation.x =  trot * 0.30;
+              if (a.legBR) a.legBR.rotation.x =  trot * 0.30;
+              if (a.legFR) a.legFR.rotation.x = -trot * 0.30;
+              if (a.legBL) a.legBL.rotation.x = -trot * 0.30;
+              if (a.restY === undefined) a.restY = a.root.position.y;
+              if (a.userData && a.userData.hopTimer > 0) {
+                a.userData.hopTimer -= dt;
+                const hopP = Math.max(0, a.userData.hopTimer / 0.40);
+                a.root.position.y = a.restY + Math.sin(hopP * Math.PI) * 0.20;
+              } else {
+                a.root.position.y = a.restY + Math.abs(Math.sin(T * 3.2)) * 0.012;
+              }
+              break;
+            }
+            case "bob":
+              // Pigeons. Registered but never handled, so they sat frozen on the promenade.
+              a.ref.position.y = a.base + Math.abs(Math.sin(T * 2.1 + a.phase)) * 0.035;
+              a.ref.rotation.y = Math.sin(T * 0.7 + a.phase) * 0.6;
               break;
             case "fountain_anim":
               a.water.material.emissiveIntensity = 1.0 + Math.sin(T * 3.5) * 0.4;

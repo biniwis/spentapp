@@ -29,10 +29,20 @@ public final class CitySimulationEngine: Sendable {
     }
 
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
+    /// What the savings park is actually measuring this month, so the app can say it plainly
+    /// instead of showing a number with no explanation.
+    public enum SavingsBasis: String, Sendable {
+        case deposits        // only money the user actually moved into savings
+        case underBudget     // a budget or income exists, and spending is below its accrued share
+        case belowUsual      // no budget, but this month is running below the user's own average
+        case noBaseline      // first month with nothing to compare against
+    }
+
     public func generateCity(
         for monthDate: Date,
         transactions: [Transaction],
         estimatedMonthlyBudget: Double = 0,
+        typicalMonthlySpend: Double = 0,
         now: Date = Date()
     ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]
@@ -105,10 +115,35 @@ public final class CitySimulationEngine: Sendable {
         //
         // Money moved into savings has already left the budget, so it is subtracted before
         // being added back — otherwise every deposit is counted twice.
-        let accrued = estimatedMonthlyBudget * CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
+        // The park used to grow only from unspent budget, which meant it stayed empty for anyone
+        // who never entered an income: with no budget there is no baseline, so spending little
+        // could not register as restraint. It now falls back to the user's own history, which
+        // needs no setup and calibrates itself.
+        let accruedFraction = CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
         let hasActivity = !spendingTransactions.isEmpty || directSavings > 0
-        let unspentBudget = hasActivity ? max(0.0, accrued - totalSpent - directSavings) : 0.0
-        let totalSavings = unspentBudget + directSavings
+
+        var restraint = 0.0
+        var basis: SavingsBasis = directSavings > 0 ? .deposits : .noBaseline
+        var baseline = 0.0
+
+        if estimatedMonthlyBudget > 0 {
+            baseline = estimatedMonthlyBudget
+            let accrued = estimatedMonthlyBudget * accruedFraction
+            restraint = hasActivity ? max(0.0, accrued - totalSpent - directSavings) : 0.0
+            basis = .underBudget
+        } else if typicalMonthlySpend > 0 {
+            // No budget, but the user has months behind them. Running below your own usual pace
+            // is restraint, and it is a fair thing to reward.
+            baseline = typicalMonthlySpend
+            let expectedByNow = typicalMonthlySpend * accruedFraction
+            restraint = hasActivity ? max(0.0, expectedByNow - totalSpent - directSavings) : 0.0
+            basis = .belowUsual
+        }
+
+        let totalSavings = restraint + directSavings
+        // A full park means roughly a fifth of a month kept back — generous but reachable —
+        // rather than an arbitrary fixed figure.
+        let savingsTarget = baseline > 0 ? baseline * 0.20 : 0.0
         buildingTotals["savings_sanctuary"] = totalSavings
         
         let highestCategory = totals.filter { $0.key != .savings && $0.key != .other }
@@ -126,8 +161,9 @@ public final class CitySimulationEngine: Sendable {
         var tiles: [BuildingTile] = []
         
         // Savings Park
-        let safeBudget = max(1.0, estimatedMonthlyBudget)
-        let savingsRatio = min(1.0, totalSavings / safeBudget)
+        // Measured against the same target the park uses, so the tile and the 3D scene agree.
+        let savingsRatio = savingsTarget > 0 ? min(1.0, totalSavings / savingsTarget)
+                                             : (totalSavings > 0 ? 0.5 : 0.0)
         tiles.append(BuildingTile(
             id: 0,
             category: .savings,
@@ -204,6 +240,8 @@ public final class CitySimulationEngine: Sendable {
             monthDate: monthDate,
             totalSpent: totalSpent,
             totalSavings: totalSavings,
+            savingsTarget: savingsTarget,
+            savingsBasis: basis,
             categoryTotals: totals,
             buildingTotals: buildingTotals,
             tiles: tiles,

@@ -116,15 +116,34 @@ public struct MainCityView: View {
         hasher.combine(transactionsDigest)
         hasher.combine(currentDate.timeIntervalSinceReferenceDate)
         hasher.combine(effectiveMonthlyBudget)
+        hasher.combine(typicalMonthlySpend)
         return derived.city(key: hasher.finalize()) {
             CitySimulationEngine.shared.generateCity(
                 for: currentDate,
                 transactions: displayTransactions,
-                estimatedMonthlyBudget: effectiveMonthlyBudget
+                estimatedMonthlyBudget: effectiveMonthlyBudget,
+                typicalMonthlySpend: typicalMonthlySpend
             )
         }
     }
     
+    /// What a normal month costs this user, averaged over the months they have completed.
+    /// The current month is excluded — it is the thing being judged — and so are months with no
+    /// spending at all, which would otherwise drag the average down and flatter a bad month.
+    private var typicalMonthlySpend: Double {
+        let cal = Calendar.current
+        let thisMonth = cal.dateComponents([.year, .month], from: Date())
+        var byMonth: [DateComponents: Double] = [:]
+        for tx in allTransactions where tx.category != .savings && tx.amount > 0 {
+            let c = cal.dateComponents([.year, .month], from: tx.timestamp)
+            if c.year == thisMonth.year && c.month == thisMonth.month { continue }
+            byMonth[c, default: 0] += tx.amount
+        }
+        let months = byMonth.values.filter { $0 > 0 }
+        guard !months.isEmpty else { return 0 }
+        return months.reduce(0, +) / Double(months.count)
+    }
+
     private var progressReport: WeeklyProgressReport {
         var hasher = Hasher()
         hasher.combine(transactionsDigest)
@@ -165,6 +184,7 @@ public struct MainCityView: View {
                 DioramaReadyWrapper(
                     totalSpent: currentCity.totalSpent,
                     totalSavings: currentCity.totalSavings,
+                    savingsTarget: currentCity.savingsTarget,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
                     habits: currentCity.habits,

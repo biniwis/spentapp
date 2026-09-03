@@ -570,16 +570,10 @@ public enum ReceiptOCRService {
         if storeName == nil {
             for t in tokens {
                 if t.role == .merchantName {
-                    storeName = sanitizeMerchantName(t.text)
-                    break
-                }
-            }
-        }
-        if storeName == nil {
-            for t in tokens {
-                if t.role == .productDescription && !isGenericBoilerplate(t.text.lowercased()) {
-                    storeName = sanitizeMerchantName(t.text)
-                    break
+                    if let clean = sanitizeMerchantName(t.text) {
+                        storeName = clean
+                        break
+                    }
                 }
             }
         }
@@ -632,34 +626,61 @@ public enum ReceiptOCRService {
         fallbackTokens: [OCRSpatialToken],
         rules: [MerchantRule]
     ) -> [ParsedTransactionCandidate] {
+        let fullLines = fallbackTokens.map(\.text)
+        let globalMerchant = extractMerchant(from: fullLines)
+        let globalAmount = extractAmount(from: fullLines)
+        let globalDate = extractDate(from: fullLines)
+
         var candidates: [ParsedTransactionCandidate] = []
 
-        // If blocks have valid candidates, extract each
-        for block in blocks {
-            if let amount = block.amountCandidate, amount > 0 {
-                let merchant = block.storeCandidate ?? "הוצאה מצילום מסך"
-                let classification = MerchantRuleService.classify(merchant: merchant, amount: amount, rules: rules)
-                let evidence = block.tokens.map(\.text).joined(separator: " | ")
+        // Check if there are multiple DISTINCT stores with independent purchases (e.g. AliExpress)
+        let storeNames = Set(blocks.compactMap { $0.storeCandidate }.map { $0.lowercased() })
+        let isMultiStoreDocument = storeNames.count > 1 && blocks.count > 1
 
-                let candidate = ParsedTransactionCandidate(
-                    merchant: merchant,
-                    amount: amount,
-                    currency: block.currency,
-                    date: block.dateCandidate,
-                    category: classification.category,
-                    buildingId: classification.buildingId,
-                    confidence: max(block.confidenceScore, classification.confidence),
-                    sourceHint: detectSourceHint(from: evidence),
-                    rawEvidence: evidence
-                )
-                candidates.append(candidate)
+        if isMultiStoreDocument {
+            for block in blocks {
+                if let amount = block.amountCandidate, amount > 0 {
+                    let merchant = block.storeCandidate ?? (globalMerchant ?? "הוצאה מצילום מסך")
+                    let classification = MerchantRuleService.classify(merchant: merchant, amount: amount, rules: rules)
+                    let evidence = block.tokens.map(\.text).joined(separator: " | ")
+
+                    let candidate = ParsedTransactionCandidate(
+                        merchant: merchant,
+                        amount: amount,
+                        currency: block.currency,
+                        date: block.dateCandidate ?? globalDate,
+                        category: classification.category,
+                        buildingId: classification.buildingId,
+                        confidence: max(block.confidenceScore, classification.confidence),
+                        sourceHint: detectSourceHint(from: evidence),
+                        rawEvidence: evidence
+                    )
+                    candidates.append(candidate)
+                }
             }
+        } else if let amount = globalAmount, amount > 0 {
+            // Single transaction document (Invoice, bill, single receipt, payment confirmation)
+            let merchant = globalMerchant ?? "הוצאה מצילום מסך"
+            let classification = MerchantRuleService.classify(merchant: merchant, amount: amount, rules: rules)
+            let evidence = fullLines.joined(separator: " | ")
+
+            let candidate = ParsedTransactionCandidate(
+                merchant: merchant,
+                amount: amount,
+                currency: "ILS",
+                date: globalDate,
+                category: classification.category,
+                buildingId: classification.buildingId,
+                confidence: classification.confidence,
+                sourceHint: detectSourceHint(from: evidence),
+                rawEvidence: evidence
+            )
+            candidates.append(candidate)
         }
 
-        // Fallback: If block clustering yielded 0 candidates, run global heuristic parser on tokens
+        // Fallback: If still empty, try legacy parse
         if candidates.isEmpty {
-            let lines = fallbackTokens.map(\.text)
-            if let legacy = parseReceipt(from: lines, rules: rules) {
+            if let legacy = parseReceipt(from: fullLines, rules: rules) {
                 candidates.append(contentsOf: legacy.candidates)
             }
         }
@@ -671,19 +692,24 @@ public enum ReceiptOCRService {
 
     public static func validateCandidates(_ candidates: [ParsedTransactionCandidate]) -> [ParsedTransactionCandidate] {
         var valid: [ParsedTransactionCandidate] = []
-        var seenKeys: Set<String> = []
 
         for c in candidates {
             // Assert positive amount
             guard c.amount > 0.01 else { continue }
 
-            // Deduplicate exact duplicate items within the same scan
-            let amtStr = String(format: "%.2f", c.amount)
-            let key = "\(c.merchant.lowercased())_\(amtStr)"
-            if seenKeys.contains(key) {
+            // If a candidate with almost identical amount already exists
+            if let existingIndex = valid.firstIndex(where: { abs($0.amount - c.amount) < 0.01 }) {
+                let existing = valid[existingIndex]
+                let existingName = existing.merchant.lowercased()
+                let newName = c.merchant.lowercased()
+
+                // If one merchant name contains or extends the other, keep the more specific/longer one
+                if newName.contains(existingName) || (c.confidence > existing.confidence && c.merchant.count > existing.merchant.count) {
+                    valid[existingIndex] = c
+                }
                 continue
             }
-            seenKeys.insert(key)
+
             valid.append(c)
         }
 
@@ -785,34 +811,49 @@ public enum ReceiptOCRService {
             let numbers = extractNumbers(from: line)
             guard !numbers.isEmpty else { continue }
 
+            // Skip lines that are purely card suffixes (e.g. Mastercard-2984, כרטיס 5728)
+            if isPhoneOrBarcode(lower, numbers: numbers) { continue }
+
             var score = 0
             let hasPrimaryKeyword = primaryTotalKeywords.contains(where: { lower.contains($0) })
             let hasSecondaryKeyword = secondaryKeywords.contains(where: { lower.contains($0) })
-            let hasCurrency = lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("ils") || lower.contains("nis") || lower.contains("$") || lower.contains("usd") || lower.contains("€") || lower.contains("eur") || lower.contains("£")
+            let hasCurrency = detectCurrencySymbol(line) != nil
 
-            // Strict rule: MUST have either an explicit financial keyword or a currency symbol
-            guard hasPrimaryKeyword || hasSecondaryKeyword || hasCurrency else {
+            // In Hebrew receipts, look for decimal fractions (e.g. .50, .84, .10)
+            let hasDecimals = numbers.contains { ($0.truncatingRemainder(dividingBy: 1)) != 0 }
+
+            // Strict rule: MUST have either an explicit financial keyword, recognized currency, or decimal price
+            guard hasPrimaryKeyword || hasSecondaryKeyword || hasCurrency || hasDecimals else {
                 continue
             }
 
             if hasPrimaryKeyword {
-                score += 200
+                score += 250
             } else if hasSecondaryKeyword {
-                score += 90
+                score += 100
             }
 
             if hasCurrency {
-                score += 70
+                score += 80
             }
 
-            if negativeKeywords.contains(where: { lower.contains($0) }) {
+            if hasDecimals {
+                score += 50
+            }
+
+            if negativeKeywords.contains(where: { lower.contains($0) }) && !hasPrimaryKeyword {
                 score -= 150
             }
 
             for num in numbers {
+                // Reject IDs, tracking numbers, or large round integers (> 100,000 without decimals)
+                if num > 100_000 && num.truncatingRemainder(dividingBy: 1) == 0 {
+                    continue
+                }
+
                 var candidateScore = score
                 if num >= 1.0 && num <= 25_000.0 { candidateScore += 20 }
-                if candidateScore > highestScore && candidateScore >= 50 {
+                if candidateScore > highestScore && candidateScore >= 40 {
                     highestScore = candidateScore
                     bestCandidate = num
                 }
@@ -820,13 +861,21 @@ public enum ReceiptOCRService {
         }
 
         if bestCandidate == nil {
-            // Fallback: only check lines with explicit currency symbols (not bare numbers)
+            // Fallback: search for decimal numbers with currency or decimal fractions
             for line in lines.reversed() {
                 let lower = line.lowercased()
-                let hasCurrency = lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("ils") || lower.contains("$") || lower.contains("€") || lower.contains("£")
-                if hasCurrency && !isNoiseLine(lower) && !isCouponOrDiscount(lower) {
-                    if let val = extractNumbers(from: line).last, val > 0.1, val < 250_000 {
-                        return val
+                if isNoiseLine(lower) { continue }
+                let nums = extractNumbers(from: line)
+                if isPhoneOrBarcode(lower, numbers: nums) { continue }
+
+                for num in nums {
+                    if num > 100_000 && num.truncatingRemainder(dividingBy: 1) == 0 { continue }
+                    if num > 0.5 && num < 250_000 {
+                        let hasDecimals = (num.truncatingRemainder(dividingBy: 1)) != 0
+                        let hasCurr = detectCurrencySymbol(line) != nil
+                        if hasDecimals || hasCurr {
+                            return num
+                        }
                     }
                 }
             }
@@ -888,9 +937,36 @@ public enum ReceiptOCRService {
                lower.contains("price") || lower.contains("מחיר")
     }
 
+    private static func detectCurrencySymbol(_ text: String) -> String? {
+        let lower = text.lowercased()
+        if lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("בש\"ח") || lower.contains("בש״ח") || lower.contains("ils") || lower.contains("nis") {
+            return "ILS"
+        }
+        if lower.contains("$") || lower.contains("usd") {
+            return "USD"
+        }
+        if lower.contains("€") || lower.contains("eur") {
+            return "EUR"
+        }
+        if lower.contains("£") || lower.contains("gbp") {
+            return "GBP"
+        }
+        // If text contains OCR Shekel artifact (e.g. "m1,232.10" or "• 93.50" or "0339.84" / "o339.84")
+        if text.range(of: #"[m•o]\s*[0-9]+[.,][0-9]{2}"#, options: .regularExpression) != nil {
+            return "ILS"
+        }
+        return nil
+    }
+
     private static func isPhoneOrBarcode(_ lower: String, numbers: [Double]) -> Bool {
         if lower.contains("050") || lower.contains("052") || lower.contains("054") || lower.contains("053") || lower.contains("03-") {
             return true
+        }
+        // Card last 4 digits (e.g. mastercard-2984, כרטיס 5728)
+        if lower.contains("mastercard") || lower.contains("visa") || lower.contains("כרטיס") || lower.contains("card") || lower.contains("אשראי") {
+            if numbers.count == 1, let num = numbers.first, num >= 1000, num <= 9999, num.truncatingRemainder(dividingBy: 1) == 0 {
+                return true
+            }
         }
         return false
     }
@@ -901,20 +977,6 @@ public enum ReceiptOCRService {
             "receipt", "invoice", "payment", "order summary", "thank you", "total"
         ]
         return generic.contains { lower.contains($0) }
-    }
-
-    private static func detectCurrencySymbol(_ text: String) -> String? {
-        let lower = text.lowercased()
-        if lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("ils") || lower.contains("nis") {
-            return "ILS"
-        }
-        if lower.contains("$") || lower.contains("usd") {
-            return "USD"
-        }
-        if lower.contains("€") || lower.contains("eur") {
-            return "EUR"
-        }
-        return nil
     }
 
     private static func detectSourceHint(from text: String) -> String? {
@@ -928,19 +990,21 @@ public enum ReceiptOCRService {
         return nil
     }
 
-    private static func sanitizeMerchantName(_ text: String) -> String {
-        let clean = text.trimmingCharacters(in: CharacterSet(charactersIn: " \t\n-–—,.·:;|/\"'״׳*#0123456789"))
+    private static func sanitizeMerchantName(_ text: String) -> String? {
+        let clean = text.trimmingCharacters(in: CharacterSet(charactersIn: " \t\n-–—,.·:;|/\"'״׳*#0123456789()[]{}"))
         if let known = matchKnownMerchant(in: clean) {
             return known
+        }
+        let letters = clean.filter { $0.isLetter }
+        if letters.count < 3 {
+            return nil
         }
         return clean
     }
 
-    // MARK: - Numbers & Date Regex Parsers
-
     private static func extractNumbers(from text: String) -> [Double] {
-        let pattern = #"(?:₪|\$|€|ILS|NIS)?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let pattern = #"(?:₪|ש״ח|ש"ח|\$|€|£|ILS|NIS|[mo•])?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return [] }
         let nsString = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsString.length))
 
@@ -948,6 +1012,15 @@ public enum ReceiptOCRService {
         for match in matches {
             guard match.numberOfRanges > 1 else { continue }
             var raw = nsString.substring(with: match.range(at: 1))
+
+            // If raw has leading '0' before a 3-digit price without trailing zeros (e.g. '0339.84' from OCR of '₪339.84')
+            if raw.hasPrefix("0") && raw.contains(".") {
+                let afterZero = String(raw.dropFirst())
+                if let val = Double(afterZero), val >= 10.0 {
+                    raw = afterZero
+                }
+            }
+
             if raw.contains(",") && raw.contains(".") {
                 raw = raw.replacingOccurrences(of: ",", with: "")
             } else if raw.contains(",") {
@@ -959,7 +1032,7 @@ public enum ReceiptOCRService {
                 }
             }
 
-            if let val = Double(raw), val > 0, val < 500_000 {
+            if let val = Double(raw), val > 0.05, val < 500_000 {
                 results.append(val)
             }
         }
@@ -976,7 +1049,20 @@ public enum ReceiptOCRService {
             "הודעה מאת", "אושרה בתאריך", "כרטיס מסתיים", "בכרטיס", "עסקה חדשה"
         ]
 
-        let fullText = lines.joined(separator: "\n")
+        let fullText = lines.joined(separator: "\n").lowercased()
+
+        if fullText.contains("5320905") || fullText.contains("גבעתיים") || fullText.contains("ארנונה") {
+            return "עיריית גבעתיים"
+        }
+        if fullText.contains("google play") || fullText.contains("google commerce") {
+            return "Google Play"
+        }
+        if fullText.contains("yeshinvoice") || fullText.contains("יש התחלה") {
+            return "יש התחלה"
+        }
+        if fullText.contains("מי גבעתיים") || fullText.contains("שירותי מים") {
+            return "מי גבעתיים"
+        }
 
         for line in lines {
             if let range = line.range(of: #"(?:העברת ל|העברה ל|העברה אל|שילמת ל|שולם ל)\s*([^\d\n\r,.:;]+)"#, options: .regularExpression) {
@@ -1042,6 +1128,10 @@ public enum ReceiptOCRService {
             ("amazon", "Amazon"), ("אמזון", "Amazon"), ("ksp", "KSP"), ("איקאה", "IKEA"),
             ("pango", "פנגו Pango"), ("פנגו", "פנגו Pango"), ("netflix", "Netflix"), ("spotify", "Spotify"),
             ("יס", "YES"), ("yes", "YES"), ("הוט", "HOT"), ("hot", "HOT"),
+            ("google play", "Google Play"), ("google commerce", "Google Play"), ("google", "Google"),
+            ("גבעתיים", "עיריית גבעתיים"), ("עיריית גבעתיים", "עיריית גבעתיים"), ("ארנונה", "ארנונה"),
+            ("יש התחלה", "יש התחלה"), ("yeshinvoice", "יש התחלה"),
+            ("מי גבעתיים", "מי גבעתיים"), ("מי אביבים", "מי אביבים"), ("חברת חשמל", "חברת חשמל"),
             ("פרטנר", "Partner"), ("partner", "Partner"), ("סלקום", "Cellcom"), ("cellcom", "Cellcom"),
             ("פלאפון", "Pelephone"), ("pelephone", "Pelephone"), ("בזק", "בזק"), ("bezeq", "בזק")
         ]

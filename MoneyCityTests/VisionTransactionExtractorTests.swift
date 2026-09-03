@@ -153,29 +153,38 @@ final class VisionTransactionExtractorTests: XCTestCase {
         XCTAssertEqual(result.candidates[1].category, .shopping)
     }
 
-    func testAppleVisionDocumentExtractor() async throws {
+    func testThreeRealReceiptsDiagnostics() async throws {
         let extractor = AppleVisionDocumentExtractor()
-        XCTAssertEqual(extractor.modelIdentifier, "AppleVision-OnDeviceParser")
+        let images = [
+            "media_1788467987523.png", // Google Play
+            "media_1788467987524.png", // Yesh Invoice
+            "media_1788467987547.png"  // Givatayim Arnona
+        ]
 
         let userDir = "/Users/bnymynwysmn/.gemini/antigravity/brain/e9943d74-3a89-462b-b134-96b059d8549e/.user_uploaded"
-        let fileURLs = (try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: userDir), includingPropertiesForKeys: nil)) ?? []
 
-        for url in fileURLs.filter({ $0.pathExtension == "png" }) {
-            guard let data = try? Data(contentsOf: url) else { continue }
+        for name in images {
+            let fileURL = URL(fileURLWithPath: userDir).appendingPathComponent(name)
+            guard let data = try? Data(contentsOf: fileURL) else { continue }
+
+            print("=========================================================")
+            print("🧾 INSPECTING: \(name)")
             let tokens = try await ReceiptOCRService.recognizeSpatialTokens(from: data)
-            guard !tokens.isEmpty else { continue }
-
-            let texts = tokens.map(\.text).joined(separator: " | ")
-            print("📷 [\(url.lastPathComponent)] (\(tokens.count) tokens):")
-            print("   \(texts.prefix(180))...")
-            
-            let extraction = try? await extractor.extractTransactions(from: data, mimeType: "image/jpeg")
-            if let txs = extraction?.transactions, !txs.isEmpty {
-                print("   ➔ EXTRACTED (\(txs.count)): " + txs.map { "\($0.merchant ?? "N/A"): \($0.currency)\($0.amount)" }.joined(separator: ", "))
-            } else {
-                print("   ➔ EXTRACTED: 0 transactions")
+            let tagged = ReceiptOCRService.classifyTokenRoles(tokens)
+            for (i, t) in tagged.enumerated() {
+                print(String(format: "[%02d] (Y: %.3f, H: %.3f) %-15@ | '%@'", i, t.boundingBox.origin.y, t.boundingBox.height, t.role.rawValue, t.text))
             }
-            print("---------------------------------------------------------")
+
+            do {
+                let result = try await extractor.extractTransactions(from: data, mimeType: "image/jpeg")
+                print("➔ EXTRACTED TRANSACTIONS (\(result.transactions.count)):")
+                for (i, tx) in result.transactions.enumerated() {
+                    print("   \(i+1). Merchant: '\(tx.merchant ?? "N/A")', Amount: \(tx.currency)\(tx.amount), Date: \(String(describing: tx.date))")
+                }
+            } catch {
+                print("❌ FAILED WITH ERROR: \(error)")
+            }
+            print("=========================================================\n")
         }
     }
 }

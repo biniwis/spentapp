@@ -151,11 +151,13 @@
 
     const CAM_MODES = {
       city:     { az: Math.PI * 0.25, el: 0.60, zoom: 2.00, lookX: 0,    lookY: 0.45, lookZ: 0 },
-      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -6.55, lookY: 0.35, lookZ: -7.25 },
-      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: -7.25 },
-      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: 5.2 },
-      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -6.55, lookY: 0.35, lookZ: 6.45 },
-      civic:    { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: 8.8 }
+      // lookX/lookZ and zoom are overwritten from the block grid further down — see
+      // tuneDistrictCameras(). These are only sane defaults for the first frame.
+      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.80, lookX: -7.8, lookY: 0.35, lookZ: -8.5 },
+      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 1.80, lookX: 8.4,  lookY: 0.35, lookZ: -8.5 },
+      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.80, lookX: 8.4,  lookY: 0.35, lookZ: 7.7 },
+      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.80, lookX: -7.8, lookY: 0.35, lookZ: 7.7 },
+      civic:    { az: Math.PI * 0.25, el: 0.52, zoom: 1.80, lookX: 8.4,  lookY: 0.35, lookZ: 7.7 }
     };
 
     let currentMode = "city";
@@ -170,6 +172,20 @@
         currentCam.lookZ + r * Math.cos(currentCam.el) * Math.sin(currentCam.az)
       );
       camera.lookAt(currentCam.lookX, currentCam.lookY, currentCam.lookZ);
+    }
+
+    // Everything decorative in the park, ordered from its centre outward. Collected once, on
+    // first use, so it does not matter in what order the park's contents were added.
+    let parkPlantings = null;
+    function ensureParkPlantings() {
+      if (parkPlantings) return;
+      parkPlantings = [];
+      parkZone.children.forEach((child, idx) => {
+        if (idx === 0) return;                                        // the lawn itself
+        if (child.userData && child.userData.cityInfrastructure) return;  // kerb, pavement, benches
+        parkPlantings.push({ obj: child, dist: Math.hypot(child.position.x, child.position.z) });
+      });
+      parkPlantings.sort((a, b) => a.dist - b.dist);
     }
 
     let cityZoomTuned = false;
@@ -1899,6 +1915,14 @@
     // roundedBox() is an extruded shape: it spans y = [pos - 0.05, pos + h + 0.05] and its
     // footprint is inflated by 0.05 on every side by the bevel. Every number below accounts
     // for that, which is why blocks, pavement, people and traffic finally share one datum.
+    // The island grew from 23 to 28 units across. The road cross stays exactly where it was —
+    // every crosswalk, arrow, manhole and lane is keyed to the road's cross-section, not its
+    // length — so the extra space goes entirely into the blocks, which is where it was needed:
+    // the buildings were authored larger than the plots they had to share.
+    const ISLAND      = 28.0;                      // road length, and the span the blocks fill
+    const ISLAND_HALF = ISLAND / 2;                // blocks reach exactly this far out
+    const PODIUM_W    = ISLAND + 0.4;              // the plinth shows a thin rim beyond the blocks
+
     const Y_PODIUM = -0.05;                        // top face of the plinth
     const Y_ROAD   =  0.12;                        // top face of the asphalt
     const Y_WALK   =  0.22;                        // top face of every block / pavement
@@ -1909,10 +1933,85 @@
     // Blocks are fitted to the quadrants the (fixed) road cross actually leaves behind.
     // Horizontal avenue occupies z = [-3.0, 1.4]; vertical avenue occupies x = [-1.6, 2.8].
     // Each block runs from the podium rim right up to the kerb, so no bare plinth shows through.
-    const BLK_W_WEST  =  9.90 - 0.10, BLK_CX_WEST  = -6.55;  // real x span [-11.50, -1.60]
-    const BLK_W_EAST  =  8.70 - 0.10, BLK_CX_EAST  =  7.15;  // real x span [  2.80, 11.50]
-    const BLK_D_NORTH =  8.50 - 0.10, BLK_CZ_NORTH = -7.25;  // real z span [-11.50, -3.00]
-    const BLK_D_SOUTH = 10.10 - 0.10, BLK_CZ_SOUTH =  6.45;  // real z span [  1.40, 11.50]
+    // Derived, not hand-typed: each block runs from the kerb of its avenue to the island rim.
+    // roundedBox inflates a footprint by 0.05 a side, so the nominal size is the real span
+    // minus 0.10 and the centre is the true midpoint of that span.
+    const REAL_W_WEST  = ISLAND_HALF - 1.60,  BLK_CX_WEST  = -(ISLAND_HALF + 1.60) / 2;
+    const REAL_W_EAST  = ISLAND_HALF - 2.80,  BLK_CX_EAST  =  (ISLAND_HALF + 2.80) / 2;
+    const REAL_D_NORTH = ISLAND_HALF - 3.00,  BLK_CZ_NORTH = -(ISLAND_HALF + 3.00) / 2;
+    const REAL_D_SOUTH = ISLAND_HALF - 1.40,  BLK_CZ_SOUTH =  (ISLAND_HALF + 1.40) / 2;
+    const BLK_W_WEST  = REAL_W_WEST  - 0.10;
+    const BLK_W_EAST  = REAL_W_EAST  - 0.10;
+    const BLK_D_NORTH = REAL_D_NORTH - 0.10;
+    const BLK_D_SOUTH = REAL_D_SOUTH - 0.10;
+
+    const BLOCK_GRID = {
+      food:  { w: REAL_W_WEST, d: REAL_D_NORTH, cols: 2, rows: 2 },
+      shop:  { w: REAL_W_EAST, d: REAL_D_NORTH, cols: 2, rows: 2 },
+      house: { w: REAL_W_EAST, d: REAL_D_SOUTH, cols: 2, rows: 3 },
+      park:  { w: REAL_W_WEST, d: REAL_D_SOUTH, cols: 1, rows: 1 }
+    };
+
+    // block -> [column, row]. Row 0 is the far side from the avenue.
+    const BUILDING_PLOTS = {
+      food_bistro:        ["food",  0, 0],
+      food_super:         ["food",  1, 0],
+      food_coffee:        ["food",  0, 1],
+      food_wolt:          ["food",  1, 1],
+
+      shop_boutique:      ["shop",  0, 0],
+      shop_tech:          ["shop",  1, 0],
+      shop_travel:        ["shop",  0, 1],
+      shop_arcade:        ["shop",  1, 1],
+
+      house_tower:        ["house", 0, 0],
+      house_util:         ["house", 1, 0],
+      house_subs:         ["house", 0, 1],
+      museum_curiosities: ["house", 1, 1],
+      city_sorting_hub:   ["house", 0, 2]
+    };
+
+    // Declared before this line: BLOCK_GRID. Centres follow, then the cameras are tuned.
+    const BLOCK_CENTRE = {
+      food:  { x: BLK_CX_WEST, z: BLK_CZ_NORTH },
+      shop:  { x: BLK_CX_EAST, z: BLK_CZ_NORTH },
+      house: { x: BLK_CX_EAST, z: BLK_CZ_SOUTH },
+      park:  { x: BLK_CX_WEST, z: BLK_CZ_SOUTH }
+    };
+
+    /// (defined below BLOCK_CENTRE, called at the end of this section)
+    /// Point each district camera at its block's real centre, and zoom so the whole block fits.
+    /// Rotated 45 degrees a block of w x d needs (w + d) / 2 / sqrt(2) of horizontal half-extent,
+    /// and the frustum's half-width is FR / zoom.
+    function tuneDistrictCameras() {
+      const map = { food: "food", shopping: "shop", housing: "house", savings: "park", civic: "house" };
+      for (const mode in map) {
+        const key = map[mode], b = BLOCK_GRID[key], c = BLOCK_CENTRE[key];
+        const need = (b.w + b.d) / 2 / Math.SQRT2 * 1.06;   // a little air around the edges
+        CAM_MODES[mode].lookX = c.x;
+        CAM_MODES[mode].lookZ = c.z;
+        CAM_MODES[mode].zoom  = Math.max(1.10, Math.min(2.60, FR / need));
+      }
+    }
+
+    /// A world point inside a block, given as a fraction of its size (-0.5 .. 0.5).
+    function blockPoint(blockKey, fx, fz) {
+      const b = BLOCK_GRID[blockKey], c = BLOCK_CENTRE[blockKey];
+      return { x: c.x + fx * b.w, z: c.z + fz * b.d };
+    }
+
+    tuneDistrictCameras();
+
+    function plotOf(blockKey, col, row) {
+      const b = BLOCK_GRID[blockKey];
+      return {
+        x: (col + 0.5) / b.cols * b.w - b.w / 2,
+        z: (row + 0.5) / b.rows * b.d - b.d / 2,
+        halfX: b.w / (2 * b.cols),
+        halfZ: b.d / (2 * b.rows)
+      };
+    }
+
 
     // True surface height under any point. The asphalt is recessed a kerb below the pavement,
     // so anything that walks or rolls has to follow it — otherwise it floats over the road and
@@ -1926,13 +2025,13 @@
     // 🌍 ARCHITECTURAL DIORAMA PODIUM (High-End Titanium & Obsidian Plinth)
     // ════════════════════════════════════════════════════════════════
     // 1. Titanium Slate Sub-Base (Sleek Modern Charcoal with Chamfered Corners - Top at y = 0.00)
-    root.add(mesh(roundedBox(23.2, 0.22, 23.2, 0.75), mat(0x0f172a, 0.95, 0.1), 0, -0.32, 0, false, true));
+    root.add(mesh(roundedBox(PODIUM_W, 0.22, PODIUM_W, 0.75), mat(0x0f172a, 0.95, 0.1), 0, -0.32, 0, false, true));
     
     // 2. Chiseled Anthracite Foundation Layer
-    root.add(mesh(roundedBox(22.9, 0.16, 22.9, 0.72), mat(0x18181b, 0.90, 0.2), 0, -0.62, 0, false, true));
+    root.add(mesh(roundedBox(PODIUM_W - 0.3, 0.16, PODIUM_W - 0.3, 0.72), mat(0x18181b, 0.90, 0.2), 0, -0.62, 0, false, true));
     
     // 3. Luxurious Chamfered Base Plinth with Warm Golden Brass Trim Ring
-    root.add(mesh(roundedBox(23.5, 0.06, 23.5, 0.80), mat(0xf59e0b, 0.35, 0.85, 0xb45309, 0.2), 0, -0.42, 0, false, false));
+    root.add(mesh(roundedBox(PODIUM_W + 0.3, 0.06, PODIUM_W + 0.3, 0.80), mat(0xf59e0b, 0.35, 0.85, 0xb45309, 0.2), 0, -0.42, 0, false, false));
 
     // ════════════════════════════════════════════════════════════════
     // 🛣️ RECESSED ASPHALT ROADS, RAIN GUTTERS & HIGH-CONTRAST MARKINGS
@@ -1952,15 +2051,15 @@
       roughness: 0.85,
       metalness: 0.15
     });
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.17, 4.4), asphaltMatH, 0, 0.035, -0.8, false, true));
-    root.add(mesh(new THREE.BoxGeometry(4.4, 0.17, 23.0), asphaltMatV, 0.6, 0.035, 0, false, true));
+    root.add(mesh(new THREE.BoxGeometry(ISLAND, 0.17, 4.4), asphaltMatH, 0, 0.035, -0.8, false, true));
+    root.add(mesh(new THREE.BoxGeometry(4.4, 0.17, ISLAND), asphaltMatV, 0.6, 0.035, 0, false, true));
 
     // Stone Drainage Gutter Channels along road curbs
     const gutterMat = mat(0x1e293b, 0.9);
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.18, 0.18), gutterMat, 0, 0.04, -2.95));
-    root.add(mesh(new THREE.BoxGeometry(23.0, 0.18, 0.18), gutterMat, 0, 0.04, 1.35));
-    root.add(mesh(new THREE.BoxGeometry(0.18, 0.18, 23.0), gutterMat, -1.55, 0.04, 0));
-    root.add(mesh(new THREE.BoxGeometry(0.18, 0.18, 23.0), gutterMat, 2.75, 0.04, 0));
+    root.add(mesh(new THREE.BoxGeometry(ISLAND, 0.18, 0.18), gutterMat, 0, 0.04, -2.95));
+    root.add(mesh(new THREE.BoxGeometry(ISLAND, 0.18, 0.18), gutterMat, 0, 0.04, 1.35));
+    root.add(mesh(new THREE.BoxGeometry(0.18, 0.18, ISLAND), gutterMat, -1.55, 0.04, 0));
+    root.add(mesh(new THREE.BoxGeometry(0.18, 0.18, ISLAND), gutterMat, 2.75, 0.04, 0));
 
     // ════════════════════════════════════════════════════════════════
     // 🛣️ CRISP ART-DIRECTED ROAD MARKINGS & ZEBRA CROSSWALKS
@@ -1971,17 +2070,17 @@
 
     // A. Clean Dashed Centerlines (Outside intersection and crosswalk zones)
     // Horizontal Avenue (Z = -0.8):
-    for (let rx = -10.5; rx <= -4.0; rx += 2.0) {
+    for (let rx = -(ISLAND_HALF - 1.0); rx <= -4.0; rx += 2.0) {
       root.add(mesh(new THREE.BoxGeometry(1.2, 0.015, 0.14), whiteLineMat, rx, roadMarkingY, -0.8));
     }
-    for (let rx = 5.2; rx <= 10.5; rx += 2.0) {
+    for (let rx = 5.2; rx <= ISLAND_HALF - 1.0; rx += 2.0) {
       root.add(mesh(new THREE.BoxGeometry(1.2, 0.015, 0.14), whiteLineMat, rx, roadMarkingY, -0.8));
     }
     // Vertical Avenue (X = 0.6):
-    for (let rz = -10.5; rz <= -4.8; rz += 2.0) {
+    for (let rz = -(ISLAND_HALF - 1.0); rz <= -4.8; rz += 2.0) {
       root.add(mesh(new THREE.BoxGeometry(0.14, 0.015, 1.2), whiteLineMat, 0.6, roadMarkingY, rz));
     }
-    for (let rz = 3.6; rz <= 10.5; rz += 2.0) {
+    for (let rz = 3.6; rz <= ISLAND_HALF - 1.0; rz += 2.0) {
       root.add(mesh(new THREE.BoxGeometry(0.14, 0.015, 1.2), whiteLineMat, 0.6, roadMarkingY, rz));
     }
 
@@ -2121,20 +2220,20 @@
     }
 
     // 1. Food District Curbs (North-West) - Blue & White for dining parking
-    add3DCurbLine({x: -11.5, z: -3.0}, {x: -1.6, z: -3.0}, false, "blue_white");
-    add3DCurbLine({x: -1.6, z: -3.0}, {x: -1.6, z: -11.5}, true, "blue_white");
+    add3DCurbLine({x: -ISLAND_HALF, z: -3.0}, {x: -1.6, z: -3.0}, false, "blue_white");
+    add3DCurbLine({x: -1.6, z: -3.0}, {x: -1.6, z: -ISLAND_HALF}, true, "blue_white");
 
     // 2. Shopping District Curbs (North-East) - Red & White near bus stop, Blue & White for shopping
-    add3DCurbLine({x: 2.8, z: -3.0}, {x: 11.5, z: -3.0}, false, "blue_white");
-    add3DCurbLine({x: 2.8, z: -3.0}, {x: 2.8, z: -11.5}, true, "red_white");
+    add3DCurbLine({x: 2.8, z: -3.0}, {x: ISLAND_HALF, z: -3.0}, false, "blue_white");
+    add3DCurbLine({x: 2.8, z: -3.0}, {x: 2.8, z: -ISLAND_HALF}, true, "red_white");
 
     // 3. Housing District Curbs (South-East) - Blue & White for resident parking
-    add3DCurbLine({x: 2.8, z: 1.4}, {x: 11.5, z: 1.4}, false, "blue_white");
-    add3DCurbLine({x: 2.8, z: 1.4}, {x: 2.8, z: 11.5}, true, "blue_white");
+    add3DCurbLine({x: 2.8, z: 1.4}, {x: ISLAND_HALF, z: 1.4}, false, "blue_white");
+    add3DCurbLine({x: 2.8, z: 1.4}, {x: 2.8, z: ISLAND_HALF}, true, "blue_white");
 
     // 4. Park District Curbs (South-West) - Red & White near park sanctuary
-    add3DCurbLine({x: -11.5, z: 1.4}, {x: -1.6, z: 1.4}, false, "red_white");
-    add3DCurbLine({x: -1.6, z: 1.4}, {x: -1.6, z: 11.5}, true, "red_white");
+    add3DCurbLine({x: -ISLAND_HALF, z: 1.4}, {x: -1.6, z: 1.4}, false, "red_white");
+    add3DCurbLine({x: -1.6, z: 1.4}, {x: -1.6, z: ISLAND_HALF}, true, "red_white");
 
     // ================================================================
     // BUILDING CREATORS – PROPORTIONALLY SPACED & DETAILED
@@ -2149,8 +2248,9 @@
     foodZone.add(mesh(roundedBox(BLK_W_WEST, PAD_H, BLK_D_NORTH, PAD_R), new THREE.MeshStandardMaterial({ map: foodPlazaTex(), bumpMap: foodPlazaBump(), bumpScale: 0.12, roughness: 0.78 }), 0, 0, 0, false, true));
 
     // Raised Outdoor Dining Travertine Stone Terrace with White Marble Trim
-    const diningTerrace = mesh(roundedBox(4.2, 0.08, 3.2, 0.2), new THREE.MeshStandardMaterial({ map: shopPlazaTex(), bumpMap: shopPlazaBump(), bumpScale: 0.08, roughness: 0.72 }), -2.2, DECK_Y, -2.0, false, true);
-    diningTerrace.add(mesh(new THREE.BoxGeometry(4.3, 0.02, 0.15), mat(0xe2e8f0, 0.9), 0, 0.04, 1.6));
+    const bistroPlot = plotOf("food", 0, 0);
+    const diningTerrace = mesh(roundedBox(bistroPlot.halfX * 1.55, 0.08, bistroPlot.halfZ * 1.55, 0.2), new THREE.MeshStandardMaterial({ map: shopPlazaTex(), bumpMap: shopPlazaBump(), bumpScale: 0.08, roughness: 0.72 }), bistroPlot.x, DECK_Y, bistroPlot.z, false, true);
+    diningTerrace.add(mesh(new THREE.BoxGeometry(bistroPlot.halfX * 1.57, 0.02, 0.15), mat(0xe2e8f0, 0.9), 0, 0.04, bistroPlot.halfZ * 0.74));
     foodZone.add(diningTerrace);
 
     // 🥐 THE NEST DINING (Width: 2.6, Depth: 2.4 - Spaced at x: -2.3, z: -2.2)
@@ -2696,7 +2796,10 @@
     houseZone.add(mesh(roundedBox(BLK_W_EAST, PAD_H, BLK_D_SOUTH, PAD_R), new THREE.MeshStandardMaterial({ map: housePlazaTex(), bumpMap: housePlazaBump(), bumpScale: 0.12, roughness: 0.78 }), 0, 0, 0, false, true));
 
     // Raised Garden Courtyard with Grass & Brick Retaining Border
-    const gardenBed = mesh(roundedBox(4.0, 0.08, 4.0, 0.2), mat(0x15803d, 0.9), 1.6, DECK_Y, 2.2, false, true);
+    // The garden sat on a hand-picked spot that the museum's plot later landed on. It now takes
+    // the housing block's one unbuilt plot, so it has ground of its own.
+    const gardenPlot = plotOf("house", 1, 2);
+    const gardenBed = mesh(roundedBox(4.0, 0.08, 4.0, 0.2), mat(0x15803d, 0.9), gardenPlot.x, DECK_Y, gardenPlot.z, false, true);
     gardenBed.add(mesh(new THREE.BoxGeometry(4.1, 0.12, 0.14), mat(0x9a3412, 0.8), 0, 0.02, 2.0));
     gardenBed.add(mesh(new THREE.BoxGeometry(4.1, 0.12, 0.14), mat(0x9a3412, 0.8), 0, 0.02, -2.0));
     gardenBed.add(mesh(new THREE.BoxGeometry(0.14, 0.12, 4.0), mat(0x9a3412, 0.8), 2.0, 0.02, 0));
@@ -2904,6 +3007,59 @@
     createPlotSite("museum_curiosities", -2.3,  2.4, houseZone, museumBody.userData);
     createPlotSite("city_sorting_hub",    2.3,  2.4, houseZone, sortingHubBody.userData);
 
+    // ════════════════════════════════════════════════════════════════
+    // 🗺️ PLOT GRID — one place decides where every building stands
+    // ════════════════════════════════════════════════════════════════
+    // Buildings used to carry hand-picked coordinates, and each block was assumed to hold four.
+    // The housing block ended up with five: the fifth was dropped at (0, 0), the dead centre of
+    // a two-by-two grid, so it shared ground with all four of its neighbours. That is the
+    // "museum standing inside another building" problem, and no amount of nudging fixes it —
+    // the block needed a sixth plot, not a tighter squeeze.
+    //
+    // Buildings also grow with spending. Nothing capped that growth, so a well-used shop swelled
+    // past its neighbour and over the kerb onto the road. Each plot now reports how much room it
+    // has, every building is measured at rest, and its growth is clamped to what actually fits.
+
+    // Pure numbers: the park block is declared further down the file, and the grid only ever
+    // needs a block's size, never its group.
+    // How much of a plot a building may fill. The rest is the gap that stops neighbours from
+    // touching and keeps the kerb clear.
+    const PLOT_FILL = 0.76;
+
+    (function applyPlotLayout() {
+      const box = new THREE.Box3();
+      for (const id in BUILDING_PLOTS) {
+        const g = buildingRoots[id];
+        if (!g) continue;
+        const [blockKey, col, row] = BUILDING_PLOTS[id];
+        const p = plotOf(blockKey, col, row);
+
+        g.position.x = p.x;
+        g.position.z = p.z;
+        if (plotSites[id]) { plotSites[id].position.x = p.x; plotSites[id].position.z = p.z; }
+
+        // Measure the building at rest, about its own origin, so the cap is derived from the
+        // model rather than guessed.
+        const keep = g.scale.clone();
+        g.scale.set(1, 1, 1);
+        g.updateMatrixWorld(true);
+        box.setFromObject(g);
+        g.scale.copy(keep);
+
+        let maxScale = 1.30;
+        if (isFinite(box.min.x)) {
+          const halfX = Math.max(box.max.x - g.position.x, g.position.x - box.min.x);
+          const halfZ = Math.max(box.max.z - g.position.z, g.position.z - box.min.z);
+          const room  = Math.min(p.halfX * PLOT_FILL / Math.max(halfX, 0.01),
+                                 p.halfZ * PLOT_FILL / Math.max(halfZ, 0.01));
+          maxScale = Math.max(0.35, Math.min(1.30, room));
+        }
+        g.userData.maxScaleXZ = maxScale;
+      }
+      root.updateMatrixWorld(true);
+    })();
+
+
     // 🌱  SAVINGS PARK SANCTUARY
     // ────────────────────────────────────────────────────────────────
     const parkZone = new THREE.Group();
@@ -3049,9 +3205,10 @@
       g.add(mesh(new THREE.ConeGeometry(0.22 * scale, 1.15 * scale, 7), mat(0x166534, 0.80), 0, 1.25 * scale, 0));
       (parent || root).add(g);
     }
-    createItalianCypress(-10.2, -10.2, 1.0);
-    createItalianCypress(10.2, -10.2, 1.0);
-    createItalianCypress(10.2, 9.8, 1.0);
+    [["food", -0.47], ["shop", 0.47], ["house", 0.47], ["park", -0.47]].forEach(([blockKey, fx]) => {
+      const pt = blockPoint(blockKey, fx, 0);
+      createItalianCypress(pt.x, pt.z, 1.0);
+    });
 
     // 🌸 Blooming Flower Shrubs along Park Paths
     function createFlowerShrub(x, z, flowerColor, parent) {
@@ -3571,33 +3728,89 @@
     }
 
     // Register all district building tags with vibrant category colors and clean heights
-    addDistrictBuildingTag("food", "food_bistro", "🍽️", "מסעדות וביסטרו", 0, "#35AEB7", -8.5, 4.4, -9.0);
-    addDistrictBuildingTag("food", "food_super", "🛒", "סופרמרקט ומזון", 0, "#10B981", -3.9, 4.0, -9.0);
-    addDistrictBuildingTag("food", "food_coffee", "☕", "קפה ומאפים", 0, "#F59E0B", -8.5, 3.8, -4.6);
-    addDistrictBuildingTag("food", "food_wolt", "🛵", "וולט ומשלוחים", 0, "#35AEB7", -3.9, 3.8, -4.6);
+    // The pills used to carry world coordinates copied from an older island, so every one of
+    // them drifted off its building the moment the blocks moved. They read the plot grid now.
+    function tagX(blockKey, col, row) { return BLOCK_CENTRE[blockKey].x + plotOf(blockKey, col, row).x; }
+    function tagZ(blockKey, col, row) { return BLOCK_CENTRE[blockKey].z + plotOf(blockKey, col, row).z; }
 
-    addDistrictBuildingTag("shopping", "shop_boutique", "🛍️", "ביגוד ואופנה", 0, "#7C72FF", 4.5, 4.4, -9.0);
-    addDistrictBuildingTag("shopping", "shop_tech", "💻", "טכנולוגיה וגאדג'טים", 0, "#253CC4", 9.1, 4.0, -9.0);
-    addDistrictBuildingTag("shopping", "shop_travel", "✈️", "חופשות וטיסות", 0, "#F47A28", 4.5, 3.8, -4.6);
-    addDistrictBuildingTag("shopping", "shop_arcade", "🎮", "פנאי ובידור", 0, "#EC4899", 9.1, 3.8, -4.6);
+    addDistrictBuildingTag("food", "food_bistro", "🍽️", "מסעדות וביסטרו", 0, "#35AEB7", tagX("food",0,0), 4.4, tagZ("food",0,0));
+    addDistrictBuildingTag("food", "food_super", "🛒", "סופרמרקט ומזון", 0, "#10B981", tagX("food",1,0), 4.0, tagZ("food",1,0));
+    addDistrictBuildingTag("food", "food_coffee", "☕", "קפה ומאפים", 0, "#F59E0B", tagX("food",0,1), 3.8, tagZ("food",0,1));
+    addDistrictBuildingTag("food", "food_wolt", "🛵", "וולט ומשלוחים", 0, "#35AEB7", tagX("food",1,1), 3.8, tagZ("food",1,1));
 
-    addDistrictBuildingTag("housing", "house_tower", "🏠", "מגורים ושכירות", 0, "#253CC4", 4.5, 5.2, 4.6);
-    addDistrictBuildingTag("housing", "house_util", "⚡", "חשמל וארנונה", 0, "#F59E0B", 9.1, 4.2, 4.6);
-    addDistrictBuildingTag("housing", "house_subs", "📺", "מנויים וסטרימינג", 0, "#7C72FF", 6.8, 3.8, 8.8);
-    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", -3.2, 3.2, 11.2);
-    addDistrictBuildingTag("civic", "museum_curiosities", "🏛️", "מוזיאון הדברים המשונים", 0, "#8B5CF6", 3.2, 4.2, 11.2); 
+    addDistrictBuildingTag("shopping", "shop_boutique", "🛍️", "ביגוד ואופנה", 0, "#7C72FF", tagX("shop",0,0), 4.4, tagZ("shop",0,0));
+    addDistrictBuildingTag("shopping", "shop_tech", "💻", "טכנולוגיה וגאדג'טים", 0, "#253CC4", tagX("shop",1,0), 4.0, tagZ("shop",1,0));
+    addDistrictBuildingTag("shopping", "shop_travel", "✈️", "חופשות וטיסות", 0, "#F47A28", tagX("shop",0,1), 3.8, tagZ("shop",0,1));
+    addDistrictBuildingTag("shopping", "shop_arcade", "🎮", "פנאי ובידור", 0, "#EC4899", tagX("shop",1,1), 3.8, tagZ("shop",1,1));
+
+    addDistrictBuildingTag("housing", "house_tower", "🏠", "מגורים ושכירות", 0, "#253CC4", tagX("house",0,0), 5.2, tagZ("house",0,0));
+    addDistrictBuildingTag("housing", "house_util", "⚡", "חשמל וארנונה", 0, "#F59E0B", tagX("house",1,0), 4.2, tagZ("house",1,0));
+    addDistrictBuildingTag("housing", "house_subs", "📺", "מנויים וסטרימינג", 0, "#7C72FF", tagX("house",0,1), 3.8, tagZ("house",0,1));
+    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", tagX("house",0,2), 3.2, tagZ("house",0,2));
+    addDistrictBuildingTag("civic", "museum_curiosities", "🏛️", "מוזיאון הדברים המשונים", 0, "#8B5CF6", tagX("house",1,1), 4.2, tagZ("house",1,1)); 
 
     // ================================================================
     // 🏗️ SIMS-STYLE DEDICATED CITY UPGRADE SLOTS (Interactive Pads)
     // ================================================================
-    const CITY_SLOTS = {
-      "slot_park_center":      { id: "slot_park_center", name: "מרכז פארק השמורה", x: -6.2, y: 0.28, z: 6.0, defaultItem: "fountain_marble" },
-      "slot_park_overlook":    { id: "slot_park_overlook", name: "מצפה גבעת האגם", x: -8.2, y: 0.28, z: 4.2, defaultItem: "pet_cat_rooftop" },
-      "slot_food_plaza":       { id: "slot_food_plaza", name: "רחבת רובע האוכל", x: -4.5, y: 0.22, z: -4.8, defaultItem: "cafe_stand" },
-      "slot_shop_promenade":   { id: "slot_shop_promenade", name: "שדרת הקניות והאופנה", x: 6.8, y: 0.22, z: -4.8, defaultItem: "tree_sakura" },
-      "slot_housing_terrace":  { id: "slot_housing_terrace", name: "טרסת גן המגורים", x: 6.8, y: 0.22, z: 3.6, defaultItem: "flower_bed_plaza" },
-      "slot_tech_plaza":       { id: "slot_tech_plaza", name: "כיכר מתחם ההייטק", x: 8.8, y: 0.22, z: -4.8, defaultItem: "public_art_sculpture" }
-    };
+    // Every slot used to be a hand-typed world coordinate tuned for the old 23-unit island.
+    // When the blocks moved and grew, the props kept their old coordinates: the cat ended up
+    // hovering over bare plinth outside the park, and others landed inside buildings. Slots are
+    // now points in a block, at the real walking height, so they move with the layout.
+    //
+    // The four-plot blocks leave a seam where the plots meet — with PLOT_FILL at 0.76 that seam
+    // is roughly 1.5 units wide, which is what these props need. Park slots are free to sit
+    // anywhere, since the park block holds no buildings.
+    // Every slot used to be a hand-typed world coordinate tuned for the old 23-unit island.
+    // When the blocks moved and grew, the props kept their old coordinates: the cat ended up
+    // hovering over bare plinth outside the park, and others landed inside buildings. Slots are
+    // now points in a block, at the real walking height, so they move with the layout.
+    //
+    // The four-plot blocks leave a seam where the plots meet — with PLOT_FILL at 0.76 that seam
+    // is wide enough for these props. The park has no plots but plenty of its own scenery, so
+    // its two slots are chosen by measured clearance rather than typed in; otherwise a fountain
+    // eventually lands in the pond.
+    const CITY_SLOTS = (function () {
+      const mk = (id, name, blockKey, fx, fz, defaultItem) => {
+        const p = blockPoint(blockKey, fx, fz);
+        return { id, name, x: p.x, y: Y_WALK, z: p.z, defaultItem };
+      };
+
+      // Scan the park for the point with the most room, keeping clear of anything already there
+      // and of slots already placed.
+      const taken = [];
+      const parkSlot = (id, name, defaultItem) => {
+        const b = BLOCK_GRID.park, c = BLOCK_CENTRE.park;
+        let best = null, bestScore = -1;
+        for (let gx = -0.34; gx <= 0.34001; gx += 0.085) {
+          for (let gz = -0.34; gz <= 0.34001; gz += 0.085) {
+            const wx = c.x + gx * b.w, wz = c.z + gz * b.d;
+            let score = Infinity;
+            parkZone.children.forEach(child => {
+              if (child.userData && child.userData.cityInfrastructure) return;
+              const d = Math.hypot(parkZone.position.x + child.position.x - wx,
+                                   parkZone.position.z + child.position.z - wz);
+              if (d < score) score = d;
+            });
+            taken.forEach(t => { const d = Math.hypot(t.x - wx, t.z - wz); if (d < score) score = d; });
+            if (score > bestScore) { bestScore = score; best = { x: wx, z: wz }; }
+          }
+        }
+        taken.push(best);
+        return { id, name, x: best.x, y: Y_WALK, z: best.z, defaultItem };
+      };
+
+      const list = [
+        parkSlot("slot_park_center",   "מרכז פארק השמורה", "fountain_marble"),
+        parkSlot("slot_park_overlook", "מצפה גבעת האגם",    "pet_cat_rooftop"),
+        mk("slot_food_plaza",      "רחבת רובע האוכל",     "food",  0.00,  0.00, "cafe_stand"),
+        mk("slot_shop_promenade",  "שדרת הקניות והאופנה", "shop",  0.00, -0.25, "tree_sakura"),
+        mk("slot_tech_plaza",      "כיכר מתחם ההייטק",    "shop",  0.00,  0.25, "public_art_sculpture"),
+        mk("slot_housing_terrace", "טרסת גן המגורים",     "house", 0.00,  0.00, "flower_bed_plaza")
+      ];
+      const out = {};
+      list.forEach(sl => { out[sl.id] = sl; });
+      return out;
+    })();
 
     // Invisible interactive hitboxes for slots — ZERO artificial gray pads or clutter!
     const slotPadMeshes = {};
@@ -4427,21 +4640,28 @@
     const BAND_W    = 0.58;             // width of the lighter pavement strip
     const FURN_OFF  = 0.30;             // furniture centreline, measured in from the block edge
 
+    /// Height of the ground under a point given in a zone's local space.
+    function localGroundY(parent, x, z) {
+      return surfaceYAt(parent.position.x + x, parent.position.z + z);
+    }
     function addStreetBench(parent, x, z, ry) {
-      const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry || 0;
+      const g = new THREE.Group(); g.position.set(x, localGroundY(parent, x, z), z);
+      g.userData.cityInfrastructure = true; g.rotation.y = ry || 0;
       g.add(mesh(new THREE.BoxGeometry(0.70, 0.05, 0.24), furnWoodMat, 0, 0.20, 0));
       g.add(mesh(new THREE.BoxGeometry(0.70, 0.22, 0.05), furnWoodMat, 0, 0.32, -0.10));
       [-0.28, 0.28].forEach(lx => g.add(mesh(new THREE.BoxGeometry(0.05, 0.20, 0.22), furnMetalMat, lx, 0.10, 0)));
       parent.add(g);
     }
     function addStreetBin(parent, x, z) {
-      const g = new THREE.Group(); g.position.set(x, Y_WALK, z);
+      const g = new THREE.Group(); g.position.set(x, localGroundY(parent, x, z), z);
+      g.userData.cityInfrastructure = true;
       g.add(mesh(new THREE.CylinderGeometry(0.11, 0.09, 0.30, 10), furnMetalMat, 0, 0.15, 0));
       g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.03, 10), mat(0x1e293b, 0.8), 0, 0.31, 0));
       parent.add(g);
     }
     function addStreetPlanter(parent, x, z) {
-      const g = new THREE.Group(); g.position.set(x, Y_WALK, z);
+      const g = new THREE.Group(); g.position.set(x, localGroundY(parent, x, z), z);
+      g.userData.cityInfrastructure = true;
       g.add(mesh(roundedBox(0.46, 0.18, 0.46, 0.06), planterMat, 0, 0.05, 0));
       g.add(mesh(new THREE.DodecahedronGeometry(0.19, 0), shrubMat, 0, 0.34, 0));
       parent.add(g);
@@ -4458,23 +4678,27 @@
       // A darker shadow line just inside the painted kerb, so the edge reads in flat light.
       const lineGeo = vertical ? new THREE.BoxGeometry(0.03, 0.012, along)
                                : new THREE.BoxGeometry(along, 0.012, 0.03);
-      zone.add(mesh(lineGeo, kerbShadowMat,
+      const markInfra = (o) => { o.userData.cityInfrastructure = true; return o; };
+      zone.add(markInfra(mesh(lineGeo, kerbShadowMat,
         sx + (vertical ? inward * (KERB_W + 0.015) : 0), Y_WALK + 0.006,
-        sz + (vertical ? 0 : inward * (KERB_W + 0.015)), false, false));
+        sz + (vertical ? 0 : inward * (KERB_W + 0.015)), false, false)));
 
       // Pavement strip inset from the kerb.
       const bandGeo = vertical ? new THREE.BoxGeometry(BAND_W, 0.008, along)
                                : new THREE.BoxGeometry(along, 0.008, BAND_W);
-      zone.add(mesh(bandGeo, pavementMat,
+      zone.add(markInfra(mesh(bandGeo, pavementMat,
         sx + (vertical ? inward * BAND_W / 2 : 0), Y_WALK + 0.004,
-        sz + (vertical ? 0 : inward * BAND_W / 2), false, true));
+        sz + (vertical ? 0 : inward * BAND_W / 2), false, true)));
 
       // Furniture ribbon: bench / bin / planter at even intervals down the strip.
       const slots = Math.max(2, Math.round(along / 2.4));
       for (let i = 0; i < slots; i++) {
         const t = (i + 0.5) / slots - 0.5;
-        const ax = vertical ? sx + inward * FURN_OFF : t * along;
-        const az = vertical ? t * along : sz + inward * FURN_OFF;
+        // Clamped to the block: the ribbon runs the length of the edge, and the corners of a
+        // long edge would otherwise overhang the kerb at the ends.
+        const limX = halfX - 0.45, limZ = halfZ - 0.45;
+        const ax = Math.max(-limX, Math.min(limX, vertical ? sx + inward * FURN_OFF : t * along));
+        const az = Math.max(-limZ, Math.min(limZ, vertical ? t * along : sz + inward * FURN_OFF));
         const kind = (i + (vertical ? 0 : 1)) % 3;
         if (kind === 0) addStreetBench(zone, ax, az, vertical ? (inward > 0 ? Math.PI / 2 : -Math.PI / 2) : (inward > 0 ? 0 : Math.PI));
         else if (kind === 1) addStreetBin(zone, ax, az);
@@ -4600,13 +4824,13 @@
     // for the direction it travels: main avenue centre z = -0.8, cross avenue centre x = 0.6.
     const CALM_LANES = [
       // Lane 1: East-to-West (north side of the main avenue)
-      [{x: 12.0, z: -1.6}, {x: -12.0, z: -1.6}],
+      [{x: ISLAND_HALF + 0.5, z: -1.6}, {x: -(ISLAND_HALF + 0.5), z: -1.6}],
       // Lane 2: West-to-East (south side of the main avenue)
-      [{x: -12.0, z: -0.2}, {x: 12.0, z: -0.2}],
+      [{x: -(ISLAND_HALF + 0.5), z: -0.2}, {x: ISLAND_HALF + 0.5, z: -0.2}],
       // Lane 3: South-to-North (east side of the cross avenue)
-      [{x: 1.2, z: 12.0}, {x: 1.2, z: -12.0}],
+      [{x: 1.2, z: ISLAND_HALF + 0.5}, {x: 1.2, z: -(ISLAND_HALF + 0.5)}],
       // Lane 4: North-to-South (west side of the cross avenue)
-      [{x: 0.0, z: -12.0}, {x: 0.0, z: 12.0}]
+      [{x: 0.0, z: -(ISLAND_HALF + 0.5)}, {x: 0.0, z: ISLAND_HALF + 0.5}]
     ];
 
     // Two vehicles share a lane only at identical speed with staggered progress, so they hold a
@@ -5182,8 +5406,20 @@
 
         // 5. Savings Sanctuary & The Lonely Squirrel
         const savings = data.savings || 0;
-        const s = Math.min(1.20, Math.max(0.35, 0.35 + (savings / 2500) * 0.85));
-        parkZone.scale.set(s, 1.0, s);
+        // Savings growth used to scale the entire park block — pad, kerb and all — between 42%
+        // and 120%. The lawn stopped matching its own kerb, everything standing on it slid
+        // sideways, and anything positioned in world space rather than parented to the park (the
+        // cat's slot among them) was left stranded in mid-air. That is the floating you saw, and
+        // the "garden that gets smaller and bigger".
+        //
+        // A real park does not change size. It fills in. The block stays exactly where it is and
+        // the planting spreads outward from the middle as savings grow.
+        ensureParkPlantings();
+        const planted = 0.25 + 0.75 * Math.min(1, savings / 2500);
+        for (let pi = 0; pi < parkPlantings.length; pi++) {
+          const show = (pi / parkPlantings.length) < planted;
+          if (parkPlantings[pi].obj.visible !== show) parkPlantings[pi].obj.visible = show;
+        }
         parkData.amount = Math.round(savings);
         parkData.trend = savings > 0 ? ("צמיחה ירוקה • ₪" + Math.round(savings)) : "התחל לחסוך כדי להצמיח את השמורה";
 
@@ -5313,7 +5549,8 @@
         // hammering at something already finished.
         if (bg.userData.underConstruction) continue;
         const tY = bg.userData.targetScaleY || 1.0;
-        const tXZ = bg.userData.targetScaleXZ || 1.0;
+        // Never wider than the plot allows, however much was spent here.
+        const tXZ = Math.min(bg.userData.targetScaleXZ || 1.0, bg.userData.maxScaleXZ || 1.30);
         bg.scale.y += (tY - bg.scale.y) * Math.min(1, dt * 5.0);
         bg.scale.x += (tXZ - bg.scale.x) * Math.min(1, dt * 5.0);
         bg.scale.z += (tXZ - bg.scale.z) * Math.min(1, dt * 5.0);
@@ -5699,7 +5936,8 @@
           const p = Math.min(1, crew.buildElapsed / crew.buildDuration);
           const eased = 1 - Math.pow(1 - p, 3);
           const tY = bg.userData.targetScaleY || 1.0;
-          const tXZ = bg.userData.targetScaleXZ || 1.0;
+          // Same plot cap as the idle lerp — a building under construction must not outgrow it either.
+          const tXZ = Math.min(bg.userData.targetScaleXZ || 1.0, bg.userData.maxScaleXZ || 1.30);
           // A little shake on every hammer blow, fading out as the structure sets.
           const shake = (p < 1) ? Math.sin(crew.buildElapsed * 24.0) * 0.014 * (1 - p) : 0;
           bg.scale.y = Math.max(0.02, tY * eased + shake);

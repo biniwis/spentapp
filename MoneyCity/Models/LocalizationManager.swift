@@ -257,7 +257,12 @@ public extension SpendingCategory {
             case .other: return "Unsorted (Post Office)"
             }
         } else {
-            return self.displayName
+            // `self.displayName` is the no-argument property, which decides the language for
+            // itself by reading UserDefaults — so this function was quietly ignoring the
+            // language it was handed. It happens to agree today only because both read the
+            // same key; asking for a language and being given whichever one is currently
+            // stored is a trap waiting for the first caller who needs the other one.
+            return displayName(for: language)
         }
     }
 
@@ -277,7 +282,8 @@ public extension SpendingCategory {
             case .other: return "Unsorted"
             }
         } else {
-            return self.shortName
+            // Same as above: honour the argument rather than re-reading global state.
+            return shortName(for: language)
         }
     }
 }

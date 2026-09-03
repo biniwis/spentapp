@@ -8,6 +8,9 @@ public struct DioramaReadyWrapper: View {
     public let totalSavings: Double
     public let savingsTarget: Double
     public let parkHealth: Double
+    /// Everything put aside since the user started. Passed straight through to the scene,
+    /// which reports it on the reserve's card.
+    public let lifetimeSavings: Double
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
     public let habits: BehavioralHabits
@@ -28,6 +31,7 @@ public struct DioramaReadyWrapper: View {
         totalSavings: Double,
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
+        lifetimeSavings: Double = 0,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double],
         habits: BehavioralHabits,
@@ -45,6 +49,7 @@ public struct DioramaReadyWrapper: View {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
+        self.lifetimeSavings = lifetimeSavings
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.habits = habits
@@ -66,6 +71,7 @@ public struct DioramaReadyWrapper: View {
                 totalSavings: totalSavings,
                 savingsTarget: savingsTarget,
                 parkHealth: parkHealth,
+                lifetimeSavings: lifetimeSavings,
                 categoryTotals: categoryTotals,
                 buildingTotals: buildingTotals,
                 habits: habits,

@@ -561,7 +561,7 @@ public struct QuickAddSheet: View {
 
     @ViewBuilder @MainActor
     private var multiTransactionReviewSection: some View {
-        if scannedMultiCandidates.count > 1 {
+        if !scannedMultiCandidates.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 multiHeaderView
                 multiCandidatesListView
@@ -580,7 +580,10 @@ public struct QuickAddSheet: View {
             Image(systemName: "sparkles.rectangle.stack.fill")
                 .foregroundColor(Color.primaryBlue)
                 .font(.system(size: 14))
-            Text(l10n.language == .hebrew ? "זוהו \(scannedMultiCandidates.count) עסקאות בצילום המסך" : "Found \(scannedMultiCandidates.count) Purchases")
+            let titleText = scannedMultiCandidates.count > 1
+                ? (l10n.language == .hebrew ? "זוהו \(scannedMultiCandidates.count) עסקאות בצילום המסך" : "Found \(scannedMultiCandidates.count) Purchases")
+                : (l10n.language == .hebrew ? "זוהתה עסקה 1 בצילום המסך" : "Found 1 Purchase")
+            Text(titleText)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundColor(Color.deepNavy)
             Spacer()
@@ -611,7 +614,8 @@ public struct QuickAddSheet: View {
         let isInt = candidate.amount.truncatingRemainder(dividingBy: 1) == 0
         let displayAmt = isInt ? String(format: "%.0f", candidate.amount) : String(format: "%.2f", candidate.amount)
 
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
+            // Category Icon
             ZStack {
                 Circle()
                     .fill(candidate.category.themeColor.opacity(0.15))
@@ -621,6 +625,7 @@ public struct QuickAddSheet: View {
                     .foregroundColor(candidate.category.themeColor)
             }
 
+            // Info (Merchant + Category)
             VStack(alignment: .leading, spacing: 2) {
                 Text(candidate.merchant)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -633,9 +638,24 @@ public struct QuickAddSheet: View {
 
             Spacer()
 
+            // Amount
             Text("₪\(displayAmt)")
                 .font(.system(size: 14, weight: .black, design: .rounded))
                 .foregroundColor(Color.deepNavy)
+
+            // Delete single candidate button
+            Button(action: {
+                withAnimation(.spring(response: 0.25)) {
+                    Haptics.impact(.light)
+                    scannedMultiCandidates.removeAll(where: { $0.id == candidate.id })
+                }
+            }) {
+                Image(systemName: "trash.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(Color.red.opacity(0.75))
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, 4)
         }
         .padding(10)
         .background(Color.white)
@@ -644,6 +664,7 @@ public struct QuickAddSheet: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.slate200, lineWidth: 0.8)
         )
+        .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.spring(response: 0.25)) {
                 amountText = displayAmt
@@ -662,13 +683,17 @@ public struct QuickAddSheet: View {
         let isTotalInt = totalSum.truncatingRemainder(dividingBy: 1) == 0
         let formattedTotal = "₪" + (isTotalInt ? String(format: "%.0f", totalSum) : String(format: "%.2f", totalSum))
 
+        let buttonText = scannedMultiCandidates.count > 1
+            ? (l10n.language == .hebrew ? "שמור את כל \(scannedMultiCandidates.count) העסקאות (\(formattedTotal))" : "Save All \(scannedMultiCandidates.count) Purchases (\(formattedTotal))")
+            : (l10n.language == .hebrew ? "שמור עסקה זו (\(formattedTotal))" : "Save Purchase (\(formattedTotal))")
+
         Button(action: {
             saveAllScannedMultiTransactions()
         }) {
             HStack(spacing: 6) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 14, weight: .bold))
-                Text(l10n.language == .hebrew ? "שמור את כל \(scannedMultiCandidates.count) העסקאות (\(formattedTotal))" : "Save All \(scannedMultiCandidates.count) Purchases (\(formattedTotal))")
+                Text(buttonText)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
             }
             .foregroundColor(.white)

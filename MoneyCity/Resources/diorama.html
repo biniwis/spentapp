@@ -189,14 +189,69 @@
     }
 
     let cityZoomTuned = false;
+    // How far past a perfect fit the city view is allowed to push. 1.00 would show every
+    // corner of every block; 1.15 fills the frame properly and lets the far corners of the
+    // nearest and furthest blocks run off the top and bottom, which is the right trade when
+    // the user can rotate to reach anything they want to look at.
+    const CITY_CROP = 1.15;
+
+    /// The on-screen half-height of the things that matter — the four blocks and every
+    /// building — measured from the scene rather than typed in, so the framing follows the
+    /// island instead of drifting away from it whenever the layout changes.
+    let cityContentHalfHeight = null;
+    function measureCityContentHalfHeight() {
+      if (cityContentHalfHeight !== null) return cityContentHalfHeight;
+      try {
+        const box = new THREE.Box3();
+        [foodZone, shopZone, houseZone, parkZone].forEach(z => { if (z) box.expandByObject(z); });
+        for (const id in buildingRoots) { if (buildingRoots[id]) box.expandByObject(buildingRoots[id]); }
+        if (!isFinite(box.min.x)) return null;
+
+        // Look at the city the way the city camera does, then read how tall it lands.
+        const saved = currentMode;
+        const prev = Object.assign({}, currentCam);
+        Object.assign(currentCam, CAM_MODES.city);
+        placeCam();
+        camera.updateMatrixWorld(true);
+        const inv = new THREE.Matrix4().copy(camera.matrixWorld).invert();
+        let halfH = 0;
+        for (const x of [box.min.x, box.max.x])
+          for (const y of [box.min.y, box.max.y])
+            for (const z of [box.min.z, box.max.z]) {
+              const v = new THREE.Vector3(x, y, z).applyMatrix4(inv);
+              halfH = Math.max(halfH, Math.abs(v.y));
+            }
+        Object.assign(currentCam, prev);
+        currentMode = saved;
+        placeCam();
+        cityContentHalfHeight = halfH > 0.5 ? halfH : null;
+      } catch (e) {
+        console.warn("city framing measurement failed, falling back", e);
+        cityContentHalfHeight = null;
+      }
+      return cityContentHalfHeight;
+    }
+
     function tuneCityZoomForViewport(w, h) {
       if (cityZoomTuned || !w || !h) return;
       cityZoomTuned = true;
       const a = w / h;
-      // A tall phone has vertical slack to spend, so the city can fill the frame and let the
-      // sides run off — the user rotates to reach them. A wide viewport (iPad, landscape) has
-      // no such slack, and the same zoom would crop the city top and bottom as well.
-      const z = a < 0.72 ? 2.00 : 1.15;
+      // The frustum is fitted to the narrow axis, so the height a device can show is
+      // FR / (aspect * zoom) in portrait and FR / zoom once it is wider than it is tall.
+      // Inverting that against the measured content gives the zoom that exactly fits, and
+      // CITY_CROP then pushes past it by a fixed amount on every device — so a phone and a
+      // tablet are framed by the same rule rather than by two numbers that happened to look
+      // right on one handset.
+      const halfH = measureCityContentHalfHeight();
+      let z;
+      if (halfH) {
+        z = (a >= 1 ? FR / halfH : FR / (a * halfH)) * CITY_CROP;
+      } else {
+        // Measurement failed for some reason — fall back to the values that shipped before
+        // it existed, so a surprise here is the old framing rather than a broken one.
+        z = a < 0.72 ? 2.00 : 1.15;
+      }
+      z = Math.max(0.8, Math.min(3.2, z));
       CAM_MODES.city.zoom = z;
       if (currentMode === "city") { targetCam.zoom = z; currentCam.zoom = z; }
     }

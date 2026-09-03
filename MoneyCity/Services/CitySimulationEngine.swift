@@ -108,6 +108,8 @@ public final class CitySimulationEngine: Sendable {
         typicalMonthlySpend: Double = 0,
         typicalEverydaySpend: Double = 0,
         typicalCommittedSpend: Double = 0,
+        everydayBudget: Double = 0,
+        budgetedEverydayCategories: Set<SpendingCategory> = [],
         lifetimeSavings: Double = 0,
         now: Date = Date()
     ) -> MonthlyCity {
@@ -228,26 +230,34 @@ public final class CitySimulationEngine: Sendable {
         //
         // Both sides of the comparison are now day-to-day: what was spent on everyday things,
         // against the part of the plan that is not already committed to rent and subscriptions.
+        // The garden measures whatever the plan covers. Someone who set a ceiling on food and
+        // shopping described those two, so those two are what gets judged; comparing every
+        // everyday category against a food-sized target is not a comparison at all. With one
+        // overall figure instead, the plan covers the whole month and so does the count.
         let everydaySpent = spendingTransactions
-            .filter { CitySimulationEngine.isEverydaySpending($0.category) }
+            .filter { tx in
+                guard CitySimulationEngine.isEverydaySpending(tx.category) else { return false }
+                if budgetedEverydayCategories.isEmpty { return true }
+                return budgetedEverydayCategories.contains(tx.category.canonical)
+            }
             .reduce(0.0) { $0 + $1.amount }
-        let committedSpent = max(0.0, totalSpent - everydaySpent)
+        let committedSpent = spendingTransactions
+            .filter { !CitySimulationEngine.isEverydaySpending($0.category) }
+            .reduce(0.0) { $0 + $1.amount }
 
-        // What this user's fixed costs usually come to. Their own history first, because it
-        // is steady and known from day one; this month's figure only until there is history,
-        // since before the rent lands it reads as zero and would flatter the pace.
-        let committedAllowance = typicalCommittedSpend > 0 ? typicalCommittedSpend : committedSpent
-
-        var everydayBaseline = 0.0
-        if estimatedMonthlyBudget > 0 {
-            // A fifth of the budget is kept as a floor: if the fixed costs swallow almost all
-            // of it, the remainder is still a real target rather than an unmeetable zero.
-            everydayBaseline = max(estimatedMonthlyBudget * 0.20,
-                                   estimatedMonthlyBudget - committedAllowance)
-        } else if typicalEverydaySpend > 0 {
-            everydayBaseline = typicalEverydaySpend
-        } else if typicalMonthlySpend > 0 {
-            everydayBaseline = max(0.0, typicalMonthlySpend - committedAllowance)
+        // The everyday target is worked out by BudgetService, which can see where the plan
+        // came from. The engine deliberately does not derive it here: given only a number it
+        // cannot tell a full monthly budget from a handful of category ceilings, and it used
+        // to subtract the rent from both — which turned a plan the user had set on everyday
+        // categories into a fifth of itself and left the garden dry on a quiet month.
+        var everydayBaseline = everydayBudget
+        if everydayBaseline <= 0 {
+            let committedAllowance = typicalCommittedSpend > 0 ? typicalCommittedSpend : committedSpent
+            if typicalEverydaySpend > 0 {
+                everydayBaseline = typicalEverydaySpend
+            } else if typicalMonthlySpend > 0 {
+                everydayBaseline = max(0.0, typicalMonthlySpend - committedAllowance)
+            }
         }
 
         var parkHealth = CitySimulationEngine.healthyParkLevel

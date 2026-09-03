@@ -121,6 +121,45 @@ public enum BudgetService {
         return max(0, overallBudget)
     }
 
+    /// The day-to-day part of the plan — what the garden measures against.
+    ///
+    /// Which question to ask depends entirely on where the plan came from, and getting that
+    /// wrong is how the target collapsed to a fifth of its real size. Category ceilings are
+    /// filled in one at a time, so a user who set food and shopping has already described
+    /// only their everyday money; subtracting their rent from that as well counted it twice.
+    /// A single overall figure is the opposite case — it is the whole month including rent,
+    /// so the fixed costs do have to come out of it.
+    public static func everydaySpendingBudget(
+        categoryBudgets: [CategoryBudget],
+        overallBudget: Double,
+        typicalCommittedSpend: Double,
+        typicalEverydaySpend: Double
+    ) -> Double {
+        // 1. Ceilings, if any. Sum only the everyday ones and subtract nothing.
+        var everydayCeilings: [SpendingCategory: Double] = [:]
+        var anyCeiling = false
+        for budget in categoryBudgets where budget.monthlyLimit > 0 {
+            anyCeiling = true
+            let key = budget.category.canonical
+            guard CitySimulationEngine.isEverydaySpending(key) else { continue }
+            everydayCeilings[key] = max(everydayCeilings[key] ?? 0, budget.monthlyLimit)
+        }
+        if anyCeiling {
+            let total = everydayCeilings.values.reduce(0, +)
+            // Ceilings set only on rent and subscriptions say nothing about everyday money,
+            // so fall through rather than reporting a target of zero.
+            if total > 0 { return total }
+        }
+
+        // 2. A single overall figure covers the whole month, fixed costs included.
+        if overallBudget > 0 {
+            return max(overallBudget * 0.20, overallBudget - max(0, typicalCommittedSpend))
+        }
+
+        // 3. No plan at all: what this person's everyday months actually cost.
+        return max(0, typicalEverydaySpend)
+    }
+
     // MARK: - Usage
 
     /// One row per category the user has actually budgeted, ordered by urgency:

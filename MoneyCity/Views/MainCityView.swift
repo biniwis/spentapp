@@ -127,6 +127,8 @@ public struct MainCityView: View {
         hasher.combine(typicalMonthlySpend)
         hasher.combine(typicalEverydaySpend)
         hasher.combine(typicalCommittedSpend)
+        hasher.combine(everydayBudget)
+        hasher.combine(budgetedEverydayCategories.count)
         hasher.combine(lifetimeSavings)
         return derived.city(key: hasher.finalize()) {
             CitySimulationEngine.shared.generateCity(
@@ -136,6 +138,8 @@ public struct MainCityView: View {
                 typicalMonthlySpend: typicalMonthlySpend,
                 typicalEverydaySpend: typicalEverydaySpend,
                 typicalCommittedSpend: typicalCommittedSpend,
+                everydayBudget: everydayBudget,
+                budgetedEverydayCategories: budgetedEverydayCategories,
                 lifetimeSavings: lifetimeSavings
             )
         }
@@ -166,6 +170,29 @@ public struct MainCityView: View {
         let months = byMonth.values.filter { $0 > 0 }
         guard !months.isEmpty else { return 0 }
         return months.reduce(0, +) / Double(months.count)
+    }
+
+    /// The everyday categories the user set a ceiling on. Empty when they set a single
+    /// overall figure or nothing at all, which is the signal to count everything.
+    private var budgetedEverydayCategories: Set<SpendingCategory> {
+        var set: Set<SpendingCategory> = []
+        for b in categoryBudgets where b.monthlyLimit > 0 {
+            let key = b.category.canonical
+            if CitySimulationEngine.isEverydaySpending(key) { set.insert(key) }
+        }
+        return set
+    }
+
+    /// What the user has to spend on day-to-day things — see
+    /// `BudgetService.everydaySpendingBudget` for why this cannot be derived from the
+    /// headline budget alone.
+    private var everydayBudget: Double {
+        BudgetService.everydaySpendingBudget(
+            categoryBudgets: categoryBudgets,
+            overallBudget: userMonthlyBudget,
+            typicalCommittedSpend: typicalCommittedSpend,
+            typicalEverydaySpend: typicalEverydaySpend
+        )
     }
 
     /// The same average as `typicalMonthlySpend`, split the way the garden reads it: what a
@@ -554,7 +581,8 @@ public struct MainCityView: View {
             health: city.parkHealth,
             monthElapsed: elapsed,
             spentThisMonth: city.everydaySpent,
-            plannedSpending: city.everydayBaseline
+            plannedSpending: city.everydayBaseline,
+            budgetedCategoryCount: budgetedEverydayCategories.count
         )
     }
 
@@ -1406,6 +1434,9 @@ struct ReserveSnapshot {
     let monthElapsed: Double
     let spentThisMonth: Double
     let plannedSpending: Double
+    /// How many everyday categories the user put a ceiling on. Zero means the plan covers
+    /// the whole month, so the card can say so rather than implying a narrower scope.
+    let budgetedCategoryCount: Int
 }
 
 /// The reserve's own card.
@@ -1461,36 +1492,124 @@ struct ReserveModalView: View {
         return snapshot.savedThisMonth / snapshot.monthElapsed
     }
 
-    private var paceText: String {
-        let pct = Int((snapshot.monthElapsed * 100).rounded())
-        guard snapshot.plannedSpending > 0, snapshot.monthElapsed > 0 else {
+    /// The two numbers being compared, each said out loud.
+    ///
+    /// The old card gave one sentence with a single figure in it and no label, so there was
+    /// no way to tell whether it meant "you spent this" or "you are this much over" — and if
+    /// the verdict looked wrong there was nothing to check it against. Both sides are now
+    /// shown: what was spent, and what the target was by today.
+    private var targetSoFar: Double { snapshot.plannedSpending * snapshot.monthElapsed }
+    private var overUnder: Double { snapshot.spentThisMonth - targetSoFar }
+
+    private var hasComparison: Bool { snapshot.plannedSpending > 0 && snapshot.monthElapsed > 0 }
+
+    private var verdictLine: String {
+        guard hasComparison else {
             return isHebrew
                 ? "מוקדם מדי בחודש בשביל מסקנה — השמורה מחכה לנתונים."
                 : "Too early in the month to judge — the reserve is waiting for data."
         }
-        let expected = snapshot.plannedSpending * snapshot.monthElapsed
-        let diff = (snapshot.spentThisMonth - expected).rounded()
-        // "Everyday" is said out loud, because a figure that quietly leaves the rent out
-        // looks wrong to anyone who checks it against their own total.
-        if diff > 0 {
+        let d = overUnder.rounded()
+        if d > 0 {
             return isHebrew
-                ? "עברו \(pct)% מהחודש ובהוצאות היומיומיות אתה \(l10n.format(amount: diff)) מעבר לקצב, ולכן היא מתייבשת. שכירות, חשבונות ומנויים לא נספרים כאן."
-                : "\(pct)% of the month has gone and your everyday spending is \(l10n.format(amount: diff)) ahead of pace, so it is drying out. Rent, bills and subscriptions are not counted here."
+                ? "\(l10n.format(amount: d)) מעל הקצב"
+                : "\(l10n.format(amount: d)) ahead of pace"
         }
         return isHebrew
-            ? "עברו \(pct)% מהחודש ובהוצאות היומיומיות אתה \(l10n.format(amount: -diff)) מתחת לקצב, ולכן היא ירוקה. שכירות, חשבונות ומנויים לא נספרים כאן."
-            : "\(pct)% of the month has gone and your everyday spending is \(l10n.format(amount: -diff)) under pace, so it is green. Rent, bills and subscriptions are not counted here."
+            ? "\(l10n.format(amount: -d)) מתחת לקצב"
+            : "\(l10n.format(amount: -d)) under pace"
+    }
+
+    /// What is actually being counted, which depends on how the user set their plan.
+    private var scopeTitle: String {
+        if snapshot.budgetedCategoryCount > 0 {
+            return isHebrew ? "הקטגוריות שתקצבת, החודש" : "The categories you budgeted, this month"
+        }
+        return isHebrew ? "הוצאות יומיומיות החודש" : "Everyday spending this month"
+    }
+
+    private var scopeNote: String {
+        if snapshot.budgetedCategoryCount > 0 {
+            return isHebrew
+                ? "נמדד מול התקרות שהגדרת בעמוד התקציב, ורק עליהן. שכירות, חשבונות ומנויים לא נספרים."
+                : "Measured against the ceilings you set on the budget screen, and only those. Rent, bills and subscriptions are not counted."
+        }
+        return isHebrew
+            ? "שכירות, חשבונות בית ומנויים לא נספרים כאן — הם קבועים ולא תלויים בהחלטות היומיות שלך."
+            : "Rent, household bills and subscriptions are not counted here — they are fixed, not daily decisions."
+    }
+
+    private var comparisonRow: some View {
+        let pct = Int((snapshot.monthElapsed * 100).rounded())
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(scopeTitle)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Spacer()
+                Text(isHebrew ? "\(pct)% מהחודש עבר" : "\(pct)% of the month gone")
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text("\(l10n.format(amount: snapshot.spentThisMonth.rounded()))")
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                if hasComparison {
+                    Text(isHebrew
+                         ? "מתוך \(l10n.format(amount: targetSoFar.rounded())) שתכננת עד היום"
+                         : "of the \(l10n.format(amount: targetSoFar.rounded())) you planned by today")
+                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+
+            if hasComparison {
+                GeometryReader { geo in
+                    ZStack(alignment: isHebrew ? .trailing : .leading) {
+                        Capsule().fill(Color.appBackground).frame(height: 6)
+                        Capsule()
+                            .fill(conditionColor)
+                            .frame(width: max(4, geo.size.width * CGFloat(min(1.35, snapshot.spentThisMonth / max(targetSoFar, 1)) / 1.35)),
+                                   height: 6)
+                    }
+                }
+                .frame(height: 6)
+
+                HStack(spacing: 6) {
+                    Text(verdictLine)
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .foregroundColor(conditionColor)
+                    Spacer()
+                    Text(isHebrew ? "התקציב היומיומי: \(l10n.format(amount: snapshot.plannedSpending.rounded())) לחודש"
+                                  : "Everyday budget: \(l10n.format(amount: snapshot.plannedSpending.rounded())) a month")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+
+            Text(scopeNote)
+                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .foregroundColor(Color.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(11)
+        .background(Color.appBackground.opacity(0.6))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerRow
             figuresRow
-
-            Text(paceText)
-                .font(.system(size: 11.5, weight: .medium, design: .rounded))
-                .foregroundColor(Color.textMuted)
-                .fixedSize(horizontal: false, vertical: true)
+            comparisonRow
 
             Divider().background(Color(red: 243/255, green: 244/255, blue: 246/255))
             footerRow
@@ -1543,7 +1662,7 @@ struct ReserveModalView: View {
     private var figuresRow: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(isHebrew ? "החודש" : "This month")
+                Text(isHebrew ? "נחסך החודש" : "Saved this month")
                     .font(.system(size: 10.5, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
                 Text("\(l10n.format(amount: snapshot.savedThisMonth.rounded()))")

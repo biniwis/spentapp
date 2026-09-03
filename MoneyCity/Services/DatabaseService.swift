@@ -469,6 +469,26 @@ public final class DatabaseService {
         try? context.save()
     }
     
+    /// The rule the app has learned for a merchant, if any.
+    ///
+    /// The merchant sheet showed its "always remember" switch permanently on because nothing
+    /// ever asked whether a rule existed. It does now.
+    public func merchantRule(for merchant: String) -> MerchantRule? {
+        let key = MerchantRuleService.normalizedKey(merchant)
+        guard !key.isEmpty else { return nil }
+        return fetchMerchantRules().first { $0.merchantKey == key }
+    }
+
+    /// Forget a merchant. There was no way to do this at all — the switch could be turned
+    /// off, and the app carried on auto-categorising regardless.
+    @discardableResult
+    public func forgetMerchant(_ merchant: String) -> Bool {
+        guard let rule = merchantRule(for: merchant) else { return false }
+        context.delete(rule)
+        try? context.save()
+        return true
+    }
+
     public func fetchMerchantRules() -> [MerchantRule] {
         let descriptor = FetchDescriptor<MerchantRule>(
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]

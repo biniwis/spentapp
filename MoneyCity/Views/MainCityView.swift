@@ -429,19 +429,12 @@ public struct MainCityView: View {
             }
         }
         .sheet(isPresented: $showFeed) {
+            // The sheet used to take an onUpdateCategory closure it never called — tapping a
+            // row opens the edit sheet, which does this work itself. The parameter is gone
+            // rather than kept as nine lines that look wired up and are not.
             TransactionFeedSheet(
                 title: feedSheetTitle,
-                transactions: feedFilteredTransactions,
-                onUpdateCategory: { tx, newCat in
-                    // Remember it, so the next charge from this merchant lands correctly.
-                    DatabaseService.shared.rememberCorrection(merchant: tx.merchant, category: newCat)
-                    tx.category = newCat
-                    tx.buildingIdRaw = CategorizationEngine.shared.mapToBuildingId(category: newCat, merchant: tx.merchant)
-                    // The user just told us the answer, so it is no longer a guess.
-                    tx.isConfirmed = true
-                    tx.confidenceScore = 1.0
-                    try? modelContext.save()
-                }
+                transactions: feedFilteredTransactions
             )
         }
         .sheet(isPresented: $showProgressSheet) {

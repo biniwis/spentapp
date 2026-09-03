@@ -5,18 +5,15 @@ public struct TransactionFeedSheet: View {
     @Environment(\.dismiss) private var dismiss
     public let title: String?
     public let transactions: [Transaction]
-    public let onUpdateCategory: (Transaction, SpendingCategory) -> Void
     
     @State private var selectedTxToEdit: Transaction? = nil
     
     public init(
         title: String? = nil,
-        transactions: [Transaction],
-        onUpdateCategory: @escaping (Transaction, SpendingCategory) -> Void
+        transactions: [Transaction]
     ) {
         self.title = title
         self.transactions = transactions
-        self.onUpdateCategory = onUpdateCategory
     }
     
     public var body: some View {
@@ -109,49 +106,3 @@ public struct TransactionFeedSheet: View {
     }
 }
 
-/// Mini modal for switching a category in 1 tap
-struct EditCategoryModal: View {
-    @Environment(\.dismiss) private var dismiss
-    let transaction: Transaction
-    let onSelected: (SpendingCategory) -> Void
-    
-    var body: some View {
-        VStack(spacing: 16) {
-            Text("שינוי קטגוריה עבור \(transaction.merchant)")
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
-                .padding(.top, 20)
-            
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 10) {
-                ForEach(SpendingCategory.primaryCategories) { cat in
-                    Button(action: {
-                        onSelected(cat)
-                        dismiss()
-                    }) {
-                        HStack(spacing: 6) {
-                            CategoryVectorIcon(category: cat, size: 16)
-                            Text(cat.shortName)
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.white)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(cat.themeColor.opacity(0.4), lineWidth: 1)
-                                    )
-                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
-                        )
-                    }
-                }
-            }
-            .padding(.horizontal, 20)
-            Spacer()
-        }
-        .presentationDetents([.fraction(0.35)])
-        .presentationBackground(Color(red: 248/255, green: 250/255, blue: 252/255))
-    }
-}

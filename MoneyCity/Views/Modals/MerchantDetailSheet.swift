@@ -11,9 +11,11 @@ public struct MerchantDetailSheet: View {
     let merchantName: String
     
     @State private var selectedCategory: SpendingCategory = .food
-    @State private var rememberCategory: Bool = true
+    /// Starts false and is set from storage on appear. It used to be hardcoded to true, so
+    /// the switch claimed a rule existed whether or not one did.
+    @State private var rememberCategory: Bool = false
     @State private var editingTx: Transaction? = nil
-    @State private var showSavedToast: Bool = false
+    @State private var ruleStatus: String? = nil
     
     public init(merchantName: String) {
         self.merchantName = merchantName
@@ -163,12 +165,32 @@ public struct MerchantDetailSheet: View {
                                     }
                                 }
                                 .tint(Color.primaryBlue)
+                                // Turning it off used to do nothing at all, and the
+                                // confirmation was written to a flag no view ever read, so
+                                // flipping the switch either way gave no feedback.
                                 .onChange(of: rememberCategory) { _, val in
                                     if val {
-                                        DatabaseService.shared.rememberCorrection(merchant: merchantName, category: selectedCategory)
-                                        showSavedToast = true
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { showSavedToast = false }
+                                        DatabaseService.shared.rememberCorrection(
+                                            merchant: merchantName,
+                                            category: selectedCategory
+                                        )
+                                        setRuleStatus(l10n.language == .hebrew
+                                                      ? "נשמר — עסקאות עתידיות יסווגו אוטומטית"
+                                                      : "Saved — future transactions will be categorised automatically")
+                                    } else {
+                                        DatabaseService.shared.forgetMerchant(merchantName)
+                                        setRuleStatus(l10n.language == .hebrew
+                                                      ? "הכלל נמחק — לא נסווג יותר אוטומטית"
+                                                      : "Rule removed — no longer categorised automatically")
                                     }
+                                }
+
+                                if let status = ruleStatus {
+                                    Text(status)
+                                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                        .foregroundColor(Color.themeMint)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .transition(.opacity)
                                 }
                             }
                             .padding(14)
@@ -230,7 +252,15 @@ public struct MerchantDetailSheet: View {
             }
         }
         .onAppear {
-            selectedCategory = inferredCategory
+            // Read the actual rule rather than assuming one. If a rule exists its category is
+            // the truth for this merchant; otherwise fall back to what the transactions imply.
+            if let rule = DatabaseService.shared.merchantRule(for: merchantName) {
+                selectedCategory = rule.category
+                rememberCategory = true
+            } else {
+                selectedCategory = inferredCategory
+                rememberCategory = false
+            }
         }
         .sheet(item: $editingTx) { tx in
             EditTransactionSheet(transaction: tx)
@@ -239,6 +269,16 @@ public struct MerchantDetailSheet: View {
         }
     }
     
+    /// Shows a line of feedback and clears it again. The previous confirmation set a flag no
+    /// view rendered, so saving a rule looked exactly like doing nothing.
+    private func setRuleStatus(_ text: String) {
+        withAnimation(.easeOut(duration: 0.2)) { ruleStatus = text }
+        Haptics.impact(.light)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation(.easeOut(duration: 0.2)) { ruleStatus = nil }
+        }
+    }
+
     private func statBox(title: String, value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)

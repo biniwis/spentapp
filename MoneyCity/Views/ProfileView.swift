@@ -52,6 +52,15 @@ public struct ProfileView: View {
     }
 
     // Monthly totals for bar chart (last 12 rolling months)
+    /// "March 2026" rather than the three-letter axis label, since the readout has the room
+    /// and the axis label alone is ambiguous once twelve months wrap a year boundary.
+    private func monthFullName(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+        f.dateFormat = "LLLL yyyy"
+        return f.string(from: date)
+    }
+
     private var monthlyTotals: [(label: String, amount: Double, monthDate: Date)] {
         let cal = Calendar.current
         let now = Date()
@@ -150,7 +159,6 @@ public struct ProfileView: View {
     }
 
     private var transactionCount: Int { allTransactions.count }
-    private var enrichmentCount: Int { allEnrichments.filter { $0.isApplied }.count }
 
     public var body: some View {
         ZStack {
@@ -397,15 +405,53 @@ public struct ProfileView: View {
     private var yearChartCard: some View {
         let maxAmt = max(monthlyTotals.map(\.amount).max() ?? 1, 100)
         return VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(l10n.language == .hebrew ? "הוצאות 12 חודשים" : "12-Month Overview")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                Spacer()
-                Text("\(l10n.baseCurrency.symbol)\(shortAmt(total12Months))")
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundColor(Color.primaryBlue)
+            // The selected month's figure used to be a capsule sitting on top of its own bar.
+            // Each of the twelve columns is about 22pt wide on a phone and the shortest
+            // possible amount needs roughly 36pt, so the number the tap existed to reveal was
+            // always truncated — which is why tapping a bar looked like it did nothing. It
+            // reads out here instead, where there is room for it.
+            HStack(spacing: 8) {
+                if let sel = selectedMonth, let m = monthlyTotals.first(where: { $0.label == sel }) {
+                    Text(monthFullName(m.monthDate))
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(Color.themeTurquoise)
+                    Spacer()
+                    Text(l10n.format(amount: m.amount.rounded()))
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(Color.themeTurquoise)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    // And now the tap leads somewhere: the city as it stood that month.
+                    Button {
+                        Haptics.impact(.light)
+                        onNavigateToCity?(m.monthDate)
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(l10n.language == .hebrew ? "לעיר" : "City")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                            Text(verbatim: l10n.language == .hebrew ? "‹" : "›")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color.themeTurquoise)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .bouncyPress(scale: 0.94)
+                } else {
+                    Text(l10n.language == .hebrew ? "הוצאות 12 חודשים" : "12-Month Overview")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Spacer()
+                    Text("\(l10n.baseCurrency.symbol)\(shortAmt(total12Months))")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(Color.primaryBlue)
+                }
             }
+            .frame(minHeight: 28)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedMonth)
 
             HStack(alignment: .bottom, spacing: 5) {
                 ForEach(Array(monthlyTotals.enumerated()), id: \.element.label) { idx, month in
@@ -420,21 +466,8 @@ public struct ProfileView: View {
                         }
                     }) {
                         VStack(spacing: 4) {
-                            if isSelected {
-                                Text(l10n.format(amount: month.amount))
-                                    .font(.system(size: 10, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Color.deepNavy)
-                                    .clipShape(Capsule())
-                                    .transition(.scale.combined(with: .opacity))
-                            } else {
-                                Color.clear.frame(height: 14)
-                            }
-                            
                             Spacer(minLength: 0)
-                            
+
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                                     .fill(Color.borderSubtle.opacity(0.5))
@@ -650,16 +683,6 @@ public struct ProfileView: View {
         EnrichmentVectorBadge(enrichment: e)
     }
 
-    private func fallbackTint(for type: EnrichmentType) -> Color {
-        switch type {
-        case .nature: return Color.themeMint
-        case .resident: return Color.themeTurquoise
-        case .pet: return Color.themeOrange
-        case .decoration: return Color.themeLavender
-        case .repair: return Color.primaryBlue
-        case .landmark: return Color.themeYellow
-        }
-    }
 
     private func enrichmentSoftBg(for type: EnrichmentType) -> Color {
         switch type {
@@ -1153,45 +1176,6 @@ public struct RecurringCalendarVectorIcon: View {
     }
 }
 
-/// 8. Ingest Diagnostics Scanner Lens
-public struct ScannerLensVectorIcon: View {
-    public let color: Color
-    public init(color: Color = Color.themeYellow) { self.color = color }
-    
-    public var body: some View {
-        ZStack {
-            // Camera / Scanner Chassis
-            RoundedRectangle(cornerRadius: 4)
-                .fill(color)
-                .frame(width: 20, height: 15)
-                .offset(y: 1)
-            
-            // Top Sensor Notch
-            RoundedRectangle(cornerRadius: 1)
-                .fill(color)
-                .frame(width: 7, height: 3)
-                .offset(x: -3, y: -7.5)
-            
-            // Circular Optical Aperture
-            Circle()
-                .fill(Color.white)
-                .frame(width: 9, height: 9)
-                .offset(y: 1)
-            
-            Circle()
-                .fill(color)
-                .frame(width: 5, height: 5)
-                .offset(y: 1)
-            
-            // Laser Scan Horizontal Line
-            Rectangle()
-                .fill(Color.white.opacity(0.9))
-                .frame(width: 16, height: 1.2)
-                .offset(y: 1)
-        }
-        .frame(width: 24, height: 24)
-    }
-}
 
 /// 9. Bespoke City Enrichment Vector Badges
 public struct EnrichmentVectorBadge: View {
@@ -1444,14 +1428,4 @@ public struct ApplePayGuideSheet: View {
         }
     }
     
-    private func mappingLine(field: String, instruction: String) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text("• \(field):")
-                .font(.system(size: 11, weight: .black, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-            Text("  \(instruction)")
-                .font(.system(size: 11, weight: .medium, design: .rounded))
-                .foregroundColor(Color.textMuted)
-        }
-    }
 }

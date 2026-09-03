@@ -175,6 +175,10 @@ public struct BackupSheet: View {
                 ? "נטענו \(summary.added) רשומות, \(summary.skipped) כבר היו כאן."
                 : "Imported \(summary.added) records, \(summary.skipped) were already here."
             snapshots = StoreSnapshotService.available()
+            // The export file is written once, when the sheet opens. Without this, sharing a
+            // backup after an import hands out the pre-import file — a backup missing exactly
+            // the records the user just merged in.
+            prepareExport()
         } catch {
             importResult = isHebrew ? "הייבוא נכשל: \(error.localizedDescription)"
                                     : "Import failed: \(error.localizedDescription)"

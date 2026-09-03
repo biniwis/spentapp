@@ -41,9 +41,6 @@ public struct MonthlyCity: Identifiable, Sendable {
     /// How the park looks, 0 parched to 1 lush. A normally-run month sits near 0.78.
     /// This is the month's verdict, and it resets with the month.
     public var parkHealth: Double
-    /// Everything put aside since the user started, across every month. Unlike every other
-    /// figure here this one does not reset — it is what gives the reserve its size.
-    public var lifetimeSavings: Double
     /// Day-to-day spending this month — everything except rent, bills, subscriptions and
     /// savings. This is what the garden is measured on.
     public var everydaySpent: Double
@@ -70,7 +67,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         savingsTarget: Double = 0,
         savingsBasis: CitySimulationEngine.SavingsBasis = .noBaseline,
         parkHealth: Double = CitySimulationEngine.healthyParkLevel,
-        lifetimeSavings: Double = 0,
         everydaySpent: Double = 0,
         everydayBaseline: Double = 0,
         categoryTotals: [SpendingCategory: Double] = [:],
@@ -88,7 +84,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.savingsTarget = savingsTarget
         self.savingsBasis = savingsBasis
         self.parkHealth = parkHealth
-        self.lifetimeSavings = lifetimeSavings
         self.everydaySpent = everydaySpent
         self.everydayBaseline = everydayBaseline
         self.categoryTotals = categoryTotals

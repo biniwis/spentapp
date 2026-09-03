@@ -36,9 +36,6 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let savingsTarget: Double
     /// How the reserve looks this month, 0 parched to 1 lush. Resets with the month.
     public let parkHealth: Double
-    /// Everything put aside since the user started. Shown as a figure on the reserve's card;
-    /// it deliberately has no say in how the garden looks, which is this month's business alone.
-    public let lifetimeSavings: Double
     /// Bumped by the app every time the user asks for the city view back. The map resets its
     /// camera whenever this changes, which is the only way to reset a camera that is already
     /// in city mode.
@@ -61,7 +58,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         totalSavings: Double,
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
-        lifetimeSavings: Double = 0,
         viewResetToken: Int = 0,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double] = [:],
@@ -80,7 +76,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
-        self.lifetimeSavings = lifetimeSavings
         self.viewResetToken = viewResetToken
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
@@ -154,7 +149,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let savingsTarget: Double
         /// How the reserve looks this month, 0 parched to 1 lush.
         public let parkHealth: Double
-        public let lifetimeSavings: Double
         public let otherAmount: Double?
         public let museumAmount: Double?
         public let pendingSortingCount: Int?
@@ -200,7 +194,6 @@ public struct ThreeDioramaView: ViewRepresentable {
             savings: savings,
             savingsTarget: savingsTarget,
             parkHealth: parkHealth,
-            lifetimeSavings: lifetimeSavings,
             otherAmount: otherSpend,
             museumAmount: museumSpend,
             pendingSortingCount: (categoryTotals[.other] ?? 0) > 0 ? 1 : 0,

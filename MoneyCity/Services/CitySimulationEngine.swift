@@ -43,50 +43,6 @@ public final class CitySimulationEngine: Sendable {
         return c != .savings && !committedCategories.contains(c)
     }
 
-    /// Everything the user has put aside since they started, across every month.
-    ///
-    /// The reserve is the one part of the city that is not scoped to a month. Every other
-    /// district is rebuilt on the first, which is right for spending — last month's dinners
-    /// are not this month's problem — but wrong for savings. A patch of protected land that
-    /// vanishes every thirty days reads as a bug, not as a place, and it means a good year
-    /// of habits shows exactly the same as a good week.
-    ///
-    /// So the months that have finished are banked and never revisited, and only the month
-    /// in progress can still move. Within the current month the contribution can fall as the
-    /// user spends, but it is floored at zero, so a bad month costs them this month's growth
-    /// and nothing that came before it.
-    public static func lifetimeSavings(
-        allTransactions: [Transaction],
-        monthlyBudget: Double,
-        typicalMonthlySpend: Double,
-        now: Date = Date(),
-        calendar: Calendar = .current
-    ) -> Double {
-        let baseline = monthlyBudget > 0 ? monthlyBudget : typicalMonthlySpend
-
-        var byMonth: [Date: [Transaction]] = [:]
-        for tx in allTransactions {
-            guard let start = calendar.date(from: calendar.dateComponents([.year, .month], from: tx.timestamp))
-            else { continue }
-            byMonth[start, default: []].append(tx)
-        }
-
-        var total = 0.0
-        for (monthStart, txs) in byMonth {
-            let deposits = txs.filter { $0.category.canonical == .savings }.reduce(0.0) { $0 + $1.amount }
-            let spent = txs.filter { $0.category.canonical != .savings }.reduce(0.0) { $0 + $1.amount }
-            guard deposits > 0 || spent > 0 else { continue }
-
-            var restraint = 0.0
-            if baseline > 0 {
-                let accrued = baseline * budgetAccruedFraction(for: monthStart, now: now, calendar: calendar)
-                restraint = max(0.0, accrued - spent - deposits)
-            }
-            total += deposits + restraint
-        }
-        return total
-    }
-
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
     /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
     /// overspending pulls it down. This is the state a brand-new city opens in.
@@ -110,7 +66,6 @@ public final class CitySimulationEngine: Sendable {
         typicalCommittedSpend: Double = 0,
         everydayBudget: Double = 0,
         budgetedEverydayCategories: Set<SpendingCategory> = [],
-        lifetimeSavings: Double = 0,
         now: Date = Date()
     ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]
@@ -295,10 +250,6 @@ public final class CitySimulationEngine: Sendable {
         // rather than an arbitrary fixed figure.
         let savingsTarget = baseline > 0 ? baseline * 0.20 : 0.0
 
-        // Everything put aside since the user started. This is a figure the reserve's card
-        // reports; it deliberately does not touch how the garden looks, because the garden is
-        // about this month and mixing the two is what made it unreadable.
-        let reserve = max(lifetimeSavings, totalSavings)
         buildingTotals["savings_sanctuary"] = totalSavings
         
         let highestCategory = totals.filter { $0.key != .savings && $0.key != .other }
@@ -398,7 +349,6 @@ public final class CitySimulationEngine: Sendable {
             savingsTarget: savingsTarget,
             savingsBasis: basis,
             parkHealth: parkHealth,
-            lifetimeSavings: reserve,
             everydaySpent: everydaySpent,
             everydayBaseline: everydayBaseline,
             categoryTotals: totals,

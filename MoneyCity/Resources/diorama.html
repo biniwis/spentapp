@@ -5614,14 +5614,11 @@
         }
         parkData.amount = Math.round(savings);
         parkData.savingsThisMonth = Math.round(savings);
-        parkData.lifetimeSavings = Math.round(data.lifetimeSavings || 0);
         parkData.parkHealth = health;
         parkData.trend = savings > 0 ? ("צמיחה ירוקה • ₪" + Math.round(savings)) : "התחל לחסוך כדי להצמיח את השמורה";
 
         if (parkZone.userData.squirrel) {
-          // The lonely squirrel means nobody has ever put anything aside here — not that this
-          // particular month happens to be quiet.
-          parkZone.userData.squirrel.visible = ((data.lifetimeSavings || savings) <= 0);
+          parkZone.userData.squirrel.visible = (savings <= 0);
         }
 
         if (data.timeMode !== undefined) {

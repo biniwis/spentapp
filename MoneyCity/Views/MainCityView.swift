@@ -129,7 +129,6 @@ public struct MainCityView: View {
         hasher.combine(typicalCommittedSpend)
         hasher.combine(everydayBudget)
         hasher.combine(budgetedEverydayCategories.count)
-        hasher.combine(lifetimeSavings)
         return derived.city(key: hasher.finalize()) {
             CitySimulationEngine.shared.generateCity(
                 for: currentDate,
@@ -139,37 +138,9 @@ public struct MainCityView: View {
                 typicalEverydaySpend: typicalEverydaySpend,
                 typicalCommittedSpend: typicalCommittedSpend,
                 everydayBudget: everydayBudget,
-                budgetedEverydayCategories: budgetedEverydayCategories,
-                lifetimeSavings: lifetimeSavings
+                budgetedEverydayCategories: budgetedEverydayCategories
             )
         }
-    }
-
-    /// Everything put aside since the user started. Needs the whole history, not the month
-    /// on screen, which is why it is computed here and handed to the engine.
-    private var lifetimeSavings: Double {
-        CitySimulationEngine.lifetimeSavings(
-            allTransactions: allTransactions,
-            monthlyBudget: effectiveMonthlyBudget,
-            typicalMonthlySpend: typicalMonthlySpend
-        )
-    }
-    
-    /// What a normal month costs this user, averaged over the months they have completed.
-    /// The current month is excluded — it is the thing being judged — and so are months with no
-    /// spending at all, which would otherwise drag the average down and flatter a bad month.
-    private var typicalMonthlySpend: Double {
-        let cal = Calendar.current
-        let thisMonth = cal.dateComponents([.year, .month], from: Date())
-        var byMonth: [DateComponents: Double] = [:]
-        for tx in allTransactions where tx.category != .savings && tx.amount > 0 {
-            let c = cal.dateComponents([.year, .month], from: tx.timestamp)
-            if c.year == thisMonth.year && c.month == thisMonth.month { continue }
-            byMonth[c, default: 0] += tx.amount
-        }
-        let months = byMonth.values.filter { $0 > 0 }
-        guard !months.isEmpty else { return 0 }
-        return months.reduce(0, +) / Double(months.count)
     }
 
     /// The everyday categories the user set a ceiling on. Empty when they set a single
@@ -266,7 +237,6 @@ public struct MainCityView: View {
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
                     parkHealth: currentCity.parkHealth,
-                    lifetimeSavings: currentCity.lifetimeSavings,
                     viewResetToken: cityViewResetToken,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
@@ -576,7 +546,6 @@ public struct MainCityView: View {
         let elapsed = CitySimulationEngine.budgetAccruedFraction(for: currentDate, now: Date())
         return ReserveSnapshot(
             savedThisMonth: city.totalSavings,
-            lifetimeSavings: city.lifetimeSavings,
             basis: city.savingsBasis,
             health: city.parkHealth,
             monthElapsed: elapsed,
@@ -1428,7 +1397,6 @@ struct InspectorModalView: View {
 /// What the nature reserve knows about itself.
 struct ReserveSnapshot {
     let savedThisMonth: Double
-    let lifetimeSavings: Double
     let basis: CitySimulationEngine.SavingsBasis
     let health: Double
     let monthElapsed: Double
@@ -1635,14 +1603,13 @@ struct ReserveModalView: View {
                 Text(isHebrew ? "שמורת הטבע והחיסכון" : "Nature & Savings Reserve")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
-                // The lifetime figure leads, because it is the thing the reserve actually is.
-                Text(snapshot.lifetimeSavings > 0
-                     ? (isHebrew
-                        ? "\(l10n.format(amount: snapshot.lifetimeSavings.rounded())) נצברו מאז שהתחלת"
-                        : "\(l10n.format(amount: snapshot.lifetimeSavings.rounded())) put aside since you started")
-                     : (isHebrew ? "עוד לא נצבר כלום — כאן זה מתחיל" : "Nothing put aside yet — this is where it starts"))
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(reserveGreen)
+                // This used to carry a running total "put aside since you started". It summed
+                // deposits together with budget the user simply had not spent, which is not
+                // money anyone has — it went on something else, or never existed. A figure
+                // that looks like a balance and is not one has no business on this card.
+                Text(isHebrew ? "מצב החודש הזה" : "How this month is going")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
             }
 
             Spacer()

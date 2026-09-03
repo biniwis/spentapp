@@ -52,18 +52,84 @@ public struct OnboardingWizardView: View {
                 }
                 
                 if currentStep == 2 {
-                    VStack(alignment: .leading, spacing: 12) {
-                        onboardingStepRow(num: "1", title: "הורד את הקיצור המוכן", desc: "הקיצור כבר מוגדר עם כל הפעולות הנדרשות לקליטה חלקה.")
-                        onboardingStepRow(num: "2", title: "צור אוטומציה ב'קיצורים'", desc: "פתח את 'קיצורים' > לשונית 'אוטומציה' > בחר 'עסקה' (Transaction).")
-                        onboardingStepRow(num: "3", title: "בחר 'הפעל מיד'", desc: "סמן 'הפעל מיד' (ללא אישור ידני) ובחר להריץ את הקיצור שהורדת.")
+                    VStack(alignment: .leading, spacing: 14) {
+                        onboardingStepRow(
+                            num: "1",
+                            title: "פתח אוטומציה באייפון",
+                            desc: "באפליקציית 'קיצורים' > לשונית 'אוטומציה' > לחץ + > בחר 'עסקה' (Transaction) וסמן 'הפעל מיד'."
+                        )
+                        
+                        onboardingStepRow(
+                            num: "2",
+                            title: "בחר בפעולה של SPENT",
+                            desc: "בחר 'אוטומציה ריקה חדשה' > 'הוסף פעולה' > חפש SPENT ובחר 'הקלטת עסקת Apple Pay'."
+                        )
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(alignment: .top, spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                        .frame(width: 22, height: 22)
+                                    Text("3")
+                                        .font(.system(size: 12, weight: .black, design: .rounded))
+                                        .foregroundColor(.white)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("חבר את הקלט (חשוב! 💡)")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                                    Text("לחץ על השדות הכחולים וחבר אותם ל'קלט הקיצור':")
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color.textMuted)
+                                }
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 4) {
+                                    Text("• לחץ")
+                                        .font(.system(size: 11, weight: .medium))
+                                    Text("[סכום העסקה]")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color.primaryBlue)
+                                    Text("➔ בחר")
+                                        .font(.system(size: 11, weight: .medium))
+                                    Text("[קלט הקיצור]")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                    Text("(סכום)")
+                                        .font(.system(size: 11, weight: .semibold))
+                                }
+                                HStack(spacing: 4) {
+                                    Text("• לחץ")
+                                        .font(.system(size: 11, weight: .medium))
+                                    Text("[שם בית העסק]")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color.primaryBlue)
+                                    Text("➔ בחר")
+                                        .font(.system(size: 11, weight: .medium))
+                                    Text("[קלט הקיצור]")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                    Text("(שם העסק)")
+                                        .font(.system(size: 11, weight: .semibold))
+                                }
+                                Text("• לחץ 'סיום' (Done) למעלה — וזהו! 🎉")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                    .padding(.top, 2)
+                            }
+                            .padding(.leading, 34)
+                        }
                     }
                     .padding(16)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, 20)
 
-                    Text("💡 הקיצור יהיה זמין להורדה תמיד גם במסך הפרופיל וההגדרות")
+                    Text("💡 תוכל לגשת למדריך זה בכל עת גם מעמוד הפרופיל וההגדרות")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(Color.textMuted)
                         .multilineTextAlignment(.center)
@@ -111,12 +177,12 @@ public struct OnboardingWizardView: View {
                     } else if currentStep == 2 {
                         VStack(spacing: 10) {
                             #if os(iOS)
-                            if let url = URL(string: "https://www.icloud.com/shortcuts/62f2a9f1d7324f9d872bbd30fd9ea8c3") {
+                            if let url = URL(string: "shortcuts://") {
                                 Link(destination: url) {
                                     HStack(spacing: 8) {
-                                        Image(systemName: "arrow.down.app.fill")
-                                            .font(.system(size: 17, weight: .bold))
-                                        Text("הורד קיצור מוכן ל-SPENT (קליק אחד)")
+                                        Image(systemName: "bolt.fill")
+                                            .font(.system(size: 16, weight: .bold))
+                                        Text("פתח את אפליקציית 'קיצורים'")
                                             .font(.system(size: 15, weight: .bold))
                                     }
                                     .foregroundColor(.white)

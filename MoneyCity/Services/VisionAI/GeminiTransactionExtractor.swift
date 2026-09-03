@@ -137,7 +137,10 @@ public final class GeminiTransactionExtractor: VisionTransactionExtractor, @unch
         session: URLSession = .shared
     ) {
         self.modelIdentifier = modelIdentifier
-        self.apiKey = apiKey ?? ProcessInfo.processInfo.environment["GEMINI_API_KEY"]
+        self.apiKey = apiKey
+            ?? ProcessInfo.processInfo.environment["GEMINI_API_KEY"]
+            ?? UserDefaults.standard.string(forKey: "GEMINI_API_KEY")
+            ?? (Bundle.main.infoDictionary?["GEMINI_API_KEY"] as? String)
         self.customEndpointURL = customEndpointURL
         self.session = session
     }

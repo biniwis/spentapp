@@ -39,83 +39,114 @@ public final class ExpenseExtractionService: Sendable {
     #if canImport(UIKit)
     public func processImage(
         _ image: UIImage,
-        rules: [MerchantRule] = []
+        rules: [MerchantRule] = [],
+        allowFallback: Bool = false
     ) async throws -> ProcessedExpenseExtraction {
         guard let data = image.jpegData(compressionQuality: 0.85) else {
             throw GeminiTransactionExtractor.ExtractionError.invalidImageData
         }
-        return try await processImageData(data, mimeType: "image/jpeg", rules: rules)
+        return try await processImageData(data, mimeType: "image/jpeg", rules: rules, allowFallback: allowFallback)
     }
     #endif
 
     public func processImageData(
         _ data: Data,
         mimeType: String = "image/jpeg",
-        rules: [MerchantRule] = []
+        rules: [MerchantRule] = [],
+        allowFallback: Bool = false
     ) async throws -> ProcessedExpenseExtraction {
         let startTime = CFAbsoluteTimeGetCurrent()
 
         // 1. Try Primary Vision AI Extractor if available
-        if let extractor = primaryExtractor {
-            do {
-                let aiResult = try await extractor.extractTransactions(from: data, mimeType: mimeType)
-                
-                // Validate extracted candidates locally
-                let validTransactions = ExtractedTransactionValidator.filterValidTransactions(aiResult.transactions)
-                
-                if !validTransactions.isEmpty {
-                    // Map to ParsedTransactionCandidates using existing CategorizationEngine / Rules
-                    let candidates = validTransactions.map { raw -> ParsedTransactionCandidate in
-                        let merchantName: String
-                        if let m = raw.merchant?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
-                            merchantName = m
-                        } else if let p = raw.product?.trimmingCharacters(in: .whitespacesAndNewlines), !p.isEmpty {
-                            merchantName = p
-                        } else {
-                            merchantName = "הוצאה מצילום מסך"
-                        }
-                        
-                        let doubleAmount = NSDecimalNumber(decimal: raw.amount).doubleValue
-                        let classification = MerchantRuleService.classify(merchant: merchantName, amount: doubleAmount, rules: rules)
-                        
-                        return ParsedTransactionCandidate(
-                            merchant: merchantName,
-                            amount: doubleAmount,
-                            currency: raw.currency,
-                            date: raw.date,
-                            category: classification.category,
-                            buildingId: classification.buildingId,
-                            confidence: raw.confidence,
-                            sourceHint: raw.product,
-                            rawEvidence: "Vision AI: \(extractor.modelIdentifier)"
-                        )
-                    }
-
-                    let duration = CFAbsoluteTimeGetCurrent() - startTime
-                    return ProcessedExpenseExtraction(
-                        candidates: candidates,
-                        rawAIResponse: aiResult.rawResponse,
-                        modelUsed: extractor.modelIdentifier,
-                        duration: duration,
-                        usedFallback: false
-                    )
-                }
-            } catch {
-                // Log and gracefully fall through to fallback
-                MoneyCityLog.sensitive("[ExpenseExtractionService] Vision AI extractor failed, falling back to legacy OCR: \(error)")
+        guard let extractor = primaryExtractor else {
+            if allowFallback {
+                let ocrResult = try await ReceiptOCRService.scanImage(data: data, rules: rules)
+                return ProcessedExpenseExtraction(
+                    candidates: ocrResult.candidates,
+                    rawAIResponse: nil,
+                    modelUsed: "AppleVision-LegacyOCR",
+                    duration: CFAbsoluteTimeGetCurrent() - startTime,
+                    usedFallback: true
+                )
             }
+            throw GeminiTransactionExtractor.ExtractionError.missingCredentials
         }
 
-        // 2. Fallback to Legacy ReceiptOCRService (Apple Vision Spatial OCR)
-        let ocrResult = try await ReceiptOCRService.scanImage(data: data, rules: rules)
-        let duration = CFAbsoluteTimeGetCurrent() - startTime
+        do {
+            let aiResult = try await extractor.extractTransactions(from: data, mimeType: mimeType)
+            
+            MoneyCityLog.sensitive("""
+            [ExpenseExtractionService] AI RAW RESPONSE:
+            ------------------------------------------
+            \(aiResult.rawResponse)
+            ------------------------------------------
+            """)
 
-        return ProcessedExpenseExtraction(
-            candidates: ocrResult.candidates,
-            rawAIResponse: nil,
-            modelUsed: "AppleVision-LegacyOCR",
-            duration: duration,
-            usedFallback: true
-        )
+            // Validate extracted candidates locally
+            let validTransactions = ExtractedTransactionValidator.filterValidTransactions(aiResult.transactions)
+            
+            guard !validTransactions.isEmpty else {
+                throw GeminiTransactionExtractor.ExtractionError.emptyResults
+            }
+
+            let candidates = validTransactions.map { raw -> ParsedTransactionCandidate in
+                let merchantName: String
+                if let m = raw.merchant?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty {
+                    merchantName = m
+                } else if let p = raw.product?.trimmingCharacters(in: .whitespacesAndNewlines), !p.isEmpty {
+                    merchantName = p
+                } else {
+                    merchantName = "הוצאה מצילום מסך"
+                }
+                
+                let doubleAmount = NSDecimalNumber(decimal: raw.amount).doubleValue
+                let classification = MerchantRuleService.classify(merchant: merchantName, amount: doubleAmount, rules: rules)
+                
+                return ParsedTransactionCandidate(
+                    merchant: merchantName,
+                    amount: doubleAmount,
+                    currency: raw.currency,
+                    date: raw.date,
+                    category: classification.category,
+                    buildingId: classification.buildingId,
+                    confidence: raw.confidence,
+                    sourceHint: raw.product,
+                    rawEvidence: "Vision AI (\(extractor.modelIdentifier))"
+                )
+            }
+
+            let duration = CFAbsoluteTimeGetCurrent() - startTime
+
+            let candidateSummary = candidates.enumerated().map { idx, c in
+                "  \(idx + 1). \(c.merchant) — \(c.currency)\(String(format: "%.2f", c.amount)) [\(c.category.displayName)] (Confidence: \(String(format: "%.2f", c.confidence)))"
+            }.joined(separator: "\n")
+
+            MoneyCityLog.sensitive("""
+            [ExpenseExtractionService] PARSED TRANSACTIONS (\(String(format: "%.2fs", duration))):
+            \(candidateSummary)
+            """)
+
+            return ProcessedExpenseExtraction(
+                candidates: candidates,
+                rawAIResponse: aiResult.rawResponse,
+                modelUsed: extractor.modelIdentifier,
+                duration: duration,
+                usedFallback: false
+            )
+        } catch {
+            MoneyCityLog.sensitive("[ExpenseExtractionService] Vision AI extractor failed: \(error.localizedDescription)")
+            if allowFallback {
+                let ocrResult = try await ReceiptOCRService.scanImage(data: data, rules: rules)
+                let duration = CFAbsoluteTimeGetCurrent() - startTime
+                return ProcessedExpenseExtraction(
+                    candidates: ocrResult.candidates,
+                    rawAIResponse: nil,
+                    modelUsed: "AppleVision-LegacyOCR",
+                    duration: duration,
+                    usedFallback: true
+                )
+            }
+            throw error
+        }
     }
 }

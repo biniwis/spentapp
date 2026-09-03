@@ -698,12 +698,12 @@ public struct QuickAddSheet: View {
         let rules = DatabaseService.shared.fetchMerchantRules()
         
         do {
-            let result = try await ReceiptOCRService.scanImage(data: data, rules: rules)
+            let result = try await ExpenseExtractionService.shared.processImageData(data, rules: rules, allowFallback: false)
             await MainActor.run {
                 if result.candidates.count > 1 {
                     scannedMultiCandidates = result.candidates
                     Haptics.notify(.success)
-                } else if let single = result.primary {
+                } else if let single = result.candidates.first {
                     scannedMultiCandidates = []
                     amountText = (single.amount.truncatingRemainder(dividingBy: 1) == 0) ? String(format: "%.0f", single.amount) : String(format: "%.2f", single.amount)
                     note = single.merchant
@@ -714,6 +714,7 @@ public struct QuickAddSheet: View {
                 }
             }
         } catch {
+            MoneyCityLog.sensitive("[QuickAddSheet Scan Error] \(error.localizedDescription)")
             await MainActor.run {
                 Haptics.notify(.warning)
                 showErrorHint = true

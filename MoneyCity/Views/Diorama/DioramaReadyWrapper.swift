@@ -10,6 +10,8 @@ public struct DioramaReadyWrapper: View {
     public let parkHealth: Double
     /// Bumped whenever the user asks for the default city view back.
     public let viewResetToken: Int
+    /// Pulls the camera back for the month view.
+    public let isOverview: Bool
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
     public let habits: BehavioralHabits
@@ -31,6 +33,7 @@ public struct DioramaReadyWrapper: View {
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
         viewResetToken: Int = 0,
+        isOverview: Bool = false,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double],
         habits: BehavioralHabits,
@@ -49,6 +52,7 @@ public struct DioramaReadyWrapper: View {
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
         self.viewResetToken = viewResetToken
+        self.isOverview = isOverview
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.habits = habits
@@ -71,6 +75,7 @@ public struct DioramaReadyWrapper: View {
                 savingsTarget: savingsTarget,
                 parkHealth: parkHealth,
                 viewResetToken: viewResetToken,
+                isOverview: isOverview,
                 categoryTotals: categoryTotals,
                 buildingTotals: buildingTotals,
                 habits: habits,

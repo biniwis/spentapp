@@ -5218,6 +5218,23 @@
     // the user with no way back to the view the app opens on. The token is what makes it
     // repeatable: the payload is only re-sent when it actually changes, so the app bumps it
     // on every press of the city tab and the map resets once per press.
+    // Looking back at a finished month is a different act from managing the current one, so
+    // the camera says so: further back, and tilted down a little more, the way you look at a
+    // model on a table rather than standing in the street.
+    let cityOverview = false;
+    window.setCityOverview = function(on) {
+      const next = !!on;
+      if (next === cityOverview) return;
+      cityOverview = next;
+      currentMode = "city";
+      targetCam = Object.assign({}, CAM_MODES.city);
+      if (cityOverview) {
+        targetCam.zoom = CAM_MODES.city.zoom * 0.74;
+        targetCam.el = Math.min(1.30, CAM_MODES.city.el + 0.16);
+      }
+      spinVel = 0; tiltVel = 0; panVelX = 0; panVelZ = 0;
+    };
+
     let lastCityResetToken = null;
     window.resetCityView = function(token) {
       if (token === lastCityResetToken) return;
@@ -5226,6 +5243,10 @@
       if (first) return;   // the very first payload is the opening view, not a reset
       currentMode = "city";
       targetCam = Object.assign({}, CAM_MODES.city);
+      if (cityOverview) {
+        targetCam.zoom = CAM_MODES.city.zoom * 0.74;
+        targetCam.el = Math.min(1.30, CAM_MODES.city.el + 0.16);
+      }
       spinVel = 0; tiltVel = 0; panVelX = 0; panVelZ = 0;
     };
 

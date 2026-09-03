@@ -102,6 +102,13 @@ public struct MainCityView: View {
     @State private var showSlotCustomizer = false
     @State private var customizerSelectedSlotId: String? = nil
     @State private var isZenMode = false
+    /// The month being looked back at, when the user opened one from the profile chart.
+    ///
+    /// This is its own mode rather than "the normal screen showing a different month". Showing
+    /// history on the everyday screen means someone sees their own city with the wrong numbers
+    /// in it and no idea why — so here the chrome goes, the camera pulls back, and the only
+    /// controls are the month's name and the way out.
+    @State private var monthSnapshot: Date? = nil
     @State private var isDetailsExpanded = false
     @State private var newlyUnlockedEnrichmentId: String? = nil
     @State private var selectedDistrict: String? = nil
@@ -243,6 +250,7 @@ public struct MainCityView: View {
                     savingsTarget: currentCity.savingsTarget,
                     parkHealth: currentCity.parkHealth,
                     viewResetToken: cityViewResetToken,
+                    isOverview: isSnapshotMode,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
                     habits: currentCity.habits,
@@ -259,7 +267,7 @@ public struct MainCityView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 // 2. Top Category Circles (Fixed at Top, hidden in Map Only mode)
-                if !isZenMode {
+                if !isChromeHidden {
                     districtSelectorRow
                         .padding(.top, 2)
                 }
@@ -269,20 +277,46 @@ public struct MainCityView: View {
 
             // ── Other Tabs ──
             if activeTab == "analytics" {
-                AnalyticsView(onNavigateToCity: showCity(for:))
+                AnalyticsView(onNavigateToCity: openMonthSnapshot)
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             } else if activeTab == "history" {
                 HistoryView()
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             } else if activeTab == "profile" {
-                ProfileView(onNavigateToCity: showCity(for:))
+                ProfileView(onNavigateToCity: openMonthSnapshot)
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             }
 
             // Zen mode expand/collapse button (city only)
             if activeTab == "city" {
                 HStack {
-                    if isViewingPastMonth {
+                    if isSnapshotMode {
+                        Button(action: closeMonthSnapshot) {
+                            HStack(spacing: 8) {
+                                Image(systemName: l10n.language == .hebrew ? "chevron.right" : "chevron.left")
+                                    .font(.system(size: 13, weight: .black))
+                                VStack(alignment: .leading, spacing: 0) {
+                                    Text(monthYearString)
+                                        .font(.system(size: 13.5, weight: .black, design: .rounded))
+                                    Text(l10n.language == .hebrew
+                                         ? "\(l10n.format(amount: currentCity.totalSpent.rounded())) הוצאות"
+                                         : "\(l10n.format(amount: currentCity.totalSpent.rounded())) spent")
+                                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                        .opacity(0.75)
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 13)
+                            .padding(.vertical, 8)
+                            .background(Color.deepNavy.opacity(0.92))
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.18), radius: 8, y: 3)
+                        }
+                        .buttonStyle(.plain)
+                        .bouncyPress(scale: 0.95)
+                        .padding(.leading, 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    } else if isViewingPastMonth {
                         // Deliberately not styled like the rest of the chrome: this is a state
                         // the user did not choose to be in permanently, and it has to read as
                         // temporary and reversible at a glance.
@@ -326,6 +360,7 @@ public struct MainCityView: View {
                         .transition(.opacity)
                     }
                     Spacer()
+                    if !isSnapshotMode {
                     Button(action: {
                         withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
                             isZenMode.toggle()
@@ -342,13 +377,14 @@ public struct MainCityView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.trailing, 16)
+                    }
                 }
-                .padding(.top, isZenMode ? 56 : 94)
+                .padding(.top, isChromeHidden ? 56 : 94)
                 .frame(maxHeight: .infinity, alignment: .top)
             }
 
             // ── Unified Floating Bottom Cards & Navigation Bar (Zero Overlap & Zero Dead Space) ──
-            if !isZenMode {
+            if !isChromeHidden {
                 VStack(spacing: 8) {
                     Spacer()
                     if activeTab == "city" {
@@ -559,19 +595,6 @@ public struct MainCityView: View {
         Haptics.impact(.medium)
     }
     
-    /// Show the city for a given month. The recap's "Back to City" button used to call an
-    /// optional closure that neither presenter supplied, so it only closed the sheet and left
-    /// the user on whatever tab they were already on.
-    private func showCity(for month: Date) {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            currentDate = month
-            selectedDistrict = nil
-            inspectedBuilding = nil
-            activeTab = "city"
-        }
-        cityViewResetToken &+= 1
-    }
-
     private func handleSelectDistrict(_ dist: String?) {
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             selectedDistrict = dist
@@ -1125,6 +1148,35 @@ public struct MainCityView: View {
     /// on screen said which month was being shown, and there was no way back. Somebody sent to
     /// a past month would have been stranded there with a screen that looked exactly like the
     /// one they use every day.
+    /// True while looking back at a month. Everything the everyday screen offers is hidden.
+    private var isSnapshotMode: Bool { monthSnapshot != nil }
+
+    /// Chrome is hidden by the full-map toggle and by the month view alike.
+    private var isChromeHidden: Bool { isZenMode || isSnapshotMode }
+
+    private func openMonthSnapshot(_ month: Date) {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+            monthSnapshot = month
+            currentDate = month
+            selectedDistrict = nil
+            inspectedBuilding = nil
+            activeTab = "city"
+        }
+        cityViewResetToken &+= 1
+    }
+
+    private func closeMonthSnapshot() {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+            monthSnapshot = nil
+            currentDate = Date()
+            selectedDistrict = nil
+            inspectedBuilding = nil
+            // Back to where they came from, not to the city — they were reading their history.
+            activeTab = "profile"
+        }
+        cityViewResetToken &+= 1
+    }
+
     private var isViewingPastMonth: Bool {
         !Calendar.current.isDate(currentDate, equalTo: Date(), toGranularity: .month)
     }

@@ -40,6 +40,8 @@ public struct ThreeDioramaView: ViewRepresentable {
     /// camera whenever this changes, which is the only way to reset a camera that is already
     /// in city mode.
     public let viewResetToken: Int
+    /// Pulls the camera back for the month view, which is looked at rather than worked in.
+    public let isOverview: Bool
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
     public let habits: BehavioralHabits
@@ -59,6 +61,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
         viewResetToken: Int = 0,
+        isOverview: Bool = false,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double] = [:],
         habits: BehavioralHabits = BehavioralHabits(),
@@ -77,6 +80,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
         self.viewResetToken = viewResetToken
+        self.isOverview = isOverview
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.habits = habits
@@ -304,6 +308,7 @@ public struct ThreeDioramaView: ViewRepresentable {
           }
           // Always explicitly set district so zoom-out to city (null) never gets silently dropped
           \(districtJS)
+          if(window.setCityOverview){ window.setCityOverview(\(isOverview ? "true" : "false")); }
           if(window.resetCityView){ window.resetCityView(\(viewResetToken)); }
         }
         """

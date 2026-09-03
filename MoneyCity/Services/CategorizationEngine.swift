@@ -20,7 +20,8 @@ public final class CategorizationEngine: Sendable {
     private let dictionary: [SpendingCategory: [String]] = [
         .housing: [
             "שכירות", "rent", "ארנונה", "ארנונת", "חברת חשמל", "חשמל", "אינטרנט",
-            "מי אביבים", "מי כרמל", "מי תל אביב", "מי שבע", "גינדי", "עזריאלי מגורים", "ועד בית",
+            "מי אביבים", "מי כרמל", "מי תל אביב", "מי שבע", "מי גבעתיים", "תאגיד מים", "גינדי", "עזריאלי מגורים", "ועד בית",
+            "עיריית גבעתיים", "עיריית תל אביב", "עיריית ירושלים", "עיריית חיפה", "עיריית רמת גן", "עירייה",
             "בזק", "bezeq", "hot", "הוט", "partner fiber", "cellcom fiber", "פזגז", "אמישראגז", "סופרגז"
         ],
         .food: [
@@ -29,7 +30,7 @@ public final class CategorizationEngine: Sendable {
             "אושר עד", "osher ad", "מחסני השוק", "חצי חינם", "מגה", "mega",
             "wolt", "וולט", "10bis", "תן ביס", "tabit", "ארומה", "aroma", "arcaffe",
             "ארקפה", "landwer", "לנדוור", "קפה", "cafe", "coffee", "מסעדת", "פיצה", "pizza",
-            "burger", "בורגר", "מקדונלדס", "mcdonalds", "גולדה", "golda", "מאפיית", "מאפיה", "bakery", "בר",
+            "burger", "בורגר", "מקדונלדס", "מקדונלד'ס", "מקדונלד", "mcdonalds", "mcdonald's", "גולדה", "golda", "מאפיית", "מאפיה", "bakery", "בר",
             "דומינוס", "dominos", "bbb", "מוזס", "moses", "אגאדיר", "agadir", "פאפוד", "סושי", "sushi"
         ],
         .transport: [
@@ -67,8 +68,11 @@ public final class CategorizationEngine: Sendable {
             "חיסכון", "savings", "קופת גמל", "קרן השתלמות", "s&p", "s&p500", "הפקדה", "deposit", "בורסה", "ibkr", "interactive"
         ],
         .miscellaneous: [
+            "קנס חניה עיריית תל אביב", "קנס עיריית תל אביב", "דוח עיריית תל אביב",
+            "קנס חניה עיריית ירושלים", "קנס עיריית גבעתיים", "קנס חניה", "קנס עירייה",
+            "קנס", "דוח", "fine", "משטרה", "police",
             "מתנה", "gift", "פרחים", "flowers", "תרומה", "donation",
-            "קנס", "דוח", "קנס חניה", "קנס עירייה", "fine", "משטרה", "police", "עורך דין", "lawyer", "נוטריון", "notary",
+            "עורך דין", "lawyer", "נוטריון", "notary",
             "אגרה", "fee", "שונות", "misc", "כללי", "general", "וינטג'", "vintage",
             "מכירה פומבית", "auction"
         ]

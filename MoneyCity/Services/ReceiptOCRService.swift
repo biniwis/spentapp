@@ -812,12 +812,14 @@ public enum ReceiptOCRService {
         let primaryTotalKeywords = [
             "סה\"כ לתשלום בש\"ח", "סה״כ לתשלום בש״ח", "סה\"כ לתשלום", "סה״כ לתשלום",
             "סך הכל לתשלום", "סך-הכל לתשלום", "סך לתשלום",
+            "סך כל העסקה", "סך כל העסקה:", "סך העסקה", "סך העסקה:",
+            "סה\"כ שולם", "סה״כ שולם", "סך הכל שולם", "סך שולם",
             "סך הכל", "סה\"כ", "סה״כ", "סך-הכל", "סהכ", "ס'הכ", "ס״הכ", "ס\"הכ", "s'no",
             "סה\"כ:", "סה״כ:", "סהכ:", "ס'הכ:", "סך הכל:", "סך-הכל:",
             "סכום לתשלום", "סכום החיוב", "סכום העסקה", "סכום שחויב", "סכום ההעברה",
             "סכום שובר", "סכום סופי", "לתשלום", "חויב", "חוייב", "חויבת בסך",
             "total amount", "grand total", "amount paid", "amount due",
-            "total paid", "total due", "charged", "total"
+            "total paid", "total due", "order total", "charged", "total"
         ]
 
         let secondaryKeywords = [
@@ -826,8 +828,9 @@ public enum ReceiptOCRService {
         ]
 
         let negativeKeywords = [
+            "לפני הנחה", "לפני הנחות", "לפני מע\"מ", "לפני מע״מ", "לפני מעמ", "לפני זיכוי",
             "הנחה", "discount", "coupon", "קופון", "מע\"מ", "מע״מ", "vat", "tax",
-            "דמי משלוח", "משלוח", "delivery", "טיפ", "tip", "subtotal", "יתרה", "balance"
+            "דמי משלוח", "משלוח", "delivery", "טיפ", "tip", "subtotal", "יתרה", "balance", "עודף", "שולם במזומן", "צברת"
         ]
 
         for line in lines {
@@ -867,8 +870,8 @@ public enum ReceiptOCRService {
                 score += 50
             }
 
-            if negativeKeywords.contains(where: { lower.contains($0) }) && !hasPrimaryKeyword {
-                score -= 150
+            if negativeKeywords.contains(where: { lower.contains($0) }) {
+                score -= 300
             }
 
             for num in numbers {
@@ -1083,8 +1086,17 @@ public enum ReceiptOCRService {
 
         let fullText = lines.joined(separator: "\n").lowercased()
 
-        if fullText.contains("5320905") || fullText.contains("גבעתיים") || fullText.contains("ארנונה") {
+        if fullText.contains("5320905") || fullText.contains("עיריית גבעתיים") {
             return "עיריית גבעתיים"
+        }
+        if fullText.contains("מי גבעתיים") {
+            return "מי גבעתיים"
+        }
+        if fullText.contains("מי אביבים") {
+            return "מי אביבים"
+        }
+        if fullText.contains("חברת חשמל") {
+            return "חברת חשמל"
         }
         if fullText.contains("google play") || fullText.contains("google commerce") {
             return "Google Play"
@@ -1092,15 +1104,12 @@ public enum ReceiptOCRService {
         if fullText.contains("yeshinvoice") || fullText.contains("יש התחלה") {
             return "יש התחלה"
         }
-        if fullText.contains("מי גבעתיים") || fullText.contains("שירותי מים") {
-            return "מי גבעתיים"
-        }
 
         for line in lines {
-            if let range = line.range(of: #"(?:העברת ל|העברה ל|העברה אל|שילמת ל|שולם ל)\s*([^\d\n\r,.:;]+)"#, options: .regularExpression) {
-                let match = String(line[range])
-                    .replacingOccurrences(of: #"^(?:העברת ל|העברה ל|העברה אל|שילמת ל|שולם ל)\s*"#, with: "", options: .regularExpression)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            if let range = line.range(of: #"(?:העברת ל|העברה ל|העברת אל|העברה אל|שילמת ל|שולם ל)\s*([^\d\n\r,.:;]+)"#, options: .regularExpression) {
+                let raw = String(line[range])
+                    .replacingOccurrences(of: #"^(?:העברת ל|העברה ל|העברת אל|העברה אל|שילמת ל|שולם ל)\s*"#, with: "", options: .regularExpression)
+                let match = raw.trimmingCharacters(in: CharacterSet(charactersIn: " \t\n-–—,.·:;|/\"'״׳*#0123456789"))
                 if match.count >= 2 { return match }
             }
         }
@@ -1164,6 +1173,7 @@ public enum ReceiptOCRService {
             ("גבעתיים", "עיריית גבעתיים"), ("עיריית גבעתיים", "עיריית גבעתיים"), ("ארנונה", "ארנונה"),
             ("יש התחלה", "יש התחלה"), ("yeshinvoice", "יש התחלה"),
             ("מי גבעתיים", "מי גבעתיים"), ("מי אביבים", "מי אביבים"), ("חברת חשמל", "חברת חשמל"),
+            ("פז", "פז"), ("דור אלון", "דור אלון"), ("סונול", "סונול"), ("דלק", "דלק"), ("טן", "טן"),
             ("פרטנר", "Partner"), ("partner", "Partner"), ("סלקום", "Cellcom"), ("cellcom", "Cellcom"),
             ("פלאפון", "Pelephone"), ("pelephone", "Pelephone"), ("בזק", "בזק"), ("bezeq", "בזק")
         ]

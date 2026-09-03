@@ -305,4 +305,213 @@ final class SpatialReceiptTests: XCTestCase {
         XCTAssertEqual(candidates.first?.merchant, "Super-Pharm")
         XCTAssertEqual(candidates.first?.amount, 84.90)
     }
+
+    // MARK: - Exhaustive Real-World Edge Cases Suite
+
+    // Case 1: Supermarket Receipt with Line Items, Club Discounts, and Cash/Change
+    func testSupermarketWithDiscountsAndCashPayment() {
+        let lines = [
+            "יוחננוף - סניף רחובות",
+            "חשבונית מס קבלה 84920",
+            "חלב תנובה 3% 6.90 ₪",
+            "לחם שיפון 14.50 ₪",
+            "בשר בקר טרי 85.00 ₪",
+            "יין אדום 45.00 ₪",
+            "סה\"כ לפני הנחה 151.40 ₪",
+            "הנחת מועדון 20.00- ₪",
+            "מבצע 1+1 6.90- ₪",
+            "סה\"כ לתשלום: 124.50 ₪",
+            "שולם במזומן: 200.00 ₪",
+            "עודף: 75.50 ₪"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 124.50, "Must extract the final paid total, not subtotal or cash paid")
+        XCTAssertEqual(result?.merchant, "יוחננוף")
+        XCTAssertEqual(result?.category, .food)
+    }
+
+    // Case 2: Israel Electric Company (חברת חשמל) with Arrears and Sub-charges
+    func testElectricBillWithMultipleCharges() {
+        let lines = [
+            "חברת חשמל לישראל בע\"מ",
+            "חשבון תקופתי עבור 07/2026 - 08/2026",
+            "צריכת חשמל (650 קוט\"ש) 420.00 ₪",
+            "תשלום קבוע 28.50 ₪",
+            "ריבית פיגורים 4.20 ₪",
+            "מע\"מ 18% 81.49 ₪",
+            "סה\"כ לתשלום בש\"ח 534.19 ₪",
+            "לתשלום עד 15/09/2026"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 534.19)
+        XCTAssertEqual(result?.merchant, "חברת חשמל")
+        XCTAssertEqual(result?.category, .housing)
+    }
+
+    // Case 3: Water Utility (מי אביבים / מי גבעתיים)
+    func testWaterUtilityInvoice() {
+        let lines = [
+            "תאגיד מי אביבים מים וביוב תל אביב",
+            "הודעת תשלום תקופתית",
+            "שירותי מים (כמות בסיסית) 72.40 ₪",
+            "שירותי ביוב 48.60 ₪",
+            "היטל שמירה עירוני 19.50 ₪",
+            "סה\"כ לתשלום בש\"ח: 140.50 ₪",
+            "תאריך 18/08/2026"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 140.50)
+        XCTAssertEqual(result?.merchant, "מי אביבים")
+        XCTAssertEqual(result?.category, .housing)
+    }
+
+    // Case 4: Wolt Food Delivery with Delivery Fee, Service Fee, Coupon & Tip
+    func testWoltWithFeesCouponsAndTips() {
+        let lines = [
+            "Wolt",
+            "הזמנה ממקדונלד'ס דיזנגוף",
+            "2x ארוחת מק רויאל 118.00 ₪",
+            "1x פוטטו גדול 18.00 ₪",
+            "דמי משלוח 16.00 ₪",
+            "דמי תפעול 2.00 ₪",
+            "קופון הנחה 25.00- ₪",
+            "טיפ לשליח 10.00 ₪",
+            "סה\"כ שולם: 139.00 ₪",
+            "Mastercard מסתיים ב-8841"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 139.00)
+        XCTAssertEqual(result?.category, .food)
+    }
+
+    // Case 5: Telecom Cellular Bill with Mobile Phone Number & ID
+    func testCellcomBillWithSubscriberNumberAndId() {
+        let lines = [
+            "סלקום ישראל בע\"מ",
+            "חשבונית חודשית לחודש אוגוסט 2026",
+            "מספר מנוי: 052-9876543",
+            "ח.פ: 511234567",
+            "חבילת סלולר 5G 39.90 ₪",
+            "חבילת חו\"ל 49.90 ₪",
+            "מע\"מ 18% 16.16 ₪",
+            "סך הכל חויב: 105.96 ₪"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 105.96)
+        XCTAssertEqual(result?.merchant, "Cellcom")
+        XCTAssertEqual(result?.category, .subscriptions)
+    }
+
+    // Case 6: Gas Station Slip (דור אלון / סונול / פז)
+    func testGasStationSlip() {
+        let lines = [
+            "פז - תחנת תלפיות ירושלים",
+            "בנזין 95 (38.45 ליטר) 289.14 ₪",
+            "שטיפת רכב 25.00 ₪",
+            "סה\"כ לתשלום: 314.14 ₪",
+            "שולם באמצעות ויזה מסתיימת ב-4122"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 314.14)
+        XCTAssertEqual(result?.merchant, "פז")
+        XCTAssertEqual(result?.category, .transport)
+    }
+
+    // Case 7: Installments / Payments Split Bill (איקאה)
+    func testIkeaInstallmentsReceipt() {
+        let lines = [
+            "איקאה ישראל - סניף ראשון לציון",
+            "שולחן כתיבה + כיסא ארגונומי",
+            "3 תשלומים של 300.00 ₪",
+            "סך כל העסקה: 900.00 ₪",
+            "תאריך: 10/08/2026"
+        ]
+
+        let result = ReceiptOCRService.parseReceipt(from: lines)
+        XCTAssertNotNil(result)
+        XCTAssertEqual(result?.amount, 900.00)
+        XCTAssertEqual(result?.merchant, "IKEA")
+        XCTAssertEqual(result?.category, .shopping)
+    }
+
+    // Case 8: Heavily Distorted OCR Artifacts (m, 0 prefix, s'no typo)
+    func testHeavilyDistortedOCRArtifacts() {
+        // Shekel read as 'm', 'סה"כ' read as 's'no'
+        let lines1 = [
+            "שופרסל שלי",
+            "s'no לתשלום: m215.80",
+            "תאריך 05/08/2026"
+        ]
+        let res1 = ReceiptOCRService.parseReceipt(from: lines1)
+        XCTAssertEqual(res1?.amount, 215.80)
+        XCTAssertEqual(res1?.merchant, "שופרסל")
+
+        // Shekel read as '0' prefix, 'סה"כ' read as 'ס'הכ'
+        let lines2 = [
+            "קפה לנדוור",
+            "ארוחת בוקר זוגית",
+            "ס'הכ: 0148.00",
+            "תאריך 12/08/2026"
+        ]
+        let res2 = ReceiptOCRService.parseReceipt(from: lines2)
+        XCTAssertEqual(res2?.amount, 148.00)
+        XCTAssertEqual(res2?.merchant, "קפה לנדוור")
+    }
+
+    // Case 9: Multi-Currency International (Amazon USD, ASOS GBP)
+    func testInternationalCurrenciesUSDAndGBP() {
+        let amazonLines = [
+            "Amazon.com Order Confirmation",
+            "Sony WH-1000XM5 Headphones",
+            "Order Total: $349.99",
+            "Shipped via DHL Express"
+        ]
+        let resAmazon = ReceiptOCRService.parseReceipt(from: amazonLines)
+        XCTAssertEqual(resAmazon?.amount, 349.99)
+        XCTAssertEqual(resAmazon?.merchant, "Amazon")
+
+        let asosLines = [
+            "ASOS Official Store",
+            "Summer Jacket - Navy / L",
+            "Total Paid: £75.50",
+            "Mastercard-3012"
+        ]
+        let resAsos = ReceiptOCRService.parseReceipt(from: asosLines)
+        XCTAssertEqual(resAsos?.amount, 75.50)
+    }
+
+    // Case 10: Bit and PayBox P2P Payments
+    func testP2PBitAndPayBox() {
+        let bitLines = [
+            "bit - העברת כספים",
+            "העברת ל-נועה שרון",
+            "סכום: ₪ 450.00",
+            "עבור: מתנת יום הולדת",
+            "אסמכתא: 90281920"
+        ]
+        let resBit = ReceiptOCRService.parseReceipt(from: bitLines)
+        XCTAssertEqual(resBit?.amount, 450.00)
+        XCTAssertEqual(resBit?.merchant, "נועה שרון")
+
+        let payboxLines = [
+            "PayBox",
+            "שילמת ל-ועד בית בלפור 12",
+            "סכום: 300.00 ש\"ח",
+            "תאריך: 01/08/2026"
+        ]
+        let resPaybox = ReceiptOCRService.parseReceipt(from: payboxLines)
+        XCTAssertEqual(resPaybox?.amount, 300.00)
+    }
 }

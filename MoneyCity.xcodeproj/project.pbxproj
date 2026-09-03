@@ -78,6 +78,9 @@
 		8A56689A2D3B4D2183D859AE /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8F8EC5A2E74D417CBF55D9DD; };
 		7987D36D8BB74461B71A61D3 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 276F7BEB33F043FAA34B237A; };
 		8C77BB46F91D41ABA7C26986 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B099A5773FD940569AD2A36C; };
+		AA01000223456789ABCDEF02 /* ExpenseExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01000123456789ABCDEF01; };
+		AA02000223456789ABCDEF02 /* GeminiTransactionExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA02000123456789ABCDEF01; };
+		AA03000223456789ABCDEF02 /* VisionTransactionExtractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA03000123456789ABCDEF01; };
 		A9352E51D625462888D50828 /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 9054A8B77CE14E29A43BFF52; };
 		279363C49B414C9B86EE9B26 /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = BE98EF5FDC624AA7A4EFA11E; };
 		D00F5ABBF5EC4391B88A0AF4 /* Resources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3CBA1FF4064B4A40A662F45D; };
@@ -183,6 +186,9 @@
 		8F8EC5A2E74D417CBF55D9DD /* StoreSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StoreSnapshotService.swift"; path = "MoneyCity/Services/StoreSnapshotService.swift"; sourceTree = "<group>"; };
 		276F7BEB33F043FAA34B237A /* TransactionIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TransactionIngest.swift"; path = "MoneyCity/Services/TransactionIngest.swift"; sourceTree = "<group>"; };
 		B099A5773FD940569AD2A36C /* WalletIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "WalletIngestCoordinator.swift"; path = "MoneyCity/Services/WalletIngestCoordinator.swift"; sourceTree = "<group>"; };
+		AA01000123456789ABCDEF01 /* ExpenseExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ExpenseExtractionService.swift"; path = "MoneyCity/Services/VisionAI/ExpenseExtractionService.swift"; sourceTree = "<group>"; };
+		AA02000123456789ABCDEF01 /* GeminiTransactionExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "GeminiTransactionExtractor.swift"; path = "MoneyCity/Services/VisionAI/GeminiTransactionExtractor.swift"; sourceTree = "<group>"; };
+		AA03000123456789ABCDEF01 /* VisionTransactionExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "VisionTransactionExtractor.swift"; path = "MoneyCity/Services/VisionAI/VisionTransactionExtractor.swift"; sourceTree = "<group>"; };
 		9054A8B77CE14E29A43BFF52 /* diorama.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = "diorama.html"; path = "MoneyCity/Resources/diorama.html"; sourceTree = "<group>"; };
 		BE98EF5FDC624AA7A4EFA11E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.asset-catalog; name = "Assets.xcassets"; path = "MoneyCity/Resources/Assets.xcassets"; sourceTree = "<group>"; };
 		3CBA1FF4064B4A40A662F45D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "PrivacyInfo.xcprivacy"; path = "MoneyCity/Resources/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
@@ -283,6 +289,9 @@
 				8F8EC5A2E74D417CBF55D9DD /* StoreSnapshotService.swift */,
 				276F7BEB33F043FAA34B237A /* TransactionIngest.swift */,
 				B099A5773FD940569AD2A36C /* WalletIngestCoordinator.swift */,
+				AA01000123456789ABCDEF01 /* ExpenseExtractionService.swift */,
+				AA02000123456789ABCDEF01 /* GeminiTransactionExtractor.swift */,
+				AA03000123456789ABCDEF01 /* VisionTransactionExtractor.swift */,
 				9054A8B77CE14E29A43BFF52 /* diorama.html */,
 				BE98EF5FDC624AA7A4EFA11E /* Assets.xcassets */,
 				3CBA1FF4064B4A40A662F45D /* PrivacyInfo.xcprivacy */,
@@ -474,6 +483,9 @@
 				8A56689A2D3B4D2183D859AE /* Sources */,
 				7987D36D8BB74461B71A61D3 /* Sources */,
 				8C77BB46F91D41ABA7C26986 /* Sources */,
+				AA01000223456789ABCDEF02 /* Sources */,
+				AA02000223456789ABCDEF02 /* Sources */,
+				AA03000223456789ABCDEF02 /* Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

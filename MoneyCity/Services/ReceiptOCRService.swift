@@ -441,10 +441,34 @@ public enum ReceiptOCRService {
                 )
             }
 
-            // 6. Check Amount
+            // 6. Check Amount (Direct or Spatially Adjacent to Shekel / Currency Anchor)
             let numbers = extractNumbers(from: text)
-            let curr = detectCurrencySymbol(text)
-            if !numbers.isEmpty && (curr != nil || isAmountIndicator(lower)) && !isPhoneOrBarcode(lower, numbers: numbers) {
+            var curr = detectCurrencySymbol(text)
+            var hasAmountAnchor = isAmountIndicator(lower)
+
+            // If this token has a number but no currency, check neighboring tokens on the same horizontal line
+            if !numbers.isEmpty && curr == nil && !hasAmountAnchor {
+                let yCenter = token.boundingBox.midY
+                let neighbors = tokens.filter { other in
+                    guard other.text != token.text else { return false }
+                    let otherYCenter = other.boundingBox.midY
+                    let isSameLine = abs(yCenter - otherYCenter) < max(token.lineHeight, 0.03)
+                    let xDist = abs(token.boundingBox.midX - other.boundingBox.midX)
+                    return isSameLine && xDist < 0.35
+                }
+
+                for neighbor in neighbors {
+                    let nLower = neighbor.text.lowercased()
+                    if let nCurr = detectCurrencySymbol(neighbor.text) {
+                        curr = nCurr
+                    }
+                    if isAmountIndicator(nLower) {
+                        hasAmountAnchor = true
+                    }
+                }
+            }
+
+            if !numbers.isEmpty && (curr != nil || hasAmountAnchor) && !isPhoneOrBarcode(lower, numbers: numbers) {
                 return OCRSpatialToken(
                     text: text,
                     boundingBox: token.boundingBox,

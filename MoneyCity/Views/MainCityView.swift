@@ -883,9 +883,12 @@ public struct MainCityView: View {
                         DistrictParkVectorIcon(color: Color.themeMint)
                             .frame(width: 14, height: 14)
                             .scaleEffect(0.65)
-                        // "in Park" named a place, not the number. It is deposits, so it says so.
-                        Text("\(l10n.format(amount: currentCity.totalSavings)) \(l10n.language == .hebrew ? "לחיסכון" : "to savings")")
+                        // "in Park" named a place, not the number. It is what the user tagged
+                        // as savings or investment, so it takes that category's name.
+                        Text("\(l10n.format(amount: currentCity.totalSavings)) \(SpendingCategory.savings.displayName(for: l10n.language))")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .foregroundColor(Color.themeMint)
                     .padding(.horizontal, 10)
@@ -1443,9 +1446,14 @@ struct ReserveModalView: View {
     /// is why nobody could tell what the figure meant.
     private var basisText: String {
         if snapshot.savedThisMonth > 0 {
-            return isHebrew ? "כסף שהעברת לחיסכון החודש" : "money you moved into savings this month"
+            return isHebrew
+                ? "מה שסימנת החודש כחיסכון או השקעה"
+                : "what you tagged as savings or investment this month"
         }
-        return isHebrew ? "לא רשמת הפקדות החודש" : "no deposits recorded this month"
+        // An empty figure should say how to fill it, not just that it is empty.
+        return isHebrew
+            ? "אין החודש. סמן הפקדה או השקעה בקטגוריה הזו והיא תופיע כאן."
+            : "None this month. Tag a deposit or investment with this category and it appears here."
     }
 
     /// Straight-line projection, and only once enough of the month has gone by to mean anything.
@@ -1623,7 +1631,9 @@ struct ReserveModalView: View {
     private var figuresRow: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(isHebrew ? "הפקדת לחיסכון" : "Moved to savings")
+                // The category's own name, so the number on the card and the label the user
+                // picks when recording the expense are visibly the same thing.
+                Text(SpendingCategory.savings.displayName(for: l10n.language))
                     .font(.system(size: 10.5, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
                 Text("\(l10n.format(amount: snapshot.savedThisMonth.rounded()))")

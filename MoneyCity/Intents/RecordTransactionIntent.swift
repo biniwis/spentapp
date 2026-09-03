@@ -78,10 +78,34 @@ public struct RecordTransactionIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
+        var effectiveAmount = amount
+        var effectiveMerchant = merchant
+
+        let hasAmount = (effectiveAmount != nil && effectiveAmount! > 0)
+            || TransactionIngest.amountLikeValue(in: amountText) != nil
+            || TransactionIngest.normalizedAmount(nil, amountText) != nil
+            || TransactionIngest.amountLikeValue(in: merchant) != nil
+
+        if !hasAmount {
+            do {
+                let promptDialog = IntentDialog("💳 זוהה תשלום ב-Apple Pay. מה הסכום ששילמת?")
+                let requested = try await $amount.requestValue(promptDialog)
+                if requested > 0 {
+                    effectiveAmount = requested
+                }
+            } catch {
+                // If user dismissed or cancelled, proceed to log failure gracefully
+            }
+        }
+
+        if (effectiveMerchant == nil || effectiveMerchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true) && (effectiveAmount != nil && effectiveAmount! > 0) {
+            effectiveMerchant = "תשלום Apple Pay"
+        }
+
         let debugRaw = """
         [SPENT Ingest Debug]
-        • amount received: \(amount != nil ? "\(amount!)" : "nil")
-        • merchant received: \(merchant != nil ? "\"\(merchant!)\"" : "nil")
+        • amount received: \(effectiveAmount != nil ? "\(effectiveAmount!)" : "nil")
+        • merchant received: \(effectiveMerchant != nil ? "\"\(effectiveMerchant!)\"" : "nil")
         • currency received: \(currency != nil ? "\"\(currency!)\"" : "nil")
         • transactionDate received: \(transactionDate != nil ? "\(transactionDate!)" : "nil")
         • amountText received: \(amountText != nil ? "\"\(amountText!)\"" : "nil")
@@ -89,17 +113,14 @@ public struct RecordTransactionIntent: AppIntent {
         MoneyCityLog.sensitive(debugRaw)
 
         let result = await WalletIngestCoordinator.run(
-            amount: amount,
+            amount: effectiveAmount,
             amountText: amountText,
-            merchant: merchant,
+            merchant: effectiveMerchant,
             currency: currency,
             transactionDate: transactionDate,
             intentName: "RecordTransactionIntent"
         )
 
-        // The dialog is what Shortcuts speaks or shows after every tap-to-pay purchase.
-        // A payload dump belongs in the ingest log inside the app, not on a lock screen
-        // where anyone standing at the till can read the merchant and the amount.
         let dialogMessage = MoneyCityLog.isDebugBuild
             ? "\(debugRaw)\n\n\(result.message)"
             : result.message

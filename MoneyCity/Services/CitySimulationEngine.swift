@@ -183,26 +183,24 @@ public final class CitySimulationEngine: Sendable {
         var parkHealth = CitySimulationEngine.healthyParkLevel
         let expectedByNow = everydayBaseline * accruedFraction
         if everydayBaseline > 0, expectedByNow > 0, hasActivity {
-            let pace = everydaySpent / expectedByNow
+            // Realistic day-to-day spending buffer for weekly rhythm (groceries, early lump sums)
+            let earlyGraceBuffer = everydayBaseline * 0.18
+            let effectiveExpected = max(expectedByNow, expectedByNow + earlyGraceBuffer * max(0.0, 1.0 - accruedFraction / 0.30))
+            let pace = everydaySpent / max(effectiveExpected, 1.0)
             if pace <= 1.0 {
-                // Under your pace. Fully lush once you are 40% below it.
-                let good = min(1.0, (1.0 - pace) / 0.40)
+                // Under pace — flourish gracefully
+                let good = min(1.0, (1.0 - pace) / 0.35)
                 parkHealth = CitySimulationEngine.healthyParkLevel
                     + (1.0 - CitySimulationEngine.healthyParkLevel) * good
             } else {
-                // Over it. Bottoms out at twice your pace, and never quite reaches nothing —
-                // a dead park is a punishment, not information.
-                let bad = min(1.0, (pace - 1.0) / 1.0)
+                // Over pace — gently thins only if significantly exceeding allowance
+                let bad = min(1.0, (pace - 1.0) / 0.85)
                 parkHealth = CitySimulationEngine.healthyParkLevel
-                    - (CitySimulationEngine.healthyParkLevel - 0.12) * bad
+                    - (CitySimulationEngine.healthyParkLevel - 0.20) * bad
             }
         }
-        // The first days of a month cannot support a verdict. On the 2nd, one day of budget is
-        // all that has accrued, so a single grocery run reads as triple the pace and the park
-        // browns overnight — which is what made it feel disconnected from anything the user did.
-        // Until roughly the first week is behind us the verdict is blended back towards normal,
-        // so the park settles into its judgement instead of lurching into one.
-        let verdictConfidence = min(1.0, accruedFraction / 0.20)
+        // First week of the month (accruedFraction < 0.25) settles gently into its verdict
+        let verdictConfidence = min(1.0, pow(accruedFraction / 0.25, 1.4))
         parkHealth = CitySimulationEngine.healthyParkLevel
             + (parkHealth - CitySimulationEngine.healthyParkLevel) * verdictConfidence
 

@@ -1620,14 +1620,24 @@ struct ReserveModalView: View {
                 : "Too early in the month to judge — the reserve is waiting for data."
         }
         let d = overUnder.rounded()
+        if snapshot.monthElapsed < 0.25 {
+            if d > 0 {
+                return isHebrew
+                    ? "תחילת חודש: ₪\(Int(abs(d))) מעל הממוצע היומי (יתאזן לאורך החודש)"
+                    : "Early month: ₪\(Int(abs(d))) under daily average"
+            }
+            return isHebrew
+                ? "קצב מצוין מתחת לתקציב!"
+                : "Great pace under budget!"
+        }
         if d > 0 {
             return isHebrew
-                ? "\(l10n.format(amount: d)) מעל הקצב"
-                : "\(l10n.format(amount: d)) ahead of pace"
+                ? "\(l10n.format(amount: d)) מעל הקצב הצפוי להיום"
+                : "\(l10n.format(amount: d)) ahead of expected pace"
         }
         return isHebrew
-            ? "\(l10n.format(amount: -d)) מתחת לקצב"
-            : "\(l10n.format(amount: -d)) under pace"
+            ? "\(l10n.format(amount: -d)) מתחת לקצב הצפוי להיום"
+            : "\(l10n.format(amount: -d)) under expected pace"
     }
 
     /// What is actually being counted, which depends on how the user set their plan.
@@ -1635,48 +1645,43 @@ struct ReserveModalView: View {
         if snapshot.budgetedCategoryCount > 0 {
             return isHebrew ? "הקטגוריות שתקצבת, החודש" : "The categories you budgeted, this month"
         }
-        return isHebrew ? "הוצאות יומיומיות החודש" : "Everyday spending this month"
+        return isHebrew ? "הוצאות יומיומיות שבוצעו החודש" : "Everyday spending this month"
     }
 
     private var scopeNote: String {
         if snapshot.budgetedCategoryCount > 0 {
             return isHebrew
-                ? "נמדד מול התקרות שהגדרת בעמוד התקציב, ורק עליהן. שכירות, חשבונות ומנויים לא נספרים."
-                : "Measured against the ceilings you set on the budget screen, and only those. Rent, bills and subscriptions are not counted."
+                ? "נמדד מול התקרות שהגדרת בעמוד התקציב. שכירות, חשבונות ומנויים לא נספרים כאן."
+                : "Measured against the ceilings you set on the budget screen. Rent, bills and subscriptions are not counted."
         }
         return isHebrew
-            ? "שכירות, חשבונות בית ומנויים לא נספרים כאן — הם קבועים ולא תלויים בהחלטות היומיות שלך."
+            ? "שכירות, חשבונות בית ומנויים לא נספרים כאן — הם קבועים ולא חלק מההוצאות היומיומיות."
             : "Rent, household bills and subscriptions are not counted here — they are fixed, not daily decisions."
     }
 
     private var comparisonRow: some View {
         let pct = Int((snapshot.monthElapsed * 100).rounded())
-        return VStack(alignment: .leading, spacing: 7) {
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(scopeTitle)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                Spacer()
-                Text(isHebrew ? "\(pct)% מהחודש עבר" : "\(pct)% of the month gone")
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-            }
-
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text("\(l10n.format(amount: snapshot.spentThisMonth.rounded()))")
-                    .font(.system(size: 20, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-                if hasComparison {
-                    Text(isHebrew
-                         ? "מתוך \(l10n.format(amount: targetSoFar.rounded())) שתכננת עד היום"
-                         : "of the \(l10n.format(amount: targetSoFar.rounded())) you planned by today")
-                        .font(.system(size: 11.5, weight: .semibold, design: .rounded))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(scopeTitle)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundColor(Color.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(l10n.format(amount: snapshot.spentThisMonth.rounded()))")
+                        .font(.system(size: 21, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
                 }
-                Spacer(minLength: 0)
+                Spacer()
+                if hasComparison {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(isHebrew ? "קצב צפוי להיום (\(pct)% מהחודש):" : "Expected by today (\(pct)%):")
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.textMuted)
+                        Text("\(l10n.format(amount: targetSoFar.rounded()))")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.textMuted)
+                    }
+                }
             }
 
             if hasComparison {
@@ -1696,8 +1701,8 @@ struct ReserveModalView: View {
                         .font(.system(size: 11.5, weight: .bold, design: .rounded))
                         .foregroundColor(conditionColor)
                     Spacer()
-                    Text(isHebrew ? "התקציב היומיומי: \(l10n.format(amount: snapshot.plannedSpending.rounded())) לחודש"
-                                  : "Everyday budget: \(l10n.format(amount: snapshot.plannedSpending.rounded())) a month")
+                    Text(isHebrew ? "תקציב יומיומי: \(l10n.format(amount: snapshot.plannedSpending.rounded()))"
+                                  : "Everyday budget: \(l10n.format(amount: snapshot.plannedSpending.rounded()))")
                         .font(.system(size: 10, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textMuted)
                         .lineLimit(1)

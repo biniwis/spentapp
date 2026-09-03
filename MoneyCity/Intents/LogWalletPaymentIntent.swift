@@ -37,23 +37,35 @@ public struct LogWalletPaymentIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
+        var effectivePayload = payload
+        let hasAmount = TransactionIngest.amountLikeValue(in: effectivePayload) != nil
+            || TransactionIngest.normalizedAmount(nil, effectivePayload) != nil
+
+        if !hasAmount {
+            do {
+                let requested = try await $payload.requestValue(IntentDialog("💳 זוהה תשלום ב-Apple Pay. מה הסכום ששילמת?"))
+                if !requested.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    effectivePayload = requested
+                }
+            } catch {
+                // If user dismissed or cancelled, proceed
+            }
+        }
+
         let debugRaw = """
         [SPENT Simple Ingest Debug]
-        • payload received: \(payload != nil ? "\"\(payload!)\"" : "nil")
+        • payload received: \(effectivePayload != nil ? "\"\(effectivePayload!)\"" : "nil")
         """
         MoneyCityLog.sensitive(debugRaw)
 
         let result = await WalletIngestCoordinator.run(
             amount: nil,
             amountText: nil,
-            merchant: payload,
+            merchant: effectivePayload,
             currency: nil,
             transactionDate: nil,
             intentName: "LogWalletPaymentIntent"
         )
-        // The dialog is what Shortcuts speaks or shows after every tap-to-pay purchase.
-        // A payload dump belongs in the ingest log inside the app, not on a lock screen
-        // where anyone standing at the till can read the merchant and the amount.
         let dialogMessage = MoneyCityLog.isDebugBuild
             ? "\(debugRaw)\n\n\(result.message)"
             : result.message

@@ -152,4 +152,30 @@ final class VisionTransactionExtractorTests: XCTestCase {
         XCTAssertEqual(result.candidates[1].amount, 199.90)
         XCTAssertEqual(result.candidates[1].category, .shopping)
     }
+
+    func testAppleVisionDocumentExtractor() async throws {
+        let extractor = AppleVisionDocumentExtractor()
+        XCTAssertEqual(extractor.modelIdentifier, "AppleVision-OnDeviceParser")
+
+        let userDir = "/Users/bnymynwysmn/.gemini/antigravity/brain/e9943d74-3a89-462b-b134-96b059d8549e/.user_uploaded"
+        let fileURLs = (try? FileManager.default.contentsOfDirectory(at: URL(fileURLWithPath: userDir), includingPropertiesForKeys: nil)) ?? []
+
+        for url in fileURLs.filter({ $0.pathExtension == "png" }) {
+            guard let data = try? Data(contentsOf: url) else { continue }
+            let tokens = try await ReceiptOCRService.recognizeSpatialTokens(from: data)
+            guard !tokens.isEmpty else { continue }
+
+            let texts = tokens.map(\.text).joined(separator: " | ")
+            print("📷 [\(url.lastPathComponent)] (\(tokens.count) tokens):")
+            print("   \(texts.prefix(180))...")
+            
+            let extraction = try? await extractor.extractTransactions(from: data, mimeType: "image/jpeg")
+            if let txs = extraction?.transactions, !txs.isEmpty {
+                print("   ➔ EXTRACTED (\(txs.count)): " + txs.map { "\($0.merchant ?? "N/A"): \($0.currency)\($0.amount)" }.joined(separator: ", "))
+            } else {
+                print("   ➔ EXTRACTED: 0 transactions")
+            }
+            print("---------------------------------------------------------")
+        }
+    }
 }

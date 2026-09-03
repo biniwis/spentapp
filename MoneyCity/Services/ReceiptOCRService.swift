@@ -786,13 +786,22 @@ public enum ReceiptOCRService {
             guard !numbers.isEmpty else { continue }
 
             var score = 0
-            if primaryTotalKeywords.contains(where: { lower.contains($0) }) {
+            let hasPrimaryKeyword = primaryTotalKeywords.contains(where: { lower.contains($0) })
+            let hasSecondaryKeyword = secondaryKeywords.contains(where: { lower.contains($0) })
+            let hasCurrency = lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("ils") || lower.contains("nis") || lower.contains("$") || lower.contains("usd") || lower.contains("€") || lower.contains("eur") || lower.contains("£")
+
+            // Strict rule: MUST have either an explicit financial keyword or a currency symbol
+            guard hasPrimaryKeyword || hasSecondaryKeyword || hasCurrency else {
+                continue
+            }
+
+            if hasPrimaryKeyword {
                 score += 200
-            } else if secondaryKeywords.contains(where: { lower.contains($0) }) {
+            } else if hasSecondaryKeyword {
                 score += 90
             }
 
-            if lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("ils") || lower.contains("$") || lower.contains("€") {
+            if hasCurrency {
                 score += 70
             }
 
@@ -802,20 +811,21 @@ public enum ReceiptOCRService {
 
             for num in numbers {
                 var candidateScore = score
-                if num >= 5.0 && num <= 25_000.0 { candidateScore += 20 }
-                if candidateScore > highestScore {
+                if num >= 1.0 && num <= 25_000.0 { candidateScore += 20 }
+                if candidateScore > highestScore && candidateScore >= 50 {
                     highestScore = candidateScore
                     bestCandidate = num
                 }
             }
         }
 
-        if bestCandidate == nil || highestScore < 20 {
-            // Fallback: check lines with currency symbols in reverse
+        if bestCandidate == nil {
+            // Fallback: only check lines with explicit currency symbols (not bare numbers)
             for line in lines.reversed() {
                 let lower = line.lowercased()
-                if (lower.contains("₪") || lower.contains("ש״ח") || lower.contains("$")) && !isNoiseLine(lower) && !isCouponOrDiscount(lower) {
-                    if let val = extractNumbers(from: line).last {
+                let hasCurrency = lower.contains("₪") || lower.contains("ש״ח") || lower.contains("ש\"ח") || lower.contains("ils") || lower.contains("$") || lower.contains("€") || lower.contains("£")
+                if hasCurrency && !isNoiseLine(lower) && !isCouponOrDiscount(lower) {
+                    if let val = extractNumbers(from: line).last, val > 0.1, val < 250_000 {
                         return val
                     }
                 }
@@ -826,6 +836,15 @@ public enum ReceiptOCRService {
     }
 
     // MARK: - Helper Classifiers
+
+    private static func isNoiseLine(_ lower: String) -> Bool {
+        if lower.contains("טלפון") || lower.contains("פקס") || lower.contains("phone") { return true }
+        if lower.contains("battery") || lower.contains("issue") || lower.contains("debug") || lower.contains("xcode") || lower.contains("ingest") { return true }
+        if lower.contains("%") { return true }
+        if lower.range(of: #"^\s*(?:\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4}|\d{1,2}:\d{2})\s*$"#, options: .regularExpression) != nil { return true }
+        if lower.range(of: #"[x*]{3,}\s*[-]?\s*\d{4}"#, options: .regularExpression) != nil && !lower.contains("סה") { return true }
+        return false
+    }
 
     private static func isCouponOrDiscount(_ lower: String) -> Bool {
         return lower.contains("coupon") || lower.contains("קופון") ||
@@ -867,13 +886,6 @@ public enum ReceiptOCRService {
         return lower.contains("סך") || lower.contains("סה\"כ") || lower.contains("סה״כ") ||
                lower.contains("לתשלום") || lower.contains("חויב") || lower.contains("total") ||
                lower.contains("price") || lower.contains("מחיר")
-    }
-
-    private static func isNoiseLine(_ lower: String) -> Bool {
-        if lower.contains("טלפון") || lower.contains("פקס") || lower.contains("phone") { return true }
-        if lower.range(of: #"^\s*(?:\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4}|\d{1,2}:\d{2})\s*$"#, options: .regularExpression) != nil { return true }
-        if lower.range(of: #"[x*]{3,}\s*[-]?\s*\d{4}"#, options: .regularExpression) != nil && !lower.contains("סה") { return true }
-        return false
     }
 
     private static func isPhoneOrBarcode(_ lower: String, numbers: [Double]) -> Bool {

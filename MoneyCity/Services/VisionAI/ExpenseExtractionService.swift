@@ -10,7 +10,7 @@ public final class ExpenseExtractionService: Sendable {
 
     private let primaryExtractor: VisionTransactionExtractor?
 
-    public init(primaryExtractor: VisionTransactionExtractor? = GeminiTransactionExtractor()) {
+    public init(primaryExtractor: VisionTransactionExtractor? = AppleVisionDocumentExtractor()) {
         self.primaryExtractor = primaryExtractor
     }
 

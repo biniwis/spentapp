@@ -48,26 +48,6 @@ public final class CitySimulationEngine: Sendable {
     /// overspending pulls it down. This is the state a brand-new city opens in.
     public static let healthyParkLevel: Double = 0.78
 
-    /// Spending the user does not decide on again each day.
-    ///
-    /// Rent lands in one lump on the 1st and subscriptions renew on their own. Judging a
-    /// day-to-day pace against them means the garden is wrecked on the 3rd of every month
-    /// and recovers by the 30th — which says nothing about how the person is doing, and is
-    /// exactly the same shape whether they were careful or reckless in between.
-    public static let committedCategories: Set<SpendingCategory> = [.housing, .subscriptions]
-
-    /// Day-to-day money: the coffees, the deliveries, the impulse buys. This is what the
-    /// garden is about.
-    public static func isEverydaySpending(_ category: SpendingCategory) -> Bool {
-        let c = category.canonical
-        return c != .savings && !committedCategories.contains(c)
-    }
-
-    /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
-    /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
-    /// overspending pulls it down. This is the state a brand-new city opens in.
-    public static let healthyParkLevel: Double = 0.78
-
     public func generateCity(
         for monthDate: Date,
         transactions: [Transaction],

@@ -37,10 +37,26 @@ public struct AnalyticsView: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
 
+    // Rent is the same large number every month, and it drowns the chart: at 45% of the
+    // total, every choice the user actually made this month is squeezed into the remaining
+    // half. Hiding it is not hiding the truth — the money still left, and the park, the
+    // budget and the city all still count it. It just lets the variable spending, which is
+    // the part a person can act on, be read at a normal scale.
+    @AppStorage("stats_exclude_housing") private var excludeHousing: Bool = false
+
     @State private var selectedSlice: SpendingCategory? = nil
     @State private var selectedWeek: String? = nil
     @State private var activeRecap: MonthlyRecap? = nil
     @State private var animateChart = false
+
+    /// The single gate every figure on this screen passes through, so the donut, the
+    /// percentages, the weekly bars and the breakdown list can never disagree about what is
+    /// being counted.
+    private func countsTowardStats(_ tx: Transaction) -> Bool {
+        if tx.category.canonical == .savings { return false }
+        if excludeHousing && tx.category.canonical == .housing { return false }
+        return true
+    }
 
     private var displayTransactions: [Transaction] {
         let cal = Calendar.current
@@ -51,12 +67,29 @@ public struct AnalyticsView: View {
     }
 
     private var totalSpent: Double {
-        displayTransactions.filter { $0.category != .savings }.reduce(0) { $0 + $1.amount }
+        displayTransactions.filter(countsTowardStats).reduce(0) { $0 + $1.amount }
+    }
+
+    /// What the filter is holding back, so the chip can say it rather than leaving the user
+    /// to wonder why the total shrank.
+    private var hiddenHousing: Double {
+        guard excludeHousing else { return 0 }
+        return displayTransactions
+            .filter { $0.category.canonical == .housing }
+            .reduce(0) { $0 + $1.amount }
+    }
+
+    /// Housing this month regardless of the filter — used to decide whether the chip is
+    /// worth showing at all.
+    private var housingThisMonth: Double {
+        displayTransactions
+            .filter { $0.category.canonical == .housing }
+            .reduce(0) { $0 + $1.amount }
     }
 
     private var categoryTotals: [(category: SpendingCategory, amount: Double)] {
         var totals: [SpendingCategory: Double] = [:]
-        for tx in displayTransactions where tx.category != .savings {
+        for tx in displayTransactions where countsTowardStats(tx) {
             totals[tx.category, default: 0] += tx.amount
         }
         return totals.sorted { $0.value > $1.value }.map { (category: $0.key, amount: $0.value) }
@@ -71,7 +104,8 @@ public struct AnalyticsView: View {
             let weekStart = cal.date(byAdding: .weekOfYear, value: -i, to: weekRef) ?? now
             let weekEnd   = cal.date(byAdding: .day, value: 7, to: weekStart) ?? now
             let total = allTransactions
-                .filter { $0.timestamp >= weekStart && $0.timestamp < weekEnd && $0.category != .savings }
+                .filter { $0.timestamp >= weekStart && $0.timestamp < weekEnd }
+                .filter(countsTowardStats)
                 .reduce(0) { $0 + $1.amount }
             let lbl = isHebrew ? "שב׳ \(4 - i)" : "W\(4 - i)"
             return (lbl, total)
@@ -108,6 +142,12 @@ public struct AnalyticsView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
+
+                    // Sits directly above the chart it changes, so the effect on the
+                    // percentages is visible in the same glance as the tap.
+                    if housingThisMonth > 0 {
+                        housingFilterChip
+                    }
 
                     // ── Modern Donut Card with Embedded Category Legend ──
                     donutAnalyticsCard
@@ -168,6 +208,57 @@ public struct AnalyticsView: View {
         .onAppear {
             withAnimation(.easeOut(duration: 0.9)) { animateChart = true }
         }
+    }
+
+    // MARK: - Housing filter
+
+    private var housingFilterChip: some View {
+        let isHebrew = l10n.language == .hebrew
+        return Button {
+            Haptics.impact(.light)
+            withAnimation(.easeOut(duration: 0.28)) {
+                excludeHousing.toggle()
+                // A slice that is about to disappear must not stay selected, or the centre
+                // of the donut keeps reporting a category the chart no longer contains.
+                if excludeHousing && selectedSlice?.canonical == .housing { selectedSlice = nil }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(excludeHousing ? Color.primaryBlue : Color.slate200.opacity(0.6))
+                        .frame(width: 40, height: 24)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 18, height: 18)
+                        .shadow(color: Color.black.opacity(0.15), radius: 2, y: 1)
+                        .offset(x: excludeHousing ? (isHebrew ? -8 : 8) : (isHebrew ? 8 : -8))
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(isHebrew ? "בלי דיור" : "Exclude housing")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Text(excludeHousing
+                         ? (isHebrew
+                            ? "\(l10n.format(amount: hiddenHousing.rounded())) מוסתרים מהגרפים"
+                            : "\(l10n.format(amount: hiddenHousing.rounded())) hidden from the charts")
+                         : (isHebrew
+                            ? "שכירות וחשבונות הבית מוצגים כרגע"
+                            : "Rent and household bills are included"))
+                        .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+            .padding(.horizontal, 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Donut & Breakdown Card
@@ -360,9 +451,17 @@ public struct AnalyticsView: View {
             .padding(.bottom, 14)
 
             if categoryTotals.isEmpty {
-                Text(l10n.language == .hebrew ? "טרם נרשמו הוצאות החודש" : "No expenses this month")
+                // Saying "no expenses this month" while the filter is holding a rent payment
+                // out of the list would be untrue, and it reads as a bug.
+                Text(hiddenHousing > 0
+                     ? (l10n.language == .hebrew
+                        ? "החודש נרשם דיור בלבד, והוא מוסתר כרגע"
+                        : "Only housing was recorded this month, and it is currently hidden")
+                     : (l10n.language == .hebrew ? "טרם נרשמו הוצאות החודש" : "No expenses this month"))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.vertical, 10)
             } else {
                 ForEach(Array(categoryTotals.enumerated()), id: \.element.category) { idx, item in

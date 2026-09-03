@@ -154,35 +154,21 @@ final class VisionTransactionExtractorTests: XCTestCase {
     }
 
     func testThreeRealReceiptsDiagnostics() async throws {
-        let extractor = AppleVisionDocumentExtractor()
-        let images = [
-            "media_1788468814383.png" // The Yesh Invoice screenshot user uploaded
-        ]
-
         let userDir = "/Users/bnymynwysmn/.gemini/antigravity/brain/e9943d74-3a89-462b-b134-96b059d8549e/.user_uploaded"
+        let fileURL = URL(fileURLWithPath: userDir).appendingPathComponent("media_1788469079044.png")
+        guard let data = try? Data(contentsOf: fileURL) else { return }
 
-        for name in images {
-            let fileURL = URL(fileURLWithPath: userDir).appendingPathComponent(name)
-            guard let data = try? Data(contentsOf: fileURL) else { continue }
+        let tokens = try await ReceiptOCRService.recognizeSpatialTokens(from: data)
+        let tagged = ReceiptOCRService.classifyTokenRoles(tokens)
+        print("===== TOKENS AND ROLES (\(tagged.count)) =====")
+        for (i, t) in tagged.enumerated() {
+            print(String(format: "[%02d] (Y: %.3f) %-15@ | '%@' | num: %@", i, t.boundingBox.origin.y, t.role.rawValue, t.text, String(describing: t.numericValue)))
+        }
 
-            print("=========================================================")
-            print("🧾 INSPECTING: \(name)")
-            let tokens = try await ReceiptOCRService.recognizeSpatialTokens(from: data)
-            let tagged = ReceiptOCRService.classifyTokenRoles(tokens)
-            for (i, t) in tagged.enumerated() {
-                print(String(format: "[%02d] (Y: %.3f, H: %.3f) %-15@ | '%@'", i, t.boundingBox.origin.y, t.boundingBox.height, t.role.rawValue, t.text))
-            }
-
-            do {
-                let result = try await extractor.extractTransactions(from: data, mimeType: "image/jpeg")
-                print("➔ EXTRACTED TRANSACTIONS (\(result.transactions.count)):")
-                for (i, tx) in result.transactions.enumerated() {
-                    print("   \(i+1). Merchant: '\(tx.merchant ?? "N/A")', Amount: \(tx.currency)\(tx.amount), Date: \(String(describing: tx.date))")
-                }
-            } catch {
-                print("❌ FAILED WITH ERROR: \(error)")
-            }
-            print("=========================================================\n")
+        let (result, trace) = try await ReceiptOCRService.scanImageWithDiagnostics(data: data)
+        print("===== CANDIDATES (\(result.candidates.count)) =====")
+        for c in result.candidates {
+            print("Candidate: '\(c.merchant)' | Amount: \(c.currency)\(c.amount) | Confidence: \(c.confidence)")
         }
     }
 }

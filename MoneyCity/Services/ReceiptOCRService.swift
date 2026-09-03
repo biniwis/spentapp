@@ -1030,6 +1030,11 @@ public enum ReceiptOCRService {
     }
 
     private static func extractNumbers(from text: String) -> [Double] {
+        // Reject pure clock times e.g. "12:35" or "23:17"
+        if text.range(of: #"^\s*(?:\d{1,2}:\d{2}(?::\d{2})?)\s*$"#, options: .regularExpression) != nil {
+            return []
+        }
+
         let pattern = #"(?:₪|ש״ח|ש"ח|\$|€|£|ILS|NIS|[mo•])?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return [] }
         let nsString = text as NSString

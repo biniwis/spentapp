@@ -37,6 +37,9 @@ public struct QuickAddSheet: View {
     #endif
     @State private var isScanningScreenshot = false
     @State private var scannedMultiCandidates: [ParsedTransactionCandidate] = []
+    @State private var scanErrorMessage: String? = nil
+    @State private var showApiKeyPrompt: Bool = false
+    @State private var tempApiKeyInput: String = ""
 
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isAmountFocused: Bool
@@ -162,6 +165,19 @@ public struct QuickAddSheet: View {
                 }
             }
             #endif
+            .alert("הגדרת Gemini API Key לבדיקה", isPresented: $showApiKeyPrompt) {
+                TextField("הדבק Gemini API Key (AIza...)", text: $tempApiKeyInput)
+                Button("שמור מפתח") {
+                    let clean = tempApiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !clean.isEmpty {
+                        UserDefaults.standard.set(clean, forKey: "GEMINI_API_KEY")
+                        scanErrorMessage = nil
+                    }
+                }
+                Button("ביטול", role: .cancel) {}
+            } message: {
+                Text("לצורך בדיקת ה-POC של Vision AI, הדבק כאן מפתח Gemini API מ-Google AI Studio.")
+            }
         }
     }
 
@@ -251,6 +267,30 @@ public struct QuickAddSheet: View {
     @ViewBuilder @MainActor
     private var categoryGridSection: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let scanError = scanErrorMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                        .font(.system(size: 13))
+                    Text(scanError)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(.orange)
+                        .lineLimit(2)
+                    Spacer()
+                    Button("הגדר מפתח") {
+                        showApiKeyPrompt = true
+                    }
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.primaryBlue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.primaryBlue.opacity(0.1))
+                    .clipShape(Capsule())
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
+            }
+
             Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
                 .font(.system(size: 13, weight: .black, design: .rounded))
                 .foregroundColor(Color.deepNavy)
@@ -700,6 +740,8 @@ public struct QuickAddSheet: View {
         do {
             let result = try await ExpenseExtractionService.shared.processImageData(data, rules: rules, allowFallback: false)
             await MainActor.run {
+                scanErrorMessage = nil
+                showErrorHint = false
                 if result.candidates.count > 1 {
                     scannedMultiCandidates = result.candidates
                     Haptics.notify(.success)
@@ -713,11 +755,18 @@ public struct QuickAddSheet: View {
                     Haptics.notify(.success)
                 }
             }
+        } catch GeminiTransactionExtractor.ExtractionError.missingCredentials {
+            MoneyCityLog.sensitive("[QuickAddSheet] Missing Gemini API Key")
+            await MainActor.run {
+                Haptics.notify(.warning)
+                scanErrorMessage = "לא הוגדר מפתח Gemini API Key לבדיקה"
+                showApiKeyPrompt = true
+            }
         } catch {
             MoneyCityLog.sensitive("[QuickAddSheet Scan Error] \(error.localizedDescription)")
             await MainActor.run {
                 Haptics.notify(.warning)
-                showErrorHint = true
+                scanErrorMessage = error.localizedDescription
             }
         }
     }

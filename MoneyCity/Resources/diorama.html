@@ -190,10 +190,11 @@
 
     let cityZoomTuned = false;
     // How far past a perfect fit the city view is allowed to push. 1.00 would show every
-    // corner of every block; 1.15 fills the frame properly and lets the far corners of the
-    // nearest and furthest blocks run off the top and bottom, which is the right trade when
-    // the user can rotate to reach anything they want to look at.
-    const CITY_CROP = 1.15;
+    // corner of every block and reads as standing too far back; 1.32 fills the frame and
+    // lets the near and far corners run well off the top and bottom, which is the right
+    // trade for a map the user pans and rotates anyway. This is the single number to turn
+    // if the opening view ever wants to be closer or wider.
+    const CITY_CROP = 1.32;
 
     /// The on-screen half-height of the things that matter — the four blocks and every
     /// building — measured from the scene rather than typed in, so the framing follows the
@@ -4940,12 +4941,56 @@
     let startPinchDist = 0;
     let startPinchZoom = 1.35;
 
+    // Flick momentum. Without it a drag stops dead the instant the finger lifts, which is
+    // the single thing that makes a map feel cheap next to every other map on the phone.
+    let spinVel = 0, tiltVel = 0, panVelX = 0, panVelZ = 0;
+    let lastMoveTime = 0;
+
+    /// How far the camera's look point may wander from the middle of the island.
+    /// Without a limit a two-finger drag flings the city off screen and there is no way
+    /// back except closing the sheet.
+    const PAN_LIMIT = ISLAND_HALF * 0.85;
+    function clampPan(cam) {
+      cam.lookX = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, cam.lookX));
+      cam.lookZ = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, cam.lookZ));
+    }
+
+    /// Screen pixels to world units along the ground, for the camera as it is right now.
+    /// Derived from the frustum rather than a tuned constant, so a drag moves the city by
+    /// the same amount under the finger at every zoom level and on every screen.
+    function panByPixels(dxPx, dyPx) {
+      const w = stage.clientWidth || 390, h = stage.clientHeight || 780;
+      const worldPerPxX = (camera.right - camera.left) / w;
+      const worldPerPxY = (camera.top - camera.bottom) / h;
+
+      // The camera's right vector, and its forward vector flattened onto the ground — the
+      // two directions a finger can actually push the city along.
+      const az = currentCam.az;
+      const rightX = -Math.sin(az), rightZ = Math.cos(az);
+      const fwdX   = -Math.cos(az), fwdZ  = -Math.sin(az);
+      // Vertical screen movement covers more ground the flatter the camera sits.
+      const tilt = Math.max(0.25, Math.sin(Math.max(0.2, currentCam.el)));
+
+      const dxW = dxPx * worldPerPxX;
+      const dyW = dyPx * worldPerPxY / tilt;
+
+      // Minus, so the city travels with the fingers rather than away from them.
+      targetCam.lookX -= rightX * dxW + fwdX * dyW;
+      targetCam.lookZ -= rightZ * dxW + fwdZ * dyW;
+      clampPan(targetCam);
+      return { x: -(rightX * dxW + fwdX * dyW), z: -(rightZ * dxW + fwdZ * dyW) };
+    }
+
     function onDown(clientX, clientY) {
       isDown = true;
       isDragging = false;
       startX = clientX;
       startY = clientY;
       downTime = performance.now();
+      lastMoveTime = downTime;
+      // Putting a finger down stops a glide, the way it does on every map. Without this a
+      // tap during the glide selects a building while the camera is still sliding.
+      spinVel = 0; tiltVel = 0; panVelX = 0; panVelZ = 0;
     }
 
     function onMove(clientX, clientY) {
@@ -4954,8 +4999,18 @@
       const dy = clientY - startY;
       if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
         isDragging = true;
-        targetCam.az -= dx * 0.007;
-        targetCam.el = Math.max(0.20, Math.min(1.30, targetCam.el + dy * 0.007));
+        const dAz = -dx * 0.007;
+        const dEl = dy * 0.007;
+        targetCam.az += dAz;
+        targetCam.el = Math.max(0.20, Math.min(1.30, targetCam.el + dEl));
+
+        // Remember the speed of the last moment of the drag, so a flick keeps going.
+        const now = performance.now();
+        const dt = Math.max(8, now - (lastMoveTime || now));
+        spinVel = dAz / dt * 16.7;
+        tiltVel = dEl / dt * 16.7;
+        lastMoveTime = now;
+
         startX = clientX;
         startY = clientY;
       }
@@ -5053,9 +5108,16 @@
     const activePointers = new Map();
     let initialPinchDistance = 0;
     let initialPinchZoom = 1.0;
+    // Where the two fingers were last frame. Two fingers now carry the map as well as the
+    // zoom: pinching alone meant the only way to reach a corner was to spin the whole city
+    // around until that corner happened to swing into view.
+    let lastPinchMid = null;
 
     function getDistance(p1, p2) {
       return Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+    }
+    function getMidpoint(p1, p2) {
+      return { x: (p1.clientX + p2.clientX) / 2, y: (p1.clientY + p2.clientY) / 2 };
     }
 
     stage.addEventListener("pointerdown", e => {
@@ -5067,9 +5129,11 @@
         const pts = Array.from(activePointers.values());
         initialPinchDistance = getDistance(pts[0], pts[1]);
         initialPinchZoom = (targetCam && targetCam.zoom) || 0.98;
+        lastPinchMid = getMidpoint(pts[0], pts[1]);
         isPinching = true;
         isDown = false;
         isDragging = false;
+        spinVel = 0; tiltVel = 0; panVelX = 0; panVelZ = 0;
       }
       try { stage.setPointerCapture(e.pointerId); } catch(err) {}
     });
@@ -5084,9 +5148,22 @@
         if (initialPinchDistance > 0) {
           const factor = currentDist / initialPinchDistance;
           if (isFinite(factor) && factor > 0) {
-            targetCam.zoom = Math.max(0.60, Math.min(3.80, initialPinchZoom * factor));
+            targetCam.zoom = Math.max(0.60, Math.min(4.60, initialPinchZoom * factor));
           }
         }
+        // The midpoint between the fingers drags the city, exactly as a two-finger drag
+        // does on a map. Pinching and moving at the same time therefore works, which is
+        // what people actually do.
+        const mid = getMidpoint(pts[0], pts[1]);
+        if (lastPinchMid) {
+          const moved = panByPixels(mid.x - lastPinchMid.x, mid.y - lastPinchMid.y);
+          const now = performance.now();
+          const dt = Math.max(8, now - (lastMoveTime || now));
+          panVelX = moved.x / dt * 16.7;
+          panVelZ = moved.z / dt * 16.7;
+          lastMoveTime = now;
+        }
+        lastPinchMid = mid;
       } else if (activePointers.size === 1 && isDown) {
         onMove(e.clientX, e.clientY);
       }
@@ -5103,10 +5180,14 @@
       if (activePointers.size === 0) {
         if (wasDown) onUp(clientX, clientY);
         isPinching = false;
+        lastPinchMid = null;
       } else if (activePointers.size === 1) {
+        // Lifting one finger of a pinch hands control back to the remaining one without a
+        // jump, instead of the city leaping to wherever that finger happens to be.
         const remaining = Array.from(activePointers.values())[0];
         onDown(remaining.clientX, remaining.clientY);
         isPinching = false;
+        lastPinchMid = null;
       }
     }
 
@@ -5116,7 +5197,7 @@
     // Mouse wheel zoom
     stage.addEventListener("wheel", e => {
       if (e.deltaY) {
-        targetCam.zoom = Math.max(0.60, Math.min(3.80, (targetCam.zoom || 0.98) - e.deltaY * 0.002));
+        targetCam.zoom = Math.max(0.60, Math.min(4.60, (targetCam.zoom || 0.98) - e.deltaY * 0.002));
       }
     }, { passive: true });
 
@@ -5125,6 +5206,9 @@
       if (newMode !== currentMode || force) {
         currentMode = newMode;
         targetCam = Object.assign({}, CAM_MODES[currentMode]);
+        // Leftover momentum would keep nudging the camera while it flies to the district,
+        // so the move never quite lands where it was aimed.
+        spinVel = 0; tiltVel = 0; panVelX = 0; panVelZ = 0;
       }
     }
     window.setDistrict = setDistrict;
@@ -5668,6 +5752,29 @@
       currentCam.lookY += (targetCam.lookY - currentCam.lookY) * Math.min(1, dt * 6);
       currentCam.lookZ += (targetCam.lookZ - currentCam.lookZ) * Math.min(1, dt * 6);
       
+      // ── Flick momentum ────────────────────────────────────────────────────────────
+      // Applied to the target, so the existing smoothing still carries the camera and the
+      // glide inherits the same easing as every other camera move. Decays about 8% a frame,
+      // which comes to rest in roughly half a second — long enough to feel like weight,
+      // short enough that nobody waits for it.
+      if (!isDown && !isPinching) {
+        const spinning = Math.abs(spinVel) > 0.00002 || Math.abs(tiltVel) > 0.00002;
+        const gliding  = Math.abs(panVelX) > 0.0015  || Math.abs(panVelZ) > 0.0015;
+        if (spinning) {
+          targetCam.az += spinVel;
+          targetCam.el = Math.max(0.20, Math.min(1.30, targetCam.el + tiltVel));
+          spinVel *= 0.92;
+          tiltVel *= 0.90;
+        } else { spinVel = 0; tiltVel = 0; }
+        if (gliding) {
+          targetCam.lookX += panVelX;
+          targetCam.lookZ += panVelZ;
+          clampPan(targetCam);
+          panVelX *= 0.90;
+          panVelZ *= 0.90;
+        } else { panVelX = 0; panVelZ = 0; }
+      }
+
       if (isNaN(currentCam.az)) currentCam.az = targetCam.az;
       if (isNaN(currentCam.el)) currentCam.el = targetCam.el;
       if (isNaN(currentCam.zoom) || currentCam.zoom <= 0) currentCam.zoom = targetCam.zoom;

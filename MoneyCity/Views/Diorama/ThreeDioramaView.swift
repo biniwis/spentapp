@@ -36,10 +36,8 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let savingsTarget: Double
     /// How the reserve looks this month, 0 parched to 1 lush. Resets with the month.
     public let parkHealth: Double
-    /// How grown the reserve is, 0 to just under 1, from savings across every month. Does
-    /// not reset — the colour is this month's weather, this is the land itself.
-    public let reserveMaturity: Double
-    /// The figure behind that maturity, for the reserve's own sheet.
+    /// Everything put aside since the user started. Shown as a figure on the reserve's card;
+    /// it deliberately has no say in how the garden looks, which is this month's business alone.
     public let lifetimeSavings: Double
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
@@ -59,7 +57,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         totalSavings: Double,
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
-        reserveMaturity: Double = 0,
         lifetimeSavings: Double = 0,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double] = [:],
@@ -78,7 +75,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
-        self.reserveMaturity = reserveMaturity
         self.lifetimeSavings = lifetimeSavings
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
@@ -152,8 +148,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let savingsTarget: Double
         /// How the reserve looks this month, 0 parched to 1 lush.
         public let parkHealth: Double
-        /// How grown the reserve is, from savings across every month.
-        public let reserveMaturity: Double
         public let lifetimeSavings: Double
         public let otherAmount: Double?
         public let museumAmount: Double?
@@ -200,7 +194,6 @@ public struct ThreeDioramaView: ViewRepresentable {
             savings: savings,
             savingsTarget: savingsTarget,
             parkHealth: parkHealth,
-            reserveMaturity: reserveMaturity,
             lifetimeSavings: lifetimeSavings,
             otherAmount: otherSpend,
             museumAmount: museumSpend,

@@ -5415,35 +5415,32 @@
         // A real park does not change size. It fills in. The block stays exactly where it is and
         // the planting spreads outward from the middle as savings grow.
         ensureParkPlantings();
-        // The reserve answers two different questions, and it used to draw both of them with the
-        // same brush — which is why it never felt connected to anything the user did.
+        // The garden has one job: it shows how this month is going, and nothing else.
         //
-        //   How much land is reserve  ->  everything saved since they started. Grows slowly,
-        //                                 never resets, survives a bad month.
-        //   What condition it is in   ->  this month alone. Green when the pace is kept,
-        //                                 parched when it is not, and back to green next month.
+        // A normally-run month is a garden that looks good — about 60% planted. From there it
+        // only moves. Spending below your pace fills it in towards completely planted; spending
+        // over it thins the garden out. Every month starts back at looking good, because the
+        // month is the thing being judged and last month is not this month's problem.
         //
-        // Separating them means the two can be read independently: a large brown reserve is a
-        // committed saver having a bad month, a small green one is somebody who has just begun
-        // and is doing fine. Neither of those was expressible before.
-        const maturity = (data.reserveMaturity !== undefined && isFinite(data.reserveMaturity))
-          ? Math.max(0, Math.min(1, data.reserveMaturity))
-          : 0;
-        // A new reserve is small, not bare. Starting at nothing reads as broken rather than as
-        // young, and the first thing a new user should see is somewhere being looked after.
-        const coverage = 0.45 + 0.55 * maturity;
-
-        // A normally-run month arrives at about 0.78 — a well-kept park — and moves both ways
-        // from there.
+        // An earlier version also scaled the garden by how much had been saved over all time.
+        // That meant a new user opened the app onto a half-empty plot, which reads as broken
+        // rather than as new — the opposite of the point. The lifetime figure still exists, but
+        // it belongs in the reserve's card as a number, not in how the garden looks.
         const health = (data.parkHealth !== undefined && isFinite(data.parkHealth))
           ? Math.max(0, Math.min(1, data.parkHealth))
           : 0.78;
-        // Condition trims the edges of what is already there: a bad month leaves the outermost
-        // planting untended, it does not take the land away. Worst case still keeps 70% of the
-        // reserve standing, so half a year of saving cannot be undone by one careless month.
-        const tended = coverage * (0.62 + 0.38 * health);
+        let planted;
+        if (health >= 0.78) {
+          // The reward half: a good month fills the garden in, up to completely planted.
+          planted = 0.60 + 0.40 * ((health - 0.78) / 0.22);
+        } else {
+          // The cost half: it thins out, and stops well short of nothing. A bare plot is a
+          // punishment rather than information, and it has nowhere visible to recover from.
+          planted = 0.30 + 0.30 * (health / 0.78);
+        }
+        planted = Math.max(0.30, Math.min(1.0, planted));
         for (let pi = 0; pi < parkPlantings.length; pi++) {
-          const show = (pi / parkPlantings.length) < tended;
+          const show = (pi / parkPlantings.length) < planted;
           if (parkPlantings[pi].obj.visible !== show) parkPlantings[pi].obj.visible = show;
         }
         // The grass itself carries the condition, so it reads at a glance rather than by
@@ -5464,7 +5461,6 @@
         parkData.savingsThisMonth = Math.round(savings);
         parkData.lifetimeSavings = Math.round(data.lifetimeSavings || 0);
         parkData.parkHealth = health;
-        parkData.reserveMaturity = maturity;
         parkData.trend = savings > 0 ? ("צמיחה ירוקה • ₪" + Math.round(savings)) : "התחל לחסוך כדי להצמיח את השמורה";
 
         if (parkZone.userData.squirrel) {

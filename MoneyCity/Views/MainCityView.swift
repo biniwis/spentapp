@@ -202,7 +202,6 @@ public struct MainCityView: View {
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
                     parkHealth: currentCity.parkHealth,
-                    reserveMaturity: currentCity.reserveMaturity,
                     lifetimeSavings: currentCity.lifetimeSavings,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,

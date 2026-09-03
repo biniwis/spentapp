@@ -44,8 +44,6 @@ public struct MonthlyCity: Identifiable, Sendable {
     /// Everything put aside since the user started, across every month. Unlike every other
     /// figure here this one does not reset — it is what gives the reserve its size.
     public var lifetimeSavings: Double
-    /// How grown the reserve looks, 0 to just under 1, derived from `lifetimeSavings`.
-    public var reserveMaturity: Double
     public var categoryTotals: [SpendingCategory: Double]
     public var buildingTotals: [String: Double]
     public var tiles: [BuildingTile]
@@ -67,7 +65,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         savingsBasis: CitySimulationEngine.SavingsBasis = .noBaseline,
         parkHealth: Double = CitySimulationEngine.healthyParkLevel,
         lifetimeSavings: Double = 0,
-        reserveMaturity: Double = 0,
         categoryTotals: [SpendingCategory: Double] = [:],
         buildingTotals: [String: Double] = [:],
         tiles: [BuildingTile] = [],
@@ -84,7 +81,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.savingsBasis = savingsBasis
         self.parkHealth = parkHealth
         self.lifetimeSavings = lifetimeSavings
-        self.reserveMaturity = reserveMaturity
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
         self.tiles = tiles

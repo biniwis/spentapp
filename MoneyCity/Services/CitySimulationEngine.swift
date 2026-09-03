@@ -72,21 +72,6 @@ public final class CitySimulationEngine: Sendable {
         return total
     }
 
-    /// How grown the reserve looks, 0 to just under 1.
-    ///
-    /// A saturating curve rather than a target, because a target needs a number to compare
-    /// against and any number picked here would be invented. This just keeps growing, quickly
-    /// at first and then more slowly, so an early deposit is visibly worth something and a
-    /// long-standing saver still sees movement. It never reaches 1, so there is always
-    /// somewhere left to go.
-    public static func reserveMaturity(lifetimeSavings: Double, monthlyBaseline: Double) -> Double {
-        guard lifetimeSavings > 0 else { return 0.0 }
-        // Half grown at roughly a month and a half of the user's own baseline, so the scale
-        // means the same thing to someone spending 3,000 a month and someone spending 30,000.
-        let anchor = monthlyBaseline > 0 ? monthlyBaseline * 1.5 : 4500.0
-        return lifetimeSavings / (lifetimeSavings + anchor)
-    }
-
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
     /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
     /// overspending pulls it down. This is the state a brand-new city opens in.
@@ -250,14 +235,10 @@ public final class CitySimulationEngine: Sendable {
         // rather than an arbitrary fixed figure.
         let savingsTarget = baseline > 0 ? baseline * 0.20 : 0.0
 
-        // The reserve's size answers a different question from its colour: how much has been
-        // put aside over the whole time the user has been at this, rather than how this month
-        // is going. Passed in because it needs every month's transactions, not just this one's.
+        // Everything put aside since the user started. This is a figure the reserve's card
+        // reports; it deliberately does not touch how the garden looks, because the garden is
+        // about this month and mixing the two is what made it unreadable.
         let reserve = max(lifetimeSavings, totalSavings)
-        let maturity = CitySimulationEngine.reserveMaturity(
-            lifetimeSavings: reserve,
-            monthlyBaseline: baseline
-        )
         buildingTotals["savings_sanctuary"] = totalSavings
         
         let highestCategory = totals.filter { $0.key != .savings && $0.key != .other }
@@ -358,7 +339,6 @@ public final class CitySimulationEngine: Sendable {
             savingsBasis: basis,
             parkHealth: parkHealth,
             lifetimeSavings: reserve,
-            reserveMaturity: maturity,
             categoryTotals: totals,
             buildingTotals: buildingTotals,
             tiles: tiles,

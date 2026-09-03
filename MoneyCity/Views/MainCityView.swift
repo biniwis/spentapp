@@ -546,7 +546,6 @@ public struct MainCityView: View {
         let elapsed = CitySimulationEngine.budgetAccruedFraction(for: currentDate, now: Date())
         return ReserveSnapshot(
             savedThisMonth: city.totalSavings,
-            basis: city.savingsBasis,
             health: city.parkHealth,
             monthElapsed: elapsed,
             spentThisMonth: city.everydaySpent,
@@ -884,7 +883,8 @@ public struct MainCityView: View {
                         DistrictParkVectorIcon(color: Color.themeMint)
                             .frame(width: 14, height: 14)
                             .scaleEffect(0.65)
-                        Text("\(l10n.format(amount: currentCity.totalSavings)) \(l10n.language == .hebrew ? "בפארק" : "in Park")")
+                        // "in Park" named a place, not the number. It is deposits, so it says so.
+                        Text("\(l10n.format(amount: currentCity.totalSavings)) \(l10n.language == .hebrew ? "לחיסכון" : "to savings")")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(Color.themeMint)
@@ -1397,7 +1397,6 @@ struct InspectorModalView: View {
 /// What the nature reserve knows about itself.
 struct ReserveSnapshot {
     let savedThisMonth: Double
-    let basis: CitySimulationEngine.SavingsBasis
     let health: Double
     let monthElapsed: Double
     let spentThisMonth: Double
@@ -1439,19 +1438,14 @@ struct ReserveModalView: View {
         return Color.red
     }
 
-    /// Where this month's figure came from — the question the old card never answered, and the
-    /// reason the number looked like it had been made up.
+    /// The number is now one thing: money the user recorded moving into savings this month.
+    /// It used to add "budget you have not spent" on top, which is not money anyone holds and
+    /// is why nobody could tell what the figure meant.
     private var basisText: String {
-        switch snapshot.basis {
-        case .deposits:
-            return isHebrew ? "מהפקדות שהעברת לחיסכון" : "from deposits you moved to savings"
-        case .underBudget:
-            return isHebrew ? "ממה שלא הוצאת מהתקציב עד עכשיו" : "from budget you have not spent yet"
-        case .belowUsual:
-            return isHebrew ? "ממה שחסכת לעומת חודש רגיל אצלך" : "from spending less than your usual month"
-        case .noBaseline:
-            return isHebrew ? "עוד אין תקציב או היסטוריה להשוות אליהם" : "no budget or history to compare against yet"
+        if snapshot.savedThisMonth > 0 {
+            return isHebrew ? "כסף שהעברת לחיסכון החודש" : "money you moved into savings this month"
         }
+        return isHebrew ? "לא רשמת הפקדות החודש" : "no deposits recorded this month"
     }
 
     /// Straight-line projection, and only once enough of the month has gone by to mean anything.
@@ -1629,7 +1623,7 @@ struct ReserveModalView: View {
     private var figuresRow: some View {
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(isHebrew ? "נחסך החודש" : "Saved this month")
+                Text(isHebrew ? "הפקדת לחיסכון" : "Moved to savings")
                     .font(.system(size: 10.5, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
                 Text("\(l10n.format(amount: snapshot.savedThisMonth.rounded()))")

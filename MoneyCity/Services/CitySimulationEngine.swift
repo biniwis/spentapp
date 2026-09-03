@@ -48,14 +48,25 @@ public final class CitySimulationEngine: Sendable {
     /// overspending pulls it down. This is the state a brand-new city opens in.
     public static let healthyParkLevel: Double = 0.78
 
-    /// What the savings park is actually measuring this month, so the app can say it plainly
-    /// instead of showing a number with no explanation.
-    public enum SavingsBasis: String, Sendable {
-        case deposits        // only money the user actually moved into savings
-        case underBudget     // a budget or income exists, and spending is below its accrued share
-        case belowUsual      // no budget, but this month is running below the user's own average
-        case noBaseline      // first month with nothing to compare against
+    /// Spending the user does not decide on again each day.
+    ///
+    /// Rent lands in one lump on the 1st and subscriptions renew on their own. Judging a
+    /// day-to-day pace against them means the garden is wrecked on the 3rd of every month
+    /// and recovers by the 30th — which says nothing about how the person is doing, and is
+    /// exactly the same shape whether they were careful or reckless in between.
+    public static let committedCategories: Set<SpendingCategory> = [.housing, .subscriptions]
+
+    /// Day-to-day money: the coffees, the deliveries, the impulse buys. This is what the
+    /// garden is about.
+    public static func isEverydaySpending(_ category: SpendingCategory) -> Bool {
+        let c = category.canonical
+        return c != .savings && !committedCategories.contains(c)
     }
+
+    /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
+    /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
+    /// overspending pulls it down. This is the state a brand-new city opens in.
+    public static let healthyParkLevel: Double = 0.78
 
     public func generateCity(
         for monthDate: Date,
@@ -126,44 +137,18 @@ public final class CitySimulationEngine: Sendable {
         let totalSpent = spendingTransactions.reduce(0.0) { $0 + $1.amount }
         let directSavings = totals[.savings] ?? 0.0
 
-        // Unspent budget only counts for the part of the month that has actually gone by,
-        // and only once the month has something recorded in it.
+        // Every figure the app shows as money is money that moved. Savings used to add the
+        // budget the user had not spent to the deposits they had actually made, and present
+        // the sum as "saved this month". Nobody can point at that number: part of it is in an
+        // account and part of it is spending that has not happened yet, and the two are not
+        // the same kind of thing. Users read it as a balance and it is not one.
         //
-        // The old line credited the entire monthly budget the instant the month began, so
-        // a brand-new user with no transactions opened the app to a fully grown savings
-        // park and a five-figure "saved" number they had not earned — the one figure the
-        // app is proudest of, fabricated on day one. Accruing it day by day turns the same
-        // mechanic into something true: the park grows through the month as the user
-        // underspends, and starts at nothing.
-        //
-        // Money moved into savings has already left the budget, so it is subtracted before
-        // being added back — otherwise every deposit is counted twice.
-        // The park used to grow only from unspent budget, which meant it stayed empty for anyone
-        // who never entered an income: with no budget there is no baseline, so spending little
-        // could not register as restraint. It now falls back to the user's own history, which
-        // needs no setup and calibrates itself.
+        // Spending less than planned is still rewarded — by the garden, which is the right
+        // medium for a soft signal. Numbers stay literal.
         let accruedFraction = CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
         let hasActivity = !spendingTransactions.isEmpty || directSavings > 0
-
-        var restraint = 0.0
-        var basis: SavingsBasis = directSavings > 0 ? .deposits : .noBaseline
-        var baseline = 0.0
-
-        if estimatedMonthlyBudget > 0 {
-            baseline = estimatedMonthlyBudget
-            let accrued = estimatedMonthlyBudget * accruedFraction
-            restraint = hasActivity ? max(0.0, accrued - totalSpent - directSavings) : 0.0
-            basis = .underBudget
-        } else if typicalMonthlySpend > 0 {
-            // No budget, but the user has months behind them. Running below your own usual pace
-            // is restraint, and it is a fair thing to reward.
-            baseline = typicalMonthlySpend
-            let expectedByNow = typicalMonthlySpend * accruedFraction
-            restraint = hasActivity ? max(0.0, expectedByNow - totalSpent - directSavings) : 0.0
-            basis = .belowUsual
-        }
-
-        let totalSavings = restraint + directSavings
+        let baseline = estimatedMonthlyBudget > 0 ? estimatedMonthlyBudget : typicalMonthlySpend
+        let totalSavings = directSavings
 
         // ── How the park LOOKS, which is a different question from how much was saved ────────
         //
@@ -347,7 +332,6 @@ public final class CitySimulationEngine: Sendable {
             totalSpent: totalSpent,
             totalSavings: totalSavings,
             savingsTarget: savingsTarget,
-            savingsBasis: basis,
             parkHealth: parkHealth,
             everydaySpent: everydaySpent,
             everydayBaseline: everydayBaseline,

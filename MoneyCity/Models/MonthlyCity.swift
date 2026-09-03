@@ -36,8 +36,6 @@ public struct MonthlyCity: Identifiable, Sendable {
     /// The amount that fills the savings park completely — a fifth of the user's monthly
     /// baseline. Zero when there is no baseline yet.
     public var savingsTarget: Double
-    /// What the savings figure is actually measuring, so the UI can explain it.
-    public var savingsBasis: CitySimulationEngine.SavingsBasis
     /// How the park looks, 0 parched to 1 lush. A normally-run month sits near 0.78.
     /// This is the month's verdict, and it resets with the month.
     public var parkHealth: Double
@@ -65,7 +63,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
-        savingsBasis: CitySimulationEngine.SavingsBasis = .noBaseline,
         parkHealth: Double = CitySimulationEngine.healthyParkLevel,
         everydaySpent: Double = 0,
         everydayBaseline: Double = 0,
@@ -82,7 +79,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
-        self.savingsBasis = savingsBasis
         self.parkHealth = parkHealth
         self.everydaySpent = everydaySpent
         self.everydayBaseline = everydayBaseline

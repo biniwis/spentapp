@@ -4,11 +4,20 @@ import SwiftUI
 public struct FloatingBottomBar: View {
     @Binding public var activeTab: String
     public let onQuickAdd: () -> Void
+    /// Fired on every tab tap, including a tap on the tab already showing — which the bar
+    /// used to swallow. That re-tap is how people expect to get back to the top of a
+    /// section, so the screen needs to hear about it.
+    public let onTabTapped: ((String) -> Void)?
     @EnvironmentObject private var l10n: LocalizationManager
 
-    public init(activeTab: Binding<String>, onQuickAdd: @escaping () -> Void) {
+    public init(
+        activeTab: Binding<String>,
+        onQuickAdd: @escaping () -> Void,
+        onTabTapped: ((String) -> Void)? = nil
+    ) {
         self._activeTab = activeTab
         self.onQuickAdd = onQuickAdd
+        self.onTabTapped = onTabTapped
     }
 
     public var body: some View {
@@ -82,12 +91,13 @@ public struct FloatingBottomBar: View {
         let tintColor = isSelected ? Color.primaryBlue : Color.textMuted
         
         return Button(action: {
+            Haptics.selection()
             if activeTab != id {
-                Haptics.selection()
                 withAnimation(.spring(response: 0.38, dampingFraction: 0.76)) {
                     activeTab = id
                 }
             }
+            onTabTapped?(id)
         }) {
             VStack(spacing: 4) {
                 icon(isSelected, tintColor)

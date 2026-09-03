@@ -323,7 +323,15 @@ public struct MainCityView: View {
 
                     FloatingBottomBar(
                         activeTab: $activeTab,
-                        onQuickAdd: { showQuickAdd = true }
+                        onQuickAdd: { showQuickAdd = true },
+                        // The city tab is the way back to the whole city. Leaving the camera
+                        // inside a district meant the button appeared to do nothing whenever
+                        // you were already on the city tab, and the only way out was the
+                        // "back to city" button on a card that is not always on screen.
+                        onTabTapped: { tab in
+                            guard tab == "city" else { return }
+                            handleSelectDistrict(nil)
+                        }
                     )
                 }
                 .padding(.bottom, 6)

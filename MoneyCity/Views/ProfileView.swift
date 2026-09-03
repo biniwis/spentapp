@@ -6,6 +6,14 @@ public struct ProfileView: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @Query private var allEnrichments: [CityEnrichment]
+
+    /// Passed down to the recap archive so its "Back to City" button reaches the tab state,
+    /// which lives above this view.
+    public var onNavigateToCity: ((Date) -> Void)? = nil
+
+    public init(onNavigateToCity: ((Date) -> Void)? = nil) {
+        self.onNavigateToCity = onNavigateToCity
+    }
     @Query private var budgets: [CategoryBudget]
 
     @AppStorage("userName") private var userName = ""
@@ -209,7 +217,7 @@ public struct ProfileView: View {
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showRecapArchive) {
-            MonthlyRecapArchiveView()
+            MonthlyRecapArchiveView(onNavigateToCity: onNavigateToCity)
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showBackupSheet) {
@@ -787,6 +795,17 @@ public struct SettingsSheet: View {
                                     .foregroundColor(Color.deepNavy)
                             }
                             .tint(Color.primaryBlue)
+                            // NotificationService.sync was only ever called at launch, so the
+                            // switch did nothing until the app was next opened cold: turning it
+                            // off left the weekly reminder scheduled, and turning it on never
+                            // raised the permission prompt — a first-time user flipped it, saw
+                            // nothing happen, and got no notifications.
+                            .onChange(of: notificationsEnabled) { _, isOn in
+                                NotificationService.sync(
+                                    enabled: isOn,
+                                    isHebrew: l10n.language == .hebrew
+                                )
+                            }
                             .padding(.vertical, 4)
 
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
@@ -838,14 +857,24 @@ public struct SettingsSheet: View {
                 isPresented: $showResetConfirmation,
                 titleVisibility: .visible
             ) {
+                // This used to delete transactions only, while the dialog promised to erase
+                // everything — leaving the earned city, the split-payment plans, the ingest
+                // log and the merchant rules the app had learned about the user still in
+                // place. DatabaseService.resetAllData draws the line properly and, until
+                // now, nothing called it.
                 Button(l10n.language == .hebrew ? "מחק הכל ואפס" : "Delete & Reset", role: .destructive) {
-                    for tx in allTransactions {
-                        modelContext.delete(tx)
+                    Task {
+                        try? await DatabaseService.shared.resetAllData()
+                        await MainActor.run { Haptics.notify(.warning) }
                     }
-                    try? modelContext.save()
-                    Haptics.notify(.warning)
                 }
                 Button(l10n.language == .hebrew ? "ביטול" : "Cancel", role: .cancel) {}
+            } message: {
+                // Say what survives. A destructive action that is vague about its scope is
+                // one the user either fears or is surprised by afterwards.
+                Text(l10n.language == .hebrew
+                     ? "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס."
+                     : "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero.")
             }
         }
     }

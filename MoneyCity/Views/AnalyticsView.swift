@@ -36,6 +36,16 @@ public struct AnalyticsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
+    @Query private var categoryBudgets: [CategoryBudget]
+    @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
+
+    /// Asks the screen that owns the tabs to show the city for a month. The recap's
+    /// "Back to City" button called into nothing without it.
+    public var onNavigateToCity: ((Date) -> Void)? = nil
+
+    public init(onNavigateToCity: ((Date) -> Void)? = nil) {
+        self.onNavigateToCity = onNavigateToCity
+    }
 
     // Rent is the same large number every month, and it drowns the chart: at 45% of the
     // total, every choice the user actually made this month is squeezed into the remaining
@@ -158,7 +168,13 @@ public struct AnalyticsView: View {
                             Haptics.impact(.medium)
                             activeRecap = MonthlyRecapService.generateRecap(
                                 for: Date(),
-                                allTransactions: allTransactions
+                                allTransactions: allTransactions,
+                                // Omitting this was why the same month's recap showed a
+                                // "Remaining" tile from the profile archive and never from here.
+                                monthlyBudget: BudgetService.monthlySpendingBudget(
+                                    categoryBudgets: categoryBudgets,
+                                    overallBudget: userMonthlyBudget
+                                )
                             )
                         }) {
                             HStack(spacing: 14) {
@@ -203,7 +219,7 @@ public struct AnalyticsView: View {
             }
         }
         .sheet(item: $activeRecap) { recap in
-            MonthlyRecapSheet(recap: recap)
+            MonthlyRecapSheet(recap: recap, onNavigateToCity: onNavigateToCity)
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.9)) { animateChart = true }

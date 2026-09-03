@@ -504,8 +504,14 @@ public struct QuickAddSheet: View {
         dismiss()
     }
 
+    /// Splitting a purchase used to quietly drop two things the user had already told us:
+    /// the building they picked, and the currency they entered it in. Both are passed on now,
+    /// so a split payment records exactly what a single payment would.
     private func submitInstallments(category: SpendingCategory, total: Double) {
         let converted = selectedCurrency == .ils ? total : (total * selectedCurrency.rateToILS)
+        let origAmt: Double? = selectedCurrency == .ils ? nil : total
+        let origCurr: String? = selectedCurrency == .ils ? nil : selectedCurrency.symbol
+        let rate: Double? = selectedCurrency == .ils ? nil : selectedCurrency.rateToILS
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchant = typed.isEmpty
             ? (l10n.language == .hebrew ? "רכישה ב-\(paymentCount) תשלומים" : "\(paymentCount)-payment purchase")
@@ -521,7 +527,13 @@ public struct QuickAddSheet: View {
         )
         modelContext.insert(plan)
 
-        for tx in InstallmentService.makeTransactions(for: plan) {
+        for tx in InstallmentService.makeTransactions(
+            for: plan,
+            buildingId: selectedBuildingId,
+            originalAmount: origAmt,
+            originalCurrency: origCurr,
+            exchangeRate: rate
+        ) {
             modelContext.insert(tx)
         }
 

@@ -269,13 +269,13 @@ public struct MainCityView: View {
 
             // ── Other Tabs ──
             if activeTab == "analytics" {
-                AnalyticsView()
+                AnalyticsView(onNavigateToCity: showCity(for:))
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             } else if activeTab == "history" {
                 HistoryView()
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             } else if activeTab == "profile" {
-                ProfileView()
+                ProfileView(onNavigateToCity: showCity(for:))
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             }
 
@@ -535,6 +535,19 @@ public struct MainCityView: View {
         Haptics.impact(.medium)
     }
     
+    /// Show the city for a given month. The recap's "Back to City" button used to call an
+    /// optional closure that neither presenter supplied, so it only closed the sheet and left
+    /// the user on whatever tab they were already on.
+    private func showCity(for month: Date) {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            currentDate = month
+            selectedDistrict = nil
+            inspectedBuilding = nil
+            activeTab = "city"
+        }
+        cityViewResetToken &+= 1
+    }
+
     private func handleSelectDistrict(_ dist: String?) {
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             selectedDistrict = dist

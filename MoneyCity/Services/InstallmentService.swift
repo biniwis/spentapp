@@ -65,18 +65,33 @@ public enum InstallmentService {
     }
 
     /// The transactions a plan produces — one per payment, dated when it will be charged.
+    /// - Parameters:
+    ///   - buildingId: the building the user picked by hand, when they picked one. Without
+    ///     it every split payment was filed by guessing from the merchant string, so a
+    ///     purchase the user had explicitly assigned to a building grew a different one.
+    ///   - originalAmount/originalCurrency/exchangeRate: the pre-conversion figures, so a
+    ///     foreign-currency purchase keeps them across a split the way a single payment does.
     public static func makeTransactions(
         for plan: InstallmentPlan,
+        buildingId: String? = nil,
+        originalAmount: Double? = nil,
+        originalCurrency: String? = nil,
+        exchangeRate: Double? = nil,
         calendar: Calendar = .current
     ) -> [Transaction] {
         let amounts = paymentAmounts(total: plan.totalAmount, count: plan.numberOfPayments)
         let dates = chargeDates(firstCharge: plan.firstChargeDate, count: plan.numberOfPayments, calendar: calendar)
         guard amounts.count == dates.count else { return [] }
 
-        let building = CategorizationEngine.shared.mapToBuildingId(
+        let building = buildingId ?? CategorizationEngine.shared.mapToBuildingId(
             category: plan.category,
             merchant: plan.merchant
         )
+        // Each payment carries its own share of the original amount, so the parts still add
+        // up to the purchase in the currency it was made in.
+        let shareOfOriginal: [Double]? = originalAmount.map {
+            paymentAmounts(total: $0, count: plan.numberOfPayments)
+        }
 
         return zip(amounts.indices, zip(amounts, dates)).map { index, pair in
             let (amount, date) = pair
@@ -90,7 +105,10 @@ public enum InstallmentService {
                 isManual: true,
                 isConfirmed: true,
                 note: "תשלום \(index + 1) מתוך \(plan.numberOfPayments)",
-                buildingId: building
+                buildingId: building,
+                originalAmount: shareOfOriginal.map { $0[index] },
+                originalCurrency: originalCurrency,
+                exchangeRate: exchangeRate
             )
         }
     }

@@ -211,9 +211,7 @@ public struct EditTransactionSheet: View {
                                     withAnimation(.spring(response: 0.25)) {
                                         selectedBuildingId = b.id
                                     }
-                                    #if canImport(UIKit)
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    #endif
+                                    Haptics.impact(.light)
                                 }) {
                                     HStack(spacing: 12) {
                                         Text(b.emoji)
@@ -318,9 +316,7 @@ public struct EditTransactionSheet: View {
                 selectedCategory = cat
                 updateBuildingForCategory(cat)
             }
-            #if canImport(UIKit)
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            #endif
+            Haptics.impact(.light)
         }) {
             VStack(spacing: 5) {
                 CategoryBadge(category: cat, size: 48, isSelected: isSelected)
@@ -356,9 +352,7 @@ public struct EditTransactionSheet: View {
             .trimmingCharacters(in: .whitespaces)
         guard let amount = Double(normalized), amount > 0 else {
             withAnimation { showAmountError = true }
-            #if canImport(UIKit)
-            UINotificationFeedbackGenerator().notificationOccurred(.error)
-            #endif
+            Haptics.notify(.error)
             return
         }
         let isRefund = transaction.note?.contains("זיכוי") == true || transaction.amount < 0
@@ -380,9 +374,7 @@ public struct EditTransactionSheet: View {
         transaction.isConfirmed = true
         transaction.confidenceScore = 1.0
         try? modelContext.save()
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
+        Haptics.notify(.success)
         dismiss()
     }
 
@@ -393,9 +385,7 @@ public struct EditTransactionSheet: View {
             modelContext.delete(transaction)
         }
         try? modelContext.save()
-        #if canImport(UIKit)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        #endif
+        Haptics.notify(.success)
         dismiss()
     }
 

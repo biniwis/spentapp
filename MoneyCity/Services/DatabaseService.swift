@@ -398,11 +398,24 @@ public final class DatabaseService {
     
     // MARK: - Reset
 
+    /// Erases what the user recorded, and leaves what the user configured.
+    ///
+    /// The line is: anything derived from spending goes, anything the person set up by hand
+    /// stays. So transactions, the city they earned, the plans behind split payments, the
+    /// ingest log and the merchant rules learned from those transactions are all deleted —
+    /// keeping a learned rule after deleting the purchase that taught it means the app still
+    /// knows things about a user who asked to be forgotten. Budgets, income sources,
+    /// recurring templates and savings goals survive, because re-entering them is work the
+    /// user did not ask to redo.
+    ///
+    /// Previously this deleted transactions and city upgrades only, and nothing called it at
+    /// all — the reset button had its own loop that deleted transactions and left the other
+    /// eight kinds of record in place.
     public func resetAllData() async throws {
         try await deleteAllTransactions()
 
-        // Fixed-expense templates are configuration, not data, so they survive a reset —
-        // but their bookkeeping is rewound so a reset does not back-fill a year of rent.
+        // Fixed-expense templates are configuration, so they survive — but their bookkeeping
+        // is rewound so a reset does not back-fill a year of rent.
         let recurringDescriptor = FetchDescriptor<RecurringExpense>()
         if let templates = try? context.fetch(recurringDescriptor) {
             for t in templates {
@@ -410,14 +423,40 @@ public final class DatabaseService {
                 t.createdAt = Date()
             }
         }
-        
+
+        // Goals are configuration; their progress is not. Left standing at zero rather than
+        // deleted, so the user keeps the targets they set.
+        let goalDescriptor = FetchDescriptor<SavingsGoal>()
+        if let goals = try? context.fetch(goalDescriptor) {
+            for g in goals {
+                g.savedAmount = 0
+                g.completedAt = nil
+                g.unlinkedBaseline = 0
+                g.baselineCaptured = false
+            }
+        }
+
         let enrichDescriptor = FetchDescriptor<CityEnrichment>()
         if let enrichments = try? context.fetch(enrichDescriptor) {
-            for e in enrichments {
-                context.delete(e)
-            }
-            try context.save()
+            for e in enrichments { context.delete(e) }
         }
+
+        let planDescriptor = FetchDescriptor<InstallmentPlan>()
+        if let plans = try? context.fetch(planDescriptor) {
+            for p in plans { context.delete(p) }
+        }
+
+        let logDescriptor = FetchDescriptor<IngestLogEntry>()
+        if let entries = try? context.fetch(logDescriptor) {
+            for e in entries { context.delete(e) }
+        }
+
+        let ruleDescriptor = FetchDescriptor<MerchantRule>()
+        if let rules = try? context.fetch(ruleDescriptor) {
+            for r in rules { context.delete(r) }
+        }
+
+        try context.save()
     }
 
     // MARK: - Learned Merchant Rules

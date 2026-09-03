@@ -28,6 +28,21 @@ public final class CitySimulationEngine: Sendable {
         return min(1.0, max(0.0, Double(completedDays) / Double(range.count)))
     }
 
+    /// Spending the user does not decide on again each day.
+    ///
+    /// Rent lands in one lump on the 1st and subscriptions renew on their own. Judging a
+    /// day-to-day pace against them means the garden is wrecked on the 3rd of every month
+    /// and recovers by the 30th — which says nothing about how the person is doing, and is
+    /// exactly the same shape whether they were careful or reckless in between.
+    public static let committedCategories: Set<SpendingCategory> = [.housing, .subscriptions]
+
+    /// Day-to-day money: the coffees, the deliveries, the impulse buys. This is what the
+    /// garden is about.
+    public static func isEverydaySpending(_ category: SpendingCategory) -> Bool {
+        let c = category.canonical
+        return c != .savings && !committedCategories.contains(c)
+    }
+
     /// Everything the user has put aside since they started, across every month.
     ///
     /// The reserve is the one part of the city that is not scoped to a month. Every other
@@ -91,6 +106,8 @@ public final class CitySimulationEngine: Sendable {
         transactions: [Transaction],
         estimatedMonthlyBudget: Double = 0,
         typicalMonthlySpend: Double = 0,
+        typicalEverydaySpend: Double = 0,
+        typicalCommittedSpend: Double = 0,
         lifetimeSavings: Double = 0,
         now: Date = Date()
     ) -> MonthlyCity {
@@ -200,10 +217,43 @@ public final class CitySimulationEngine: Sendable {
         //
         // So health is not the saved amount. It is where this month's pace sits relative to
         // normal, and "normal" is a healthy, planted park.
+        // ── The garden judges day-to-day money only ─────────────────────────────────────
+        //
+        // It used to compare everything spent against a budget accruing evenly by the day.
+        // Rent breaks that comparison completely: it lands on the 1st, so by the 3rd the
+        // month has "earned" two days of budget and been handed a whole month's rent. On a
+        // 9,000 budget with 4,200 rent that reads as three times the pace by the 7th and the
+        // garden is dead from then until the 20th — every month, however careful the person
+        // was with the money they actually chose to spend.
+        //
+        // Both sides of the comparison are now day-to-day: what was spent on everyday things,
+        // against the part of the plan that is not already committed to rent and subscriptions.
+        let everydaySpent = spendingTransactions
+            .filter { CitySimulationEngine.isEverydaySpending($0.category) }
+            .reduce(0.0) { $0 + $1.amount }
+        let committedSpent = max(0.0, totalSpent - everydaySpent)
+
+        // What this user's fixed costs usually come to. Their own history first, because it
+        // is steady and known from day one; this month's figure only until there is history,
+        // since before the rent lands it reads as zero and would flatter the pace.
+        let committedAllowance = typicalCommittedSpend > 0 ? typicalCommittedSpend : committedSpent
+
+        var everydayBaseline = 0.0
+        if estimatedMonthlyBudget > 0 {
+            // A fifth of the budget is kept as a floor: if the fixed costs swallow almost all
+            // of it, the remainder is still a real target rather than an unmeetable zero.
+            everydayBaseline = max(estimatedMonthlyBudget * 0.20,
+                                   estimatedMonthlyBudget - committedAllowance)
+        } else if typicalEverydaySpend > 0 {
+            everydayBaseline = typicalEverydaySpend
+        } else if typicalMonthlySpend > 0 {
+            everydayBaseline = max(0.0, typicalMonthlySpend - committedAllowance)
+        }
+
         var parkHealth = CitySimulationEngine.healthyParkLevel
-        let expectedByNow = baseline * accruedFraction
-        if baseline > 0, expectedByNow > 0, hasActivity {
-            let pace = totalSpent / expectedByNow
+        let expectedByNow = everydayBaseline * accruedFraction
+        if everydayBaseline > 0, expectedByNow > 0, hasActivity {
+            let pace = everydaySpent / expectedByNow
             if pace <= 1.0 {
                 // Under your pace. Fully lush once you are 40% below it.
                 let good = min(1.0, (1.0 - pace) / 0.40)
@@ -228,7 +278,7 @@ public final class CitySimulationEngine: Sendable {
 
         // Money actually moved into savings always helps, whatever the spending looked like.
         if directSavings > 0 {
-            let depositTarget = baseline > 0 ? baseline * 0.10 : max(directSavings, 1.0)
+            let depositTarget = everydayBaseline > 0 ? everydayBaseline * 0.15 : max(directSavings, 1.0)
             parkHealth = min(1.0, parkHealth + 0.22 * min(1.0, directSavings / depositTarget))
         }
         // A full park means roughly a fifth of a month kept back — generous but reachable —
@@ -339,6 +389,8 @@ public final class CitySimulationEngine: Sendable {
             savingsBasis: basis,
             parkHealth: parkHealth,
             lifetimeSavings: reserve,
+            everydaySpent: everydaySpent,
+            everydayBaseline: everydayBaseline,
             categoryTotals: totals,
             buildingTotals: buildingTotals,
             tiles: tiles,

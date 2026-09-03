@@ -125,6 +125,8 @@ public struct MainCityView: View {
         hasher.combine(currentDate.timeIntervalSinceReferenceDate)
         hasher.combine(effectiveMonthlyBudget)
         hasher.combine(typicalMonthlySpend)
+        hasher.combine(typicalEverydaySpend)
+        hasher.combine(typicalCommittedSpend)
         hasher.combine(lifetimeSavings)
         return derived.city(key: hasher.finalize()) {
             CitySimulationEngine.shared.generateCity(
@@ -132,6 +134,8 @@ public struct MainCityView: View {
                 transactions: displayTransactions,
                 estimatedMonthlyBudget: effectiveMonthlyBudget,
                 typicalMonthlySpend: typicalMonthlySpend,
+                typicalEverydaySpend: typicalEverydaySpend,
+                typicalCommittedSpend: typicalCommittedSpend,
                 lifetimeSavings: lifetimeSavings
             )
         }
@@ -162,6 +166,35 @@ public struct MainCityView: View {
         let months = byMonth.values.filter { $0 > 0 }
         guard !months.isEmpty else { return 0 }
         return months.reduce(0, +) / Double(months.count)
+    }
+
+    /// The same average as `typicalMonthlySpend`, split the way the garden reads it: what a
+    /// normal month costs this person in day-to-day money, and what their fixed costs come to.
+    /// Averaging them separately matters — a month where the rent was paid late would
+    /// otherwise drag the everyday figure around for no reason.
+    private var typicalEverydaySpend: Double { typicalSplit.everyday }
+    private var typicalCommittedSpend: Double { typicalSplit.committed }
+
+    private var typicalSplit: (everyday: Double, committed: Double) {
+        let cal = Calendar.current
+        let thisMonth = cal.dateComponents([.year, .month], from: Date())
+        var everydayByMonth: [DateComponents: Double] = [:]
+        var committedByMonth: [DateComponents: Double] = [:]
+        for tx in allTransactions where tx.category.canonical != .savings && tx.amount > 0 {
+            let c = cal.dateComponents([.year, .month], from: tx.timestamp)
+            if c.year == thisMonth.year && c.month == thisMonth.month { continue }
+            if CitySimulationEngine.isEverydaySpending(tx.category) {
+                everydayByMonth[c, default: 0] += tx.amount
+            } else {
+                committedByMonth[c, default: 0] += tx.amount
+            }
+        }
+        func mean(_ d: [DateComponents: Double]) -> Double {
+            let vals = d.values.filter { $0 > 0 }
+            guard !vals.isEmpty else { return 0 }
+            return vals.reduce(0, +) / Double(vals.count)
+        }
+        return (mean(everydayByMonth), mean(committedByMonth))
     }
 
     private var progressReport: WeeklyProgressReport {
@@ -520,8 +553,8 @@ public struct MainCityView: View {
             basis: city.savingsBasis,
             health: city.parkHealth,
             monthElapsed: elapsed,
-            spentThisMonth: city.totalSpent,
-            plannedSpending: effectiveMonthlyBudget > 0 ? effectiveMonthlyBudget : typicalMonthlySpend
+            spentThisMonth: city.everydaySpent,
+            plannedSpending: city.everydayBaseline
         )
     }
 
@@ -1437,14 +1470,16 @@ struct ReserveModalView: View {
         }
         let expected = snapshot.plannedSpending * snapshot.monthElapsed
         let diff = (snapshot.spentThisMonth - expected).rounded()
+        // "Everyday" is said out loud, because a figure that quietly leaves the rent out
+        // looks wrong to anyone who checks it against their own total.
         if diff > 0 {
             return isHebrew
-                ? "עברו \(pct)% מהחודש והוצאת \(l10n.format(amount: diff)) מעבר לקצב, ולכן היא מתייבשת."
-                : "\(pct)% of the month has gone and you are \(l10n.format(amount: diff)) ahead of pace, so it is drying out."
+                ? "עברו \(pct)% מהחודש ובהוצאות היומיומיות אתה \(l10n.format(amount: diff)) מעבר לקצב, ולכן היא מתייבשת. שכירות, חשבונות ומנויים לא נספרים כאן."
+                : "\(pct)% of the month has gone and your everyday spending is \(l10n.format(amount: diff)) ahead of pace, so it is drying out. Rent, bills and subscriptions are not counted here."
         }
         return isHebrew
-            ? "עברו \(pct)% מהחודש ואתה \(l10n.format(amount: -diff)) מתחת לקצב, ולכן היא ירוקה."
-            : "\(pct)% of the month has gone and you are \(l10n.format(amount: -diff)) under pace, so it is green."
+            ? "עברו \(pct)% מהחודש ובהוצאות היומיומיות אתה \(l10n.format(amount: -diff)) מתחת לקצב, ולכן היא ירוקה. שכירות, חשבונות ומנויים לא נספרים כאן."
+            : "\(pct)% of the month has gone and your everyday spending is \(l10n.format(amount: -diff)) under pace, so it is green. Rent, bills and subscriptions are not counted here."
     }
 
     var body: some View {

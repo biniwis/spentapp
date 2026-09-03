@@ -363,6 +363,33 @@ public enum ReceiptOCRService {
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
             request.recognitionLanguages = ["he-IL", "en-US"]
+            if #available(iOS 16.0, macOS 13.0, *) {
+                request.automaticallyDetectsLanguage = true
+            }
+
+            #if canImport(UIKit)
+            if let image = UIImage(data: data), let cgImage = image.cgImage {
+                let orientation: CGImagePropertyOrientation
+                switch image.imageOrientation {
+                case .up: orientation = .up
+                case .upMirrored: orientation = .upMirrored
+                case .down: orientation = .down
+                case .downMirrored: orientation = .downMirrored
+                case .left: orientation = .left
+                case .leftMirrored: orientation = .leftMirrored
+                case .right: orientation = .right
+                case .rightMirrored: orientation = .rightMirrored
+                @unknown default: orientation = .up
+                }
+                let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+                do {
+                    try handler.perform([request])
+                } catch {
+                    if resumed.claim() { continuation.resume(throwing: error) }
+                }
+                return
+            }
+            #endif
 
             let handler = VNImageRequestHandler(data: data, options: [:])
             do {
@@ -1038,7 +1065,7 @@ public enum ReceiptOCRService {
             return []
         }
 
-        let pattern = #"(?:₪|ש״ח|ש"ח|\$|€|£|ILS|NIS|[mo•])?\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
+        let pattern = #"(?:₪|ש״ח|ש"ח|\$|€|£|ILS|NIS|[mo•~])?\s*([0-9]{1,3}(?:[,\.][0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:[.,][0-9]{1,2})?)"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return [] }
         let nsString = text as NSString
         let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsString.length))
@@ -1048,11 +1075,22 @@ public enum ReceiptOCRService {
             guard match.numberOfRanges > 1 else { continue }
             var raw = nsString.substring(with: match.range(at: 1))
 
-            // If raw has leading '0' before a 3-digit price without trailing zeros (e.g. '0339.84' from OCR of '₪339.84')
-            if raw.hasPrefix("0") && raw.contains(".") {
+            // Strip leading OCR artifact zero before multi-digit number (e.g. 0339.84 or 01,232.10)
+            if raw.hasPrefix("0") && raw.count >= 4 && (raw.contains(".") || raw.contains(",")) {
                 let afterZero = String(raw.dropFirst())
-                if let val = Double(afterZero), val >= 10.0 {
+                let testClean = afterZero.replacingOccurrences(of: ",", with: "")
+                if let val = Double(testClean), val >= 10.0 {
                     raw = afterZero
+                }
+            }
+
+            // If raw has multiple dots e.g. "1.232.10", earlier dots are thousands separators
+            let dotCount = raw.filter { $0 == "." }.count
+            if dotCount > 1 {
+                if let lastDotIndex = raw.lastIndex(of: ".") {
+                    let beforeLast = raw[..<lastDotIndex].replacingOccurrences(of: ".", with: "")
+                    let afterLast = raw[lastDotIndex...]
+                    raw = beforeLast + afterLast
                 }
             }
 

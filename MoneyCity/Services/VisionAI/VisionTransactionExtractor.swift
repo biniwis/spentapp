@@ -134,19 +134,29 @@ public struct ExtractedTransactionValidator: Sendable {
         guard allowedCurrencies.contains(normalizedCurr) || allowedCurrencies.contains(tx.currency) else {
             throw ValidationError.invalidCurrency(tx.currency)
         }
-
-        // 4. Date validation (must not be far in the future)
-        if let date = tx.date {
-            let maxFuture: TimeInterval = 2 * 24 * 60 * 60 // 2 days buffer for timezone
-            if date.timeIntervalSince(now) > maxFuture {
-                throw ValidationError.futureDate(date)
-            }
-        }
     }
 
     public static func filterValidTransactions(_ list: [ExtractedTransaction]) -> [ExtractedTransaction] {
-        return list.filter { tx in
-            (try? validate(tx)) != nil
+        return list.compactMap { tx in
+            // Amount must be positive and reasonable
+            guard tx.amount > 0, tx.amount < 1_000_000 else { return nil }
+
+            let normalizedCurr = tx.currency.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            let currency = allowedCurrencies.contains(normalizedCurr) || allowedCurrencies.contains(tx.currency) ? tx.currency : "ILS"
+
+            var validDate = tx.date
+            if let d = tx.date, d.timeIntervalSinceNow > 365 * 24 * 3600 {
+                validDate = Date()
+            }
+
+            return ExtractedTransaction(
+                merchant: tx.merchant,
+                amount: tx.amount,
+                currency: currency,
+                date: validDate,
+                product: tx.product,
+                confidence: tx.confidence
+            )
         }
     }
 }

@@ -731,14 +731,23 @@ public struct QuickAddSheet: View {
 
     #if canImport(PhotosUI)
     private func processPickedPhoto(_ item: PhotosPickerItem) async {
-        await MainActor.run { isScanningScreenshot = true }
+        await MainActor.run {
+            isScanningScreenshot = true
+            scanErrorMessage = nil
+        }
         defer { Task { @MainActor in isScanningScreenshot = false } }
         
-        guard let data = try? await item.loadTransferable(type: Data.self) else { return }
+        guard let data = try? await item.loadTransferable(type: Data.self) else {
+            await MainActor.run {
+                scanErrorMessage = l10n.language == .hebrew ? "שגיאה בטעינת התמונה מהגלריה" : "Failed to load image from gallery"
+                Haptics.notify(.warning)
+            }
+            return
+        }
         let rules = DatabaseService.shared.fetchMerchantRules()
         
         do {
-            let result = try await ExpenseExtractionService.shared.processImageData(data, rules: rules, allowFallback: false)
+            let result = try await ExpenseExtractionService.shared.processImageData(data, rules: rules, allowFallback: true)
             await MainActor.run {
                 scanErrorMessage = nil
                 showErrorHint = false
@@ -753,13 +762,16 @@ public struct QuickAddSheet: View {
                     selectedBuildingId = single.buildingId
                     isAmountFocused = false
                     Haptics.notify(.success)
+                } else {
+                    scanErrorMessage = l10n.language == .hebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות." : "No clear receipt detected. Try zooming in."
+                    Haptics.notify(.warning)
                 }
             }
         } catch {
             MoneyCityLog.sensitive("[QuickAddSheet Scan Error] \(error.localizedDescription)")
             await MainActor.run {
                 Haptics.notify(.warning)
-                scanErrorMessage = error.localizedDescription
+                scanErrorMessage = l10n.language == .hebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות." : "No clear receipt detected. Try zooming in."
             }
         }
     }

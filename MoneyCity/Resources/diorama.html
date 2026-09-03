@@ -162,7 +162,7 @@
       shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: -7.25 },
       housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: 6.45 },
       savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -6.55, lookY: 0.35, lookZ: 6.45 },
-      civic:    { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: -3.4, lookY: 0.35, lookZ: 8.8 }
+      civic:    { az: Math.PI * 0.25, el: 0.52, zoom: 2.85, lookX: 7.15, lookY: 0.35, lookZ: 8.8 }
     };
 
     let currentMode = "city";
@@ -2881,131 +2881,110 @@
     // 📮 ROADSIDE POSTAL ISLAND & SORTING HUB (אי בית דואר עצמאי בצד הכביש)
     // Sits in a dedicated roadside bay (x: -3.2, z: 8.6) with its own curb & delivery parking bay!
     // ────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────
+    // 🏛️ CIVIC & CULTURE PROMENADE (מתחם אזרחות ותרבות מרוצף ייעודי)
+    // Sits on its own paved titanium slate plaza along the southern avenue (x: 7.15, z: 8.8)
+    // Freeing the South-West Park Sanctuary to be 100% pure lush green nature!
+    // ────────────────────────────────────────────────────────────────
     const civicZone = new THREE.Group();
-    civicZone.position.set(-3.4, 0, 8.8);
+    civicZone.position.set(BLK_CX_EAST, 0, 8.8);
     root.add(civicZone);
 
+    // Dedicated Polished Titanium Slate & Granite Promenade Foundation
+    const civicPlaza = mesh(roundedBox(BLK_W_EAST, 0.06, 3.4, 0.35), mat(0x334155, 0.85, 0.2), 0, 0.04, 0);
+    civicPlaza.add(mesh(new THREE.BoxGeometry(BLK_W_EAST + 0.1, 0.08, 0.08), mat(0x64748b, 0.9), 0, 0.06, -1.7)); // Curb
+    civicZone.add(civicPlaza);
+
+    // Plaza Lanterns & Benches
+    [-3.2, 0, 3.2].forEach(lx => {
+      const pole = mesh(new THREE.CylinderGeometry(0.035, 0.04, 1.1, 8), mat(0x1e293b, 0.9), lx, 0.60, -1.45);
+      const bulb = mesh(new THREE.SphereGeometry(0.09, 8, 8), new THREE.MeshStandardMaterial({ color: 0xfef08a, emissive: 0xfacc15, emissiveIntensity: 1.5 }), 0, 0.55, 0);
+      pole.add(bulb);
+      civicZone.add(pole);
+    });
+
     function createCitySortingHub(parent) {
-      const g = new THREE.Group(); g.position.set(0, 0.22, 0); parent.add(g);
+      const g = new THREE.Group(); g.position.set(-2.2, 0.08, 0); parent.add(g);
       buildingRoots["city_sorting_hub"] = g; g.userData = { targetScaleY: 1.0, targetScaleXZ: 1.0 };
       const bGroup = new THREE.Group(); g.add(bGroup);
       const sGroup = createTier1Stall("postal"); g.add(sGroup);
       g.userData.buildingGroup = bGroup; g.userData.stallGroup = sGroup;
 
-      // 1. Raised Roadside Island Paved Platform with Granite Curb
-      const islandBase = mesh(roundedBox(3.2, 0.06, 2.8, 0.25), mat(0x475569, 0.85), 0, 0.05, 0);
-      islandBase.add(mesh(new THREE.BoxGeometry(3.25, 0.08, 0.08), mat(0xfacc15, 0.9), 0, 0.08, 1.4)); // Safety yellow curb
-      bGroup.add(islandBase);
-
-      // 2. Distinctive European Brick Post Office Building (בית דואר קלאסי)
-      const brickPost = mesh(roundedBox(2.0, 1.35, 1.6, 0.12), new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 }), -0.4, 0.75, -0.3);
+      // 1. European Brick Post Office Building
+      const brickPost = mesh(roundedBox(1.9, 1.30, 1.5, 0.10), new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 }), 0, 0.70, -0.2);
       bGroup.add(brickPost);
-      addWindows(bGroup, 1, 2, 2.0, 1.35, 1.6, 0.80);
+      addWindows(bGroup, 1, 2, 1.9, 1.30, 1.5, 0.80);
 
       // Royal Navy Hip Roof with Copper Trim
-      const roof = mesh(new THREE.ConeGeometry(1.5, 0.65, 4), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5, metalness: 0.2 }), -0.4, 1.65, -0.3);
+      const roof = mesh(new THREE.ConeGeometry(1.4, 0.60, 4), new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5, metalness: 0.2 }), 0, 1.55, -0.2);
       roof.rotation.y = Math.PI / 4;
       bGroup.add(roof);
 
-      // 3D Golden Post Horn / Envelope Emblem on Rooftop Spire
-      const spire = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.45, 8), mat(0xfacc15, 0.2, 0.8), -0.4, 2.15, -0.3);
-      const emblem = mesh(new THREE.TorusGeometry(0.16, 0.04, 8, 16), mat(0xfacc15, 0.2, 0.9), -0.4, 2.45, -0.3);
+      // Golden Post Horn Spire
+      const spire = mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.40, 8), mat(0xfacc15, 0.2, 0.8), 0, 2.00, -0.2);
+      const emblem = mesh(new THREE.TorusGeometry(0.14, 0.035, 8, 16), mat(0xfacc15, 0.2, 0.9), 0, 2.25, -0.2);
       emblem.rotation.y = Math.PI / 4;
       bGroup.add(spire, emblem);
 
-      // High-Contrast Postal Front Sign ("📮 בית הדואר ומרכז המיון")
-      bGroup.add(mesh(new THREE.BoxGeometry(1.8, 0.38, 0.08), new THREE.MeshStandardMaterial({ map: signTex("📮 בית הדואר ומרכז המיון", "Sorting Hub • שונות", "#ffffff", "#ea580c"), emissive: 0xea580c, emissiveIntensity: 0.45 }), -0.4, 1.20, 0.55));
+      // Front Sign ("📮 בית הדואר ומרכז המיון")
+      bGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.34, 0.08), new THREE.MeshStandardMaterial({ map: signTex("📮 בית הדואר ומרכז המיון", "Sorting Hub • מיון", "#ffffff", "#ea580c"), emissive: 0xea580c, emissiveIntensity: 0.45 }), 0, 1.15, 0.60));
 
-      // Classic British Red Post Pillar Box (תיבת דואר אדומה קלאסית)
-      const postBox = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.48, 12), mat(0xdc2626, 0.4), 0.85, 0.32, 0.75);
-      postBox.add(mesh(new THREE.SphereGeometry(0.14, 10, 8), mat(0xdc2626, 0.4), 0, 0.24, 0));
-      postBox.add(mesh(new THREE.BoxGeometry(0.12, 0.04, 0.02), mat(0xfacc15, 0.3), 0, 0.12, 0.13)); // Letter Slot
+      // British Red Post Pillar Box
+      const postBox = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.44, 12), mat(0xdc2626, 0.4), 1.15, 0.26, 0.65);
+      postBox.add(mesh(new THREE.SphereGeometry(0.12, 10, 8), mat(0xdc2626, 0.4), 0, 0.22, 0));
+      postBox.add(mesh(new THREE.BoxGeometry(0.10, 0.035, 0.02), mat(0xfacc15, 0.3), 0, 0.10, 0.11));
       bGroup.add(postBox);
 
-      // Loading Dock / Wooden Pallet with Stacked Parcels (חבילות למיון)
+      // Parcel Pallets
       const crateGroup = new THREE.Group(); bGroup.add(crateGroup);
       g.userData.crateGroup = crateGroup;
-      
-      const pallet = mesh(new THREE.BoxGeometry(0.85, 0.06, 0.65), mat(0x78350f, 0.9), -0.5, 0.19, 0.75);
+      const pallet = mesh(new THREE.BoxGeometry(0.75, 0.05, 0.55), mat(0x78350f, 0.9), -1.05, 0.12, 0.65);
       bGroup.add(pallet);
-      const p1 = mesh(new THREE.BoxGeometry(0.32, 0.28, 0.28), mat(0xd97706, 0.8), -0.65, 0.34, 0.75);
-      const p2 = mesh(new THREE.BoxGeometry(0.26, 0.22, 0.24), mat(0xb45309, 0.8), -0.35, 0.31, 0.80);
-      const p3 = mesh(new THREE.BoxGeometry(0.22, 0.18, 0.22), mat(0xf59e0b, 0.8), -0.50, 0.54, 0.75);
-      crateGroup.add(p1, p2, p3);
-
-      // Yellow Postal Delivery Van in Dedicated Roadside Delivery Bay
-      const bayLines = mesh(new THREE.BoxGeometry(1.2, 0.015, 1.8), whiteLineMat, 0.85, 0.165, -0.2);
-      bGroup.add(bayLines);
-
-      const van = new THREE.Group(); van.position.set(0.85, 0.16, -0.2); bGroup.add(van);
-      const vanBody = mesh(roundedBox(0.65, 0.55, 1.2, 0.06), mat(0xf59e0b, 0.4), 0, 0.35, 0);
-      const vanCab = mesh(roundedBox(0.62, 0.48, 0.45, 0.04), mat(0x0f172a, 0.2), 0, 0.42, 0.35);
-      van.add(vanBody, vanCab);
-      [-0.34, 0.34].forEach(wx => {
-        [-0.35, 0.35].forEach(wz => {
-          const wh = mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.06, 10), mat(0x1e293b, 0.9), wx, 0.10, wz);
-          wh.rotation.z = Math.PI / 2;
-          van.add(wh);
-        });
-      });
+      const p1 = mesh(new THREE.BoxGeometry(0.28, 0.24, 0.24), mat(0xd97706, 0.8), -1.18, 0.26, 0.65);
+      const p2 = mesh(new THREE.BoxGeometry(0.22, 0.18, 0.20), mat(0xb45309, 0.8), -0.92, 0.23, 0.70);
+      crateGroup.add(p1, p2);
 
       const hubData = { id: "city_sorting_hub", district: "civic", name: "בית הדואר ומרכז המיון", emoji: "📮", amount: 0, visits: 0, trend: "הוצאות למיון" };
-      islandBase.userData = hubData;
       brickPost.userData = hubData;
       return brickPost;
     }
 
-    const sortingHubBody = createCitySortingHub(civicZone);
-    interactiveBuildings.push(sortingHubBody);
-    createPlotSite("city_sorting_hub", 0, 0, civicZone, sortingHubBody.userData);
-
-    // ────────────────────────────────────────────────────────────────
-    // 🏛️ GRAND MUSEUM OF CURIOSITIES (מוזיאון הדברים המשונים — שונות)
-    // Neoclassical marble columns, glowing amethyst crystal dome & exhibits
-    // ────────────────────────────────────────────────────────────────
-    const museumZone = new THREE.Group();
-    museumZone.position.set(-6.8, 0, 8.8);
-    root.add(museumZone);
-
     function createMuseumOfCuriosities(parent) {
-      const g = new THREE.Group(); g.position.set(0, 0.22, 0); parent.add(g);
+      const g = new THREE.Group(); g.position.set(2.2, 0.08, 0); parent.add(g);
       buildingRoots["museum_curiosities"] = g; g.userData = { targetScaleY: 1.0, targetScaleXZ: 1.0 };
       const bGroup = new THREE.Group(); g.add(bGroup);
       const sGroup = createTier1Stall("postal"); g.add(sGroup);
       g.userData.buildingGroup = bGroup; g.userData.stallGroup = sGroup;
 
-      // 1. Raised Neoclassical Marble Plinth & Steps
-      const plinth = mesh(roundedBox(3.0, 0.10, 2.6, 0.15), mat(0xe2e8f0, 0.6), 0, 0.05, 0);
+      // 1. Neoclassical Plinth & Steps
+      const plinth = mesh(roundedBox(2.8, 0.08, 2.2, 0.12), mat(0xe2e8f0, 0.6), 0, 0.04, -0.1);
       bGroup.add(plinth);
+      const step1 = mesh(new THREE.BoxGeometry(2.0, 0.04, 0.4), mat(0xcbd5e1, 0.7), 0, 0.06, 0.95);
+      bGroup.add(step1);
 
-      // Granite Steps leading to grand entrance
-      const step1 = mesh(new THREE.BoxGeometry(2.2, 0.05, 0.5), mat(0xcbd5e1, 0.7), 0, 0.08, 1.15);
-      const step2 = mesh(new THREE.BoxGeometry(2.0, 0.05, 0.35), mat(0x94a3b8, 0.7), 0, 0.13, 1.0);
-      bGroup.add(step1, step2);
-
-      // 2. Main Classical Museum Hall
-      const museumBody = mesh(roundedBox(2.2, 1.40, 1.8, 0.1), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }), 0, 0.78, -0.1);
+      // 2. Classical Museum Body
+      const museumBody = mesh(roundedBox(2.0, 1.35, 1.6, 0.08), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }), 0, 0.74, -0.2);
       bGroup.add(museumBody);
 
-      // 3. Classical Marble Columns across the Portico Facade
-      [-0.8, -0.27, 0.27, 0.8].forEach(colX => {
-        const col = mesh(new THREE.CylinderGeometry(0.08, 0.09, 1.30, 12), mat(0xe2e8f0, 0.3), colX, 0.75, 0.82);
-        col.add(mesh(new THREE.BoxGeometry(0.22, 0.06, 0.22), mat(0xfacc15, 0.2, 0.8), 0, 0.65, 0));
+      // 3. Ionic Columns
+      [-0.72, -0.24, 0.24, 0.72].forEach(colX => {
+        const col = mesh(new THREE.CylinderGeometry(0.075, 0.085, 1.25, 12), mat(0xe2e8f0, 0.3), colX, 0.70, 0.62);
+        col.add(mesh(new THREE.BoxGeometry(0.20, 0.05, 0.20), mat(0xfacc15, 0.2, 0.8), 0, 0.62, 0));
         bGroup.add(col);
       });
 
-      // 4. Grand Triangular Pediment / Frieze
+      // 4. Triangular Pediment
       const pedimentG = new THREE.Group();
-      pedimentG.position.set(0, 1.55, 0.78);
-      const friezeBase = mesh(new THREE.BoxGeometry(2.2, 0.12, 0.35), mat(0xe2e8f0, 0.4), 0, 0, 0);
-      const triangleRoof = mesh(new THREE.ConeGeometry(1.4, 0.65, 4), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4 }), 0, 0.35, 0);
+      pedimentG.position.set(0, 1.48, 0.58);
+      const friezeBase = mesh(new THREE.BoxGeometry(2.0, 0.10, 0.30), mat(0xe2e8f0, 0.4), 0, 0, 0);
+      const triangleRoof = mesh(new THREE.ConeGeometry(1.25, 0.55, 4), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4 }), 0, 0.30, 0);
       triangleRoof.rotation.y = Math.PI / 4;
       pedimentG.add(friezeBase, triangleRoof);
       bGroup.add(pedimentG);
 
-      // 5. Glowing Geodesic Violet / Crystal Glass Dome
-      const domeBase = mesh(new THREE.CylinderGeometry(0.68, 0.72, 0.18, 16), mat(0xfacc15, 0.3, 0.9), 0, 1.55, -0.2);
-      const crystalDome = mesh(new THREE.SphereGeometry(0.62, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.MeshStandardMaterial({
+      // 5. Glowing Amethyst Crystal Dome
+      const domeBase = mesh(new THREE.CylinderGeometry(0.60, 0.65, 0.15, 16), mat(0xfacc15, 0.3, 0.9), 0, 1.48, -0.3);
+      const crystalDome = mesh(new THREE.SphereGeometry(0.55, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), new THREE.MeshStandardMaterial({
         color: 0x8b5cf6,
         emissive: 0x7c3aed,
         emissiveIntensity: 0.65,
@@ -3013,39 +2992,28 @@
         metalness: 0.3,
         transparent: true,
         opacity: 0.88
-      }), 0, 1.64, -0.2);
+      }), 0, 1.56, -0.3);
       bGroup.add(domeBase, crystalDome);
 
-      // 6. Glowing Museum Front Sign
-      bGroup.add(mesh(new THREE.BoxGeometry(1.9, 0.35, 0.08), new THREE.MeshStandardMaterial({
+      // 6. Glowing Sign
+      bGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.32, 0.08), new THREE.MeshStandardMaterial({
         map: signTex("🏛️ מוזיאון הדברים המשונים", "Museum of Curiosities • שונות", "#ffffff", "#7c3aed"),
         emissive: 0x7c3aed,
         emissiveIntensity: 0.55
-      }), 0, 1.25, 0.88));
-
-      // 7. Exhibition Pedestals with Glowing Curiosities
-      [-1.15, 1.15].forEach((pedX, idx) => {
-        const ped = mesh(roundedBox(0.28, 0.42, 0.28, 0.04), mat(0x334155, 0.7), pedX, 0.30, 0.85);
-        const glassJar = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.24, 12), new THREE.MeshStandardMaterial({
-          color: 0xa78bfa,
-          transparent: true,
-          opacity: 0.5,
-          roughness: 0.1
-        }), 0, 0.32, 0);
-        const gem = mesh(new THREE.OctahedronGeometry(0.06), mat(idx === 0 ? 0xfacc15 : 0xec4899, 0.2, 0.9), 0, 0.30, 0);
-        ped.add(glassJar, gem);
-        bGroup.add(ped);
-      });
+      }), 0, 1.18, 0.68));
 
       const musData = { id: "museum_curiosities", district: "civic", name: "מוזיאון הדברים המשונים", emoji: "🏛️", amount: 0, visits: 0, trend: "שונות ופריטים מיוחדים" };
-      plinth.userData = musData;
       museumBody.userData = musData;
       return museumBody;
     }
 
-    const museumBody = createMuseumOfCuriosities(museumZone);
+    const sortingHubBody = createCitySortingHub(civicZone);
+    interactiveBuildings.push(sortingHubBody);
+    createPlotSite("city_sorting_hub", -2.2, 0, civicZone, sortingHubBody.userData);
+
+    const museumBody = createMuseumOfCuriosities(civicZone);
     interactiveBuildings.push(museumBody);
-    createPlotSite("museum_curiosities", 0, 0, museumZone, museumBody.userData);
+    createPlotSite("museum_curiosities", 2.2, 0, civicZone, museumBody.userData);
 
     // 🌱  SAVINGS PARK SANCTUARY
     // ────────────────────────────────────────────────────────────────
@@ -3727,8 +3695,8 @@
     addDistrictBuildingTag("housing", "house_tower", "🏠", "מגורים ושכירות", 0, "#253CC4", 4.5, 5.2, 4.6);
     addDistrictBuildingTag("housing", "house_util", "⚡", "חשמל וארנונה", 0, "#F59E0B", 9.1, 4.2, 4.6);
     addDistrictBuildingTag("housing", "house_subs", "📺", "מנויים וסטרימינג", 0, "#7C72FF", 6.8, 3.8, 8.8);
-    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", -3.2, 2.2, 8.6);
-    addDistrictBuildingTag("civic", "museum_curiosities", "🏛️", "מוזיאון הדברים המשונים", 0, "#8B5CF6", -6.8, 3.8, 8.6); 
+    addDistrictBuildingTag("civic", "city_sorting_hub", "📮", "בית הדואר ומרכז המיון", 0, "#EA580C", 4.95, 3.2, 8.8);
+    addDistrictBuildingTag("civic", "museum_curiosities", "🏛️", "מוזיאון הדברים המשונים", 0, "#8B5CF6", 9.35, 4.2, 8.8); 
 
     // ================================================================
     // 🏗️ SIMS-STYLE DEDICATED CITY UPGRADE SLOTS (Interactive Pads)
@@ -3742,18 +3710,11 @@
       "slot_tech_plaza":       { id: "slot_tech_plaza", name: "כיכר מתחם ההייטק", x: 8.8, y: 0.22, z: -4.8, defaultItem: "public_art_sculpture" }
     };
 
+    // Invisible interactive hitboxes for slots — ZERO artificial gray pads or clutter!
     const slotPadMeshes = {};
     for (const sId in CITY_SLOTS) {
       const slot = CITY_SLOTS[sId];
-      const g = new THREE.Group(); g.position.set(slot.x, slot.y - 0.04, slot.z);
-      
-      const pad = mesh(roundedBox(1.6, 0.04, 1.6, 0.2), mat(0x334155, 0.6, 0.4), 0, 0.02, 0, false, true);
-      g.add(pad);
-      
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.35 });
-      const ring = mesh(new THREE.RingGeometry(0.70, 0.82, 24), ringMat, 0, 0.045, 0, false, false);
-      ring.rotation.x = -Math.PI / 2;
-      g.add(ring);
+      const g = new THREE.Group(); g.position.set(slot.x, slot.y, slot.z);
       
       const hit = mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 12), new THREE.MeshBasicMaterial({ visible: false }), 0, 0.3, 0);
       hit.userData = { isSlot: true, slotId: slot.id, slotName: slot.name, ref: g };
@@ -3798,37 +3759,26 @@
     }
     enrichmentObjects["fountain_marble"] = buildCentralPlazaFountain();
 
-    // 2. Garden Terrace Ginger Cat (pet_cat_rooftop)
+    // 2. Living, Wandering Ginger Cat (pet_cat_rooftop) — Zero artificial gray platforms!
     function buildRooftopCat() {
-      const g = new THREE.Group(); g.position.set(6.8, 0.22, 3.6);
+      const g = new THREE.Group(); g.position.set(6.8, Y_WALK, 3.6);
       
-      // Low stone garden wall base with wooden cap
-      const wallBase = mesh(roundedBox(0.95, 0.69, 0.58, 0.08), mat(0x64748b, 0.8), 0, 0, 0);
-      g.add(wallBase);
-      const woodCap = mesh(roundedBox(1.02, 0.06, 0.65, 0.03), mat(0xa16207, 0.7), 0, 0.49, 0);
-      g.add(woodCap);
-      
-      // Green climbing ivy leaves
-      g.add(mesh(new THREE.SphereGeometry(0.12, 6, 6), mat(0x16a34a, 0.8), -0.32, 0.25, 0.28));
-      g.add(mesh(new THREE.SphereGeometry(0.10, 6, 6), mat(0x22c55e, 0.8), 0.28, 0.35, 0.28));
-
-      // Cozy velvet cushion
-      g.add(mesh(new THREE.CylinderGeometry(0.25, 0.27, 0.06, 16), mat(0xe11d48, 0.8), 0, 0.54, 0));
-
-      // Ginger Cat
-      const catRoot = new THREE.Group(); catRoot.position.set(0, 0.57, 0); g.add(catRoot);
+      const catRoot = new THREE.Group(); g.add(catRoot);
       const catMat = mat(0xf97316, 0.80);
       
-      const catBody = mesh(roundedBox(0.24, 0.16, 0.32, 0.06), catMat, 0, 0.08, 0);
-      catBody.add(mesh(roundedBox(0.14, 0.10, 0.18, 0.04), mat(0xffedd5, 0.9), 0, 0.01, 0.08));
+      // Cat Body (Warm ginger with white bib)
+      const catBody = mesh(roundedBox(0.24, 0.16, 0.32, 0.06), catMat, 0, 0.12, 0);
+      catBody.add(mesh(roundedBox(0.14, 0.10, 0.18, 0.04), mat(0xffedd5, 0.9), 0, 0.02, 0.08));
       catRoot.add(catBody);
 
-      // Paws resting over edge
-      catRoot.add(mesh(new THREE.SphereGeometry(0.035, 6, 6), mat(0xffedd5, 0.9), -0.07, 0.02, 0.16));
-      catRoot.add(mesh(new THREE.SphereGeometry(0.035, 6, 6), mat(0xffedd5, 0.9), 0.07, 0.02, 0.16));
+      // Paws
+      catRoot.add(mesh(new THREE.SphereGeometry(0.04, 6, 6), mat(0xffedd5, 0.9), -0.07, 0.04, 0.12));
+      catRoot.add(mesh(new THREE.SphereGeometry(0.04, 6, 6), mat(0xffedd5, 0.9),  0.07, 0.04, 0.12));
+      catRoot.add(mesh(new THREE.SphereGeometry(0.04, 6, 6), mat(0xf97316, 0.9), -0.07, 0.04, -0.10));
+      catRoot.add(mesh(new THREE.SphereGeometry(0.04, 6, 6), mat(0xf97316, 0.9),  0.07, 0.04, -0.10));
 
-      // Head with ears, eyes, nose
-      const catHead = new THREE.Group(); catHead.position.set(0, 0.18, 0.12); catRoot.add(catHead);
+      // Head with ears, green eyes, pink nose
+      const catHead = new THREE.Group(); catHead.position.set(0, 0.22, 0.14); catRoot.add(catHead);
       catHead.add(mesh(roundedBox(0.16, 0.14, 0.15, 0.04), catMat, 0, 0, 0));
       const earL = mesh(new THREE.ConeGeometry(0.035, 0.06, 4), mat(0xc2410c, 0.8), -0.055, 0.09, 0);
       earL.rotation.z = 0.2; earL.add(mesh(new THREE.ConeGeometry(0.02, 0.04, 3), mat(0xfda4af, 0.8), 0, 0, 0.01));
@@ -3836,30 +3786,117 @@
       const earR = mesh(new THREE.ConeGeometry(0.035, 0.06, 4), mat(0xc2410c, 0.8), 0.055, 0.09, 0);
       earR.rotation.z = -0.2; earR.add(mesh(new THREE.ConeGeometry(0.02, 0.04, 3), mat(0xfda4af, 0.8), 0, 0, 0.01));
       catHead.add(earR);
-      catHead.add(mesh(new THREE.SphereGeometry(0.018, 6, 6), new THREE.MeshBasicMaterial({ color: 0x4ade80 }), -0.04, 0.02, 0.08));
-      catHead.add(mesh(new THREE.SphereGeometry(0.018, 6, 6), new THREE.MeshBasicMaterial({ color: 0x4ade80 }),  0.04, 0.02, 0.08));
-      catHead.add(mesh(new THREE.SphereGeometry(0.012, 6, 6), mat(0x0f172a, 0.9), 0, -0.015, 0.085));
+      catHead.add(mesh(new THREE.SphereGeometry(0.02, 6, 6), new THREE.MeshBasicMaterial({ color: 0x4ade80 }), -0.04, 0.02, 0.08));
+      catHead.add(mesh(new THREE.SphereGeometry(0.02, 6, 6), new THREE.MeshBasicMaterial({ color: 0x4ade80 }),  0.04, 0.02, 0.08));
+      catHead.add(mesh(new THREE.SphereGeometry(0.012, 6, 6), mat(0xfda4af, 0.9), 0, -0.015, 0.085));
 
-      // Tail
-      const catTail = new THREE.Group(); catTail.position.set(0, 0.08, -0.14); catRoot.add(catTail);
-      const tailMesh = mesh(new THREE.CylinderGeometry(0.016, 0.022, 0.24, 8), catMat, 0, 0.08, -0.05);
+      // Animated Fluffy Tail
+      const catTail = new THREE.Group(); catTail.position.set(0, 0.14, -0.15); catRoot.add(catTail);
+      const tailMesh = mesh(new THREE.CylinderGeometry(0.018, 0.024, 0.26, 8), catMat, 0, 0.10, -0.06);
       tailMesh.rotation.x = -0.7; catTail.add(tailMesh);
 
       // Hitbox
-      const hitBox = mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshBasicMaterial({ visible: false }), 0, 0.4, 0);
+      const hitBox = mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), new THREE.MeshBasicMaterial({ visible: false }), 0, 0.3, 0);
       g.add(hitBox);
       const uData = { isCat: true, cat: g, catRoot: catRoot, catHead: catHead, catTail: catTail, catBody: catBody, hopTimer: 0 };
       hitBox.userData = uData;
       g.userData = uData;
       interactiveCitizens.push(hitBox);
 
-      animObjects.push({ type: "cat_anim", head: catHead, tail: catTail, body: catBody, root: catRoot, userData: uData });
+      animObjects.push({
+        type: "cat_wander_anim",
+        head: catHead,
+        tail: catTail,
+        body: catBody,
+        root: catRoot,
+        userData: uData
+      });
 
       root.add(g);
       g.visible = false;
       return g;
     }
     enrichmentObjects["pet_cat_rooftop"] = buildRooftopCat();
+
+    // 2B. Joyful Animated Golden Retriever Dog (pet_golden_dog) in Park Sanctuary
+    function buildGoldenRetrieverDog() {
+      const g = new THREE.Group(); g.position.set(-6.8, Y_WALK, 4.8);
+      
+      const dogRoot = new THREE.Group(); g.add(dogRoot);
+      const furMat = mat(0xf59e0b, 0.85); // Warm golden fur
+      const bellyMat = mat(0xfef3c7, 0.90);
+
+      // Dog Torso
+      const dogBody = mesh(roundedBox(0.32, 0.24, 0.48, 0.07), furMat, 0, 0.20, 0);
+      dogBody.add(mesh(roundedBox(0.20, 0.14, 0.28, 0.04), bellyMat, 0, -0.04, 0.06));
+      dogRoot.add(dogBody);
+
+      // Red Collar with Golden ID Tag
+      const collar = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 12), mat(0xdc2626, 0.5), 0, 0.26, 0.16);
+      collar.rotation.x = 0.4;
+      const tag = mesh(new THREE.OctahedronGeometry(0.025), mat(0xfacc15, 0.2, 0.9), 0, -0.05, 0.08);
+      collar.add(tag);
+      dogRoot.add(collar);
+
+      // Articulated Legs for 4-Leg Trot Walk Cycle
+      const legFL = mesh(roundedBox(0.07, 0.18, 0.07, 0.02), furMat, -0.10, 0.09, 0.14);
+      const legFR = mesh(roundedBox(0.07, 0.18, 0.07, 0.02), furMat,  0.10, 0.09, 0.14);
+      const legBL = mesh(roundedBox(0.07, 0.18, 0.07, 0.02), furMat, -0.10, 0.09, -0.14);
+      const legBR = mesh(roundedBox(0.07, 0.18, 0.07, 0.02), furMat,  0.10, 0.09, -0.14);
+      dogRoot.add(legFL, legFR, legBL, legBR);
+
+      // Dog Head with Floppy Ears & Happy Snout
+      const dogHead = new THREE.Group(); dogHead.position.set(0, 0.32, 0.22); dogRoot.add(dogHead);
+      dogHead.add(mesh(roundedBox(0.22, 0.18, 0.20, 0.05), furMat, 0, 0, 0));
+      
+      // Muzzle & Black Nose
+      const muzzle = mesh(roundedBox(0.13, 0.10, 0.14, 0.03), bellyMat, 0, -0.03, 0.12);
+      muzzle.add(mesh(new THREE.SphereGeometry(0.025, 6, 6), mat(0x0f172a, 0.9), 0, 0.03, 0.08)); // Nose
+      // Pink Tongue
+      const tongue = mesh(new THREE.BoxGeometry(0.05, 0.02, 0.06), mat(0xf43f5e, 0.8), 0, -0.04, 0.12);
+      muzzle.add(tongue);
+      dogHead.add(muzzle);
+
+      // Dark Eyes
+      dogHead.add(mesh(new THREE.SphereGeometry(0.022, 6, 6), mat(0x0f172a, 0.9), -0.06, 0.04, 0.09));
+      dogHead.add(mesh(new THREE.SphereGeometry(0.022, 6, 6), mat(0x0f172a, 0.9),  0.06, 0.04, 0.09));
+
+      // Floppy Golden Ears
+      const earL = mesh(roundedBox(0.05, 0.14, 0.08, 0.02), mat(0xd97706, 0.8), -0.12, 0.02, -0.02);
+      earL.rotation.z = 0.25; earL.rotation.x = 0.15; dogHead.add(earL);
+      const earR = mesh(roundedBox(0.05, 0.14, 0.08, 0.02), mat(0xd97706, 0.8),  0.12, 0.02, -0.02);
+      earR.rotation.z = -0.25; earR.rotation.x = 0.15; dogHead.add(earR);
+
+      // Enthusiastic Wagging Tail
+      const dogTail = new THREE.Group(); dogTail.position.set(0, 0.24, -0.22); dogRoot.add(dogTail);
+      const tailM = mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.28, 8), furMat, 0, 0.12, -0.08);
+      tailM.rotation.x = -0.8; dogTail.add(tailM);
+
+      // Hitbox
+      const dHit = mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshBasicMaterial({ visible: false }), 0, 0.3, 0);
+      g.add(dHit);
+      const dData = { isDog: true, dog: g, dogRoot: dogRoot, dogHead: dogHead, dogTail: dogTail, legFL: legFL, legFR: legFR, legBL: legBL, legBR: legBR, hopTimer: 0 };
+      dHit.userData = dData;
+      g.userData = dData;
+      interactiveCitizens.push(dHit);
+
+      animObjects.push({
+        type: "dog_trot_anim",
+        head: dogHead,
+        tail: dogTail,
+        legFL: legFL,
+        legFR: legFR,
+        legBL: legBL,
+        legBR: legBR,
+        root: dogRoot,
+        userData: dData
+      });
+
+      root.add(g);
+      g.visible = false;
+      return g;
+    }
+    enrichmentObjects["pet_golden_dog"] = buildGoldenRetrieverDog();
 
     // 3. Pink Sakura Tree in Promenade (tree_sakura)
     function buildPromenadeSakura() {
@@ -4813,7 +4850,7 @@
               }
               popEmojiBubble(targetObj, phrase, 2.5);
               if (u.slotId && window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.slotTapped) {
-                try { window.webkit.messageHandlers.slotTapped.postMessage({ slotId: u.slotId, currentItem: u.isCat ? "pet_cat_rooftop" : (u.isFountain ? "fountain_marble" : (u.isSakura ? "tree_sakura" : (u.isCoffeeStand ? "cafe_stand" : (u.isSculpture ? "public_art_sculpture" : "")))) }); } catch(e) {}
+                try { window.webkit.messageHandlers.slotTapped.postMessage({ slotId: u.slotId, currentItem: u.isCat ? "pet_cat_rooftop" : (u.isDog ? "pet_golden_dog" : (u.isFountain ? "fountain_marble" : (u.isSakura ? "tree_sakura" : (u.isCoffeeStand ? "cafe_stand" : (u.isSculpture ? "public_art_sculpture" : ""))))) }); } catch(e) {}
               }
               if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.citizenTapped) {
                 try { window.webkit.messageHandlers.citizenTapped.postMessage({}); } catch(e) {}
@@ -5043,6 +5080,7 @@
 
       const celebrationTitles = {
         "pet_cat_rooftop": "🐱 חתול ג'ינג'ר חדש הצטרף לעיר! 🐾",
+        "pet_golden_dog": "🐶 גור גולדן רטריבר עליז הצטרף לשמורת החיסכון! 🐾",
         "pet_golden_dog": "🐕 כלב גולדן הגיע לפארק! 🐾",
         "fountain_marble": "⛲ מזרקת שיש יוקרתית נחנכה! 💎",
         "tree_sakura": "🌸 עץ דובדבן פורח בטיילת! 🌺",

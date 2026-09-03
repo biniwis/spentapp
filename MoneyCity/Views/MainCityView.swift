@@ -166,6 +166,11 @@ public struct MainCityView: View {
         )
     }
 
+    /// What a normal month costs this user, averaged over the months they have completed.
+    /// Defined as the two halves of `typicalSplit` added back together, rather than a second
+    /// pass over the same transactions — one loop, so the whole and its parts cannot drift.
+    private var typicalMonthlySpend: Double { typicalSplit.everyday + typicalSplit.committed }
+
     /// The same average as `typicalMonthlySpend`, split the way the garden reads it: what a
     /// normal month costs this person in day-to-day money, and what their fixed costs come to.
     /// Averaging them separately matters — a month where the rent was paid late would

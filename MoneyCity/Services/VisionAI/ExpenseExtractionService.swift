@@ -135,6 +135,13 @@ public final class ExpenseExtractionService: Sendable {
             )
         } catch {
             MoneyCityLog.sensitive("[ExpenseExtractionService] Vision AI extractor failed: \(error.localizedDescription)")
+            // The on-device extractor IS the OCR service, so falling back to it re-runs the
+            // identical work that just failed — and now that a scan makes several passes over
+            // a prepared image, that doubles an already slow failure for an identical result.
+            // A fallback is only worth running when it is a different engine.
+            if extractor.modelIdentifier == "AppleVision-OnDeviceParser" {
+                throw error
+            }
             if allowFallback {
                 let ocrResult = try await ReceiptOCRService.scanImage(data: data, rules: rules)
                 let duration = CFAbsoluteTimeGetCurrent() - startTime

@@ -113,7 +113,7 @@ public struct SavingsGoalsSheet: View {
                         .background(RoundedRectangle(cornerRadius: 14).fill(Color.themeMint))
                 }
                 .buttonStyle(.plain)
-                .disabled((Double(depositAmount) ?? 0) <= 0)
+                .disabled((TransactionIngest.normalizedAmount(nil, depositAmount) ?? 0) <= 0)
 
                 Spacer()
             }

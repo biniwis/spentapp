@@ -123,6 +123,10 @@ public final class LocalizationManager: ObservableObject {
         language.layoutDirection
     }
 
+    public var isHebrew: Bool {
+        language == .hebrew
+    }
+
     public init() {}
 
     // MARK: - Currency Formatting

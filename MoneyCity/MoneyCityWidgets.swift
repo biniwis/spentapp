@@ -50,7 +50,7 @@ public struct MoneyCityWidgetProvider: TimelineProvider {
         let budget = defaults.double(forKey: "widget_monthly_budget")
         let savings = defaults.double(forKey: "widget_monthly_savings")
         let merchant = defaults.string(forKey: "widget_recent_merchant") ?? ""
-        let isHebrew = (defaults.string(forKey: "app_language") ?? "he") == "he"
+        let isHebrew = (defaults.string(forKey: "app_language_pref") ?? defaults.string(forKey: "app_language") ?? "he") == "he"
         
         let entry = MoneyCityWidgetEntry(
             date: Date(),
@@ -65,6 +65,28 @@ public struct MoneyCityWidgetProvider: TimelineProvider {
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date()
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
+    }
+}
+
+public enum MoneyCityWidgets {
+    /// Publishes the latest real ledger totals to the App Group container and triggers WidgetKit reload.
+    public static func publishData(
+        spent: Double,
+        budget: Double,
+        savings: Double,
+        recentMerchant: String,
+        isHebrew: Bool
+    ) {
+        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? UserDefaults.standard
+        defaults.set(spent, forKey: "widget_monthly_spent")
+        defaults.set(budget, forKey: "widget_monthly_budget")
+        defaults.set(savings, forKey: "widget_monthly_savings")
+        defaults.set(recentMerchant, forKey: "widget_recent_merchant")
+        defaults.set(isHebrew ? "he" : "en", forKey: "app_language_pref")
+        defaults.set(isHebrew ? "he" : "en", forKey: "app_language")
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
     }
 }
 

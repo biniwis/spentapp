@@ -350,7 +350,7 @@ public struct EditTransactionSheet: View {
         let normalized = amountText
             .replacingOccurrences(of: ",", with: ".")
             .trimmingCharacters(in: .whitespaces)
-        guard let amount = Double(normalized), amount > 0 else {
+        guard let amount = MoneyAmount.sanitized(Double(normalized)) else {
             withAnimation { showAmountError = true }
             Haptics.notify(.error)
             return

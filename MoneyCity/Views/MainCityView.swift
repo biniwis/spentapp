@@ -465,6 +465,10 @@ public struct MainCityView: View {
             if !hasCompletedOnboarding && allTransactions.isEmpty {
                 showOnboarding = true
             }
+            syncWidgetData()
+        }
+        .onChange(of: transactionsDigest) { _, _ in
+            syncWidgetData()
         }
         .onOpenURL { url in
             let scheme = url.scheme?.lowercased() ?? ""
@@ -504,6 +508,7 @@ public struct MainCityView: View {
                 modelContext.insert(tx)
                 try? modelContext.save()
             }
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showFeed) {
             // The sheet used to take an onUpdateCategory closure it never called — tapping a
@@ -513,6 +518,7 @@ public struct MainCityView: View {
                 title: feedSheetTitle,
                 transactions: feedFilteredTransactions
             )
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showProgressSheet) {
             CityProgressSheet(
@@ -558,6 +564,7 @@ public struct MainCityView: View {
                     // The city starts empty and fills with the user's own spending.
                 }
             )
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showSlotCustomizer) {
             CitySlotCustomizerSheet(
@@ -566,6 +573,7 @@ public struct MainCityView: View {
                 currentPlacements: currentSlotPlacements,
                 onAssignSlot: handleAssignSlot
             )
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showSortingHubSheet) {
             CitySortingHubSheet(
@@ -577,7 +585,24 @@ public struct MainCityView: View {
                     try? modelContext.save()
                 }
             )
+            .environmentObject(l10n)
         }
+    }
+    
+    private func syncWidgetData() {
+        #if canImport(WidgetKit)
+        let spent = currentCity.totalSpent
+        let budget = effectiveMonthlyBudget
+        let savings = currentCity.totalSavings
+        let merchant = displayTransactions.first?.merchant ?? ""
+        MoneyCityWidgets.publishData(
+            spent: spent,
+            budget: budget,
+            savings: savings,
+            recentMerchant: merchant,
+            isHebrew: l10n.language == .hebrew
+        )
+        #endif
     }
     
     private func handleSlotTapped(slotId: String, currentItem: String?) {

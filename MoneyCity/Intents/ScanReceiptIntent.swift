@@ -93,6 +93,14 @@ public struct ScanReceiptIntent: AppIntent {
                 )
             }
         } catch {
+            // The error was discarded here without a log, a trace or even a name — a scan
+            // started from Shortcuts failed and left nothing at all behind.
+            let failure = error as? ReceiptOCRService.OCRFailure
+            ReceiptOCRService.recordScanAttempt(
+                outcome: failure.map { "failed_\($0.reason)" } ?? "failed",
+                failureReason: error.localizedDescription,
+                trace: failure?.trace
+            )
             return .result(
                 value: "שגיאה בפענוח צילום המסך",
                 dialog: "לא הצלחנו לפענח את הסכום או בית העסק מתוך התמונה."

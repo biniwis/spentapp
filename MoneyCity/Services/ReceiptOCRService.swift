@@ -8,6 +8,10 @@ import CoreGraphics
 #if canImport(UIKit)
 import UIKit
 #endif
+#if canImport(CoreImage)
+import CoreImage
+import CoreImage.CIFilterBuiltins
+#endif
 
 // MARK: - Semantic Token Roles
 
@@ -224,10 +228,31 @@ public struct ReceiptScanResult: Sendable, Equatable {
 
 public enum ReceiptOCRService {
 
+    /// A scan failure that carries the evidence with it.
+    ///
+    /// The trace was previously built only on the success path, so the moment it was needed it
+    /// did not exist. Attaching it to the error means the caller can log what the recogniser
+    /// saw, which is the difference between "read nothing" and "read something the parser threw
+    /// away" — two failures that look identical to the user and need opposite fixes.
+    public struct OCRFailure: LocalizedError {
+        public let reason: OCRError
+        public let trace: ScanDiagnosticTrace?
+        public var errorDescription: String? { reason.errorDescription }
+        public init(reason: OCRError, trace: ScanDiagnosticTrace?) {
+            self.reason = reason
+            self.trace = trace
+        }
+    }
+
     public enum OCRError: LocalizedError {
         case imageProcessingFailed
         case noTextFound
         case parsingFailed
+
+        /// Wraps this reason together with what the pipeline had managed to see.
+        public func withTrace(_ trace: ScanDiagnosticTrace) -> OCRFailure {
+            OCRFailure(reason: self, trace: trace)
+        }
 
         public var errorDescription: String? {
             switch self {
@@ -239,6 +264,38 @@ public enum ReceiptOCRService {
                 return "Could not detect any valid transaction in the image."
             }
         }
+    }
+
+    // MARK: - Failure Recording
+
+    /// Writes what happened to the ingest log, whether the scan worked or not.
+    ///
+    /// IngestLogEntry was built for exactly this — its own doc comment says it "stores every
+    /// raw parameter, whether or not the transaction could be built, so a failure can be
+    /// diagnosed instead of guessed at" — and the scanner never wrote to it. A user reporting
+    /// that scanning does not work left nothing behind to look at.
+    @MainActor
+    public static func recordScanAttempt(
+        outcome: String,
+        failureReason: String?,
+        trace: ScanDiagnosticTrace?,
+        resolvedAmount: Double? = nil,
+        resolvedMerchant: String? = nil
+    ) {
+        let recognised = trace?.tokens.map(\.text).joined(separator: " | ") ?? ""
+        let entry = IngestLogEntry(
+            rawAmount: trace.map { "\($0.rawOCRCount) text elements" } ?? "—",
+            rawAmountText: recognised.isEmpty ? "—" : String(recognised.prefix(1500)),
+            rawMerchant: resolvedMerchant ?? "—",
+            rawCurrency: canReadHebrew ? "he+en" : "en only",
+            rawDate: IngestLogEntry.describe(Date()),
+            intentName: "ReceiptScan",
+            outcome: outcome,
+            failureReason: failureReason,
+            resolvedAmount: resolvedAmount,
+            resolvedMerchant: resolvedMerchant
+        )
+        DatabaseService.shared.record(entry)
     }
 
     // MARK: - Public Entry Points
@@ -256,11 +313,21 @@ public enum ReceiptOCRService {
     ) async throws -> (result: ReceiptScanResult, trace: ScanDiagnosticTrace) {
         var logs: [String] = []
 
+        // What the device can actually read. Recorded on every scan, because when a scan fails
+        // this is the first thing worth knowing and nothing had ever asked it.
+        let languages = supportedOCRLanguages()
+        logs.append("[Stage 0: Device] OCR languages available: \(languages.isEmpty ? "none reported" : languages.joined(separator: ", "))")
+        logs.append("[Stage 0: Device] Hebrew recognition: \(canReadHebrew ? "supported" : "NOT SUPPORTED — Hebrew keywords cannot match")")
+
         // Stage 1: Spatial OCR Token Extraction
         let rawTokens = try await recognizeSpatialTokens(from: data)
         logs.append("[Stage 1: Raw OCR] Detected \(rawTokens.count) spatial text elements")
         guard !rawTokens.isEmpty else {
-            throw OCRError.noTextFound
+            // The trace used to be built after both of these guards, so the one artefact that
+            // could explain a failure existed only when there had not been one.
+            throw OCRError.noTextFound.withTrace(
+                ScanDiagnosticTrace(rawOCRCount: 0, tokens: [], blocks: [], candidates: [], stageLogs: logs)
+            )
         }
 
         // Stage 2: Semantic Role Classification
@@ -281,7 +348,19 @@ public enum ReceiptOCRService {
         logs.append("[Stage 5: Validation] \(validatedCandidates.count) valid transactions passed all assertions")
 
         guard !validatedCandidates.isEmpty else {
-            throw OCRError.parsingFailed
+            // Text was read and none of it parsed. The recognised text goes into the trace so
+            // the difference between "read nothing" and "read something the parser rejected"
+            // is answerable afterwards instead of guessed at.
+            logs.append("[Stage 5: Validation] FAILED — recognised text was:\n\(rawText)")
+            throw OCRError.parsingFailed.withTrace(
+                ScanDiagnosticTrace(
+                    rawOCRCount: rawTokens.count,
+                    tokens: taggedTokens,
+                    blocks: blocks,
+                    candidates: [],
+                    stageLogs: logs
+                )
+            )
         }
 
         let trace = ScanDiagnosticTrace(
@@ -308,9 +387,114 @@ public enum ReceiptOCRService {
 
     // MARK: - Stage 1: Spatial OCR Token Recognition
 
+    /// Which OCR languages this device can actually do, from Vision itself.
+    ///
+    /// Nothing in the app had ever asked. The request simply set ["he-IL", "en-US"] and hoped —
+    /// and if Hebrew is not in this list, every Hebrew keyword the parser matches on is being
+    /// matched against text the recogniser was never able to produce. That unasked question is
+    /// the difference between "the parser needs more Hebrew variants" and "the parser is
+    /// reading noise", and those need opposite fixes.
+    public static func supportedOCRLanguages() -> [String] {
+        #if canImport(Vision)
+        let probe = VNRecognizeTextRequest()
+        probe.recognitionLevel = .accurate
+        return (try? probe.supportedRecognitionLanguages()) ?? []
+        #else
+        return []
+        #endif
+    }
+
+    /// Whether this device can read Hebrew at all. Decides how far the parser may trust Hebrew
+    /// keywords, and is the first thing worth showing when a scan fails.
+    public static var canReadHebrew: Bool {
+        supportedOCRLanguages().contains { $0.lowercased().hasPrefix("he") }
+    }
+
+    /// How the image was prepared before reading. A thin first result is retried harder rather
+    /// than given up on, and the trace records which pass produced the text.
+    public enum ScanPass: String, Sendable, CaseIterable {
+        case plain
+        case enhanced
+        case highContrast
+    }
+
+    #if canImport(UIKit) && canImport(CoreImage)
+    /// Prepares a photograph of a receipt for text recognition.
+    ///
+    /// There was no preprocessing at all — the gallery photo went straight to Vision. A receipt
+    /// is thermal paper: low contrast, grey on grey, usually photographed small and dim, which
+    /// is close to the worst case for a recogniser tuned on documents. Grayscale drops the
+    /// colour cast of indoor light, the contrast lift separates faded print from the paper, and
+    /// the upscale matters because Vision will not read a line below a minimum height.
+    public static func prepareImage(_ image: UIImage, pass: ScanPass) -> CGImage? {
+        guard let cg = image.cgImage else { return nil }
+        if pass == .plain { return cg }
+
+        let context = CIContext(options: [.useSoftwareRenderer: false])
+        var ci = CIImage(cgImage: cg)
+
+        let shortSide = min(ci.extent.width, ci.extent.height)
+        let wanted: CGFloat = (pass == .highContrast) ? 2200 : 1800
+        if shortSide > 0 && shortSide < wanted {
+            let factor = min(3.0, wanted / shortSide)
+            ci = ci.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
+        }
+
+        if let mono = CIFilter(name: "CIPhotoEffectMono") {
+            mono.setValue(ci, forKey: kCIInputImageKey)
+            if let out = mono.outputImage { ci = out }
+        }
+
+        if let controls = CIFilter(name: "CIColorControls") {
+            controls.setValue(ci, forKey: kCIInputImageKey)
+            controls.setValue((pass == .highContrast) ? 2.2 : 1.5, forKey: kCIInputContrastKey)
+            controls.setValue((pass == .highContrast) ? 0.08 : 0.02, forKey: kCIInputBrightnessKey)
+            controls.setValue(0.0, forKey: kCIInputSaturationKey)
+            if let out = controls.outputImage { ci = out }
+        }
+
+        if let sharpen = CIFilter(name: "CIUnsharpMask") {
+            sharpen.setValue(ci, forKey: kCIInputImageKey)
+            sharpen.setValue((pass == .highContrast) ? 2.5 : 1.6, forKey: kCIInputRadiusKey)
+            sharpen.setValue((pass == .highContrast) ? 0.9 : 0.6, forKey: kCIInputIntensityKey)
+            if let out = sharpen.outputImage { ci = out }
+        }
+
+        return context.createCGImage(ci, from: ci.extent)
+    }
+    #endif
+
     /// Executes Apple Vision OCR and preserves spatial bounding boxes, normalized coordinates, and confidence.
+    ///
+    /// Reads in up to three passes and keeps the best. A receipt that comes back with a handful
+    /// of tokens has almost certainly been under-read rather than genuinely blank, and giving up
+    /// after one attempt on an unprepared image is where most scans were being lost.
     public static func recognizeSpatialTokens(from data: Data) async throws -> [OCRSpatialToken] {
         #if canImport(Vision) && canImport(CoreGraphics)
+        var best: [OCRSpatialToken] = []
+        var lastError: Error?
+
+        for pass in ScanPass.allCases {
+            do {
+                let tokens = try await recognizeOnce(from: data, pass: pass)
+                if tokens.count > best.count { best = tokens }
+                if best.count >= 8 && best.contains(where: { !extractNumbers(from: $0.text).isEmpty }) {
+                    return best
+                }
+            } catch {
+                lastError = error
+            }
+        }
+
+        if best.isEmpty, let lastError = lastError { throw lastError }
+        return best
+        #else
+        return []
+        #endif
+    }
+
+    #if canImport(Vision) && canImport(CoreGraphics)
+    private static func recognizeOnce(from data: Data, pass: ScanPass) async throws -> [OCRSpatialToken] {
         return try await withCheckedThrowingContinuation { continuation in
             let resumed = OCRResumeLatch()
             let request = VNRecognizeTextRequest { req, error in
@@ -324,15 +508,13 @@ public enum ReceiptOCRService {
                     return
                 }
 
-                // Apple Vision boundingBox has (0,0) at bottom-left.
-                // We convert to standard top-left origin (Y increases downwards) for natural reading layout.
                 var tokens: [OCRSpatialToken] = []
                 for obs in observations {
                     guard let candidate = obs.topCandidates(1).first else { continue }
                     let box = obs.boundingBox
                     let standardRect = CGRect(
                         x: box.origin.x,
-                        y: 1.0 - (box.origin.y + box.height), // Invert Y to top-down
+                        y: 1.0 - (box.origin.y + box.height),
                         width: box.width,
                         height: box.height
                     )
@@ -348,7 +530,6 @@ public enum ReceiptOCRService {
                     ))
                 }
 
-                // Sort primarily top-to-bottom, secondarily left-to-right
                 let sortedTokens = tokens.sorted { a, b in
                     let diffY = a.boundingBox.origin.y - b.boundingBox.origin.y
                     if abs(diffY) > (a.lineHeight * 0.5) {
@@ -361,33 +542,64 @@ public enum ReceiptOCRService {
             }
 
             request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
-            request.recognitionLanguages = ["he-IL", "en-US"]
-            if #available(iOS 16.0, macOS 13.0, *) {
+
+            // Off, deliberately. Language correction rewrites its input toward a language model,
+            // which on a receipt means digits nudged into word shapes (l/1, O/0, S/5) and the
+            // decimal point — which every amount depends on — treated as punctuation to tidy.
+            // The bracketed-shekel hack elsewhere in this file is a symptom of exactly that,
+            // patched in string space instead of switched off at the source.
+            request.usesLanguageCorrection = false
+
+            // Ask only for languages this device has a model for. Requesting one it does not
+            // either throws or is silently ignored, and from here those look identical.
+            let supported = supportedOCRLanguages()
+            let wanted = ["he-IL", "en-US"].filter { want in
+                supported.contains { $0.caseInsensitiveCompare(want) == .orderedSame }
+            }
+            if !wanted.isEmpty {
+                request.recognitionLanguages = wanted
+                if #available(iOS 16.0, macOS 13.0, *) {
+                    // Was true, and set after the list, so it could override the very languages
+                    // that had just been requested.
+                    request.automaticallyDetectsLanguage = false
+                }
+            } else if #available(iOS 16.0, macOS 13.0, *) {
                 request.automaticallyDetectsLanguage = true
             }
 
+            // Receipt print is small. The default floor of 1/32 of the image height discards
+            // most lines of a receipt photographed end to end, routinely including the total.
+            request.minimumTextHeight = 0.008
+
             #if canImport(UIKit)
-            if let image = UIImage(data: data), let cgImage = image.cgImage {
-                let orientation: CGImagePropertyOrientation
-                switch image.imageOrientation {
-                case .up: orientation = .up
-                case .upMirrored: orientation = .upMirrored
-                case .down: orientation = .down
-                case .downMirrored: orientation = .downMirrored
-                case .left: orientation = .left
-                case .leftMirrored: orientation = .leftMirrored
-                case .right: orientation = .right
-                case .rightMirrored: orientation = .rightMirrored
-                @unknown default: orientation = .up
+            if let image = UIImage(data: data) {
+                let prepared = prepareImage(image, pass: pass) ?? image.cgImage
+                if let cgImage = prepared {
+                    let orientation: CGImagePropertyOrientation
+                    if pass == .plain {
+                        switch image.imageOrientation {
+                        case .up: orientation = .up
+                        case .upMirrored: orientation = .upMirrored
+                        case .down: orientation = .down
+                        case .downMirrored: orientation = .downMirrored
+                        case .left: orientation = .left
+                        case .leftMirrored: orientation = .leftMirrored
+                        case .right: orientation = .right
+                        case .rightMirrored: orientation = .rightMirrored
+                        @unknown default: orientation = .up
+                        }
+                    } else {
+                        // The prepared image is already drawn upright.
+                        orientation = .up
+                    }
+                    let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
+                    do {
+                        try handler.perform([request])
+                    } catch {
+                        if resumed.claim() { continuation.resume(throwing: error) }
+                    }
+                    return
                 }
-                let handler = VNImageRequestHandler(cgImage: cgImage, orientation: orientation, options: [:])
-                do {
-                    try handler.perform([request])
-                } catch {
-                    if resumed.claim() { continuation.resume(throwing: error) }
-                }
-                return
             }
             #endif
 
@@ -398,10 +610,8 @@ public enum ReceiptOCRService {
                 if resumed.claim() { continuation.resume(throwing: error) }
             }
         }
-        #else
-        return []
-        #endif
     }
+    #endif
 
     // MARK: - Stage 2: Semantic Token Classification
 
@@ -860,7 +1070,11 @@ public enum ReceiptOCRService {
             "דמי משלוח", "משלוח", "delivery", "טיפ", "tip", "subtotal", "יתרה", "balance", "עודף", "שולם במזומן", "צברת"
         ]
 
-        for line in lines {
+        // Position matters, and it was being ignored. On a receipt the total is at the bottom
+        // and the items are above it, so the index is tracked to break ties downward.
+        var bestLineIndex = -1
+
+        for (lineIndex, line) in lines.enumerated() {
             let lower = line.lowercased()
             if isNoiseLine(lower) { continue }
 
@@ -875,8 +1089,12 @@ public enum ReceiptOCRService {
             let hasSecondaryKeyword = secondaryKeywords.contains(where: { lower.contains($0) })
             let hasCurrency = detectCurrencySymbol(line) != nil
 
-            // In Hebrew receipts, look for decimal fractions (e.g. .50, .84, .10)
-            let hasDecimals = numbers.contains { ($0.truncatingRemainder(dividingBy: 1)) != 0 }
+            // Written as money, rather than "has a fractional part". The old test asked the
+            // parsed Double whether it had a remainder, so a total of exactly 45.00 answered
+            // no — and a line with no keyword and no currency symbol was then skipped by the
+            // guard below. Round totals are extremely ordinary, and they were being discarded
+            // for being round. What matters is that the text is shaped like a price.
+            let hasDecimals = line.range(of: #"\d[.,]\d{2}(?![0-9])"#, options: .regularExpression) != nil
 
             // Strict rule: MUST have either an explicit financial keyword, recognized currency, or decimal price
             guard hasPrimaryKeyword || hasSecondaryKeyword || hasCurrency || hasDecimals else {
@@ -897,8 +1115,13 @@ public enum ReceiptOCRService {
                 score += 50
             }
 
+            // A line saying "סה\"כ לתשלום כולל מע\"מ" — the single most common phrasing on an
+            // Israeli receipt — used to score 250 + 50 − 300 + 20 = 20, below the threshold of
+            // 40, so the real total was thrown away and a line item won instead. The penalty
+            // is for lines that are ONLY about VAT or a discount, not for the total line
+            // mentioning what it includes.
             if negativeKeywords.contains(where: { lower.contains($0) }) {
-                score -= 300
+                score -= hasPrimaryKeyword ? 60 : 300
             }
 
             for num in numbers {
@@ -909,9 +1132,29 @@ public enum ReceiptOCRService {
 
                 var candidateScore = score
                 if num >= 1.0 && num <= 25_000.0 { candidateScore += 20 }
-                if candidateScore > highestScore && candidateScore >= 40 {
+                guard candidateScore >= 40 else { continue }
+
+                // Every priced item line scores identically — decimals plus in-range, 70 —
+                // so with a strict `>` the first one seen won and nothing below could ever
+                // displace it. "חלב 6.80" beat "סה\"כ 215.80", and the wrong number was
+                // returned confidently rather than as an error. Ties now fall to the lower
+                // line, and within one line to the larger number, which on "2 x 6.80  13.60"
+                // is the line's own total rather than the unit price.
+                // Between lines, later wins. Within one line, the first number stands: on
+                // "אושרה עסקתך בסך ₪1,299.00 בכרטיס מסתיים 4589" the amount comes first and
+                // the card suffix last, and preferring the larger number there would file a
+                // 1,299 purchase as 4,589.
+                let better: Bool
+                if candidateScore != highestScore {
+                    better = candidateScore > highestScore
+                } else {
+                    better = lineIndex > bestLineIndex
+                }
+
+                if better {
                     highestScore = candidateScore
                     bestCandidate = num
+                    bestLineIndex = lineIndex
                 }
             }
         }
@@ -945,7 +1188,18 @@ public enum ReceiptOCRService {
     private static func isNoiseLine(_ lower: String) -> Bool {
         if lower.contains("טלפון") || lower.contains("פקס") || lower.contains("phone") { return true }
         if lower.contains("battery") || lower.contains("issue") || lower.contains("debug") || lower.contains("xcode") || lower.contains("ingest") { return true }
-        if lower.contains("%") { return true }
+        // A percent sign used to discard the whole line, before its numbers were even read.
+        // That kills "סה\"כ כולל מע\"מ 18% — 215.80", which is a completely ordinary way for an
+        // Israeli receipt to state its total, and every "חלב 3%" item along with it. Only lines
+        // that are *about* a percentage — a rate on its own, with no money-shaped number — are
+        // noise; a percentage mentioned in passing is not.
+        if lower.contains("%") {
+            let hasMoneyShapedNumber = lower.range(
+                of: #"\d+[.,]\d{2}(?!\s*%)"#,
+                options: .regularExpression
+            ) != nil
+            if !hasMoneyShapedNumber { return true }
+        }
         if lower.range(of: #"^\s*(?:\d{1,2}[./\-]\d{1,2}[./\-]\d{2,4}|\d{1,2}:\d{2})\s*$"#, options: .regularExpression) != nil { return true }
         if lower.range(of: #"[x*]{3,}\s*[-]?\s*\d{4}"#, options: .regularExpression) != nil && !lower.contains("סה") { return true }
         return false

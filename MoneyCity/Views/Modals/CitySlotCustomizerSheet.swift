@@ -4,6 +4,7 @@ import SwiftData
 /// Sims-style placement & architectural customization modal allowing the user to decide where to place their unlocked enrichments.
 public struct CitySlotCustomizerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
     
     public let initialSlotId: String?
     public let unlockedEnrichments: [CityEnrichment]
@@ -24,6 +25,8 @@ public struct CitySlotCustomizerSheet: View {
         self.onAssignSlot = onAssignSlot
         _selectedSlotId = State(initialValue: initialSlotId ?? CitySlot.allSlots.first?.id ?? "slot_park_center")
     }
+    
+    private var isHebrew: Bool { l10n.language == .hebrew }
     
     private var currentSlot: CitySlot {
         CitySlot.slot(for: selectedSlotId) ?? CitySlot.allSlots[0]
@@ -53,11 +56,11 @@ public struct CitySlotCustomizerSheet: View {
                                 .scaleEffect(1.2)
                         }
                         
-                        Text("עיצוב והצבת שדרוגים")
+                        Text(isHebrew ? "עיצוב והצבת שדרוגים" : "City Slot Customizer")
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                         
-                        Text("בחר מיקום באי והחלט איזה שדרוג יוצב בו (כמו בסימס!)")
+                        Text(isHebrew ? "בחר מיקום באי והחלט איזה שדרוג יוצב בו (כמו בסימס!)" : "Choose a lot on the island and assign an upgrade (Sims-style!)")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
                             .multilineTextAlignment(.center)
@@ -67,7 +70,7 @@ public struct CitySlotCustomizerSheet: View {
                     
                     // 2. City Slots Horizontal Selector
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("בחר מגרש / מיקום בעיר:")
+                        Text(isHebrew ? "בחר מגרש / מיקום בעיר:" : "Choose a City Lot:")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 51/255, green: 65/255, blue: 85/255))
                             .padding(.horizontal, 20)

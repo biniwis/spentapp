@@ -65,7 +65,7 @@ public struct SpentWidgetProvider: TimelineProvider {
         let budget = defaults.double(forKey: "widget_monthly_budget")
         let savings = defaults.double(forKey: "widget_monthly_savings")
         let merchant = defaults.string(forKey: "widget_recent_merchant") ?? ""
-        let isHebrew = (defaults.string(forKey: "app_language") ?? "he") == "he"
+        let isHebrew = (defaults.string(forKey: "app_language_pref") ?? defaults.string(forKey: "app_language") ?? "he") == "he"
         
         return SpentWidgetEntry(
             date: Date(),

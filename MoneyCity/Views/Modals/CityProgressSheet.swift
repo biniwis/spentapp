@@ -34,15 +34,15 @@ public struct CityProgressSheet: View {
                     }
                     .padding(.bottom, 2)
                     
-                    Text("שדרוג ופיתוח העיר")
+                    Text(l10n.isHebrew ? "שדרוג ופיתוח העיר" : "City Upgrade & Development")
                         .font(.system(size: 19, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     
-                    Text("חיסכון של \(l10n.format(amount: report.savedAmount)) משבוע שעבר")
+                    Text(l10n.isHebrew ? "חיסכון של \(l10n.format(amount: report.savedAmount)) משבוע שעבר" : "Saved \(l10n.format(amount: report.savedAmount)) from last week")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.themeMint)
                     
-                    Text("בחר שדרוג או תיקון להוספה באי שלך:")
+                    Text(l10n.isHebrew ? "בחר שדרוג או תיקון להוספה באי שלך:" : "Choose an upgrade or repair for your island:")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
                         .padding(.top, 2)
@@ -69,7 +69,7 @@ public struct CityProgressSheet: View {
                                 // Text details
                                 VStack(alignment: .leading, spacing: 3) {
                                     HStack(spacing: 6) {
-                                        Text(opt.actionType == "ADD" ? "תוספת חדשה" : "תיקון ושדרוג")
+                                        Text(opt.actionType == "ADD" ? (l10n.isHebrew ? "תוספת חדשה" : "New Addition") : (l10n.isHebrew ? "תיקון ושדרוג" : "Upgrade & Repair"))
                                             .font(.system(size: 10, weight: .bold, design: .rounded))
                                             .foregroundColor(badgeTextColor(for: opt))
                                             .padding(.horizontal, 7)
@@ -116,7 +116,7 @@ public struct CityProgressSheet: View {
                 // Cumulative History Section
                 if !unlockedEnrichments.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("השדרוגים שהרווחת בעיר (נשמרים לתמיד):")
+                        Text(l10n.isHebrew ? "השדרוגים שהרווחת בעיר (נשמרים לתמיד):" : "Earned city upgrades (kept forever):")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
                             .padding(.horizontal, 24)

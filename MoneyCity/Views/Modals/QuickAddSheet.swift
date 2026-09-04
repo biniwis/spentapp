@@ -755,6 +755,15 @@ public struct QuickAddSheet: View {
                     scannedMultiCandidates = result.candidates
                     Haptics.notify(.success)
                 } else if let single = result.candidates.first {
+                    // Logged on success as well as failure, so the success rate is something
+                    // that can be counted from the device rather than estimated from memory.
+                    ReceiptOCRService.recordScanAttempt(
+                        outcome: "success",
+                        failureReason: nil,
+                        trace: nil,
+                        resolvedAmount: single.amount,
+                        resolvedMerchant: single.merchant
+                    )
                     scannedMultiCandidates = []
                     amountText = (single.amount.truncatingRemainder(dividingBy: 1) == 0) ? String(format: "%.0f", single.amount) : String(format: "%.2f", single.amount)
                     note = single.merchant
@@ -764,15 +773,54 @@ public struct QuickAddSheet: View {
                     Haptics.notify(.success)
                 } else {
                     scanErrorMessage = l10n.language == .hebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות." : "No clear receipt detected. Try zooming in."
+                    ReceiptOCRService.recordScanAttempt(
+                        outcome: "no_candidates",
+                        failureReason: "OCR returned no usable candidate",
+                        trace: nil
+                    )
                     Haptics.notify(.warning)
                 }
             }
         } catch {
             MoneyCityLog.sensitive("[QuickAddSheet Scan Error] \(error.localizedDescription)")
             await MainActor.run {
+                // Every failed scan now leaves a record. Debug-only logging compiles out of
+                // release, so before this a user could report "scanning does not work" and
+                // there was nothing on the device to look at.
+                let failure = error as? ReceiptOCRService.OCRFailure
+                ReceiptOCRService.recordScanAttempt(
+                    outcome: failure.map { "failed_\($0.reason)" } ?? "failed",
+                    failureReason: error.localizedDescription,
+                    trace: failure?.trace
+                )
                 Haptics.notify(.warning)
-                scanErrorMessage = l10n.language == .hebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות." : "No clear receipt detected. Try zooming in."
+                scanErrorMessage = scanFailureMessage(for: error)
             }
+        }
+    }
+    /// Different failures need different advice. One message for all of them told a user whose
+    /// device cannot read Hebrew to zoom in, which would never have helped.
+    private func scanFailureMessage(for error: Error) -> String {
+        let isHebrew = l10n.language == .hebrew
+        guard let failure = error as? ReceiptOCRService.OCRFailure else {
+            return isHebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות."
+                            : "No clear receipt detected. Try zooming in."
+        }
+        switch failure.reason {
+        case .noTextFound:
+            return isHebrew ? "לא נמצא טקסט קריא בתמונה. נסה תאורה טובה יותר או לקרב."
+                            : "No readable text in the image. Try better light or move closer."
+        case .parsingFailed:
+            if !ReceiptOCRService.canReadHebrew {
+                return isHebrew
+                    ? "המכשיר קרא טקסט אך אינו תומך בזיהוי עברית, אז שם בית העסק לא זוהה. הסכום עשוי עדיין לעבוד — נסה שוב או הזן ידנית."
+                    : "Text was read, but this device cannot recognise Hebrew, so the merchant was not identified."
+            }
+            return isHebrew ? "הטקסט נקרא אך לא נמצא בו סכום. ודא שהסכום הכולל מופיע בתמונה."
+                            : "Text was read but no total was found. Make sure the total is in the photo."
+        case .imageProcessingFailed:
+            return isHebrew ? "לא הצלחתי לעבד את התמונה. נסה תמונה אחרת."
+                            : "Could not process that image. Try another one."
         }
     }
     #endif

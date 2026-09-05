@@ -143,9 +143,11 @@
       precision: "mediump"
     });
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(2.0, window.devicePixelRatio || 1.5));
+    renderer.setPixelRatio(Math.min(1.8, window.devicePixelRatio || 1.5));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Soft PCF over ~240 casters is the most expensive thing in the frame; plain PCF is
+    // visually near-identical at this scale and noticeably cheaper on a phone.
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     // Lights below are tuned so a top face lands near 1.27x irradiance, which is where
@@ -160,15 +162,15 @@
       // lookX/lookZ are offset because the built area is not centred on the island: the
       // reserve sits north-east and the shops south-west, so a camera aimed at 0,0 pushes
       // the reserve off the right edge of a phone screen.
-      city:     { az: Math.PI * 0.25, el: 0.58, zoom: 1.32, lookX: 0.35, lookY: 0.5, lookZ: -0.35 },
+      city:     { az: Math.PI * 0.25, el: 0.58, zoom: 1.24, lookX: 0.75, lookY: 0.6, lookZ: -0.75 },
       // District look-points sit on the actual block centres, and close enough that the
       // district fills the screen — 1.85 barely moved the camera off the city view.
-      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 2.30, lookX: 7.8,  lookY: 0.6, lookZ: -0.4 },
-      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 2.10, lookX: -8.2, lookY: 0.6, lookZ: -0.2 },
-      shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 2.10, lookX: -8.2, lookY: 0.6, lookZ: -0.2 },
-      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.10, lookX: -0.5, lookY: 0.6, lookZ: -7.9 },
-      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.20, lookX: 9.1,  lookY: 0.4, lookZ: -7.5 },
-      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 2.00, lookX: 0.4,  lookY: 0.8, lookZ: 0.6 }
+      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 2.20, lookX: 9.0,  lookY: 0.6, lookZ: -0.6 },
+      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.3, lookY: 0.6, lookZ: -0.2 },
+      shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.3, lookY: 0.6, lookZ: -0.2 },
+      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: -0.6, lookY: 0.6, lookZ: -9.0 },
+      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.10, lookX: 9.4,  lookY: 0.4, lookZ: -8.4 },
+      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 2.00, lookX: 0.2,  lookY: 0.9, lookZ: 0.2 }
     };
 
     let currentMode = "city";
@@ -220,8 +222,8 @@
     const sunLight = new THREE.DirectionalLight(0xFFFAF0, 0.75);
     sunLight.position.set(28, 42, 22);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.mapSize.width = 1536;
+    sunLight.shadow.mapSize.height = 1536;
     sunLight.shadow.camera.near = 1;
     sunLight.shadow.camera.far = 120;
     sunLight.shadow.camera.left = -22;
@@ -370,18 +372,18 @@
     const Y_WALK   = 0.14;  // sidewalk top, and therefore the base of every building
 
     // Drop shadow under island
-    const shadowMesh = mesh(new THREE.PlaneGeometry(34, 34), new THREE.MeshBasicMaterial({
+    const shadowMesh = mesh(new THREE.PlaneGeometry(32, 32), new THREE.MeshBasicMaterial({
       color: C(0x0F172A), transparent: true, opacity: 0.18, depthWrite: false
     }), 0, -1.25, 0, false, false);
     shadowMesh.rotation.x = -Math.PI / 2;
     root.add(shadowMesh);
 
     // Warm Sandy Earthy Bevel Side Plinth
-    const earthBase = mesh(roundedBox(28.8, 1.10, 28.8, 1.2), mat(0xC4A46C, 0.90), 0, -0.62, 0, false, true);
+    const earthBase = mesh(roundedBox(27.4, 1.10, 27.4, 1.2), mat(0xC4A46C, 0.90), 0, -0.62, 0, false, true);
     root.add(earthBase);
 
     // Lush Green Landscape Deck (The Main Surface)
-    const islandDeck = mesh(roundedBox(28.4, 0.16, 28.4, 1.1), M_GRASS_LIME, 0, Y_GRASS - 0.08, 0, false, true);
+    const islandDeck = mesh(roundedBox(27.0, 0.16, 27.0, 1.1), M_GRASS_LIME, 0, Y_GRASS - 0.08, 0, false, true);
     root.add(islandDeck);
 
     // ────────────────────────────────────────────────────────────────
@@ -431,239 +433,817 @@
     }
 
     // ────────────────────────────────────────────────────────────────
-    // 🏛️ 3. CENTRAL CIVIC PLAZA & "SPENT" LANDMARK (finance_bank)
+    // 🧱 3. KIT OF PARTS
+    // Buildings are composed from shared pieces rather than drawn one at a time, so a
+    // shop can gain a storey, a balcony or a rooftop plant room as spending grows without
+    // every district turning into the same beige box.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(0, 0, 5.8, 5.8);
+    const FLOOR_H = 1.15;
 
-    // Central Fountain
+    const M_MULLION   = mat(0xF8FAFC, 0.60);
+    const M_DARKFRAME = mat(0x334155, 0.65);
+    const M_HEDGE     = mat(0x3F8F3A, 0.90);
+    const M_TERRACOTTA_POT = mat(0xC2643C, 0.85);
+    const M_CONCRETE  = mat(0xCBD2D9, 0.85);
+    const M_CANVAS    = mat(0xF1F5F9, 0.90);
+    const M_STREET_LEAF = mat(0x2E9E52, 0.82);
+    const M_MARBLE_REF  = mat(0xF8FAFC, 0.40, 0.05);
+
+    // Warm glass that can be lit from inside as the district gets busier.
+    function glassMaterial(tint) {
+      return new THREE.MeshStandardMaterial({
+        color: C(tint || 0x9FC7F0), roughness: 0.45, metalness: 0.08,
+        emissive: C(0xFFD98A), emissiveIntensity: 0.0
+      });
+    }
+    const litGlass = [];
+    function registerGlass(m) { litGlass.push(m); return m; }
+
+    // A run of windows with mullions — the single most legible "this is a building" cue.
+    function windowBand(parent, w, d, y, opts) {
+      opts = opts || {};
+      const inset = opts.inset === undefined ? 0.03 : opts.inset;
+      const h = opts.h || 0.52;
+      const g = glassMaterial(opts.tint);
+      registerGlass(g);
+      const faces = opts.faces || ["front", "right"];
+      faces.forEach(function (f) {
+        const front = (f === "front");
+        const span = (front ? w : d) - 0.34;
+        if (span <= 0.2) return;
+        const px = front ? 0 : (w / 2 + inset);
+        const pz = front ? (d / 2 + inset) : 0;
+        const pane = mesh(new THREE.BoxGeometry(front ? span : 0.05, h, front ? 0.05 : span), g, px, y, pz, false, false);
+        parent.add(pane);
+        // Mullions
+        const bars = Math.max(1, Math.round(span / 1.05));
+        for (let i = 1; i < bars; i++) {
+          const t = -span / 2 + (span / bars) * i;
+          parent.add(mesh(new THREE.BoxGeometry(front ? 0.055 : 0.06, h + 0.02, front ? 0.06 : 0.055),
+            M_MULLION, front ? t : px, y, front ? pz : t, false, false));
+        }
+        // Sill and head
+        parent.add(mesh(new THREE.BoxGeometry(front ? span + 0.12 : 0.07, 0.055, front ? 0.07 : span + 0.12),
+          M_WHITE, px, y - h / 2 - 0.03, pz, false, false));
+      });
+      return g;
+    }
+
+    // Full-height shopfront glazing for a ground floor.
+    function storefront(parent, w, d, opts) {
+      opts = opts || {};
+      const g = glassMaterial(opts.tint || 0xB6D8F5);
+      registerGlass(g);
+      const span = w - 0.5;
+      parent.add(mesh(new THREE.BoxGeometry(span, 0.74, 0.05), g, 0, 0.50, d / 2 + 0.03, false, false));
+      const bars = Math.max(1, Math.round(span / 1.15));
+      for (let i = 1; i < bars; i++) {
+        parent.add(mesh(new THREE.BoxGeometry(0.06, 0.78, 0.07), M_MULLION,
+          -span / 2 + (span / bars) * i, 0.50, d / 2 + 0.035, false, false));
+      }
+      // Door
+      parent.add(mesh(new THREE.BoxGeometry(0.42, 0.72, 0.06), M_DARKFRAME, span / 2 - 0.30, 0.38, d / 2 + 0.05, false, false));
+      parent.add(mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), M_GOLD, span / 2 - 0.13, 0.40, d / 2 + 0.09, false, false));
+      // Stall riser under the glass
+      parent.add(mesh(new THREE.BoxGeometry(w - 0.2, 0.16, 0.08), M_WARM_STONE, 0, 0.08, d / 2 + 0.02, false, false));
+      return g;
+    }
+
+    function stripedAwning(parent, w, d, c1, c2, y) {
+      const m = new THREE.MeshStandardMaterial({ map: stripedAwningTex(c1, c2), roughness: 0.85 });
+      const a = mesh(new THREE.BoxGeometry(w - 0.18, 0.08, 0.62), m, 0, y, d / 2 + 0.26);
+      a.rotation.x = 0.30;
+      parent.add(a);
+      // Valance along the front edge
+      parent.add(mesh(new THREE.BoxGeometry(w - 0.18, 0.13, 0.05), m, 0, y - 0.16, d / 2 + 0.55, false, false));
+      return a;
+    }
+
+    function signPlate(parent, w, y, d, text, bg, fg, size) {
+      const m = new THREE.MeshStandardMaterial({ map: signTex(text, bg, fg, size || 34), roughness: 0.6 });
+      parent.add(mesh(new THREE.BoxGeometry(Math.min(w - 0.35, 1.9), 0.34, 0.06), m, 0, y, d / 2 + 0.06, false, false));
+      // Two small spot lamps over the sign
+      parent.add(mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.10, 8), M_DARKFRAME, -0.55, y + 0.26, d / 2 + 0.10, false, false));
+      parent.add(mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.10, 8), M_DARKFRAME,  0.55, y + 0.26, d / 2 + 0.10, false, false));
+    }
+
+    // Flat roof furniture — what makes a box read as a real building from above.
+    function roofDeck(parent, w, d, y, opts) {
+      opts = opts || {};
+      const g = new THREE.Group(); g.position.y = y; parent.add(g);
+      // Parapet
+      const t = 0.10, hgt = 0.20;
+      g.add(mesh(new THREE.BoxGeometry(w, hgt, t), M_WARM_STONE, 0, hgt / 2, d / 2 - t / 2, false, false));
+      g.add(mesh(new THREE.BoxGeometry(w, hgt, t), M_WARM_STONE, 0, hgt / 2, -d / 2 + t / 2, false, false));
+      g.add(mesh(new THREE.BoxGeometry(t, hgt, d), M_WARM_STONE, w / 2 - t / 2, hgt / 2, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(t, hgt, d), M_WARM_STONE, -w / 2 + t / 2, hgt / 2, 0, false, false));
+      if (opts.ac !== false) {
+        g.add(mesh(roundedBox(0.44, 0.24, 0.36, 0.04), M_CONCRETE, -w / 4, 0.12, -d / 5));
+        g.add(mesh(new THREE.BoxGeometry(0.34, 0.02, 0.28), M_MULLION, -w / 4, 0.25, -d / 5, false, false));
+      }
+      if (opts.tank) {
+        g.add(mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.30, 12), M_WHITE, w / 4, 0.28, d / 6));
+        g.add(mesh(new THREE.BoxGeometry(0.05, 0.14, 0.05), M_DARKFRAME, w / 4 - 0.14, 0.10, d / 6, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.05, 0.14, 0.05), M_DARKFRAME, w / 4 + 0.14, 0.10, d / 6, false, false));
+      }
+      if (opts.vent) g.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.26, 8), M_CONCRETE, 0, 0.13, d / 4));
+      if (opts.solar) {
+        const pm = mat(0x1E3A5F, 0.35, 0.25);
+        for (let i = -1; i <= 1; i += 2) {
+          const pnl = mesh(new THREE.BoxGeometry(w * 0.32, 0.03, d * 0.30), pm, i * w * 0.20, 0.16, -d * 0.06);
+          pnl.rotation.x = -0.35; g.add(pnl);
+        }
+      }
+      return g;
+    }
+
+    // A square pyramid over a rectangular footprint overhangs the short side badly — the
+    // cafe's roof ended up a metre and a half wider than the cafe. This is a real gable:
+    // a triangular prism sized to the plan, with eaves, a ridge cap and closed ends.
+    function pitchedRoof(parent, w, d, h, colorMat, y, opts) {
+      opts = opts || {};
+      const g = new THREE.Group(); g.position.y = y; parent.add(g);
+      const ow = w + 0.26, od = d + 0.26;
+      const sh = new THREE.Shape();
+      sh.moveTo(-ow / 2, 0); sh.lineTo(ow / 2, 0); sh.lineTo(0, h); sh.closePath();
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: od, bevelEnabled: false });
+      geo.translate(0, 0, -od / 2);
+      g.add(mesh(geo, colorMat, 0, 0, 0));
+      // Eaves fascia and ridge cap
+      g.add(mesh(new THREE.BoxGeometry(ow + 0.04, 0.09, od + 0.04), colorMat, 0, -0.02, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.14, 0.09, od + 0.06), M_WARM_STONE, 0, h - 0.02, 0, false, false));
+      if (opts.chimney) {
+        g.add(mesh(new THREE.BoxGeometry(0.26, 0.62, 0.26), mat(0x9A3412, 0.85), w * 0.28, h * 0.46, -d * 0.22));
+        g.add(mesh(new THREE.BoxGeometry(0.32, 0.06, 0.32), M_SLATE, w * 0.28, h * 0.46 + 0.34, -d * 0.22, false, false));
+      }
+      if (opts.dormer) {
+        const dm = new THREE.Group(); dm.position.set(-w * 0.18, h * 0.34, d * 0.30); g.add(dm);
+        dm.add(mesh(roundedBox(0.52, 0.38, 0.34, 0.04), M_CREAM, 0, 0, 0));
+        const dsh = new THREE.Shape();
+        dsh.moveTo(-0.32, 0); dsh.lineTo(0.32, 0); dsh.lineTo(0, 0.26); dsh.closePath();
+        const dgeo = new THREE.ExtrudeGeometry(dsh, { depth: 0.40, bevelEnabled: false });
+        dgeo.translate(0, 0, -0.20);
+        dm.add(mesh(dgeo, colorMat, 0, 0.19, 0));
+        const gm = glassMaterial(0xA8CDEE); registerGlass(gm);
+        dm.add(mesh(new THREE.BoxGeometry(0.26, 0.22, 0.04), gm, 0, 0.02, 0.19, false, false));
+      }
+      return g;
+    }
+
+    // ---- ground-level props ----
+    function planterBox(parent, x, z, kind) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+      g.add(mesh(roundedBox(0.42, 0.24, 0.42, 0.05), M_TERRACOTTA_POT, 0, 0.12, 0));
+      if (kind === "shrub") {
+        g.add(mesh(new THREE.SphereGeometry(0.22, 8, 8), M_HEDGE, 0, 0.36, 0));
+      } else if (kind === "tree") {
+        g.add(mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.34, 6), M_WOOD, 0, 0.40, 0, false, false));
+        g.add(mesh(new THREE.SphereGeometry(0.30, 8, 8), M_STREET_LEAF, 0, 0.72, 0));
+      } else {
+        [0xEF4444, 0xFACC15, 0xEC4899, 0xF97316].forEach(function (c, i) {
+          const a = (i / 4) * Math.PI * 2;
+          g.add(mesh(new THREE.SphereGeometry(0.06, 6, 6), mat(c, 0.7), Math.cos(a) * 0.12, 0.28, Math.sin(a) * 0.12, false, false));
+        });
+      }
+      return g;
+    }
+
+    function bollard(parent, x, z) {
+      parent.add(mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.34, 8), M_DARKFRAME, x, 0.17, z, false, false));
+      parent.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_GOLD, x, 0.35, z, false, false));
+    }
+
+    function hedgeRow(parent, x, z, w, d) {
+      parent.add(mesh(roundedBox(w, 0.34, d, 0.10), M_HEDGE, x, 0.17, z));
+    }
+
+    function crateStack(parent, x, z) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+      g.add(mesh(roundedBox(0.34, 0.22, 0.30, 0.03), M_WOOD, 0, 0.11, 0));
+      g.add(mesh(roundedBox(0.30, 0.20, 0.28, 0.03), M_WOOD, 0.04, 0.32, 0.03));
+      [0xEF4444, 0xFACC15, 0xF97316].forEach(function (c, i) {
+        g.add(mesh(new THREE.SphereGeometry(0.055, 6, 6), mat(c, 0.7), -0.08 + i * 0.08, 0.45, 0.03, false, false));
+      });
+      return g;
+    }
+
+    function aFrameBoard(parent, x, z, rotY) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rotY || 0; parent.add(g);
+      const bm = mat(0x27313F, 0.8);
+      const l = mesh(new THREE.BoxGeometry(0.40, 0.52, 0.04), bm, 0, 0.28, 0.05); l.rotation.x = 0.22;
+      const r = mesh(new THREE.BoxGeometry(0.40, 0.52, 0.04), bm, 0, 0.28, -0.05); r.rotation.x = -0.22;
+      g.add(l, r);
+      return g;
+    }
+
+    function trashBin(parent, x, z) {
+      parent.add(mesh(new THREE.CylinderGeometry(0.13, 0.11, 0.34, 10), M_DARKFRAME, x, 0.17, z, false, false));
+      parent.add(mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.04, 10), M_SLATE, x, 0.36, z, false, false));
+    }
+
+    // ---- tier 0: a plot that has not been built on yet ----
+    function hoardingPlot(parent, w, d) {
+      const g = new THREE.Group(); parent.add(g);
+      g.add(mesh(roundedBox(w, 0.07, d, 0.10), mat(0xB9AE99, 0.95), 0, 0.035, 0, false, true));
+      // Site hoarding on two sides
+      const bm = mat(0xE8E2D6, 0.9);
+      g.add(mesh(new THREE.BoxGeometry(w, 0.46, 0.05), bm, 0, 0.30, d / 2, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.05, 0.46, d), bm, -w / 2, 0.30, 0, false, false));
+      // Signpost
+      g.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.80, 6), M_WOOD, -w / 4, 0.40, d / 2 - 0.30, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.62, 0.34, 0.05), M_CANVAS, -w / 4, 0.72, d / 2 - 0.28, false, false));
+      // Cone
+      g.add(mesh(new THREE.ConeGeometry(0.09, 0.30, 10), mat(0xF97316, 0.65), w / 4, 0.15, d / 2 - 0.35, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.22, 0.025, 0.22), M_DARKFRAME, w / 4, 0.02, d / 2 - 0.35, false, false));
+      // Scaffold frame and a pallet of materials, so an unspent category reads as a site
+      // waiting to be built rather than as a hole in the city.
+      const sm = mat(0xE0A33C, 0.7);
+      const sw = Math.min(w, d) * 0.62, sh2 = 0.95;
+      [[-sw / 2, -sw / 2], [sw / 2, -sw / 2], [-sw / 2, sw / 2], [sw / 2, sw / 2]].forEach(function (c) {
+        g.add(mesh(new THREE.BoxGeometry(0.06, sh2, 0.06), sm, c[0], sh2 / 2, c[1] - 0.25, false, false));
+      });
+      [0.34, 0.68].forEach(function (yy) {
+        g.add(mesh(new THREE.BoxGeometry(sw + 0.06, 0.05, 0.05), sm, 0, yy, -sw / 2 - 0.25, false, false));
+        g.add(mesh(new THREE.BoxGeometry(sw + 0.06, 0.05, 0.05), sm, 0, yy, sw / 2 - 0.25, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.05, 0.05, sw), sm, -sw / 2, yy, -0.25, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.05, 0.05, sw), sm, sw / 2, yy, -0.25, false, false));
+      });
+      g.add(mesh(new THREE.BoxGeometry(sw, 0.04, sw * 0.7), M_WOOD, 0, 0.71, -0.25, false, false));
+      g.add(mesh(roundedBox(0.44, 0.20, 0.34, 0.03), mat(0xB08968, 0.9), -w / 4 + 0.1, 0.10, -d / 2 + 0.42, false, false));
+      g.add(mesh(roundedBox(0.40, 0.18, 0.30, 0.03), mat(0xB08968, 0.9), -w / 4 + 0.14, 0.29, -d / 2 + 0.45, false, false));
+      return g;
+    }
+
+    // ---- tier 1: a market stall / street cart ----
+    function marketStall(parent, c1, c2) {
+      const g = new THREE.Group(); parent.add(g);
+      g.add(mesh(roundedBox(1.30, 0.62, 0.80, 0.05), M_WOOD, 0, 0.31, 0));
+      g.add(mesh(new THREE.BoxGeometry(1.40, 0.07, 0.92), M_WARM_STONE, 0, 0.66, 0, false, false));
+      const canopy = new THREE.MeshStandardMaterial({ map: stripedAwningTex(c1 || "#EF4444", c2 || "#FFFFFF"), roughness: 0.85 });
+      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 6), M_DARKFRAME, -0.58, 1.03, -0.34, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 6), M_DARKFRAME,  0.58, 1.03, -0.34, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 6), M_DARKFRAME, -0.58, 1.03,  0.34, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.75, 6), M_DARKFRAME,  0.58, 1.03,  0.34, false, false));
+      const top = mesh(new THREE.ConeGeometry(1.10, 0.40, 4), canopy, 0, 1.58, 0);
+      top.rotation.y = Math.PI / 4;
+      g.add(top);
+      crateStack(g, 0.74, 0.42);
+      return g;
+    }
+
+
+    // ────────────────────────────────────────────────────────────────
+    // 🏗️ 3b. SPENDING BUILDS THE CITY
+    // Ported from the v1 map: every category has a baseline, and what you spend against
+    // that baseline decides what stands on the plot — an empty site, a street stall, a
+    // shop, a branch with a storey above it, or a full block. The building is the month.
+    // ────────────────────────────────────────────────────────────────
+    const CATEGORY_BASELINES = {
+      food_coffee: 900,        // the cafe stands for the whole food district
+      shop_boutique: 450,
+      shop_tech: 350,
+      shop_travel: 900,
+      shop_arcade: 200,
+      house_tower: 4000,
+      house_util: 400,
+      house_subs: 120,
+      museum_curiosities: 250,
+      health_pharmacy: 350,
+      city_sorting_hub: 300,
+      finance_bank: 250
+    };
+
+    // 0 empty plot · 1 stall · 2 single storey · 3 two storeys · 4 full block
+    function tierFor(id, amount) {
+      if (!amount || amount <= 0) return 0;
+      const ratio = amount / (CATEGORY_BASELINES[id] || 350);
+      if (ratio < 0.28) return 1;
+      if (ratio < 0.80) return 2;
+      if (ratio < 1.45) return 3;
+      return 4;
+    }
+
+    const cityBuildings = {};
+
+    // Hit proxy: an invisible box covering the whole plot, so a tap lands on the building
+    // whatever tier it is currently showing. Scaling or hiding a body mesh would otherwise
+    // move the tap target around underneath the user's finger.
+    function hitProxy(w, h, d) {
+      const m = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false });
+      const box = mesh(new THREE.BoxGeometry(w, h, d), m, 0, h / 2, 0, false, false);
+      return box;
+    }
+
+    /**
+     * cfg: { id, district, name, trend, x, z, rotY, w, d, body, roof, accent,
+     *        awning:[c1,c2], sign:{text,bg,fg}, kind:'shop'|'house'|'civic', maxTier }
+     */
+    function makeBuilding(cfg) {
+      const g = new THREE.Group();
+      g.position.set(cfg.x, Y_WALK, cfg.z);
+      if (cfg.rotY) g.rotation.y = cfg.rotY;
+      root.add(g);
+
+      const w = cfg.w, d = cfg.d;
+      const bodyMat = mat(cfg.body, 0.74);
+      const roofMat = cfg.roof ? mat(cfg.roof, 0.62) : M_SLATE;
+
+      // ---- tier 0 ----
+      const plot = new THREE.Group(); g.add(plot);
+      hoardingPlot(plot, w, d);
+
+      // ---- tier 1 ----
+      const stall = new THREE.Group(); g.add(stall);
+      marketStall(stall, cfg.awning ? cfg.awning[0] : "#EF4444", cfg.awning ? cfg.awning[1] : "#FFFFFF");
+
+      // ---- tiers 2+ : the shell ----
+      const shell = new THREE.Group(); g.add(shell);
+
+      const ground = new THREE.Group(); shell.add(ground);
+      ground.add(mesh(roundedBox(w, FLOOR_H, d, 0.10), bodyMat, 0, FLOOR_H / 2, 0));
+      if (cfg.kind === "house") {
+        // Houses get punched windows and a front door rather than a shopfront.
+        const gm = glassMaterial(0xA8CDEE); registerGlass(gm);
+        ground.add(mesh(new THREE.BoxGeometry(0.42, 0.46, 0.05), gm, -w * 0.26, 0.66, d / 2 + 0.03, false, false));
+        ground.add(mesh(new THREE.BoxGeometry(0.06, 0.50, 0.06), M_MULLION, -w * 0.26, 0.66, d / 2 + 0.05, false, false));
+        ground.add(mesh(new THREE.BoxGeometry(0.44, 0.72, 0.06), mat(cfg.accent || 0x1E3A5F, 0.6), w * 0.24, 0.42, d / 2 + 0.03, false, false));
+        ground.add(mesh(new THREE.SphereGeometry(0.035, 6, 6), M_GOLD, w * 0.24 + 0.14, 0.44, d / 2 + 0.07, false, false));
+        // Front step
+        ground.add(mesh(new THREE.BoxGeometry(0.62, 0.08, 0.26), M_WARM_STONE, w * 0.24, 0.04, d / 2 + 0.16, false, false));
+      } else {
+        storefront(ground, w, d, { tint: cfg.glass });
+        if (cfg.awning) stripedAwning(ground, w, d, cfg.awning[0], cfg.awning[1], 0.98);
+      }
+
+      // Upper storeys, revealed one at a time as spending grows
+      const floors = [];
+      for (let i = 0; i < 2; i++) {
+        const f = new THREE.Group();
+        f.position.y = FLOOR_H + i * FLOOR_H;
+        shell.add(f);
+        f.add(mesh(roundedBox(w - (cfg.kind === "house" ? 0.10 : 0.04), FLOOR_H, d - (cfg.kind === "house" ? 0.10 : 0.04), 0.09),
+          i === 0 ? bodyMat : mat(cfg.accent || cfg.body, 0.74), 0, FLOOR_H / 2, 0));
+        windowBand(f, w, d, FLOOR_H * 0.55, { tint: cfg.glass, faces: cfg.kind === "house" ? ["front"] : ["front", "right"] });
+        if (i === 0 && cfg.balcony) {
+          f.add(mesh(new THREE.BoxGeometry(w * 0.62, 0.07, 0.44), M_WARM_STONE, 0, FLOOR_H * 0.20, d / 2 + 0.20, false, false));
+          f.add(mesh(new THREE.BoxGeometry(w * 0.62, 0.26, 0.05), M_MULLION, 0, FLOOR_H * 0.20 + 0.16, d / 2 + 0.40, false, false));
+          f.add(mesh(new THREE.SphereGeometry(0.13, 6, 6), M_STREET_LEAF, -w * 0.22, FLOOR_H * 0.20 + 0.16, d / 2 + 0.28, false, false));
+        }
+        floors.push(f);
+      }
+
+      // Signage sits on the ground floor fascia for shops, above the door for civic blocks
+      if (cfg.sign) signPlate(ground, w, cfg.kind === "house" ? 0.95 : 1.02, d, cfg.sign.text, cfg.sign.bg, cfg.sign.fg, cfg.sign.size);
+
+      // Roofs: one per height the building can end up at
+      const roofs = [];
+      for (let t = 0; t < 3; t++) {
+        const y = FLOOR_H * (t + 1);
+        let r;
+        if (cfg.kind === "house" || cfg.roofStyle === "pitch") {
+          r = pitchedRoof(shell, w, d, cfg.kind === "house" ? 0.92 : 0.80, roofMat, y,
+            { chimney: cfg.chimney && t === 0, dormer: cfg.kind === "house" && t > 0 });
+        } else {
+          r = roofDeck(shell, w, d, y, { tank: t >= 1, vent: t >= 1, solar: cfg.solar && t >= 1, ac: true });
+        }
+        roofs.push(r);
+      }
+
+      // Street-level dressing, revealed with the tiers so a busy district feels busy
+      const dressing = [];
+      (cfg.props || []).forEach(function (pr) {
+        const holder = new THREE.Group(); g.add(holder);
+        if (pr.type === "planter") planterBox(holder, pr.x, pr.z, pr.kind);
+        else if (pr.type === "hedge") hedgeRow(holder, pr.x, pr.z, pr.w, pr.d);
+        else if (pr.type === "crates") crateStack(holder, pr.x, pr.z);
+        else if (pr.type === "aframe") aFrameBoard(holder, pr.x, pr.z, pr.rotY);
+        else if (pr.type === "bin") trashBin(holder, pr.x, pr.z);
+        else if (pr.type === "bollards") { for (let i = -1; i <= 1; i++) bollard(holder, pr.x + i * 0.5, pr.z); }
+        dressing.push({ obj: holder, from: pr.from === undefined ? 2 : pr.from });
+      });
+
+      const proxy = hitProxy(w + 0.2, FLOOR_H * 3.2, d + 0.2);
+      proxy.userData = { id: cfg.id, district: cfg.district, name: cfg.name, amount: 0, trend: cfg.trend };
+      g.add(proxy);
+      interactiveBuildings.push(proxy);
+      buildingRoots[cfg.id] = g;
+
+      const rec = {
+        id: cfg.id, group: g, shell: shell, plot: plot, stall: stall,
+        floors: floors, roofs: roofs, dressing: dressing, proxy: proxy,
+        maxTier: cfg.maxTier === undefined ? 4 : cfg.maxTier,
+        minTier: cfg.minTier === undefined ? 0 : cfg.minTier, tier: -1
+      };
+      proxy.userData.shell = shell;
+      cityBuildings[cfg.id] = rec;
+      setBuildingTier(rec, 3);
+      return rec;
+    }
+
+    function setBuildingTier(rec, tier) {
+      tier = Math.max(rec.minTier || 0, Math.min(rec.maxTier, tier));
+      if (rec.tier === tier) return;
+      rec.tier = tier;
+      rec.plot.visible = (tier === 0);
+      rec.stall.visible = (tier === 1);
+      rec.shell.visible = (tier >= 2);
+      // storeys above ground: tier 2 -> 0, tier 3 -> 1, tier 4 -> 2
+      const upper = Math.max(0, tier - 2);
+      rec.floors.forEach(function (f, i) { f.visible = i < upper; });
+      rec.roofs.forEach(function (r, i) { r.visible = (i === upper); });
+      rec.dressing.forEach(function (dr) { dr.obj.visible = tier >= dr.from; });
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // 🏛️ 4. CIVIC PLAZA & THE "SPENT" LANDMARK
+    // ────────────────────────────────────────────────────────────────
+    addSidewalkBlock(0, 0, 6.4, 6.4);
+
+    // Plaza paving inlay so the centre does not read as one flat slab
+    root.add(mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.03, 32), mat(0xEFE7D8, 0.9), 0, Y_WALK + 0.01, 1.0, false, true));
+    const plazaRim = mesh(new THREE.TorusGeometry(2.5, 0.05, 6, 40), M_WARM_STONE, 0, Y_WALK + 0.02, 1.0, false, false);
+    plazaRim.rotation.x = -Math.PI / 2; root.add(plazaRim);
+
     const fountainGroup = new THREE.Group();
     fountainGroup.position.set(0, Y_WALK, 1.1);
     root.add(fountainGroup);
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.22, 20), mat(0xE2E8F0, 0.5), 0, 0.11, 0));
-    const fWater = mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.04, 20), M_WATER, 0, 0.20, 0);
-    const fSpout = mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.55, 8), mat(0x93C5FD, 0.3, 0, 0x38BDF8, 0.8), 0, 0.45, 0);
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.22, 24), mat(0xE7E1D2, 0.55), 0, 0.11, 0));
+    const fountRim = mesh(new THREE.TorusGeometry(1.22, 0.06, 6, 28), M_WARM_STONE, 0, 0.22, 0, false, false);
+    fountRim.rotation.x = -Math.PI / 2; fountainGroup.add(fountRim);
+    const fWater = mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.04, 24), M_WATER, 0, 0.20, 0);
+    const fSpout = mesh(new THREE.CylinderGeometry(0.06, 0.10, 0.70, 8), mat(0x93C5FD, 0.45, 0, 0x38BDF8, 0.7), 0, 0.52, 0);
     fountainGroup.add(fWater, fSpout);
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.26, 10), M_MARBLE_REF, 0, 0.30, 0));
     animObjects.push({ type: "fountain_spout", spout: fSpout });
 
-    // SPENT Civic Building
+    // SPENT city hall — the one fixed landmark, so the centre never looks unbuilt
     const spentGroup = new THREE.Group();
-    spentGroup.position.set(0, Y_WALK, -1.2);
+    spentGroup.position.set(0, Y_WALK, -1.6);
     root.add(spentGroup);
 
-    const spentBody = mesh(roundedBox(3.6, 2.0, 2.6, 0.12), M_CREAM, 0, 1.0, 0);
+    const spentBody = mesh(roundedBox(3.8, 2.1, 2.7, 0.12), M_CREAM, 0, 1.05, 0);
     spentGroup.add(spentBody);
-    spentBody.userData = { id: "finance_bank", district: "civic", name: "עיריית SPENT", amount: 0, trend: "מרכז העיר והממשל" };
-    interactiveBuildings.push(spentBody);
+
+    // Stepped stone base and portico
+    spentGroup.add(mesh(roundedBox(4.3, 0.16, 3.2, 0.08), M_WARM_STONE, 0, 0.08, 0.10, false, true));
+    spentGroup.add(mesh(roundedBox(4.0, 0.12, 2.9, 0.06), M_WARM_STONE, 0, 0.20, 0.06, false, true));
+    for (let i = -2; i <= 2; i++) {
+      spentGroup.add(mesh(new THREE.CylinderGeometry(0.11, 0.12, 1.52, 12), M_WHITE, i * 0.55, 1.02, 1.58));
+      spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.10, 12), M_WHITE, i * 0.55, 0.31, 1.58, false, false));
+      spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.08, 12), M_WHITE, i * 0.55, 1.80, 1.58, false, false));
+    }
+    spentGroup.add(mesh(new THREE.BoxGeometry(2.24, 0.20, 0.50), M_WHITE, 0, 1.88, 1.58));
+    // A pediment is a triangular prism. A 3-sided cone is not one, and rotating it into
+    // place produced a shapeless white wedge.
+    (function () {
+      const sh = new THREE.Shape();
+      sh.moveTo(-1.16, 0); sh.lineTo(1.16, 0); sh.lineTo(0, 0.54); sh.closePath();
+      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.30, bevelEnabled: false });
+      geo.translate(0, 0, -0.15);
+      spentGroup.add(mesh(geo, M_CREAM, 0, 1.98, 1.58));
+    })();
+    const spentSignMat = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#1E293B", "#F59E0B", 38) });
+    spentGroup.add(mesh(new THREE.BoxGeometry(1.5, 0.30, 0.05), spentSignMat, 0, 1.62, 1.36, false, false));
+    const civicGlass = glassMaterial(0x9FC7F0); registerGlass(civicGlass);
+    [-1.35, 1.35].forEach(function (x) {
+      spentGroup.add(mesh(new THREE.BoxGeometry(0.52, 0.78, 0.05), civicGlass, x, 1.05, 1.36, false, false));
+      spentGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.82, 0.06), M_MULLION, x, 1.05, 1.38, false, false));
+    });
+
+    roofDeck(spentGroup, 3.8, 2.7, 2.1, { ac: true, vent: true, tank: false });
+
+    // Clock tower with a copper spire
+    const tower = mesh(roundedBox(1.35, 2.3, 1.35, 0.10), M_CREAM, 0, 3.25, -0.10);
+    spentGroup.add(tower);
+    spentGroup.add(mesh(roundedBox(1.55, 0.14, 1.55, 0.06), M_WARM_STONE, 0, 4.45, -0.10, false, false));
+    const clockM = new THREE.MeshBasicMaterial({ map: clockTex() });
+    spentGroup.add(mesh(new THREE.PlaneGeometry(0.72, 0.72), clockM, 0, 3.85, 0.59, false, false));
+    const clockBack = mesh(new THREE.PlaneGeometry(0.72, 0.72), clockM, 0, 3.85, -0.79, false, false);
+    clockBack.rotation.y = Math.PI; spentGroup.add(clockBack);
+    const spire = mesh(new THREE.ConeGeometry(1.05, 1.7, 4), mat(0x2FA88A, 0.55), 0, 5.35, -0.10);
+    spire.rotation.y = Math.PI / 4;
+    spentGroup.add(spire);
+    spentGroup.add(mesh(new THREE.SphereGeometry(0.13, 10, 10), M_GOLD, 0, 6.28, -0.10));
+
+    const spentProxy = hitProxy(4.2, 4.4, 3.2);
+    spentProxy.position.z = 0.1;
+    spentProxy.userData = { id: "finance_bank", district: "civic", name: "עיריית SPENT", amount: 0, trend: "מרכז העיר והממשל", shell: spentGroup };
+    spentGroup.add(spentProxy);
+    interactiveBuildings.push(spentProxy);
     buildingRoots["finance_bank"] = spentGroup;
 
-    // Arched portico & "SPENT" sign
-    spentBody.add(mesh(new THREE.BoxGeometry(1.6, 0.14, 0.4), M_SLATE, 0, 0.25, 1.35));
-    spentBody.add(mesh(new THREE.BoxGeometry(0.14, 1.1, 0.14), M_SLATE, -0.65, -0.3, 1.35));
-    spentBody.add(mesh(new THREE.BoxGeometry(0.14, 1.1, 0.14), M_SLATE,  0.65, -0.3, 1.35));
-    const spentSignMat = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#1E293B", "#F59E0B", 38) });
-    spentBody.add(mesh(new THREE.BoxGeometry(1.4, 0.35, 0.05), spentSignMat, 0, 0.65, 1.32));
-
-    // Blue Windows
-    spentBody.add(mesh(new THREE.BoxGeometry(0.55, 0.65, 0.04), M_GLASS_BL, -1.1, 0.2, 1.32));
-    spentBody.add(mesh(new THREE.BoxGeometry(0.55, 0.65, 0.04), M_GLASS_BL,  1.1, 0.2, 1.32));
-
-    // Clock Tower
-    const tower = mesh(roundedBox(1.3, 2.2, 1.3, 0.1), M_CREAM, 0, 3.1, 0);
-    spentGroup.add(tower);
-    const clockM = new THREE.MeshBasicMaterial({ map: clockTex() });
-    tower.add(mesh(new THREE.PlaneGeometry(0.7, 0.7), clockM, 0, 0.45, 0.66));
-    const clockBack = mesh(new THREE.PlaneGeometry(0.7, 0.7), clockM, 0, 0.45, -0.66); clockBack.rotation.y = Math.PI; tower.add(clockBack);
-
-    // Copper / Coral Pyramidal Spire
-    const spire = mesh(new THREE.ConeGeometry(1.05, 1.6, 4), M_ROOF_OR, 0, 5.0, 0);
-    spire.rotation.y = Math.PI / 4;
-    spire.add(mesh(new THREE.SphereGeometry(0.12, 10, 10), M_GOLD, 0, 0.85, 0));
-    spentGroup.add(spire);
+    // Plaza greenery and seating
+    [[-2.3, 2.3], [2.3, 2.3], [-2.4, -0.4], [2.4, -0.4]].forEach(function (p) {
+      const h = new THREE.Group(); h.position.set(p[0], Y_WALK, p[1]); root.add(h);
+      planterBox(h, 0, 0, "tree");
+    });
+    root.add((function () { const h = new THREE.Group(); h.position.set(1.6, Y_WALK, 2.6); trashBin(h, 0, 0); return h; })());
 
     // ────────────────────────────────────────────────────────────────
-    // 🏡 4. RESIDENTIAL DISTRICT: 3 PITCHED HOUSES (Hero Reference)
+    // 🏡 5. RESIDENTIAL QUARTER — pitched roofs, gardens, fences
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(-0.5, -7.8, 8.8, 4.4);
+    addSidewalkBlock(-0.5, -8.35, 11.4, 5.9);
 
-    // House 1 (Left - Terracotta Pitched Roof, house_tower)
-    const h1Group = new THREE.Group(); h1Group.position.set(-3.2, Y_WALK, -7.8); root.add(h1Group);
-    const h1Body = mesh(roundedBox(2.2, 1.8, 2.4, 0.1), M_CREAM, 0, 0.9, 0); h1Group.add(h1Body);
-    h1Body.userData = { id: "house_tower", district: "housing", name: "מגורים ושכירות", amount: 0, trend: "חיוב מגורים קבוע" };
-    interactiveBuildings.push(h1Body); buildingRoots["house_tower"] = h1Group;
-    const r1 = mesh(new THREE.ConeGeometry(1.8, 1.0, 4), M_ROOF_OR, 0, 2.3, 0); r1.rotation.y = Math.PI / 4; h1Group.add(r1);
-    h1Body.add(mesh(new THREE.BoxGeometry(0.5, 0.6, 0.04), M_GLASS_BL, -0.5, 0.2, 1.22));
-    h1Body.add(mesh(new THREE.BoxGeometry(0.5, 0.8, 0.04), M_SLATE, 0.5, -0.4, 1.22)); // door
+    makeBuilding({
+      id: "house_tower", minTier: 2, district: "housing", name: "מגורים ושכירות", trend: "חיוב מגורים קבוע",
+      kind: "house", x: -4.3, z: -9.0, w: 2.3, d: 2.5,
+      body: 0xFBF6EC, roof: 0xE2622B, accent: 0x1E3A5F, glass: 0xA8CDEE,
+      chimney: true, balcony: true,
+      props: [
+        { type: "hedge", x: 0, z: 1.65, w: 2.3, d: 0.34, from: 2 },
+        { type: "planter", x: -1.35, z: 1.45, kind: "flowers", from: 2 },
+        { type: "planter", x: 1.35, z: 1.45, kind: "shrub", from: 3 }
+      ]
+    });
 
-    // House 2 (Center - Blue Pitched Roof, house_util)
-    const h2Group = new THREE.Group(); h2Group.position.set(-0.5, Y_WALK, -8.0); root.add(h2Group);
-    const h2Body = mesh(roundedBox(2.2, 2.0, 2.4, 0.1), M_CREAM, 0, 1.0, 0); h2Group.add(h2Body);
-    h2Body.userData = { id: "house_util", district: "housing", name: "חשבונות בית", amount: 0, trend: "חשמל, מים וארנונה" };
-    interactiveBuildings.push(h2Body); buildingRoots["house_util"] = h2Group;
-    const r2 = mesh(new THREE.ConeGeometry(1.8, 1.1, 4), M_ROOF_BL, 0, 2.55, 0); r2.rotation.y = Math.PI / 4; h2Group.add(r2);
-    h2Body.add(mesh(new THREE.BoxGeometry(0.5, 0.6, 0.04), M_GLASS_BL, -0.5, 0.3, 1.22));
-    h2Body.add(mesh(new THREE.BoxGeometry(0.5, 0.6, 0.04), M_GLASS_BL,  0.5, 0.3, 1.22));
+    makeBuilding({
+      id: "house_util", minTier: 1, district: "housing", name: "חשבונות בית", trend: "חשמל, מים וארנונה",
+      kind: "house", x: -0.6, z: -9.2, w: 2.3, d: 2.5,
+      body: 0xF6F1E6, roof: 0x2563EB, accent: 0x334155, glass: 0xA8CDEE,
+      solar: true,
+      props: [
+        { type: "hedge", x: 0, z: 1.65, w: 2.0, d: 0.30, from: 2 },
+        { type: "bin", x: 1.30, z: 1.50, from: 2 }
+      ]
+    });
 
-    // House 3 (Right - Peach Pitched Roof with Chimney, house_subs)
-    const h3Group = new THREE.Group(); h3Group.position.set(2.2, Y_WALK, -7.8); root.add(h3Group);
-    const h3Body = mesh(roundedBox(2.2, 1.8, 2.4, 0.1), M_CREAM, 0, 0.9, 0); h3Group.add(h3Body);
-    h3Body.userData = { id: "house_subs", district: "housing", name: "מנויים וסטרימינג", amount: 0, trend: "שירותים דיגיטליים" };
-    interactiveBuildings.push(h3Body); buildingRoots["house_subs"] = h3Group;
-    const r3 = mesh(new THREE.ConeGeometry(1.8, 1.0, 4), M_ROOF_PEACH, 0, 2.3, 0); r3.rotation.y = Math.PI / 4; h3Group.add(r3);
-    r3.add(mesh(new THREE.BoxGeometry(0.28, 0.6, 0.28), mat(0x9A3412, 0.8), 0.5, 0.2, 0)); // Chimney
+    makeBuilding({
+      id: "house_subs", minTier: 1, district: "housing", name: "מנויים וסטרימינג", trend: "שירותים דיגיטליים",
+      kind: "house", x: 3.1, z: -9.0, w: 2.2, d: 2.4,
+      body: 0xFDF3E3, roof: 0xF08A34, accent: 0x7C3AED, glass: 0xA8CDEE,
+      chimney: true,
+      props: [
+        { type: "planter", x: -1.25, z: 1.40, kind: "shrub", from: 2 },
+        { type: "planter", x: 1.25, z: 1.40, kind: "flowers", from: 3 }
+      ]
+    });
 
-    // ────────────────────────────────────────────────────────────────
-    // 🛍️ 5. SHOPPING DISTRICT: 4-STORE ROW WITH "SHOP" (Hero Reference)
-    // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(-8.2, -0.2, 4.8, 9.6);
+    // A satellite dish on the subscriptions house — the district's little joke
+    (function () {
+      const g = cityBuildings["house_subs"].shell;
+      const dish = new THREE.Group(); dish.position.set(0.72, FLOOR_H + 0.35, -0.72); g.add(dish);
+      dish.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.42, 6), M_DARKFRAME, 0, 0.21, 0, false, false));
+      const d2 = mesh(new THREE.SphereGeometry(0.22, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.42), M_WHITE, 0, 0.48, 0);
+      d2.rotation.x = 2.2; dish.add(d2);
+    })();
 
-    // Shop 1 (Top Corner - Orange Facade & "SHOP", shop_arcade)
-    const s1Group = new THREE.Group(); s1Group.position.set(-8.2, Y_WALK, -3.4); root.add(s1Group);
-    const s1Body = mesh(roundedBox(2.6, 2.2, 2.0, 0.1), mat(0xF97316, 0.7), 0, 1.1, 0); s1Group.add(s1Body);
-    s1Body.userData = { id: "shop_arcade", district: "shopping", name: "בילויים וגיימינג", amount: 0, trend: "קולנוע, משחקים ואטרקציות" };
-    interactiveBuildings.push(s1Body); buildingRoots["shop_arcade"] = s1Group;
-    s1Body.add(mesh(new THREE.BoxGeometry(1.6, 0.35, 0.05), new THREE.MeshStandardMaterial({ map: signTex("SHOP", "#C2410C", "#FFFFFF") }), 0, 0.7, 1.02));
-
-    // Shop 2 (Blue Facade & Yellow Awning, shop_tech)
-    const s2Group = new THREE.Group(); s2Group.position.set(-8.2, Y_WALK, -1.3); root.add(s2Group);
-    const s2Body = mesh(roundedBox(2.6, 2.4, 2.0, 0.1), mat(0x93C5FD, 0.6), 0, 1.2, 0); s2Group.add(s2Body);
-    s2Body.userData = { id: "shop_tech", district: "shopping", name: "טכנולוגיה", amount: 0, trend: "מחשבים וגאדג'טים" };
-    interactiveBuildings.push(s2Body); buildingRoots["shop_tech"] = s2Group;
-    const yAwningMat = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#FACC15", "#FFFFFF") });
-    const yAwning = mesh(new THREE.BoxGeometry(2.4, 0.10, 0.7), yAwningMat, 0, 0.35, 1.25); yAwning.rotation.x = 0.25; s2Body.add(yAwning);
-
-    // Shop 3 (Red/White Striped Awning & "SHOP", shop_boutique)
-    const s3Group = new THREE.Group(); s3Group.position.set(-8.2, Y_WALK, 0.8); root.add(s3Group);
-    const s3Body = mesh(roundedBox(2.6, 2.2, 2.0, 0.1), M_CREAM, 0, 1.1, 0); s3Group.add(s3Body);
-    s3Body.userData = { id: "shop_boutique", district: "shopping", name: "אופנה ובוטיק", amount: 0, trend: "ביגוד ואופנה" };
-    interactiveBuildings.push(s3Body); buildingRoots["shop_boutique"] = s3Group;
-    s3Body.add(mesh(new THREE.BoxGeometry(1.6, 0.35, 0.05), new THREE.MeshStandardMaterial({ map: signTex("SHOP", "#EF4444", "#FFFFFF") }), 0, 0.75, 1.02));
-    const rAwningMat = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#EF4444", "#FFFFFF") });
-    const rAwning = mesh(new THREE.BoxGeometry(2.4, 0.10, 0.7), rAwningMat, 0, 0.30, 1.25); rAwning.rotation.x = 0.25; s3Body.add(rAwning);
-
-    // Shop 4 (Bottom - Beige with Blue Awning, shop_travel)
-    const s4Group = new THREE.Group(); s4Group.position.set(-8.2, Y_WALK, 2.9); root.add(s4Group);
-    const s4Body = mesh(roundedBox(2.6, 2.0, 2.0, 0.1), M_WARM_STONE, 0, 1.0, 0); s4Group.add(s4Body);
-    s4Body.userData = { id: "shop_travel", district: "shopping", name: "חופשות וטיסות", amount: 0, trend: "נסיעות ופנאי" };
-    interactiveBuildings.push(s4Body); buildingRoots["shop_travel"] = s4Group;
-    const bAwningMat = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#3B82F6", "#FFFFFF") });
-    const bAwning = mesh(new THREE.BoxGeometry(2.4, 0.10, 0.7), bAwningMat, 0, 0.30, 1.25); bAwning.rotation.x = 0.25; s4Body.add(bAwning);
+    // Garden path and fence line along the housing block
+    for (let x = -5.9; x <= 4.9; x += 1.5) {
+      root.add(mesh(new THREE.BoxGeometry(0.07, 0.44, 0.07), M_WHITE, x, Y_WALK + 0.22, -6.9, false, false));
+    }
+    root.add(mesh(new THREE.BoxGeometry(10.8, 0.06, 0.07), M_WHITE, -0.5, Y_WALK + 0.38, -6.9, false, false));
 
     // ────────────────────────────────────────────────────────────────
-    // ☕ 6. FOOD & DRINK: "CAFE" & PARASOL PATIO (Hero Reference)
+    // 🛍️ 6. SHOPPING AVENUE — four shopfronts, spaced and staggered
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(7.8, -0.4, 4.8, 4.4);
+    addSidewalkBlock(-8.7, -0.2, 6.6, 12.0);
 
-    const cafeGroup = new THREE.Group(); cafeGroup.position.set(7.8, Y_WALK, -0.4); root.add(cafeGroup);
-    const cafeBody = mesh(roundedBox(3.4, 2.2, 2.4, 0.12), M_CREAM, 0, 1.1, -0.6); cafeGroup.add(cafeBody);
-    // One cafe model stands for the whole food district, so it is labelled for the district.
-    cafeBody.userData = { id: "food_coffee", district: "food", name: "אוכל ומסעדות", amount: 0, trend: "קפה, סופר, מסעדות ומשלוחים" };
-    interactiveBuildings.push(cafeBody); buildingRoots["food_coffee"] = cafeGroup;
+    makeBuilding({
+      id: "shop_arcade", district: "shopping", name: "בילויים וגיימינג", trend: "קולנוע, משחקים ואטרקציות",
+      kind: "shop", x: -9.5, z: -4.4, w: 2.6, d: 2.2, rotY: Math.PI / 2,
+      body: 0xF07C2E, roof: 0xC2410C, accent: 0xEA580C, glass: 0x8FD3F4,
+      sign: { text: "ARCADE", bg: "#C2410C", fg: "#FFFFFF", size: 30 },
+      props: [
+        { type: "bollards", x: 0, z: 1.55, from: 2 },
+        { type: "aframe", x: -1.05, z: 1.45, rotY: 0.4, from: 3 }
+      ]
+    });
 
-    // Pitch terracotta roof on Cafe
-    const cafeRoof = mesh(new THREE.ConeGeometry(2.5, 0.9, 4), M_ROOF_OR, 0, 2.65, -0.6); cafeRoof.rotation.y = Math.PI / 4; cafeGroup.add(cafeRoof);
-    const cafeSignMat = new THREE.MeshStandardMaterial({ map: signTex("CAFE", "#EA580C", "#FEF3C7", 40) });
-    cafeBody.add(mesh(new THREE.BoxGeometry(2.0, 0.40, 0.05), cafeSignMat, 0, 0.75, 0.63));
+    makeBuilding({
+      id: "shop_tech", district: "shopping", name: "טכנולוגיה", trend: "מחשבים וגאדג'טים",
+      kind: "shop", x: -9.1, z: -1.5, w: 2.6, d: 2.2, rotY: Math.PI / 2,
+      body: 0x7FA9D8, roof: 0x1E3A5F, accent: 0x4E7FB8, glass: 0xBFE3FA,
+      awning: ["#FACC15", "#FFFFFF"], solar: true,
+      sign: { text: "TECH", bg: "#1E3A8A", fg: "#FFFFFF", size: 32 },
+      props: [
+        { type: "planter", x: -1.10, z: 1.50, kind: "shrub", from: 2 },
+        { type: "bin", x: 1.15, z: 1.50, from: 3 }
+      ]
+    });
 
-    // Outdoor Patio with 2 Round Tables & Umbrellas
+    makeBuilding({
+      id: "shop_boutique", district: "shopping", name: "אופנה ובוטיק", trend: "ביגוד ואופנה",
+      kind: "shop", roofStyle: "pitch", x: -9.5, z: 1.5, w: 2.6, d: 2.2, rotY: Math.PI / 2,
+      body: 0xFBF6EC, roof: 0xB91C1C, accent: 0xF3E8DC, glass: 0xD8ECFB,
+      awning: ["#EF4444", "#FFFFFF"], balcony: true,
+      sign: { text: "SHOP", bg: "#EF4444", fg: "#FFFFFF", size: 34 },
+      props: [
+        { type: "planter", x: -1.10, z: 1.50, kind: "flowers", from: 2 },
+        { type: "aframe", x: 1.05, z: 1.45, rotY: -0.3, from: 2 }
+      ]
+    });
+
+    makeBuilding({
+      id: "shop_travel", district: "shopping", name: "חופשות וטיסות", trend: "נסיעות ופנאי",
+      kind: "shop", x: -9.1, z: 4.4, w: 2.6, d: 2.2, rotY: Math.PI / 2,
+      body: 0xF2E7D2, roof: 0x1D4ED8, accent: 0xE6D6B8, glass: 0xBFE3FA,
+      awning: ["#3B82F6", "#FFFFFF"],
+      sign: { text: "TRAVEL", bg: "#1D4ED8", fg: "#FFFFFF", size: 28 },
+      props: [
+        { type: "crates", x: -1.05, z: 1.45, from: 2 },
+        { type: "planter", x: 1.10, z: 1.50, kind: "tree", from: 3 }
+      ]
+    });
+
+    // ────────────────────────────────────────────────────────────────
+    // ☕ 7. FOOD & DRINK — cafe, terrace, kiosk
+    // ────────────────────────────────────────────────────────────────
+    addSidewalkBlock(8.5, -0.4, 6.2, 5.2);
+
+    const cafeRec = makeBuilding({
+      id: "food_coffee", minTier: 1, district: "food", name: "אוכל ומסעדות", trend: "קפה, סופר, מסעדות ומשלוחים",
+      kind: "shop", roofStyle: "pitch", x: 9.0, z: -1.4, w: 3.4, d: 2.4,
+      body: 0xF6D9A8, roof: 0xD9541F, accent: 0xE9B96B, glass: 0xCFE9FB,
+      awning: ["#EA580C", "#FFFFFF"], balcony: true,
+      sign: { text: "CAFE", bg: "#EA580C", fg: "#FEF3C7", size: 38 },
+      props: [
+        { type: "planter", x: -1.85, z: 1.30, kind: "shrub", from: 2 },
+        { type: "aframe", x: 1.85, z: 1.30, rotY: -0.5, from: 2 }
+      ]
+    });
+
+    // Terrace: tables appear as the district gets busier
+    const cafeTerrace = [];
     function addPatioTable(tx, tz, color) {
-      const g = new THREE.Group(); g.position.set(tx, 0.02, tz);
-      g.add(mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.04, 16), M_WHITE, 0, 0.36, 0));
-      g.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.36, 8), M_SLATE, 0, 0.18, 0));
-      g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.4, 8), M_WOOD, 0, 0.70, 0));
-      g.add(mesh(new THREE.ConeGeometry(0.72, 0.30, 8), mat(color, 0.65), 0, 1.45, 0));
-      cafeGroup.add(g);
+      const g = new THREE.Group(); g.position.set(tx, Y_WALK, tz); root.add(g);
+      g.add(mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 14), M_WHITE, 0, 0.36, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.36, 8), M_SLATE, 0, 0.18, 0, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 10), M_SLATE, 0, 0.02, 0, false, false));
+      [-0.46, 0.46].forEach(function (o) {
+        g.add(mesh(roundedBox(0.22, 0.05, 0.22, 0.03), M_WOOD, o, 0.24, 0, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.20, 0.24, 0.04), M_WOOD, o, 0.36, o > 0 ? 0.09 : -0.09, false, false));
+      });
+      g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.45, 8), M_WOOD, 0, 0.72, 0, false, false));
+      g.add(mesh(new THREE.ConeGeometry(0.76, 0.32, 10), mat(color, 0.68), 0, 1.50, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.05, 6, 6), M_GOLD, 0, 1.68, 0, false, false));
+      cafeTerrace.push(g);
+      return g;
     }
-    addPatioTable(-0.8, 1.0, 0xEA580C); // Orange Umbrella
-    addPatioTable( 0.8, 1.0, 0xFACC15); // Yellow Umbrella
+    addPatioTable(7.7, 0.9, 0xEA580C);
+    addPatioTable(9.2, 1.1, 0xFACC15);
+    addPatioTable(10.6, 0.7, 0xEA580C);
 
-    // Aliased food nodes to cafe
-    buildingRoots["food_bistro"] = cafeGroup;
-    buildingRoots["food_super"]  = cafeGroup;
-    buildingRoots["food_wolt"]   = cafeGroup;
+    // Street food kiosk beside the cafe
+    (function () {
+      const g = new THREE.Group(); g.position.set(11.0, Y_WALK, -2.6); g.rotation.y = -0.4; root.add(g);
+      g.add(mesh(roundedBox(1.15, 0.90, 0.85, 0.06), M_CREAM, 0, 0.45, 0));
+      g.add(mesh(new THREE.BoxGeometry(1.25, 0.08, 0.95), mat(0x0F766E, 0.7), 0, 0.94, 0, false, false));
+      const km = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#0F766E", "#FFFFFF"), roughness: 0.85 });
+      const kaw = mesh(new THREE.BoxGeometry(1.20, 0.06, 0.46), km, 0, 0.82, 0.55); kaw.rotation.x = 0.3; g.add(kaw);
+      g.add(mesh(new THREE.BoxGeometry(0.95, 0.06, 0.20), M_WOOD, 0, 0.62, 0.50, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.10, 8), M_WHITE, -0.28, 0.70, 0.48, false, false));
+    })();
+
+    buildingRoots["food_bistro"] = cafeRec.group;
+    buildingRoots["food_super"]  = cafeRec.group;
+    buildingRoots["food_wolt"]   = cafeRec.group;
 
     // ────────────────────────────────────────────────────────────────
-    // 🏢 7. WORK COMPLEX: MODERN GLASS CURTAIN TOWER (Hero Reference)
+    // 🏢 8. WORK COMPLEX — glass tower, entrance canopy, bikes
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(7.8, 6.8, 4.8, 6.4);
+    addSidewalkBlock(8.5, 7.4, 6.2, 6.8);
 
-    const workGroup = new THREE.Group(); workGroup.position.set(7.8, Y_WALK, 6.8); root.add(workGroup);
-    const workBody = mesh(roundedBox(3.4, 3.4, 3.2, 0.12), M_WHITE, 0, 1.7, -0.8); workGroup.add(workBody);
-    workBody.userData = { id: "city_sorting_hub", district: "civic", name: "מתחם העסקים והדואר", amount: 0, trend: "מרכז העבודה והמשרדים" };
-    interactiveBuildings.push(workBody); buildingRoots["city_sorting_hub"] = workGroup;
+    const workGroup = new THREE.Group(); workGroup.position.set(9.0, Y_WALK, 7.4); root.add(workGroup);
+    const workGlass = glassMaterial(0x8FBEE8); registerGlass(workGlass);
 
-    // Full Blue Glass Curtain Wall Facade
-    workBody.add(mesh(new THREE.BoxGeometry(2.8, 2.6, 0.06), M_GLASS_BL, 0, 0.1, 1.63));
-    // Window grid bars
-    for (let fl = -1.0; fl <= 1.0; fl += 0.9) {
-      workBody.add(mesh(new THREE.BoxGeometry(2.85, 0.08, 0.08), M_WHITE, 0, fl, 1.63));
+    workGroup.add(mesh(roundedBox(3.3, 3.9, 3.1, 0.10), M_WHITE, 0, 1.95, -0.9));
+    // Curtain wall: alternating glass bands and white spandrels
+    for (let fl = 0; fl < 4; fl++) {
+      const y = 0.55 + fl * 0.92;
+      workGroup.add(mesh(new THREE.BoxGeometry(2.9, 0.60, 0.06), workGlass, 0, y, 0.68, false, false));
+      workGroup.add(mesh(new THREE.BoxGeometry(2.94, 0.14, 0.08), M_WHITE, 0, y + 0.37, 0.68, false, false));
+      workGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.60, 2.9), workGlass, 1.68, y, -0.9, false, false));
     }
-    workBody.add(mesh(new THREE.BoxGeometry(0.08, 2.6, 0.08), M_WHITE, 0, 0.1, 1.64));
+    for (let i = -1; i <= 1; i++) workGroup.add(mesh(new THREE.BoxGeometry(0.08, 3.6, 0.08), M_WHITE, i * 0.95, 1.9, 0.70, false, false));
+    roofDeck(workGroup, 3.3, 3.1, 3.9, { tank: true, vent: true, ac: true }).position.z = -0.9;
 
-    // Attached 2-story building with "WORK" sign
-    const workWing = mesh(roundedBox(2.8, 1.8, 2.2, 0.1), M_SLATE, 0, 0.9, 1.4); workGroup.add(workWing);
+    const workWing = mesh(roundedBox(2.7, 1.9, 2.0, 0.08), mat(0x2A324B, 0.7), 0, 0.95, 1.6);
+    workGroup.add(workWing);
     const workSignMat = new THREE.MeshStandardMaterial({ map: signTex("WORK", "#2563EB", "#FFFFFF", 38) });
-    workWing.add(mesh(new THREE.BoxGeometry(1.8, 0.38, 0.05), workSignMat, 0, 0.55, 1.13));
+    workGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.36, 0.05), workSignMat, 0, 1.35, 2.62, false, false));
+    // Entrance canopy
+    workGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.09, 0.70), M_MULLION, 0, 0.92, 2.90, false, false));
+    workGroup.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.90, 6), M_MULLION, -0.72, 0.47, 3.18, false, false));
+    workGroup.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.90, 6), M_MULLION,  0.72, 0.47, 3.18, false, false));
+    workGroup.add(mesh(new THREE.BoxGeometry(1.10, 0.80, 0.05), workGlass, 0, 0.42, 2.62, false, false));
 
-    // Bicycle parking rack
-    workGroup.add(mesh(new THREE.BoxGeometry(1.2, 0.22, 0.10), M_SLATE, -1.2, 0.11, 2.2));
+    // Bike rack with two bikes
+    (function () {
+      const g = new THREE.Group(); g.position.set(-1.6, 0, 2.6); workGroup.add(g);
+      g.add(mesh(new THREE.BoxGeometry(1.1, 0.05, 0.05), M_SLATE, 0, 0.30, 0, false, false));
+      for (let i = -1; i <= 1; i++) g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.30, 6), M_SLATE, i * 0.4, 0.15, 0, false, false));
+      [-0.30, 0.32].forEach(function (bx, k) {
+        const wheelMat = k ? mat(0x0EA5E9, 0.5) : mat(0xEF4444, 0.5);
+        g.add(mesh(new THREE.TorusGeometry(0.13, 0.022, 8, 14), M_SLATE, bx - 0.17, 0.15, 0.22, false, false));
+        g.add(mesh(new THREE.TorusGeometry(0.13, 0.022, 8, 14), M_SLATE, bx + 0.17, 0.15, 0.22, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.36, 0.04, 0.04), wheelMat, bx, 0.24, 0.22, false, false));
+      });
+    })();
+
+    const workProxy = hitProxy(3.6, 4.2, 5.2);
+    workProxy.position.set(0, 0, 0.2);
+    workProxy.userData = { id: "city_sorting_hub", district: "civic", name: "מתחם העסקים והדואר", amount: 0, trend: "מרכז העבודה והמשרדים", shell: workGroup };
+    workGroup.add(workProxy);
+    interactiveBuildings.push(workProxy);
+    buildingRoots["city_sorting_hub"] = workGroup;
 
     // ────────────────────────────────────────────────────────────────
-    // 🏥 8. HEALTH CLINIC & AMBULANCE BAY (Hero Reference)
+    // 🏥 9. HEALTH CLINIC & AMBULANCE BAY
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(0.2, 8.5, 6.2, 4.8);
+    addSidewalkBlock(0.2, 8.75, 6.6, 6.7);
 
-    const healthGroup = new THREE.Group(); healthGroup.position.set(0.2, Y_WALK, 8.5); root.add(healthGroup);
-    const healthBody = mesh(roundedBox(3.4, 2.2, 2.6, 0.12), M_WHITE, 0, 1.1, 0.4); healthGroup.add(healthBody);
-    healthBody.userData = { id: "health_pharmacy", district: "civic", name: "מרפאה ופארם", amount: 0, trend: "שירותי רפואה ובריאות" };
-    interactiveBuildings.push(healthBody); buildingRoots["health_pharmacy"] = healthGroup;
-
-    // "HEALTH" Red Sign & 3D Red Cross Emblem
+    const healthGroup = new THREE.Group(); healthGroup.position.set(-0.6, Y_WALK, 9.6); root.add(healthGroup);
+    healthGroup.add(mesh(roundedBox(3.3, 2.3, 2.6, 0.10), M_WHITE, 0, 1.15, 0));
+    healthGroup.add(mesh(roundedBox(1.9, 1.3, 1.9, 0.08), mat(0xF3E9DC, 0.8), -2.0, 0.65, 0.2));
+    const healthGlass = glassMaterial(0xBFE3FA); registerGlass(healthGlass);
+    for (let i = -1; i <= 1; i++) {
+      healthGroup.add(mesh(new THREE.BoxGeometry(0.52, 0.60, 0.05), healthGlass, i * 0.95, 1.55, 1.33, false, false));
+      healthGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.64, 0.06), M_MULLION, i * 0.95, 1.55, 1.35, false, false));
+    }
     const healthSignMat = new THREE.MeshStandardMaterial({ map: signTex("HEALTH", "#FFFFFF", "#DC2626", 36) });
-    healthBody.add(mesh(new THREE.BoxGeometry(2.0, 0.35, 0.05), healthSignMat, 0, 0.75, 1.33));
+    healthGroup.add(mesh(new THREE.BoxGeometry(1.9, 0.34, 0.05), healthSignMat, 0, 0.92, 1.33, false, false));
+    healthGroup.add(mesh(new THREE.BoxGeometry(2.2, 0.10, 0.55), mat(0xDC2626, 0.6), 0, 0.72, 1.52, false, false));
     const crossMat = mat(0xDC2626, 0.5);
-    healthBody.add(mesh(new THREE.BoxGeometry(0.22, 0.65, 0.08), crossMat, 0, 0.15, 1.35));
-    healthBody.add(mesh(new THREE.BoxGeometry(0.65, 0.22, 0.08), crossMat, 0, 0.15, 1.35));
+    healthGroup.add(mesh(new THREE.BoxGeometry(0.22, 0.66, 0.09), crossMat, 0, 2.05, 1.33));
+    healthGroup.add(mesh(new THREE.BoxGeometry(0.66, 0.22, 0.09), crossMat, 0, 2.05, 1.33));
+    roofDeck(healthGroup, 3.3, 2.6, 2.3, { tank: true, vent: true });
+    healthGroup.add(mesh(new THREE.BoxGeometry(0.45, 0.72, 0.05), M_DARKFRAME, -0.02, 0.36, 1.34, false, false));
 
-    // Parked White & Red Ambulance
-    const ambGroup = new THREE.Group(); ambGroup.position.set(2.2, 0.04, -1.2); healthGroup.add(ambGroup);
-    ambGroup.add(mesh(roundedBox(1.0, 0.65, 1.8, 0.08), M_WHITE, 0, 0.35, 0));
-    ambGroup.add(mesh(new THREE.BoxGeometry(1.04, 0.12, 1.84), mat(0xDC2626, 0.5), 0, 0.35, 0));
-    ambGroup.add(mesh(new THREE.BoxGeometry(0.25, 0.10, 0.15), mat(0xDC2626, 0.3, 0, 0xDC2626, 1.5), 0, 0.72, 0.2)); // Flashing light
+    // Ambulance and its painted bay
+    root.add(mesh(new THREE.BoxGeometry(2.2, 0.02, 1.5), mat(0xE8E0CE, 0.9), 2.4, Y_WALK + 0.01, 9.0, false, true));
+    root.add(mesh(new THREE.BoxGeometry(2.2, 0.03, 0.05), whiteMarkMat, 2.4, Y_WALK + 0.02, 8.25, false, false));
+    root.add(mesh(new THREE.BoxGeometry(2.2, 0.03, 0.05), whiteMarkMat, 2.4, Y_WALK + 0.02, 9.75, false, false));
+    const ambGroup = new THREE.Group(); ambGroup.position.set(2.4, Y_WALK, 9.0); ambGroup.rotation.y = Math.PI / 2; root.add(ambGroup);
+    ambGroup.add(mesh(roundedBox(1.0, 0.70, 1.9, 0.08), M_WHITE, 0, 0.42, 0));
+    ambGroup.add(mesh(roundedBox(0.92, 0.42, 0.62, 0.06), M_WHITE, 0, 0.30, 1.10));
+    ambGroup.add(mesh(new THREE.BoxGeometry(0.94, 0.26, 0.05), healthGlass, 0, 0.42, 1.42, false, false));
+    ambGroup.add(mesh(new THREE.BoxGeometry(1.04, 0.14, 1.94), mat(0xDC2626, 0.5), 0, 0.42, 0, false, false));
+    ambGroup.add(mesh(new THREE.BoxGeometry(0.26, 0.10, 0.16), mat(0xDC2626, 0.3, 0, 0xDC2626, 1.6), 0, 0.80, 0.30, false, false));
+    ambGroup.add(mesh(new THREE.BoxGeometry(0.26, 0.10, 0.16), mat(0x2563EB, 0.3, 0, 0x2563EB, 1.6), 0, 0.80, 0.05, false, false));
+    [[-0.46, -0.60], [0.46, -0.60], [-0.46, 0.72], [0.46, 0.72]].forEach(function (w) {
+      ambGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 10), mat(0x0F172A, 0.9), w[0], 0.15, w[1], false, false));
+    });
+
+    const healthProxy = hitProxy(3.6, 2.8, 3.0);
+    healthProxy.userData = { id: "health_pharmacy", district: "civic", name: "מרפאה ופארם", amount: 0, trend: "שירותי רפואה ובריאות", shell: healthGroup };
+    healthGroup.add(healthProxy);
+    interactiveBuildings.push(healthProxy);
+    buildingRoots["health_pharmacy"] = healthGroup;
 
     // ────────────────────────────────────────────────────────────────
-    // 🏀 9. EDUCATION & BASKETBALL COURT (Hero Reference)
+    // 🏀 10. LEARNING CENTRE & SPORTS COURT
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(-7.8, 7.8, 5.8, 5.8);
+    addSidewalkBlock(-8.6, 8.75, 6.2, 6.7);
 
-    // "LEARN" Building (museum_curiosities)
-    const eduGroup = new THREE.Group(); eduGroup.position.set(-8.4, Y_WALK, 6.8); root.add(eduGroup);
-    const eduBody = mesh(roundedBox(2.6, 2.2, 2.6, 0.1), M_CREAM, 0, 1.1, 0); eduGroup.add(eduBody);
-    eduBody.userData = { id: "museum_curiosities", district: "civic", name: "מרכז למידה ומוזיאון", amount: 0, trend: "השכלה, קהילה וסקרנות" };
-    interactiveBuildings.push(eduBody); buildingRoots["museum_curiosities"] = eduGroup;
-
+    const eduGroup = new THREE.Group(); eduGroup.position.set(-9.7, Y_WALK, 8.0); root.add(eduGroup);
+    eduGroup.add(mesh(roundedBox(2.7, 2.4, 2.7, 0.10), M_CREAM, 0, 1.20, 0));
+    eduGroup.add(mesh(roundedBox(1.5, 1.1, 1.5, 0.08), mat(0xE7DCC8, 0.8), 1.9, 0.55, 0.3));
+    const eduGlass = glassMaterial(0xBFE3FA); registerGlass(eduGlass);
+    for (let i = -1; i <= 1; i++) {
+      eduGroup.add(mesh(new THREE.BoxGeometry(0.46, 0.62, 0.05), eduGlass, i * 0.85, 1.62, 1.38, false, false));
+      eduGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.66, 0.06), M_MULLION, i * 0.85, 1.62, 1.40, false, false));
+    }
     const learnSignMat = new THREE.MeshStandardMaterial({ map: signTex("LEARN", "#1E3A8A", "#FFFFFF", 36) });
-    eduBody.add(mesh(new THREE.BoxGeometry(1.8, 0.35, 0.05), learnSignMat, 0, 0.75, 1.33));
-    eduBody.add(mesh(new THREE.BoxGeometry(0.6, 0.8, 0.04), M_GLASS_BL, 0, -0.2, 1.33));
+    eduGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.34, 0.05), learnSignMat, 0, 0.95, 1.38, false, false));
+    eduGroup.add(mesh(new THREE.BoxGeometry(0.60, 0.86, 0.06), M_DARKFRAME, 0, 0.43, 1.38, false, false));
+    roofDeck(eduGroup, 2.7, 2.7, 2.4, { tank: false, vent: true, solar: true });
+    // Flagpole
+    eduGroup.add(mesh(new THREE.CylinderGeometry(0.03, 0.035, 1.5, 6), M_MULLION, -1.5, 0.75, 1.3, false, false));
+    eduGroup.add(mesh(new THREE.BoxGeometry(0.42, 0.26, 0.02), mat(0x2563EB, 0.7), -1.28, 1.36, 1.3, false, false));
 
-    // Outdoor Basketball Sports Court
-    const courtGroup = new THREE.Group(); courtGroup.position.set(-6.2, Y_WALK + 0.02, 8.8); root.add(courtGroup);
-    // Green base perimeter & Orange court key
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.8, 0.02, 2.2), mat(0x16A34A, 0.8), 0, 0, 0));
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.0, 0.025, 1.6), mat(0xEA580C, 0.8), 0, 0.005, 0));
-    // White court boundary
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.05, 0.03, 0.04), whiteMarkMat, 0, 0.01, -0.8));
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.05, 0.03, 0.04), whiteMarkMat, 0, 0.01,  0.8));
-    // Basketball Hoop
-    const bPost = mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 8), M_SLATE, 0, 0.6, -0.9);
-    bPost.add(mesh(new THREE.BoxGeometry(0.55, 0.35, 0.03), M_WHITE, 0, 0.5, 0.08));
-    bPost.add(mesh(new THREE.TorusGeometry(0.10, 0.02, 8, 12), mat(0xEA580C, 0.5), 0, 0.42, 0.2));
+    const eduProxy = hitProxy(3.0, 2.9, 3.0);
+    eduProxy.userData = { id: "museum_curiosities", district: "civic", name: "מרכז למידה ומוזיאון", amount: 0, trend: "השכלה, קהילה וסקרנות", shell: eduGroup };
+    eduGroup.add(eduProxy);
+    interactiveBuildings.push(eduProxy);
+    buildingRoots["museum_curiosities"] = eduGroup;
+
+    // Sports court
+    const courtGroup = new THREE.Group(); courtGroup.position.set(-7.1, Y_WALK + 0.02, 10.0); root.add(courtGroup);
+    courtGroup.add(mesh(new THREE.BoxGeometry(3.1, 0.02, 2.4), mat(0x1E8A4A, 0.85), 0, 0, 0, false, true));
+    courtGroup.add(mesh(new THREE.BoxGeometry(2.3, 0.025, 1.8), mat(0xE2652A, 0.85), 0, 0.006, 0, false, true));
+    courtGroup.add(mesh(new THREE.BoxGeometry(2.34, 0.03, 0.04), whiteMarkMat, 0, 0.014, -0.9, false, false));
+    courtGroup.add(mesh(new THREE.BoxGeometry(2.34, 0.03, 0.04), whiteMarkMat, 0, 0.014, 0.9, false, false));
+    courtGroup.add(mesh(new THREE.BoxGeometry(0.04, 0.03, 1.84), whiteMarkMat, -1.15, 0.014, 0, false, false));
+    courtGroup.add(mesh(new THREE.BoxGeometry(0.04, 0.03, 1.84), whiteMarkMat, 1.15, 0.014, 0, false, false));
+    const courtCircle = mesh(new THREE.TorusGeometry(0.42, 0.02, 6, 24), whiteMarkMat, 0, 0.014, 0, false, false);
+    courtCircle.rotation.x = -Math.PI / 2; courtGroup.add(courtCircle);
+    const bPost = mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.3, 8), M_SLATE, 0, 0.65, -1.05, false, false);
+    bPost.add(mesh(new THREE.BoxGeometry(0.60, 0.38, 0.03), M_WHITE, 0, 0.55, 0.10, false, false));
+    bPost.add(mesh(new THREE.TorusGeometry(0.11, 0.02, 8, 12), mat(0xEA580C, 0.5), 0, 0.45, 0.22, false, false));
     courtGroup.add(bPost);
+    // Fence posts around the court
+    for (let i = -1; i <= 1; i += 2) {
+      for (let x = -1.5; x <= 1.5; x += 1.5) {
+        courtGroup.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.75, 5), M_SLATE, x, 0.37, i * 1.25, false, false));
+      }
+      courtGroup.add(mesh(new THREE.BoxGeometry(3.1, 0.03, 0.03), M_SLATE, 0, 0.72, i * 1.25, false, false));
+    }
 
     // ────────────────────────────────────────────────────────────────
     // 🌿 10. NATURE RESERVE: LAKE, BRIDGE & WOODS (Hero Reference)
     // ────────────────────────────────────────────────────────────────
     // x=9.1, not 8.2: at 8.2 the lake spilled across the eastern road corridor.
-    const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.1, Y_GROUND, -7.5); root.add(reserveGroup);
+    const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.4, Y_GROUND, -8.4); root.add(reserveGroup);
 
     // Sandy shore so the water reads as a basin in the ground, not a slab laid on the grass
     const shoreGeo = new THREE.CylinderGeometry(3.05, 3.15, 0.10, 26);
@@ -741,7 +1321,7 @@
     // abandoned without it. Trees are scattered procedurally over whatever ground is not
     // road, pavement or lake, from a fixed seed so the layout is identical every launch.
     // ────────────────────────────────────────────────────────────────
-    const ISLAND_HALF = 13.2;
+    const ISLAND_HALF = 12.6;
 
     function isOpenGround(x, z) {
       if (Math.max(Math.abs(x), Math.abs(z)) > ISLAND_HALF) return false;
@@ -754,7 +1334,7 @@
         if (x > b.x0 - 0.9 && x < b.x1 + 0.9 && z > b.z0 - 0.9 && z < b.z1 + 0.9) return false;
       }
       // The nature reserve plants itself
-      if (Math.hypot(x - 9.1, z + 7.5) < 4.6) return false;
+      if (Math.hypot(x - 9.4, z + 8.4) < 4.6) return false;
       return true;
     }
 
@@ -764,7 +1344,7 @@
 
     const cityTrees = [];
     let _planted = 0, _tries = 0;
-    while (_planted < 40 && _tries++ < 6000) {
+    while (_planted < 32 && _tries++ < 6000) {
       const x = (rnd() * 2 - 1) * ISLAND_HALF;
       const z = (rnd() * 2 - 1) * ISLAND_HALF;
       if (!isOpenGround(x, z)) continue;
@@ -956,12 +1536,12 @@
     ], ["קופץ לקפה של בוקר ☕", "העיר הזו נראית מעולה! 🏙️"], ["Grabbing a morning coffee ☕", "This city is looking great! 🏙️"]);
 
     addCitizen(0x10B981, 0x334155, null, [
-      {x: -6.5, z: 5.5}, {x: -6.5, z: 7.5}, {x: -8.5, z: 7.5}, {x: -8.5, z: 5.5}
+      {x: -6.8, z: 6.5}, {x: -6.8, z: 8.6}, {x: -9.0, z: 8.6}, {x: -9.0, z: 6.5}
     ], ["בדרך למשחק כדורסל 🏀", "איזה מזג אוויר מושלם ☀️"], ["Off to a basketball game 🏀", "Perfect weather today ☀️"]);
 
     // Kept on the paved perimeter of the reserve — the old loop walked straight over the lake.
     addCitizen(0xEC4899, 0x1E293B, 0xF59E0B, [
-      {x: 6.0, z: -3.0}, {x: 6.0, z: -1.0}, {x: 9.6, z: -1.0}, {x: 9.6, z: -3.0}
+      {x: 7.0, z: -2.9}, {x: 7.0, z: -0.6}, {x: 10.8, z: -0.6}, {x: 10.8, z: -2.9}
     ], ["טיול שליו בשמורה 🌿", "המים באגם כל כך שלווים 🦆"], ["A quiet walk by the reserve 🌿", "The lake is so calm today 🦆"]);
 
     // ────────────────────────────────────────────────────────────────
@@ -973,12 +1553,12 @@
       // Positions are checked against the lake, the shore disc, the road corridors, the
       // building footprints and the street lamps — a pad hidden under any of those can
       // never be tapped, and tapping is the only way into the customiser.
-      { id: "slot_park_center",     x:  8.6, z: -11.2, y: Y_GRASS, district: "savings"  },
-      { id: "slot_park_overlook",   x: 12.7, z:  -6.6, y: Y_GRASS, district: "savings"  },
-      { id: "slot_food_plaza",      x:  9.4, z:   1.0, y: Y_WALK,  district: "food"     },
-      { id: "slot_shop_promenade",  x: -6.3, z:   1.2, y: Y_WALK,  district: "shopping" },
-      { id: "slot_housing_terrace", x:  3.3, z:  -6.1, y: Y_WALK,  district: "housing"  },
-      { id: "slot_tech_plaza",      x: -6.4, z:  -1.3, y: Y_WALK,  district: "shopping" }
+      { id: "slot_park_center",     x:  8.4, z: -11.8, y: Y_GRASS, district: "savings"  },
+      { id: "slot_park_overlook",   x: 12.1, z:  -6.0, y: Y_GRASS, district: "savings"  },
+      { id: "slot_food_plaza",      x: 10.6, z:   1.7, y: Y_WALK,  district: "food"     },
+      { id: "slot_shop_promenade",  x: -7.4, z:   2.9, y: Y_WALK,  district: "shopping" },
+      { id: "slot_housing_terrace", x:  4.6, z:  -8.0, y: Y_WALK,  district: "housing"  },
+      { id: "slot_tech_plaza",      x: -7.4, z:  -2.9, y: Y_WALK,  district: "shopping" }
     ];
 
     const interactiveSlots = [];
@@ -1520,22 +2100,25 @@
     }
 
     function applyBuildingActivity() {
-      let max = 0;
-      for (const k in buildingAmounts) {
-        if (k === "savings_sanctuary") continue; // savings is the reserve, not a shopfront
-        if (buildingAmounts[k] > max) max = buildingAmounts[k];
-      }
+      let lit = 0, counted = 0;
       for (let i = 0; i < interactiveBuildings.length; i++) {
         const b = interactiveBuildings[i];
         const id = b.userData && b.userData.id;
         if (!id || id === "savings_sanctuary") continue;
         const amt = buildingAmounts[id] || 0;
-        // Square root, not linear: one 3,000 rent payment must not flatten every cafe.
-        const share = max > 0 ? Math.sqrt(Math.min(1, amt / max)) : 0;
-        b.userData.activity = share;
-        b.userData.targetScaleY = 1 + share * 0.20;
+        const base = CATEGORY_BASELINES[id] || 350;
+        const ratio = Math.min(2.5, amt / base);
+        b.userData.activity = Math.min(1, ratio);
+        // Each category is judged against its own baseline, so a 3,600 rent payment and a
+        // 250 coffee habit can both read as "a normal month" instead of one dwarfing the other.
+        const rec = cityBuildings[id];
+        if (rec) setBuildingTier(rec, tierFor(id, amt));
+        lit += Math.min(1, ratio); counted++;
       }
+      // Windows warm up as the city gets busier — subtle, never a neon sign.
+      cityGlowTarget = counted > 0 ? Math.min(0.34, (lit / counted) * 0.34) : 0;
     }
+    let cityGlowTarget = 0, cityGlow = 0;
 
     // ────────────────────────────────────────────────────────────────
     // 🔄 14. DATA BRIDGE: window.updateDioramaData (Swift Inbound Contract)
@@ -1629,7 +2212,7 @@
 
     // A parked van outside the work complex whenever transactions are waiting to be sorted.
     const deliveryVan = createCar(0xF59E0B, false, false);
-    deliveryVan.position.set(6.0, Y_WALK, 4.6);
+    deliveryVan.position.set(6.9, Y_WALK, 5.2);
     deliveryVan.rotation.y = Math.PI / 2;
     deliveryVan.visible = false;
     root.add(deliveryVan);
@@ -1672,32 +2255,27 @@
       placeCam();
       applyFrustum();
 
-      // Buildings settle toward the height their spending earns them.
-      for (let i = 0; i < interactiveBuildings.length; i++) {
-        const b = interactiveBuildings[i];
-        const want = b.userData.targetScaleY;
-        if (want === undefined) continue;
-        const cur = b.userData.scaleY === undefined ? 1 : b.userData.scaleY;
-        b.userData.scaleY = cur + (want - cur) * Math.min(1, dt * 3.0);
-      }
+      // Window glow follows how busy the city is
+      cityGlow += (cityGlowTarget - cityGlow) * Math.min(1, dt * 1.6);
+      for (let i = 0; i < litGlass.length; i++) litGlass[i].emissiveIntensity = cityGlow;
 
-      // Tap pulse, applied on top of the spending height rather than fighting it.
+      // Tap pulse. The tap target is an invisible proxy box, so the squash has to be applied
+      // to the shell it stands for — scaling the proxy would move the hit area, not the building.
       for (let i = buildingPulses.length - 1; i >= 0; i--) {
         const p = buildingPulses[i];
         p.t += dt;
         const k = Math.min(1, p.t / 0.42);
-        p.amp = Math.sin(k * Math.PI) * (1 - k) * 0.18;
-        if (k >= 1) { p.amp = 0; buildingPulses.splice(i, 1); }
-      }
-      for (let i = 0; i < interactiveBuildings.length; i++) {
-        const b = interactiveBuildings[i];
-        if (b === lakeMesh) continue;   // the reserve is scaled by its own fill logic
-        const base = b.userData.scaleY === undefined ? 1 : b.userData.scaleY;
-        let amp = 0;
-        for (let j = 0; j < buildingPulses.length; j++) if (buildingPulses[j].obj === b) amp = buildingPulses[j].amp || 0;
-        b.scale.y = base * (1 + amp);
-        b.scale.x = 1 - amp * 0.3;
-        b.scale.z = 1 - amp * 0.3;
+        p.amp = Math.sin(k * Math.PI) * (1 - k) * 0.16;
+        const target = p.obj.userData && p.obj.userData.shell ? p.obj.userData.shell : null;
+        if (target) {
+          target.scale.y = 1 + p.amp;
+          target.scale.x = 1 - p.amp * 0.28;
+          target.scale.z = 1 - p.amp * 0.28;
+        }
+        if (k >= 1) {
+          if (target) target.scale.set(1, 1, 1);
+          buildingPulses.splice(i, 1);
+        }
       }
 
       // Selection ring under the last tapped building
@@ -1824,6 +2402,7 @@
       buildingRoots: buildingRoots, interactiveBuildings: interactiveBuildings,
       materials: { water: M_WATER, grass: M_GRASS_LIME, pine: M_PINE, leaf: M_LEAF },
       plantings: parkPlantings,
+      buildings: cityBuildings,
       slots: slotItems,
       enrichments: function () { return unlockedEnrichments; },
       camModes: CAM_MODES,

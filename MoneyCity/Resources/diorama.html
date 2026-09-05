@@ -162,15 +162,15 @@
       // lookX/lookZ are offset because the built area is not centred on the island: the
       // reserve sits north-east and the shops south-west, so a camera aimed at 0,0 pushes
       // the reserve off the right edge of a phone screen.
-      city:     { az: Math.PI * 0.25, el: 0.58, zoom: 1.24, lookX: 0.75, lookY: 0.6, lookZ: -0.75 },
+      city:     { az: Math.PI * 0.25, el: 0.58, zoom: 1.18, lookX: 0.3,  lookY: 0.6, lookZ: -0.3 },
       // District look-points sit on the actual block centres, and close enough that the
       // district fills the screen — 1.85 barely moved the camera off the city view.
-      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 2.20, lookX: 9.0,  lookY: 0.6, lookZ: -0.6 },
-      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.3, lookY: 0.6, lookZ: -0.2 },
-      shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.3, lookY: 0.6, lookZ: -0.2 },
-      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: -0.6, lookY: 0.6, lookZ: -9.0 },
-      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.10, lookX: 9.4,  lookY: 0.4, lookZ: -8.4 },
-      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 2.00, lookX: 0.2,  lookY: 0.9, lookZ: 0.2 }
+      food:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 9.2,  lookY: 0.6, lookZ: 0 },
+      shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
+      shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
+      housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 0,    lookY: 0.6, lookZ: -9.2 },
+      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 9.4,  lookY: 0.4, lookZ: -9.4 },
+      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: -0.4 }
     };
 
     let currentMode = "city";
@@ -273,6 +273,67 @@
       o.castShadow = cast !== false; o.receiveShadow = rec !== false; return o;
     }
 
+    // Static scenery that never moves or toggles is merged into one mesh per material at
+    // the end of construction. Road markings, kerbs and lamp posts alone were ~150 draw
+    // calls a frame; this build has no BufferGeometryUtils, so the concatenation is here.
+    const mergeQueue = [];
+    function queueForMerge(m) { mergeQueue.push(m); return m; }
+
+    function mergeStaticScenery() {
+      if (!mergeQueue.length) return 0;
+      root.updateMatrixWorld(true);
+      const byMaterial = new Map();
+      for (let i = 0; i < mergeQueue.length; i++) {
+        const m = mergeQueue[i];
+        if (!m.parent || !m.geometry) continue;
+        if (!byMaterial.has(m.material)) byMaterial.set(m.material, []);
+        byMaterial.get(m.material).push(m);
+      }
+      let saved = 0;
+      byMaterial.forEach(function (meshes, material) {
+        if (meshes.length < 4) return;
+        const parts = [];
+        let total = 0, hasUV = true;
+        for (let i = 0; i < meshes.length; i++) {
+          let g = meshes[i].geometry;
+          g = g.index ? g.toNonIndexed() : g.clone();
+          g.applyMatrix4(meshes[i].matrixWorld);
+          if (!g.attributes.uv) hasUV = false;
+          total += g.attributes.position.count;
+          parts.push(g);
+        }
+        const pos = new Float32Array(total * 3);
+        const nrm = new Float32Array(total * 3);
+        const uvs = hasUV ? new Float32Array(total * 2) : null;
+        let o3 = 0, o2 = 0;
+        for (let i = 0; i < parts.length; i++) {
+          const g = parts[i];
+          pos.set(g.attributes.position.array, o3);
+          if (g.attributes.normal) nrm.set(g.attributes.normal.array, o3);
+          if (uvs && g.attributes.uv) uvs.set(g.attributes.uv.array, o2);
+          o3 += g.attributes.position.count * 3;
+          o2 += g.attributes.position.count * 2;
+          g.dispose();
+        }
+        const merged = new THREE.BufferGeometry();
+        merged.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        merged.setAttribute("normal", new THREE.BufferAttribute(nrm, 3));
+        if (uvs) merged.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+        const one = new THREE.Mesh(merged, material);
+        one.castShadow = false;
+        one.receiveShadow = true;
+        one.matrixAutoUpdate = false;
+        scene.add(one);
+        for (let i = 0; i < meshes.length; i++) {
+          meshes[i].parent.remove(meshes[i]);
+          meshes[i].geometry.dispose();
+        }
+        saved += meshes.length - 1;
+      });
+      mergeQueue.length = 0;
+      return saved;
+    }
+
     // ========== SHAPE HELPERS ==========
     function roundedBox(w, h, d, r) {
       r = Math.min(r, Math.min(w, d) / 2 - 0.01);
@@ -372,57 +433,70 @@
     const Y_WALK   = 0.14;  // sidewalk top, and therefore the base of every building
 
     // Drop shadow under island
-    const shadowMesh = mesh(new THREE.PlaneGeometry(32, 32), new THREE.MeshBasicMaterial({
+    const shadowMesh = mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({
       color: C(0x0F172A), transparent: true, opacity: 0.18, depthWrite: false
     }), 0, -1.25, 0, false, false);
     shadowMesh.rotation.x = -Math.PI / 2;
     root.add(shadowMesh);
 
     // Warm Sandy Earthy Bevel Side Plinth
-    const earthBase = mesh(roundedBox(27.4, 1.10, 27.4, 1.2), mat(0xC4A46C, 0.90), 0, -0.62, 0, false, true);
+    const earthBase = mesh(roundedBox(26.0, 1.10, 26.0, 1.2), mat(0xC4A46C, 0.90), 0, -0.62, 0, false, true);
     root.add(earthBase);
 
     // Lush Green Landscape Deck (The Main Surface)
-    const islandDeck = mesh(roundedBox(27.0, 0.16, 27.0, 1.1), M_GRASS_LIME, 0, Y_GRASS - 0.08, 0, false, true);
+    const islandDeck = mesh(roundedBox(25.6, 0.16, 25.6, 1.1), M_GRASS_LIME, 0, Y_GRASS - 0.08, 0, false, true);
     root.add(islandDeck);
 
     // ────────────────────────────────────────────────────────────────
-    // 🛣️ 2. THE URBAN ROAD SPINE & SIDEWALKS (Hero Reference)
+    // 🛣️ 2. STREET GRID
+    // The road ring sits at ±6.0 so each district gets a block it actually fits in.
+    // At ±4.2 the blocks had to be drawn straight over the road arms to hold their
+    // buildings, which quietly buried half the street network under the pavement.
     // ────────────────────────────────────────────────────────────────
     const whiteMarkMat = new THREE.MeshBasicMaterial({ color: C(0xFFFFFF) });
     const RW = 2.4;
+    const ROAD_AT = 5.6;      // centreline of each arm
+    const ROAD_LEN = 23.6;    // long enough to reach the corner districts
+    const BLOCK_EDGE = ROAD_AT - RW / 2;  // 4.8 — where a block may start
 
-    // Road Grid: 4 Loop Segments organizing the quadrants
-    // North Road (Z = -4.2)
-    root.add(mesh(new THREE.BoxGeometry(22.0, 0.06, RW), M_ASPHALT, 0, Y_ROAD, -4.2, false, true));
-    // South Road (Z = 4.2)
-    root.add(mesh(new THREE.BoxGeometry(22.0, 0.06, RW), M_ASPHALT, 0, Y_ROAD, 4.2, false, true));
-    // West Road (X = -4.2)
-    root.add(mesh(new THREE.BoxGeometry(RW, 0.06, 22.0), M_ASPHALT, -4.2, Y_ROAD, 0, false, true));
-    // East Road (X = 4.2)
-    root.add(mesh(new THREE.BoxGeometry(RW, 0.06, 22.0), M_ASPHALT, 4.2, Y_ROAD, 0, false, true));
+    root.add(mesh(new THREE.BoxGeometry(ROAD_LEN, 0.06, RW), M_ASPHALT, 0, Y_ROAD, -ROAD_AT, false, true));
+    root.add(mesh(new THREE.BoxGeometry(ROAD_LEN, 0.06, RW), M_ASPHALT, 0, Y_ROAD,  ROAD_AT, false, true));
+    root.add(mesh(new THREE.BoxGeometry(RW, 0.06, ROAD_LEN), M_ASPHALT, -ROAD_AT, Y_ROAD, 0, false, true));
+    root.add(mesh(new THREE.BoxGeometry(RW, 0.06, ROAD_LEN), M_ASPHALT,  ROAD_AT, Y_ROAD, 0, false, true));
 
-    // Zebra Crosswalks at the 4 main intersections
+    // Lane dashes down the middle of each arm, skipping the intersections
+    function laneDashes(along, fixed, horizontal) {
+      for (let t = -11.0; t <= 11.0; t += 1.6) {
+        if (Math.abs(Math.abs(t) - ROAD_AT) < 1.6) continue;   // keep junctions clear
+        root.add(queueForMerge(mesh(new THREE.BoxGeometry(horizontal ? 0.75 : 0.10, 0.005, horizontal ? 0.10 : 0.75),
+          whiteMarkMat, horizontal ? t : fixed, Y_ROAD + 0.035, horizontal ? fixed : t, false, false)));
+      }
+    }
+    laneDashes(0, -ROAD_AT, true);
+    laneDashes(0,  ROAD_AT, true);
+    laneDashes(0, -ROAD_AT, false);
+    laneDashes(0,  ROAD_AT, false);
+
     function addCrosswalk(cx, cz, isVert) {
       const g = new THREE.Group(); g.position.set(cx, Y_ROAD + 0.035, cz); root.add(g);
       for (let i = 0; i < 5; i++) {
         const off = -0.9 + i * 0.45;
-        if (isVert) {
-          g.add(mesh(new THREE.BoxGeometry(0.24, 0.005, 1.1), whiteMarkMat, off, 0, 0));
-        } else {
-          g.add(mesh(new THREE.BoxGeometry(1.1, 0.005, 0.24), whiteMarkMat, 0, 0, off));
-        }
+        if (isVert) g.add(queueForMerge(mesh(new THREE.BoxGeometry(0.24, 0.005, 1.1), whiteMarkMat, off, 0, 0, false, false)));
+        else        g.add(queueForMerge(mesh(new THREE.BoxGeometry(1.1, 0.005, 0.24), whiteMarkMat, 0, 0, off, false, false)));
       }
     }
-    addCrosswalk(-4.2, -1.2, true);
-    addCrosswalk( 4.2, -1.2, true);
-    addCrosswalk( 0.0, -4.2, false);
-    addCrosswalk( 0.0,  4.2, false);
+    addCrosswalk(-ROAD_AT, -3.1, true);
+    addCrosswalk( ROAD_AT, -3.1, true);
+    addCrosswalk(-ROAD_AT,  3.1, true);
+    addCrosswalk( ROAD_AT,  3.1, true);
+    addCrosswalk(-3.1, -ROAD_AT, false);
+    addCrosswalk( 3.1, -ROAD_AT, false);
+    addCrosswalk(-3.1,  ROAD_AT, false);
+    addCrosswalk( 3.1,  ROAD_AT, false);
 
-    // Raised Pedestrian Sidewalk Pavers on all building blocks
+    // Raised pedestrian pavers. Every block registers its footprint so the greenery pass
+    // can scatter trees over open grass only.
     const paverMat = new THREE.MeshStandardMaterial({ color: C(0xFAF5EE), map: sidewalkPaverTex(), roughness: 0.85 });
-    // Every paved block registers its footprint here so the greenery pass further down can
-    // scatter trees over open grass only, instead of a hand-maintained coordinate list.
     const pavedBlocks = [];
     function addSidewalkBlock(cx, cz, w, d) {
       // -0.09 puts the paver's real top (centre + h/2 + bevel) exactly at Y_WALK.
@@ -430,6 +504,15 @@
       root.add(sb);
       pavedBlocks.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2 });
       return sb;
+    }
+
+    // Kerb line so the pavement reads as raised rather than painted on
+    function addKerb(cx, cz, w, d) {
+      const t = 0.09;
+      root.add(queueForMerge(mesh(new THREE.BoxGeometry(w + t, 0.13, t), M_WARM_STONE, cx, Y_WALK - 0.07, cz - d / 2, false, false)));
+      root.add(queueForMerge(mesh(new THREE.BoxGeometry(w + t, 0.13, t), M_WARM_STONE, cx, Y_WALK - 0.07, cz + d / 2, false, false)));
+      root.add(queueForMerge(mesh(new THREE.BoxGeometry(t, 0.13, d + t), M_WARM_STONE, cx - w / 2, Y_WALK - 0.07, cz, false, false)));
+      root.add(queueForMerge(mesh(new THREE.BoxGeometry(t, 0.13, d + t), M_WARM_STONE, cx + w / 2, Y_WALK - 0.07, cz, false, false)));
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -590,6 +673,17 @@
       return g;
     }
 
+    // Street bench, used on the plaza and in the park
+    function addBenchAt(bx, bz, rotY, y) {
+      const g = new THREE.Group(); g.position.set(bx, y === undefined ? Y_WALK : y, bz); g.rotation.y = rotY || 0;
+      g.add(mesh(new THREE.BoxGeometry(1.05, 0.07, 0.32), M_WOOD, 0, 0.30, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(1.05, 0.28, 0.06), M_WOOD, 0, 0.45, -0.13, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.07, 0.28, 0.28), M_DARKFRAME, -0.44, 0.15, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.07, 0.28, 0.28), M_DARKFRAME,  0.44, 0.15, 0, false, false));
+      root.add(g);
+      return g;
+    }
+
     // ---- ground-level props ----
     function planterBox(parent, x, z, kind) {
       const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
@@ -699,7 +793,10 @@
     // shop, a branch with a storey above it, or a full block. The building is the month.
     // ────────────────────────────────────────────────────────────────
     const CATEGORY_BASELINES = {
-      food_coffee: 900,        // the cafe stands for the whole food district
+      food_super: 900,         // the weekly shop is the largest food line
+      food_bistro: 450,
+      food_coffee: 200,        // 60 is a stall, 600 is a habit
+      food_wolt: 250,
       shop_boutique: 450,
       shop_tech: 350,
       shop_travel: 900,
@@ -751,6 +848,7 @@
       // ---- tier 0 ----
       const plot = new THREE.Group(); g.add(plot);
       hoardingPlot(plot, w, d);
+      makeCrew(plot, w, d);
 
       // ---- tier 1 ----
       const stall = new THREE.Group(); g.add(stall);
@@ -822,6 +920,11 @@
         dressing.push({ obj: holder, from: pr.from === undefined ? 2 : pr.from });
       });
 
+      // What this building actually is, beyond a sign: mannequins, crates, a dish, scooters.
+      if (typeof CHARACTER !== "undefined" && CHARACTER[cfg.id]) {
+        try { CHARACTER[cfg.id](ground, w, d); } catch (e) { console.warn("character " + cfg.id, e); }
+      }
+
       const proxy = hitProxy(w + 0.2, FLOOR_H * 3.2, d + 0.2);
       proxy.userData = { id: cfg.id, district: cfg.district, name: cfg.name, amount: 0, trend: cfg.trend };
       g.add(proxy);
@@ -830,7 +933,7 @@
 
       const rec = {
         id: cfg.id, group: g, shell: shell, plot: plot, stall: stall,
-        floors: floors, roofs: roofs, dressing: dressing, proxy: proxy,
+        floors: floors, roofs: roofs, dressing: dressing, proxy: proxy, ground: ground,
         maxTier: cfg.maxTier === undefined ? 4 : cfg.maxTier,
         minTier: cfg.minTier === undefined ? 0 : cfg.minTier, tier: -1
       };
@@ -840,51 +943,409 @@
       return rec;
     }
 
+    // Things that are mid-build: newly revealed storeys grow out of the ground so the
+    // moment a category crosses a threshold is something you can actually see happen.
+    const risingParts = [];
+    function raise(obj) {
+      if (!obj) return;
+      obj.scale.set(1, 0.02, 1);
+      risingParts.push(obj);
+    }
+    function stepRising(dt) {
+      for (let i = risingParts.length - 1; i >= 0; i--) {
+        const o = risingParts[i];
+        const y = o.scale.y + (1 - o.scale.y) * Math.min(1, dt * 3.2);
+        o.scale.set(1, y, 1);
+        if (y > 0.995) { o.scale.set(1, 1, 1); risingParts.splice(i, 1); }
+      }
+    }
+
     function setBuildingTier(rec, tier) {
       tier = Math.max(rec.minTier || 0, Math.min(rec.maxTier, tier));
       if (rec.tier === tier) return;
+      const previous = rec.tier;
       rec.tier = tier;
       rec.plot.visible = (tier === 0);
       rec.stall.visible = (tier === 1);
       rec.shell.visible = (tier >= 2);
       // storeys above ground: tier 2 -> 0, tier 3 -> 1, tier 4 -> 2
       const upper = Math.max(0, tier - 2);
-      rec.floors.forEach(function (f, i) { f.visible = i < upper; });
+      rec.floors.forEach(function (f, i) {
+        const want = i < upper;
+        if (want && !f.visible && previous >= 0) raise(f);
+        f.visible = want;
+      });
       rec.roofs.forEach(function (r, i) { r.visible = (i === upper); });
       rec.dressing.forEach(function (dr) { dr.obj.visible = tier >= dr.from; });
+      // Going from a plot or a stall to a real building is worth showing.
+      if (previous >= 0 && tier > previous && tier >= 2) raise(rec.shell);
     }
+
+
+    // ────────────────────────────────────────────────────────────────
+    // 👥 3c. PEOPLE, COURIERS AND BUILDERS
+    // The v1 map was alive — walkers with dogs, Wolt riders, a busker, builders on the
+    // empty plots. Without them the island reads as an architectural model rather than
+    // a place where money is being spent.
+    // ────────────────────────────────────────────────────────────────
+    const M_SKIN = mat(0xF6C88A, 0.82);
+    const M_SKIN2 = mat(0xC98C56, 0.82);
+
+    function makeFigure(opts) {
+      opts = opts || {};
+      const fig = new THREE.Group();
+      const shirt = mat(opts.shirt || 0x3B82F6, 0.76);
+      const pants = mat(opts.pants || 0x1E293B, 0.86);
+      const skin = opts.dark ? M_SKIN2 : M_SKIN;
+
+      const torso = new THREE.Group(); torso.position.y = 0.34; fig.add(torso);
+      torso.add(mesh(roundedBox(0.21, 0.27, 0.14, 0.03), shirt, 0, 0, 0, false, false));
+      const head = mesh(new THREE.SphereGeometry(0.077, 10, 8), skin, 0, 0.22, 0, false, false);
+      torso.add(head);
+      if (opts.hair !== false) {
+        torso.add(mesh(new THREE.SphereGeometry(0.083, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+          mat(opts.hair || 0x3B2412, 0.9), 0, 0.235, 0, false, false));
+      }
+      if (opts.cap) {
+        torso.add(mesh(new THREE.SphereGeometry(0.088, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), mat(opts.cap, 0.5), 0, 0.245, 0, false, false));
+        torso.add(mesh(new THREE.BoxGeometry(0.15, 0.02, 0.09), mat(opts.cap, 0.5), 0, 0.235, 0.10, false, false));
+      }
+      if (opts.bag) {
+        torso.add(mesh(roundedBox(0.17, 0.20, 0.09, 0.03), mat(opts.bag, 0.6), 0, 0.02, -0.11, false, false));
+      }
+      // Arms
+      torso.add(mesh(roundedBox(0.055, 0.22, 0.055, 0.02), shirt, -0.135, -0.02, 0, false, false));
+      torso.add(mesh(roundedBox(0.055, 0.22, 0.055, 0.02), shirt,  0.135, -0.02, 0, false, false));
+
+      const legL = mesh(roundedBox(0.072, 0.24, 0.072, 0.02), pants, -0.052, 0.12, 0, false, false);
+      const legR = mesh(roundedBox(0.072, 0.24, 0.072, 0.02), pants,  0.052, 0.12, 0, false, false);
+      fig.add(legL, legR);
+      fig.userData = { legL: legL, legR: legR, torso: torso };
+      return fig;
+    }
+
+    function makeDog(color) {
+      const g = new THREE.Group();
+      const m = mat(color || 0xD9A441, 0.85);
+      g.add(mesh(roundedBox(0.13, 0.13, 0.30, 0.05), m, 0, 0.19, 0, false, false));
+      g.add(mesh(new THREE.SphereGeometry(0.085, 8, 8), m, 0, 0.29, 0.18, false, false));
+      g.add(mesh(roundedBox(0.045, 0.10, 0.03, 0.01), mat(0x8A5A20, 0.85), -0.06, 0.35, 0.17, false, false));
+      g.add(mesh(roundedBox(0.045, 0.10, 0.03, 0.01), mat(0x8A5A20, 0.85),  0.06, 0.35, 0.17, false, false));
+      const tail = mesh(new THREE.CylinderGeometry(0.018, 0.024, 0.18, 5), m, 0, 0.26, -0.17, false, false);
+      tail.rotation.x = -0.9; g.add(tail);
+      [[-0.05, 0.10], [0.05, 0.10], [-0.05, -0.10], [0.05, -0.10]].forEach(function (p) {
+        g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.14, 5), m, p[0], 0.07, p[1], false, false));
+      });
+      return g;
+    }
+
+    // Delivery rider. The city's most recognisable everyday spend after the supermarket.
+    function makeCourier(color) {
+      const g = new THREE.Group();
+      const body = mat(color || 0x00C2E8, 0.35, 0.35);
+      g.add(mesh(roundedBox(0.95, 0.20, 0.30, 0.08), body, 0, 0.22, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.48, 0.04, 0.24), mat(0x18181B, 0.9), 0, 0.33, 0, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.58, 6), mat(0x1E293B, 0.5), 0.34, 0.50, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.035, 0.035, 0.28), mat(0x18181B, 0.8), 0.34, 0.72, 0, false, false));
+      g.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_WHITE, 0.38, 0.58, 0, false, false));
+      // Rider and the insulated box
+      g.add(mesh(new THREE.CylinderGeometry(0.10, 0.13, 0.40, 8), body, -0.06, 0.50, 0, false, false));
+      g.add(mesh(new THREE.SphereGeometry(0.12, 10, 8), mat(0x0E7490, 0.4, 0.4), -0.06, 0.78, 0, false, false));
+      g.add(mesh(roundedBox(0.30, 0.32, 0.30, 0.04), body, -0.30, 0.58, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.20, 0.20, 0.02), M_WHITE, -0.30, 0.58, 0.16, false, false));
+      [[-0.36], [0.36]].forEach(function (p) {
+        const wh = mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.08, 12), mat(0x09090B, 0.9), p[0], 0.145, 0, false, false);
+        wh.rotation.x = Math.PI / 2; g.add(wh);
+      });
+      return g;
+    }
+
+    function makeWorker(vest) {
+      const g = new THREE.Group();
+      const vestMat = mat(vest || 0xF97316, 0.7);
+      const torso = new THREE.Group(); torso.position.y = 0.36; g.add(torso);
+      torso.add(mesh(roundedBox(0.23, 0.27, 0.14, 0.03), vestMat, 0, 0, 0, false, false));
+      torso.add(mesh(new THREE.BoxGeometry(0.24, 0.045, 0.15), mat(0xE2E8F0, 0.25, 0.7), 0, 0.02, 0, false, false));
+      torso.add(mesh(new THREE.SphereGeometry(0.075, 10, 8), M_SKIN, 0, 0.22, 0, false, false));
+      torso.add(mesh(new THREE.SphereGeometry(0.089, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), mat(0xFACC15, 0.35, 0.15), 0, 0.235, 0, false, false));
+      torso.add(mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.014, 12), mat(0xFACC15, 0.35, 0.15), 0, 0.225, 0, false, false));
+      const armL = mesh(roundedBox(0.055, 0.22, 0.055, 0.02), vestMat, -0.14, -0.02, 0, false, false);
+      const armR = mesh(roundedBox(0.055, 0.22, 0.055, 0.02), vestMat,  0.14, -0.02, 0, false, false);
+      torso.add(armL, armR);
+      g.add(mesh(roundedBox(0.072, 0.24, 0.072, 0.02), mat(0x1E293B, 0.86), -0.052, 0.12, 0, false, false));
+      g.add(mesh(roundedBox(0.072, 0.24, 0.072, 0.02), mat(0x1E293B, 0.86),  0.052, 0.12, 0, false, false));
+      g.userData = { armL: armL, armR: armR };
+      return g;
+    }
+
+    function makePigeon() {
+      const g = new THREE.Group();
+      g.add(mesh(new THREE.SphereGeometry(0.055, 8, 6), mat(0x9AA5B1, 0.85), 0, 0.055, 0, false, false));
+      g.add(mesh(new THREE.SphereGeometry(0.032, 8, 6), mat(0x7C8794, 0.85), 0, 0.10, 0.05, false, false));
+      const beak = mesh(new THREE.ConeGeometry(0.014, 0.04, 5), M_GOLD, 0, 0.10, 0.085, false, false);
+      beak.rotation.x = Math.PI / 2; g.add(beak);
+      return g;
+    }
+
+    // Builders that stand on a plot while it has not been built on yet.
+    const workCrews = [];
+    function makeCrew(parent, w, d) {
+      const g = new THREE.Group(); parent.add(g);
+      const w1 = makeWorker(0xF97316); w1.position.set(-w * 0.22, 0, d * 0.20); w1.rotation.y = 0.6; g.add(w1);
+      const w2 = makeWorker(0xFACC15); w2.position.set(w * 0.20, 0, -d * 0.10); w2.rotation.y = -1.1; g.add(w2);
+      // Cement mixer
+      const mx = new THREE.Group(); mx.position.set(-w * 0.30, 0, -d * 0.24); g.add(mx);
+      mx.add(mesh(new THREE.BoxGeometry(0.30, 0.05, 0.24), M_DARKFRAME, 0, 0.05, 0, false, false));
+      mx.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.22, 6), M_DARKFRAME, 0, 0.16, 0, false, false));
+      const drum = mesh(new THREE.CylinderGeometry(0.13, 0.09, 0.22, 10), mat(0xF59E0B, 0.6), 0, 0.34, 0, false, false);
+      drum.rotation.z = 0.5; mx.add(drum);
+      // Wheelbarrow
+      g.add(mesh(roundedBox(0.26, 0.12, 0.20, 0.03), mat(0x60A5FA, 0.6), w * 0.32, 0.14, d * 0.24, false, false));
+      g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 8), M_DARKFRAME, w * 0.32, 0.05, d * 0.24 + 0.14, false, false));
+      workCrews.push({ w1: w1, w2: w2, drum: drum, t: Math.random() * 6 });
+      return g;
+    }
+
+    function stepCrews(dt, now) {
+      for (let i = 0; i < workCrews.length; i++) {
+        const c = workCrews[i];
+        if (!c.w1.parent || !c.w1.visible) continue;
+        c.t += dt;
+        const swing = Math.sin(now * 0.005 + i) * 0.9;
+        if (c.w1.userData.armR) c.w1.userData.armR.rotation.x = -0.5 + swing * 0.6;
+        if (c.w2.userData.armL) c.w2.userData.armL.rotation.x = -0.3 - swing * 0.5;
+        c.drum.rotation.y += dt * 1.6;
+      }
+    }
+
+
+    // Vehicle factory, defined before the districts because the transport yard parks a
+    // bus and a taxi of its own.
+    function createCar(color, isBus, isTaxi) {
+      const g = new THREE.Group();
+      const bMat = mat(color, 0.5, 0.15);
+      const wMat = mat(0x0F172A, 0.9);
+      if (isBus) {
+        g.add(mesh(roundedBox(1.0, 0.8, 2.4, 0.1), bMat, 0, 0.48, 0));
+        g.add(mesh(new THREE.BoxGeometry(1.04, 0.3, 2.1), M_GLASS_BL, 0, 0.55, 0));
+        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat, -0.5, 0.16, -0.7));
+        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat,  0.5, 0.16, -0.7));
+        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat, -0.5, 0.16,  0.7));
+        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat,  0.5, 0.16,  0.7));
+      } else {
+        g.add(mesh(roundedBox(0.8, 0.38, 1.5, 0.08), bMat, 0, 0.28, 0));
+        g.add(mesh(roundedBox(0.7, 0.32, 0.85, 0.06), M_GLASS_BL, 0, 0.55, -0.05));
+        if (isTaxi) g.add(mesh(new THREE.BoxGeometry(0.26, 0.08, 0.14), M_WHITE, 0, 0.75, -0.05));
+        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat, -0.42, 0.13, -0.45));
+        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat,  0.42, 0.13, -0.45));
+        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat, -0.42, 0.13,  0.45));
+        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat,  0.42, 0.13,  0.45));
+      }
+      return g;
+    }
+
+
+    // ────────────────────────────────────────────────────────────────
+    // 🎭 3d. WHAT EACH BUILDING IS
+    // A sign alone does not tell you a shop sells clothes. Each building gets props that
+    // name it at a glance: mannequins, produce crates, parked delivery scooters, a
+    // satellite dish, a transformer. Local +z is the front before the group is rotated.
+    // ────────────────────────────────────────────────────────────────
+    const CHARACTER = {
+      food_super: function (g, w, d) {
+        crateStack(g, -w * 0.34, d / 2 + 0.42);
+        crateStack(g,  w * 0.30, d / 2 + 0.40);
+        // Shopping trolley
+        const t = new THREE.Group(); t.position.set(w * 0.05, 0, d / 2 + 0.55); t.rotation.y = 0.5; g.add(t);
+        t.add(mesh(new THREE.BoxGeometry(0.28, 0.22, 0.20), M_MULLION, 0, 0.26, 0, false, false));
+        t.add(mesh(new THREE.BoxGeometry(0.26, 0.02, 0.18), M_MULLION, 0, 0.15, 0, false, false));
+        [[-0.11, -0.08], [0.11, -0.08], [-0.11, 0.08], [0.11, 0.08]].forEach(function (p) {
+          t.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 6), M_DARKFRAME, p[0], 0.03, p[1], false, false));
+        });
+      },
+      food_bistro: function (g, w, d) {
+        aFrameBoard(g, -w * 0.38, d / 2 + 0.46, 0.5);
+        // Two pavement tables
+        [-w * 0.10, w * 0.30].forEach(function (tx, i) {
+          const t = new THREE.Group(); t.position.set(tx, 0, d / 2 + (i ? 0.60 : 0.85)); g.add(t);
+          t.add(mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 12), M_WHITE, 0, 0.34, 0, false, false));
+          t.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 8), M_SLATE, 0, 0.17, 0, false, false));
+          t.add(mesh(roundedBox(0.17, 0.04, 0.17, 0.02), M_WOOD, -0.34, 0.22, 0, false, false));
+          t.add(mesh(roundedBox(0.17, 0.04, 0.17, 0.02), M_WOOD,  0.34, 0.22, 0, false, false));
+          t.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.05, 6), M_WOOD, 0, 0.52, 0, false, false));
+          t.add(mesh(new THREE.ConeGeometry(0.55, 0.24, 10), mat(i ? 0xEA580C : 0xDC2626, 0.68), 0, 1.10, 0));
+        });
+        // Extractor cowl on the roof
+        g.add(mesh(new THREE.CylinderGeometry(0.10, 0.13, 0.34, 8), M_CONCRETE, w * 0.28, FLOOR_H + 0.17, -d * 0.22, false, false));
+      },
+      food_coffee: function (g, w, d) {
+        // Oversized cup sign on a bracket
+        const c = new THREE.Group(); c.position.set(w * 0.34, 0.95, d / 2 + 0.30); g.add(c);
+        c.add(mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.24, 12), M_WHITE, 0, 0, 0));
+        c.add(mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.03, 12), mat(0x6B3E20, 0.6), 0, 0.11, 0, false, false));
+        const handle = mesh(new THREE.TorusGeometry(0.07, 0.022, 6, 12), M_WHITE, 0.17, 0, 0, false, false);
+        c.add(handle);
+        c.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.30), M_DARKFRAME, 0, 0.10, -0.20, false, false));
+        // Coffee sacks
+        g.add(mesh(roundedBox(0.24, 0.28, 0.20, 0.06), mat(0xC8AE7D, 0.92), -w * 0.34, 0.14, d / 2 + 0.40, false, false));
+        g.add(mesh(roundedBox(0.22, 0.24, 0.18, 0.06), mat(0xB89C68, 0.92), -w * 0.34 + 0.22, 0.12, d / 2 + 0.46, false, false));
+      },
+      food_wolt: function (g, w, d) {
+        // Roller shutter loading door
+        g.add(mesh(new THREE.BoxGeometry(w * 0.52, 0.80, 0.05), mat(0x0E7490, 0.55), -w * 0.20, 0.42, d / 2 + 0.05, false, false));
+        for (let y = 0.14; y < 0.78; y += 0.14) {
+          g.add(mesh(new THREE.BoxGeometry(w * 0.53, 0.03, 0.07), mat(0x155E75, 0.6), -w * 0.20, y, d / 2 + 0.06, false, false));
+        }
+        // Two parked scooters
+        [[w * 0.28, 0.5], [w * 0.44, -0.4]].forEach(function (p, i) {
+          const s = makeCourier(0x00C2E8);
+          s.position.set(p[0], 0, d / 2 + 0.55 + i * 0.25);
+          s.rotation.y = p[1];
+          s.scale.setScalar(0.78);
+          g.add(s);
+        });
+      },
+      shop_boutique: function (g, w, d) {
+        // Mannequins behind the glass
+        [-w * 0.22, w * 0.10].forEach(function (mx, i) {
+          const m = new THREE.Group(); m.position.set(mx, 0, d / 2 - 0.18); g.add(m);
+          m.add(mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.03, 10), M_WARM_STONE, 0, 0.02, 0, false, false));
+          m.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 8), M_CREAM, 0, 0.20, 0, false, false));
+          m.add(mesh(roundedBox(0.17, 0.24, 0.11, 0.04), mat(i ? 0xEC4899 : 0x1D4ED8, 0.7), 0, 0.48, 0, false, false));
+          m.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_CREAM, 0, 0.66, 0, false, false));
+        });
+        // Clothes rail on the pavement
+        const r = new THREE.Group(); r.position.set(w * 0.34, 0, d / 2 + 0.45); g.add(r);
+        r.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.60), M_MULLION, 0, 0.62, 0, false, false));
+        r.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.62, 6), M_MULLION, -0.16, 0.31, 0, false, false));
+        r.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.62, 6), M_MULLION,  0.16, 0.31, 0, false, false));
+        [0xEF4444, 0xFACC15, 0x22C55E, 0x3B82F6].forEach(function (c, i) {
+          r.add(mesh(new THREE.BoxGeometry(0.05, 0.30, 0.10), mat(c, 0.75), 0, 0.46, -0.22 + i * 0.15, false, false));
+        });
+      },
+      shop_tech: function (g, w, d) {
+        // Wall of screens in the window
+        const scr = glassMaterial(0x2563EB); registerGlass(scr);
+        for (let i = -1; i <= 1; i++) {
+          g.add(mesh(new THREE.BoxGeometry(0.34, 0.24, 0.03), scr, i * 0.42, 0.62, d / 2 + 0.07, false, false));
+          g.add(mesh(new THREE.BoxGeometry(0.38, 0.28, 0.02), M_DARKFRAME, i * 0.42, 0.62, d / 2 + 0.055, false, false));
+        }
+        // Rooftop antenna
+        g.add(mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.75, 6), M_MULLION, w * 0.30, FLOOR_H + 0.38, -d * 0.24, false, false));
+        g.add(mesh(new THREE.SphereGeometry(0.05, 8, 8), mat(0xEF4444, 0.3, 0, 0xEF4444, 1.4), w * 0.30, FLOOR_H + 0.78, -d * 0.24, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.30, 0.02, 0.02), M_MULLION, w * 0.30, FLOOR_H + 0.62, -d * 0.24, false, false));
+      },
+      shop_travel: function (g, w, d) {
+        // Globe on the parapet
+        g.add(mesh(new THREE.SphereGeometry(0.26, 14, 12), mat(0x2563EB, 0.5), -w * 0.26, FLOOR_H + 0.30, -d * 0.10));
+        g.add(mesh(new THREE.TorusGeometry(0.27, 0.022, 6, 20), M_GOLD, -w * 0.26, FLOOR_H + 0.30, -d * 0.10, false, false));
+        // Suitcases by the door
+        g.add(mesh(roundedBox(0.26, 0.32, 0.14, 0.03), mat(0xB45309, 0.75), w * 0.32, 0.16, d / 2 + 0.42, false, false));
+        g.add(mesh(roundedBox(0.22, 0.26, 0.12, 0.03), mat(0x1D4ED8, 0.7), w * 0.32 + 0.20, 0.13, d / 2 + 0.46, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.10, 0.02, 0.02), M_DARKFRAME, w * 0.32, 0.33, d / 2 + 0.42, false, false));
+      },
+      shop_arcade: function (g, w, d) {
+        // Neon frame around the shopfront
+        const neon = mat(0xEC4899, 0.3, 0, 0xEC4899, 1.5);
+        g.add(mesh(new THREE.BoxGeometry(w - 0.4, 0.06, 0.05), neon, 0, 1.02, d / 2 + 0.09, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.06, 0.95, 0.05), neon, -(w - 0.4) / 2, 0.55, d / 2 + 0.09, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.06, 0.95, 0.05), neon,  (w - 0.4) / 2, 0.55, d / 2 + 0.09, false, false));
+        // Bulb run over the sign
+        for (let i = -2; i <= 2; i++) {
+          g.add(mesh(new THREE.SphereGeometry(0.045, 6, 6), mat(0xFACC15, 0.3, 0, 0xFACC15, 1.6), i * 0.30, 1.24, d / 2 + 0.10, false, false));
+        }
+      },
+      house_tower: function (g, w, d) {
+        // Washing line and a bicycle by the door — a lived-in home
+        g.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.9, 4), M_MULLION, w * 0.36, 0.55, d * 0.40, false, false));
+        [0xEF4444, 0xFFFFFF, 0x3B82F6].forEach(function (c, i) {
+          g.add(mesh(new THREE.BoxGeometry(0.11, 0.16, 0.01), mat(c, 0.85), w * 0.36, 0.82, d * 0.40 - 0.22 + i * 0.22, false, false));
+        });
+        const bk = new THREE.Group(); bk.position.set(-w * 0.36, 0, d / 2 + 0.42); bk.rotation.y = 0.7; g.add(bk);
+        bk.add(mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 14), M_SLATE, -0.16, 0.14, 0, false, false));
+        bk.add(mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 14), M_SLATE,  0.16, 0.14, 0, false, false));
+        bk.add(mesh(new THREE.BoxGeometry(0.34, 0.035, 0.035), mat(0x16A34A, 0.5), 0, 0.22, 0, false, false));
+      },
+      house_util: function (g, w, d) {
+        // Transformer, meters and pipework
+        const tr = new THREE.Group(); tr.position.set(w * 0.40, 0, -d * 0.30); g.add(tr);
+        tr.add(mesh(roundedBox(0.42, 0.52, 0.34, 0.04), mat(0x9CA3AF, 0.8), 0, 0.26, 0, false, false));
+        tr.add(mesh(new THREE.BoxGeometry(0.30, 0.16, 0.02), mat(0xFACC15, 0.6), 0, 0.34, 0.18, false, false));
+        tr.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 6), M_MULLION, -0.12, 0.62, 0, false, false));
+        tr.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 6), M_MULLION,  0.12, 0.62, 0, false, false));
+        // Water pipes up the flank
+        g.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.0, 6), M_CONCRETE, -w * 0.44, 0.55, d * 0.18, false, false));
+        g.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.16, 8), M_DARKFRAME, -w * 0.44, 0.28, d * 0.18, false, false));
+        // Meter box by the door
+        g.add(mesh(roundedBox(0.20, 0.24, 0.10, 0.02), M_MULLION, -w * 0.20, 0.62, d / 2 + 0.05, false, false));
+      },
+      house_subs: function (g, w, d) {
+        // Satellite dish and an antenna mast — the subscriptions house
+        const dish = new THREE.Group(); dish.position.set(w * 0.30, FLOOR_H + 0.10, -d * 0.26); g.add(dish);
+        dish.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.34, 6), M_DARKFRAME, 0, 0.17, 0, false, false));
+        const d2 = mesh(new THREE.SphereGeometry(0.22, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.42), M_WHITE, 0, 0.42, 0);
+        d2.rotation.x = 2.1; dish.add(d2);
+        dish.add(mesh(new THREE.SphereGeometry(0.035, 6, 6), M_DARKFRAME, 0, 0.42, 0.16, false, false));
+        g.add(mesh(new THREE.CylinderGeometry(0.018, 0.026, 0.70, 5), M_MULLION, -w * 0.32, FLOOR_H + 0.35, -d * 0.20, false, false));
+        for (let i = 0; i < 3; i++) {
+          g.add(mesh(new THREE.BoxGeometry(0.26 - i * 0.05, 0.015, 0.015), M_MULLION, -w * 0.32, FLOOR_H + 0.44 + i * 0.12, -d * 0.20, false, false));
+        }
+      },
+      health_pharmacy: function (g, w, d) {
+        // The green cross that says pharmacy, not hospital
+        const cm = mat(0x16A34A, 0.4, 0, 0x16A34A, 0.9);
+        g.add(mesh(new THREE.BoxGeometry(0.16, 0.44, 0.06), cm, w * 0.34, 1.06, d / 2 + 0.08, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.44, 0.16, 0.06), cm, w * 0.34, 1.06, d / 2 + 0.08, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.05, 0.05, 0.22), M_DARKFRAME, w * 0.34, 1.06, d / 2 - 0.04, false, false));
+      },
+      museum_curiosities: function (g, w, d) {
+        // A small community reading room: a bench, a book box and a lantern
+        g.add(mesh(roundedBox(0.30, 0.40, 0.22, 0.03), M_WOOD, -w * 0.36, 0.20, d / 2 + 0.40, false, false));
+        [0xEF4444, 0x3B82F6, 0xFACC15].forEach(function (c, i) {
+          g.add(mesh(new THREE.BoxGeometry(0.05, 0.16, 0.13), mat(c, 0.8), -w * 0.36 - 0.08 + i * 0.08, 0.48, d / 2 + 0.40, false, false));
+        });
+        g.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.70, 6), M_DARKFRAME, w * 0.38, 0.35, d / 2 + 0.38, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.14, 0.16, 0.14), mat(0xFEF3C7, 0.3, 0, 0xFDE68A, 1.0), w * 0.38, 0.78, d / 2 + 0.38, false, false));
+      },
+      city_sorting_hub: function (g, w, d) {
+        // A post booth: mailbox, parcel stack, sorting trolley
+        g.add(mesh(roundedBox(0.28, 0.52, 0.24, 0.06), mat(0xDC2626, 0.6), -w * 0.40, 0.26, d / 2 + 0.42, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.18, 0.04, 0.03), M_DARKFRAME, -w * 0.40, 0.44, d / 2 + 0.54, false, false));
+        g.add(mesh(roundedBox(0.26, 0.20, 0.22, 0.02), mat(0xC8A87A, 0.9), w * 0.30, 0.10, d / 2 + 0.40, false, false));
+        g.add(mesh(roundedBox(0.22, 0.18, 0.20, 0.02), mat(0xB8946A, 0.9), w * 0.30 + 0.05, 0.29, d / 2 + 0.44, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.20, 0.02, 0.16), mat(0xDC2626, 0.6), w * 0.30, 0.39, d / 2 + 0.44, false, false));
+      }
+    };
 
     // ────────────────────────────────────────────────────────────────
     // 🏛️ 4. CIVIC PLAZA & THE "SPENT" LANDMARK
+    // The one fixed landmark. Everything else is built by what the month costs.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(0, 0, 6.4, 6.4);
+    addSidewalkBlock(0, 0, 8.6, 8.6);
+    addKerb(0, 0, 8.6, 8.6);
 
-    // Plaza paving inlay so the centre does not read as one flat slab
-    root.add(mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.03, 32), mat(0xEFE7D8, 0.9), 0, Y_WALK + 0.01, 1.0, false, true));
-    const plazaRim = mesh(new THREE.TorusGeometry(2.5, 0.05, 6, 40), M_WARM_STONE, 0, Y_WALK + 0.02, 1.0, false, false);
+    const plazaInlay = mesh(new THREE.CylinderGeometry(2.75, 2.75, 0.03, 36), mat(0xEFE7D8, 0.9), 0, Y_WALK + 0.01, 1.3, false, true);
+    root.add(plazaInlay);
+    const plazaRim = mesh(new THREE.TorusGeometry(2.75, 0.06, 6, 44), M_WARM_STONE, 0, Y_WALK + 0.02, 1.3, false, false);
     plazaRim.rotation.x = -Math.PI / 2; root.add(plazaRim);
 
     const fountainGroup = new THREE.Group();
-    fountainGroup.position.set(0, Y_WALK, 1.1);
+    fountainGroup.position.set(0, Y_WALK, 1.3);
     root.add(fountainGroup);
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.22, 24), mat(0xE7E1D2, 0.55), 0, 0.11, 0));
-    const fountRim = mesh(new THREE.TorusGeometry(1.22, 0.06, 6, 28), M_WARM_STONE, 0, 0.22, 0, false, false);
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.22, 24), mat(0xE7E1D2, 0.55), 0, 0.11, 0));
+    const fountRim = mesh(new THREE.TorusGeometry(1.27, 0.06, 6, 28), M_WARM_STONE, 0, 0.22, 0, false, false);
     fountRim.rotation.x = -Math.PI / 2; fountainGroup.add(fountRim);
-    const fWater = mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.04, 24), M_WATER, 0, 0.20, 0);
+    const fWater = mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.04, 24), M_WATER, 0, 0.20, 0);
     const fSpout = mesh(new THREE.CylinderGeometry(0.06, 0.10, 0.70, 8), mat(0x93C5FD, 0.45, 0, 0x38BDF8, 0.7), 0, 0.52, 0);
     fountainGroup.add(fWater, fSpout);
     fountainGroup.add(mesh(new THREE.CylinderGeometry(0.16, 0.22, 0.26, 10), M_MARBLE_REF, 0, 0.30, 0));
     animObjects.push({ type: "fountain_spout", spout: fSpout });
 
-    // SPENT city hall — the one fixed landmark, so the centre never looks unbuilt
     const spentGroup = new THREE.Group();
-    spentGroup.position.set(0, Y_WALK, -1.6);
+    spentGroup.position.set(0, Y_WALK, -1.9);
     root.add(spentGroup);
 
-    const spentBody = mesh(roundedBox(3.8, 2.1, 2.7, 0.12), M_CREAM, 0, 1.05, 0);
-    spentGroup.add(spentBody);
-
-    // Stepped stone base and portico
+    spentGroup.add(mesh(roundedBox(3.8, 2.1, 2.7, 0.12), M_CREAM, 0, 1.05, 0));
     spentGroup.add(mesh(roundedBox(4.3, 0.16, 3.2, 0.08), M_WARM_STONE, 0, 0.08, 0.10, false, true));
     spentGroup.add(mesh(roundedBox(4.0, 0.12, 2.9, 0.06), M_WARM_STONE, 0, 0.20, 0.06, false, true));
     for (let i = -2; i <= 2; i++) {
@@ -893,8 +1354,6 @@
       spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.08, 12), M_WHITE, i * 0.55, 1.80, 1.58, false, false));
     }
     spentGroup.add(mesh(new THREE.BoxGeometry(2.24, 0.20, 0.50), M_WHITE, 0, 1.88, 1.58));
-    // A pediment is a triangular prism. A 3-sided cone is not one, and rotating it into
-    // place produced a shapeless white wedge.
     (function () {
       const sh = new THREE.Shape();
       sh.moveTo(-1.16, 0); sh.lineTo(1.16, 0); sh.lineTo(0, 0.54); sh.closePath();
@@ -909,10 +1368,8 @@
       spentGroup.add(mesh(new THREE.BoxGeometry(0.52, 0.78, 0.05), civicGlass, x, 1.05, 1.36, false, false));
       spentGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.82, 0.06), M_MULLION, x, 1.05, 1.38, false, false));
     });
-
     roofDeck(spentGroup, 3.8, 2.7, 2.1, { ac: true, vent: true, tank: false });
 
-    // Clock tower with a copper spire
     const tower = mesh(roundedBox(1.35, 2.3, 1.35, 0.10), M_CREAM, 0, 3.25, -0.10);
     spentGroup.add(tower);
     spentGroup.add(mesh(roundedBox(1.55, 0.14, 1.55, 0.06), M_WARM_STONE, 0, 4.45, -0.10, false, false));
@@ -932,327 +1389,274 @@
     interactiveBuildings.push(spentProxy);
     buildingRoots["finance_bank"] = spentGroup;
 
-    // Plaza greenery and seating
-    [[-2.3, 2.3], [2.3, 2.3], [-2.4, -0.4], [2.4, -0.4]].forEach(function (p) {
+    // Plaza life: trees, benches, bins, a busker and pigeons
+    [[-3.2, 3.2], [3.2, 3.2], [-3.3, -0.4], [3.3, -0.4], [-3.2, -3.3], [3.2, -3.3]].forEach(function (p) {
       const h = new THREE.Group(); h.position.set(p[0], Y_WALK, p[1]); root.add(h);
       planterBox(h, 0, 0, "tree");
     });
-    root.add((function () { const h = new THREE.Group(); h.position.set(1.6, Y_WALK, 2.6); trashBin(h, 0, 0); return h; })());
+    addBenchAt(-2.2, 3.1, 0.7);
+    addBenchAt(2.2, 3.1, -0.7);
+    addBenchAt(3.0, 1.0, -Math.PI / 2);
+    (function () { const h = new THREE.Group(); h.position.set(1.9, Y_WALK, 3.8); root.add(h); trashBin(h, 0, 0); })();
+
+    // Busker by the fountain
+    const busker = makeFigure({ shirt: 0x7C3AED, pants: 0x1E293B, hair: 0x1F1207 });
+    busker.position.set(-1.8, Y_WALK, 2.5);
+    busker.rotation.y = 0.9;
+    root.add(busker);
+    (function () {
+      const gtr = mesh(roundedBox(0.16, 0.36, 0.07, 0.06), M_WOOD, 0.14, 0.44, 0.10, false, false);
+      gtr.rotation.z = -0.5; busker.add(gtr);
+      busker.add(mesh(new THREE.BoxGeometry(0.03, 0.30, 0.03), M_DARKFRAME, 0.30, 0.66, 0.10, false, false));
+      const cse = mesh(roundedBox(0.34, 0.07, 0.22, 0.03), mat(0x92400E, 0.85), -0.35, 0.04, 0.16, false, false);
+      busker.add(cse);
+    })();
+    const pigeons = [];
+    [[-1.0, 3.2], [-0.5, 3.6], [0.4, 3.9]].forEach(function (p) {
+      const pg = makePigeon(); pg.position.set(p[0], Y_WALK, p[1]); pg.rotation.y = Math.random() * 6; root.add(pg);
+      pigeons.push({ obj: pg, phase: Math.random() * 6 });
+    });
 
     // ────────────────────────────────────────────────────────────────
-    // 🏡 5. RESIDENTIAL QUARTER — pitched roofs, gardens, fences
+    // 🏡 5. NORTH — HOUSING. The largest line in anyone's month, so it faces the plaza
+    // and gets the deepest block.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(-0.5, -8.35, 11.4, 5.9);
+    addSidewalkBlock(0, -9.2, 8.8, 4.8);
+    addKerb(0, -9.2, 8.8, 4.8);
 
     makeBuilding({
-      id: "house_tower", minTier: 2, district: "housing", name: "מגורים ושכירות", trend: "חיוב מגורים קבוע",
-      kind: "house", x: -4.3, z: -9.0, w: 2.3, d: 2.5,
+      id: "house_tower", minTier: 2, district: "housing", name: "מגורים ושכירות", trend: "שכר דירה או משכנתא",
+      kind: "house", x: -2.9, z: -9.3, w: 2.4, d: 2.5,
       body: 0xFBF6EC, roof: 0xE2622B, accent: 0x1E3A5F, glass: 0xA8CDEE,
       chimney: true, balcony: true,
       props: [
-        { type: "hedge", x: 0, z: 1.65, w: 2.3, d: 0.34, from: 2 },
-        { type: "planter", x: -1.35, z: 1.45, kind: "flowers", from: 2 },
-        { type: "planter", x: 1.35, z: 1.45, kind: "shrub", from: 3 }
+        { type: "hedge", x: 0, z: 1.62, w: 2.2, d: 0.30, from: 2 },
+        { type: "planter", x: -1.40, z: 1.48, kind: "flowers", from: 2 }
       ]
     });
-
     makeBuilding({
-      id: "house_util", minTier: 1, district: "housing", name: "חשבונות בית", trend: "חשמל, מים וארנונה",
-      kind: "house", x: -0.6, z: -9.2, w: 2.3, d: 2.5,
-      body: 0xF6F1E6, roof: 0x2563EB, accent: 0x334155, glass: 0xA8CDEE,
-      solar: true,
+      id: "house_util", minTier: 1, district: "housing", name: "חשבונות בית", trend: "חשמל, מים, גז וארנונה",
+      kind: "house", x: 0.0, z: -9.4, w: 2.2, d: 2.4,
+      body: 0xF6F1E6, roof: 0x2563EB, accent: 0x334155, glass: 0xA8CDEE, solar: true,
       props: [
-        { type: "hedge", x: 0, z: 1.65, w: 2.0, d: 0.30, from: 2 },
-        { type: "bin", x: 1.30, z: 1.50, from: 2 }
+        { type: "hedge", x: 0, z: 1.58, w: 1.9, d: 0.28, from: 2 },
+        { type: "bin", x: 1.26, z: 1.44, from: 2 }
       ]
     });
-
     makeBuilding({
-      id: "house_subs", minTier: 1, district: "housing", name: "מנויים וסטרימינג", trend: "שירותים דיגיטליים",
-      kind: "house", x: 3.1, z: -9.0, w: 2.2, d: 2.4,
-      body: 0xFDF3E3, roof: 0xF08A34, accent: 0x7C3AED, glass: 0xA8CDEE,
-      chimney: true,
+      id: "house_subs", minTier: 1, district: "housing", name: "מנויים וסטרימינג", trend: "שירותים דיגיטליים חודשיים",
+      kind: "house", x: 2.9, z: -9.3, w: 2.2, d: 2.4,
+      body: 0xFDF3E3, roof: 0xF08A34, accent: 0x7C3AED, glass: 0xA8CDEE, chimney: true,
       props: [
-        { type: "planter", x: -1.25, z: 1.40, kind: "shrub", from: 2 },
-        { type: "planter", x: 1.25, z: 1.40, kind: "flowers", from: 3 }
+        { type: "planter", x: -1.24, z: 1.42, kind: "shrub", from: 2 },
+        { type: "planter", x: 1.24, z: 1.42, kind: "flowers", from: 3 }
       ]
     });
-
-    // A satellite dish on the subscriptions house — the district's little joke
-    (function () {
-      const g = cityBuildings["house_subs"].shell;
-      const dish = new THREE.Group(); dish.position.set(0.72, FLOOR_H + 0.35, -0.72); g.add(dish);
-      dish.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.42, 6), M_DARKFRAME, 0, 0.21, 0, false, false));
-      const d2 = mesh(new THREE.SphereGeometry(0.22, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.42), M_WHITE, 0, 0.48, 0);
-      d2.rotation.x = 2.2; dish.add(d2);
-    })();
-
-    // Garden path and fence line along the housing block
-    for (let x = -5.9; x <= 4.9; x += 1.5) {
-      root.add(mesh(new THREE.BoxGeometry(0.07, 0.44, 0.07), M_WHITE, x, Y_WALK + 0.22, -6.9, false, false));
-    }
-    root.add(mesh(new THREE.BoxGeometry(10.8, 0.06, 0.07), M_WHITE, -0.5, Y_WALK + 0.38, -6.9, false, false));
 
     // ────────────────────────────────────────────────────────────────
-    // 🛍️ 6. SHOPPING AVENUE — four shopfronts, spaced and staggered
+    // 🛍️ 6. WEST — SHOPPING. Regular but not daily, so it faces the plaza across a street.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(-8.7, -0.2, 6.6, 12.0);
+    addSidewalkBlock(-9.2, 0, 4.8, 8.8);
+    addKerb(-9.2, 0, 4.8, 8.8);
 
     makeBuilding({
-      id: "shop_arcade", district: "shopping", name: "בילויים וגיימינג", trend: "קולנוע, משחקים ואטרקציות",
-      kind: "shop", x: -9.5, z: -4.4, w: 2.6, d: 2.2, rotY: Math.PI / 2,
-      body: 0xF07C2E, roof: 0xC2410C, accent: 0xEA580C, glass: 0x8FD3F4,
-      sign: { text: "ARCADE", bg: "#C2410C", fg: "#FFFFFF", size: 30 },
-      props: [
-        { type: "bollards", x: 0, z: 1.55, from: 2 },
-        { type: "aframe", x: -1.05, z: 1.45, rotY: 0.4, from: 3 }
-      ]
-    });
-
-    makeBuilding({
-      id: "shop_tech", district: "shopping", name: "טכנולוגיה", trend: "מחשבים וגאדג'טים",
-      kind: "shop", x: -9.1, z: -1.5, w: 2.6, d: 2.2, rotY: Math.PI / 2,
-      body: 0x7FA9D8, roof: 0x1E3A5F, accent: 0x4E7FB8, glass: 0xBFE3FA,
-      awning: ["#FACC15", "#FFFFFF"], solar: true,
-      sign: { text: "TECH", bg: "#1E3A8A", fg: "#FFFFFF", size: 32 },
-      props: [
-        { type: "planter", x: -1.10, z: 1.50, kind: "shrub", from: 2 },
-        { type: "bin", x: 1.15, z: 1.50, from: 3 }
-      ]
-    });
-
-    makeBuilding({
-      id: "shop_boutique", district: "shopping", name: "אופנה ובוטיק", trend: "ביגוד ואופנה",
-      kind: "shop", roofStyle: "pitch", x: -9.5, z: 1.5, w: 2.6, d: 2.2, rotY: Math.PI / 2,
-      body: 0xFBF6EC, roof: 0xB91C1C, accent: 0xF3E8DC, glass: 0xD8ECFB,
+      id: "shop_boutique", district: "shopping", name: "אופנה ובוטיק", trend: "ביגוד, הנעלה ואופנה",
+      kind: "shop", x: -9.2, z: -3.4, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0xFBF6EC, roof: 0xB91C1C, accent: 0xF3E8DC, glass: 0xD8ECFB, roofStyle: "pitch",
       awning: ["#EF4444", "#FFFFFF"], balcony: true,
-      sign: { text: "SHOP", bg: "#EF4444", fg: "#FFFFFF", size: 34 },
-      props: [
-        { type: "planter", x: -1.10, z: 1.50, kind: "flowers", from: 2 },
-        { type: "aframe", x: 1.05, z: 1.45, rotY: -0.3, from: 2 }
-      ]
+      sign: { text: "SHOP", bg: "#EF4444", fg: "#FFFFFF", size: 34 }
     });
-
     makeBuilding({
-      id: "shop_travel", district: "shopping", name: "חופשות וטיסות", trend: "נסיעות ופנאי",
-      kind: "shop", x: -9.1, z: 4.4, w: 2.6, d: 2.2, rotY: Math.PI / 2,
+      id: "shop_tech", district: "shopping", name: "טכנולוגיה", trend: "מחשבים, גאדג'טים וחשמל",
+      kind: "shop", x: -9.2, z: -1.15, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0x7FA9D8, roof: 0x1E3A5F, accent: 0x4E7FB8, glass: 0xBFE3FA, solar: true,
+      awning: ["#FACC15", "#FFFFFF"],
+      sign: { text: "TECH", bg: "#1E3A8A", fg: "#FFFFFF", size: 32 }
+    });
+    makeBuilding({
+      id: "shop_travel", district: "shopping", name: "חופשות וטיסות", trend: "נסיעות, טיסות ומלונות",
+      kind: "shop", x: -9.2, z: 1.15, w: 1.80, d: 2.3, rotY: Math.PI / 2,
       body: 0xF2E7D2, roof: 0x1D4ED8, accent: 0xE6D6B8, glass: 0xBFE3FA,
       awning: ["#3B82F6", "#FFFFFF"],
-      sign: { text: "TRAVEL", bg: "#1D4ED8", fg: "#FFFFFF", size: 28 },
-      props: [
-        { type: "crates", x: -1.05, z: 1.45, from: 2 },
-        { type: "planter", x: 1.10, z: 1.50, kind: "tree", from: 3 }
-      ]
+      sign: { text: "TRAVEL", bg: "#1D4ED8", fg: "#FFFFFF", size: 26 }
+    });
+    makeBuilding({
+      id: "shop_arcade", district: "shopping", name: "בילויים וגיימינג", trend: "קולנוע, משחקים ואטרקציות",
+      kind: "shop", x: -9.2, z: 3.4, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0xF07C2E, roof: 0xC2410C, accent: 0xEA580C, glass: 0x8FD3F4,
+      sign: { text: "ARCADE", bg: "#C2410C", fg: "#FFFFFF", size: 26 }
     });
 
     // ────────────────────────────────────────────────────────────────
-    // ☕ 7. FOOD & DRINK — cafe, terrace, kiosk
+    // 🍜 7. EAST — FOOD. Four separate places, because groceries, a restaurant, coffee
+    // and delivery are four different habits and the app already tracks them apart.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(8.5, -0.4, 6.2, 5.2);
+    addSidewalkBlock(9.2, 0, 4.8, 8.8);
+    addKerb(9.2, 0, 4.8, 8.8);
 
-    const cafeRec = makeBuilding({
-      id: "food_coffee", minTier: 1, district: "food", name: "אוכל ומסעדות", trend: "קפה, סופר, מסעדות ומשלוחים",
-      kind: "shop", roofStyle: "pitch", x: 9.0, z: -1.4, w: 3.4, d: 2.4,
-      body: 0xF6D9A8, roof: 0xD9541F, accent: 0xE9B96B, glass: 0xCFE9FB,
-      awning: ["#EA580C", "#FFFFFF"], balcony: true,
-      sign: { text: "CAFE", bg: "#EA580C", fg: "#FEF3C7", size: 38 },
-      props: [
-        { type: "planter", x: -1.85, z: 1.30, kind: "shrub", from: 2 },
-        { type: "aframe", x: 1.85, z: 1.30, rotY: -0.5, from: 2 }
-      ]
+    makeBuilding({
+      id: "food_super", minTier: 1, district: "food", name: "סופרמרקט", trend: "קניות שבועיות במכולת",
+      kind: "shop", x: 9.2, z: -3.4, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0xF3EAD6, roof: 0x15803D, accent: 0xE4D8BE, glass: 0xCFE9FB,
+      awning: ["#16A34A", "#FFFFFF"],
+      sign: { text: "SUPER", bg: "#15803D", fg: "#FFFFFF", size: 28 }
+    });
+    makeBuilding({
+      id: "food_bistro", district: "food", name: "מסעדות", trend: "ארוחות בחוץ",
+      kind: "shop", x: 9.2, z: -1.15, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0xF6D9A8, roof: 0xD9541F, accent: 0xE9B96B, glass: 0xCFE9FB, roofStyle: "pitch",
+      awning: ["#DC2626", "#FFFFFF"],
+      sign: { text: "BISTRO", bg: "#B91C1C", fg: "#FEF3C7", size: 26 }
+    });
+    makeBuilding({
+      id: "food_coffee", minTier: 1, district: "food", name: "קפה ומאפים", trend: "הרגל הקפה היומי",
+      kind: "shop", x: 9.2, z: 1.15, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0xEBD3B0, roof: 0x8A5A20, accent: 0xD9BE94, glass: 0xCFE9FB, roofStyle: "pitch",
+      awning: ["#EA580C", "#FFFFFF"],
+      sign: { text: "CAFE", bg: "#EA580C", fg: "#FEF3C7", size: 34 }
+    });
+    makeBuilding({
+      id: "food_wolt", district: "food", name: "משלוחי אוכל", trend: "וולט, תן ביס ומשלוחים",
+      kind: "shop", x: 9.2, z: 3.4, w: 1.80, d: 2.3, rotY: Math.PI / 2,
+      body: 0x7FD3E8, roof: 0x0E7490, accent: 0x4FBBD6, glass: 0xCFE9FB,
+      sign: { text: "DELIVERY", bg: "#0E7490", fg: "#FFFFFF", size: 22 }
     });
 
-    // Terrace: tables appear as the district gets busier
-    const cafeTerrace = [];
-    function addPatioTable(tx, tz, color) {
-      const g = new THREE.Group(); g.position.set(tx, Y_WALK, tz); root.add(g);
-      g.add(mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.05, 14), M_WHITE, 0, 0.36, 0));
-      g.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.36, 8), M_SLATE, 0, 0.18, 0, false, false));
-      g.add(mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 10), M_SLATE, 0, 0.02, 0, false, false));
-      [-0.46, 0.46].forEach(function (o) {
-        g.add(mesh(roundedBox(0.22, 0.05, 0.22, 0.03), M_WOOD, o, 0.24, 0, false, false));
-        g.add(mesh(new THREE.BoxGeometry(0.20, 0.24, 0.04), M_WOOD, o, 0.36, o > 0 ? 0.09 : -0.09, false, false));
-      });
-      g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.45, 8), M_WOOD, 0, 0.72, 0, false, false));
-      g.add(mesh(new THREE.ConeGeometry(0.76, 0.32, 10), mat(color, 0.68), 0, 1.50, 0));
-      g.add(mesh(new THREE.SphereGeometry(0.05, 6, 6), M_GOLD, 0, 1.68, 0, false, false));
-      cafeTerrace.push(g);
-      return g;
+    // ────────────────────────────────────────────────────────────────
+    // 🩹 8. SOUTH — THE OCCASIONAL ROW
+    // A plaster is not a hospital. Pharmacy, community learning and the sorting booth are
+    // side expenses, so they get small storefronts on a shared street, not monuments.
+    // ────────────────────────────────────────────────────────────────
+    addSidewalkBlock(0, 9.2, 8.8, 4.8);
+    addKerb(0, 9.2, 8.8, 4.8);
+
+    makeBuilding({
+      id: "health_pharmacy", district: "civic", name: "בית מרקחת", trend: "תרופות, פארם ובריאות",
+      kind: "shop", x: -2.9, z: 9.2, w: 2.2, d: 2.1, maxTier: 3,
+      body: 0xFAFAF7, roof: 0x16A34A, accent: 0xE8F5EC, glass: 0xCFE9FB,
+      sign: { text: "PHARMA", bg: "#16A34A", fg: "#FFFFFF", size: 24 },
+      props: [{ type: "planter", x: -1.24, z: 1.38, kind: "shrub", from: 2 }]
+    });
+    makeBuilding({
+      id: "museum_curiosities", district: "civic", name: "לימודים וקהילה", trend: "השכלה, ספרים ופנאי מסקרן",
+      kind: "shop", x: 0.0, z: 9.2, w: 2.2, d: 2.1, maxTier: 3,
+      body: 0xEFE3CC, roof: 0x1E3A8A, accent: 0xE0D2B6, glass: 0xBFE3FA, roofStyle: "pitch",
+      sign: { text: "LEARN", bg: "#1E3A8A", fg: "#FFFFFF", size: 28 },
+      props: [{ type: "aframe", x: 1.16, z: 1.38, rotY: -0.4, from: 2 }]
+    });
+    makeBuilding({
+      id: "city_sorting_hub", minTier: 1, district: "civic", name: "עמדת המיון והדואר", trend: "הוצאות שעוד לא סווגו",
+      kind: "shop", x: 2.9, z: 9.2, w: 2.1, d: 2.0, maxTier: 2,
+      body: 0xE7E1D6, roof: 0x475569, accent: 0xD8D2C6, glass: 0xCFE9FB,
+      sign: { text: "POST", bg: "#DC2626", fg: "#FFFFFF", size: 30 },
+      props: [{ type: "bollards", x: 0, z: 1.42, from: 2 }]
+    });
+
+    // ────────────────────────────────────────────────────────────────
+    // 🚌 9. SOUTH-EAST — TRANSPORT YARD
+    // Getting around is a real monthly line, so it gets its own corner rather than only
+    // showing up as traffic. It fills out as transport spending rises.
+    // ────────────────────────────────────────────────────────────────
+    addSidewalkBlock(9.2, 9.2, 5.0, 5.0);
+    addKerb(9.2, 9.2, 5.0, 5.0);
+
+    const transportYard = new THREE.Group();
+    transportYard.position.set(9.2, Y_WALK, 9.2);
+    root.add(transportYard);
+
+    // Bus shelter
+    transportYard.add(mesh(new THREE.BoxGeometry(2.5, 0.07, 1.0), mat(0x64748B, 0.6), -0.4, 1.10, -1.5, false, false));
+    [-1.55, 1.55].forEach(function (x) {
+      transportYard.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 1.10, 8), M_DARKFRAME, x - 0.4 + 0.4, 0.55, -1.5, false, false));
+    });
+    const shelterGlass = glassMaterial(0xCFE9FB); registerGlass(shelterGlass);
+    transportYard.add(mesh(new THREE.BoxGeometry(2.4, 0.95, 0.05), shelterGlass, -0.4, 0.55, -1.95, false, false));
+    transportYard.add(mesh(new THREE.BoxGeometry(2.0, 0.10, 0.34), M_WOOD, -0.4, 0.42, -1.65, false, false));
+    transportYard.add(mesh(new THREE.BoxGeometry(0.5, 0.34, 0.05), new THREE.MeshStandardMaterial({ map: signTex("BUS", "#1D4ED8", "#FFFFFF", 30) }), 1.15, 1.35, -1.5, false, false));
+
+    // Parking bays
+    for (let i = 0; i < 3; i++) {
+      transportYard.add(mesh(new THREE.BoxGeometry(0.05, 0.02, 1.7), whiteMarkMat, -1.7 + i * 1.15, 0.02, 1.1, false, false));
     }
-    addPatioTable(7.7, 0.9, 0xEA580C);
-    addPatioTable(9.2, 1.1, 0xFACC15);
-    addPatioTable(10.6, 0.7, 0xEA580C);
+    transportYard.add(mesh(new THREE.BoxGeometry(3.5, 0.02, 0.05), whiteMarkMat, -0.6, 0.02, 0.25, false, false));
 
-    // Street food kiosk beside the cafe
+    // Scooter / bike station — the units appear as transport spending grows
+    const transportUnits = [];
+    for (let i = 0; i < 4; i++) {
+      const u = new THREE.Group();
+      u.position.set(-1.8 + i * 0.95, 0, 2.2);
+      u.rotation.y = 0.1;
+      transportYard.add(u);
+      u.add(mesh(new THREE.BoxGeometry(0.55, 0.05, 0.05), M_SLATE, 0, 0.30, -0.22, false, false));
+      u.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.30, 6), M_SLATE, -0.22, 0.15, -0.22, false, false));
+      u.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.30, 6), M_SLATE, 0.22, 0.15, -0.22, false, false));
+      u.add(mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 14), M_SLATE, -0.16, 0.14, 0.05, false, false));
+      u.add(mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 14), M_SLATE, 0.16, 0.14, 0.05, false, false));
+      u.add(mesh(new THREE.BoxGeometry(0.34, 0.04, 0.04), mat(i % 2 ? 0x0EA5E9 : 0x22C55E, 0.5), 0, 0.22, 0.05, false, false));
+      u.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 6), M_DARKFRAME, 0.16, 0.31, 0.05, false, false));
+      transportUnits.push(u);
+    }
+    // A bus at the stand and a taxi in the bays, so the corner is never a bare lot
     (function () {
-      const g = new THREE.Group(); g.position.set(11.0, Y_WALK, -2.6); g.rotation.y = -0.4; root.add(g);
-      g.add(mesh(roundedBox(1.15, 0.90, 0.85, 0.06), M_CREAM, 0, 0.45, 0));
-      g.add(mesh(new THREE.BoxGeometry(1.25, 0.08, 0.95), mat(0x0F766E, 0.7), 0, 0.94, 0, false, false));
-      const km = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#0F766E", "#FFFFFF"), roughness: 0.85 });
-      const kaw = mesh(new THREE.BoxGeometry(1.20, 0.06, 0.46), km, 0, 0.82, 0.55); kaw.rotation.x = 0.3; g.add(kaw);
-      g.add(mesh(new THREE.BoxGeometry(0.95, 0.06, 0.20), M_WOOD, 0, 0.62, 0.50, false, false));
-      g.add(mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.10, 8), M_WHITE, -0.28, 0.70, 0.48, false, false));
+      const bus = createCar(0x2563EB, true, false);
+      bus.position.set(-0.5, 0, -0.4); bus.rotation.y = Math.PI / 2; bus.scale.setScalar(1.15);
+      transportYard.add(bus);
+      const taxi = createCar(0xFACC15, false, true);
+      taxi.position.set(1.6, 0, 1.1); taxi.rotation.y = 0.05;
+      transportYard.add(taxi);
     })();
-
-    buildingRoots["food_bistro"] = cafeRec.group;
-    buildingRoots["food_super"]  = cafeRec.group;
-    buildingRoots["food_wolt"]   = cafeRec.group;
+    transportYard.add(mesh(new THREE.BoxGeometry(0.7, 0.34, 0.06), new THREE.MeshStandardMaterial({ map: signTex("RIDE", "#0F766E", "#FFFFFF", 26) }), 0.55, 0.95, 2.55, false, false));
+    transportYard.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.95, 6), M_DARKFRAME, 0.55, 0.47, 2.55, false, false));
 
     // ────────────────────────────────────────────────────────────────
-    // 🏢 8. WORK COMPLEX — glass tower, entrance canopy, bikes
+    // 🏀 10. SOUTH-WEST — THE FREE PARK
+    // Not everything on the island costs money. The court, the picnic table and the
+    // benches are here so the city has somewhere that is simply pleasant.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(8.5, 7.4, 6.2, 6.8);
-
-    const workGroup = new THREE.Group(); workGroup.position.set(9.0, Y_WALK, 7.4); root.add(workGroup);
-    const workGlass = glassMaterial(0x8FBEE8); registerGlass(workGlass);
-
-    workGroup.add(mesh(roundedBox(3.3, 3.9, 3.1, 0.10), M_WHITE, 0, 1.95, -0.9));
-    // Curtain wall: alternating glass bands and white spandrels
-    for (let fl = 0; fl < 4; fl++) {
-      const y = 0.55 + fl * 0.92;
-      workGroup.add(mesh(new THREE.BoxGeometry(2.9, 0.60, 0.06), workGlass, 0, y, 0.68, false, false));
-      workGroup.add(mesh(new THREE.BoxGeometry(2.94, 0.14, 0.08), M_WHITE, 0, y + 0.37, 0.68, false, false));
-      workGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.60, 2.9), workGlass, 1.68, y, -0.9, false, false));
-    }
-    for (let i = -1; i <= 1; i++) workGroup.add(mesh(new THREE.BoxGeometry(0.08, 3.6, 0.08), M_WHITE, i * 0.95, 1.9, 0.70, false, false));
-    roofDeck(workGroup, 3.3, 3.1, 3.9, { tank: true, vent: true, ac: true }).position.z = -0.9;
-
-    const workWing = mesh(roundedBox(2.7, 1.9, 2.0, 0.08), mat(0x2A324B, 0.7), 0, 0.95, 1.6);
-    workGroup.add(workWing);
-    const workSignMat = new THREE.MeshStandardMaterial({ map: signTex("WORK", "#2563EB", "#FFFFFF", 38) });
-    workGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.36, 0.05), workSignMat, 0, 1.35, 2.62, false, false));
-    // Entrance canopy
-    workGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.09, 0.70), M_MULLION, 0, 0.92, 2.90, false, false));
-    workGroup.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.90, 6), M_MULLION, -0.72, 0.47, 3.18, false, false));
-    workGroup.add(mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.90, 6), M_MULLION,  0.72, 0.47, 3.18, false, false));
-    workGroup.add(mesh(new THREE.BoxGeometry(1.10, 0.80, 0.05), workGlass, 0, 0.42, 2.62, false, false));
-
-    // Bike rack with two bikes
-    (function () {
-      const g = new THREE.Group(); g.position.set(-1.6, 0, 2.6); workGroup.add(g);
-      g.add(mesh(new THREE.BoxGeometry(1.1, 0.05, 0.05), M_SLATE, 0, 0.30, 0, false, false));
-      for (let i = -1; i <= 1; i++) g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.30, 6), M_SLATE, i * 0.4, 0.15, 0, false, false));
-      [-0.30, 0.32].forEach(function (bx, k) {
-        const wheelMat = k ? mat(0x0EA5E9, 0.5) : mat(0xEF4444, 0.5);
-        g.add(mesh(new THREE.TorusGeometry(0.13, 0.022, 8, 14), M_SLATE, bx - 0.17, 0.15, 0.22, false, false));
-        g.add(mesh(new THREE.TorusGeometry(0.13, 0.022, 8, 14), M_SLATE, bx + 0.17, 0.15, 0.22, false, false));
-        g.add(mesh(new THREE.BoxGeometry(0.36, 0.04, 0.04), wheelMat, bx, 0.24, 0.22, false, false));
-      });
-    })();
-
-    const workProxy = hitProxy(3.6, 4.2, 5.2);
-    workProxy.position.set(0, 0, 0.2);
-    workProxy.userData = { id: "city_sorting_hub", district: "civic", name: "מתחם העסקים והדואר", amount: 0, trend: "מרכז העבודה והמשרדים", shell: workGroup };
-    workGroup.add(workProxy);
-    interactiveBuildings.push(workProxy);
-    buildingRoots["city_sorting_hub"] = workGroup;
-
-    // ────────────────────────────────────────────────────────────────
-    // 🏥 9. HEALTH CLINIC & AMBULANCE BAY
-    // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(0.2, 8.75, 6.6, 6.7);
-
-    const healthGroup = new THREE.Group(); healthGroup.position.set(-0.6, Y_WALK, 9.6); root.add(healthGroup);
-    healthGroup.add(mesh(roundedBox(3.3, 2.3, 2.6, 0.10), M_WHITE, 0, 1.15, 0));
-    healthGroup.add(mesh(roundedBox(1.9, 1.3, 1.9, 0.08), mat(0xF3E9DC, 0.8), -2.0, 0.65, 0.2));
-    const healthGlass = glassMaterial(0xBFE3FA); registerGlass(healthGlass);
-    for (let i = -1; i <= 1; i++) {
-      healthGroup.add(mesh(new THREE.BoxGeometry(0.52, 0.60, 0.05), healthGlass, i * 0.95, 1.55, 1.33, false, false));
-      healthGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.64, 0.06), M_MULLION, i * 0.95, 1.55, 1.35, false, false));
-    }
-    const healthSignMat = new THREE.MeshStandardMaterial({ map: signTex("HEALTH", "#FFFFFF", "#DC2626", 36) });
-    healthGroup.add(mesh(new THREE.BoxGeometry(1.9, 0.34, 0.05), healthSignMat, 0, 0.92, 1.33, false, false));
-    healthGroup.add(mesh(new THREE.BoxGeometry(2.2, 0.10, 0.55), mat(0xDC2626, 0.6), 0, 0.72, 1.52, false, false));
-    const crossMat = mat(0xDC2626, 0.5);
-    healthGroup.add(mesh(new THREE.BoxGeometry(0.22, 0.66, 0.09), crossMat, 0, 2.05, 1.33));
-    healthGroup.add(mesh(new THREE.BoxGeometry(0.66, 0.22, 0.09), crossMat, 0, 2.05, 1.33));
-    roofDeck(healthGroup, 3.3, 2.6, 2.3, { tank: true, vent: true });
-    healthGroup.add(mesh(new THREE.BoxGeometry(0.45, 0.72, 0.05), M_DARKFRAME, -0.02, 0.36, 1.34, false, false));
-
-    // Ambulance and its painted bay
-    root.add(mesh(new THREE.BoxGeometry(2.2, 0.02, 1.5), mat(0xE8E0CE, 0.9), 2.4, Y_WALK + 0.01, 9.0, false, true));
-    root.add(mesh(new THREE.BoxGeometry(2.2, 0.03, 0.05), whiteMarkMat, 2.4, Y_WALK + 0.02, 8.25, false, false));
-    root.add(mesh(new THREE.BoxGeometry(2.2, 0.03, 0.05), whiteMarkMat, 2.4, Y_WALK + 0.02, 9.75, false, false));
-    const ambGroup = new THREE.Group(); ambGroup.position.set(2.4, Y_WALK, 9.0); ambGroup.rotation.y = Math.PI / 2; root.add(ambGroup);
-    ambGroup.add(mesh(roundedBox(1.0, 0.70, 1.9, 0.08), M_WHITE, 0, 0.42, 0));
-    ambGroup.add(mesh(roundedBox(0.92, 0.42, 0.62, 0.06), M_WHITE, 0, 0.30, 1.10));
-    ambGroup.add(mesh(new THREE.BoxGeometry(0.94, 0.26, 0.05), healthGlass, 0, 0.42, 1.42, false, false));
-    ambGroup.add(mesh(new THREE.BoxGeometry(1.04, 0.14, 1.94), mat(0xDC2626, 0.5), 0, 0.42, 0, false, false));
-    ambGroup.add(mesh(new THREE.BoxGeometry(0.26, 0.10, 0.16), mat(0xDC2626, 0.3, 0, 0xDC2626, 1.6), 0, 0.80, 0.30, false, false));
-    ambGroup.add(mesh(new THREE.BoxGeometry(0.26, 0.10, 0.16), mat(0x2563EB, 0.3, 0, 0x2563EB, 1.6), 0, 0.80, 0.05, false, false));
-    [[-0.46, -0.60], [0.46, -0.60], [-0.46, 0.72], [0.46, 0.72]].forEach(function (w) {
-      ambGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.09, 10), mat(0x0F172A, 0.9), w[0], 0.15, w[1], false, false));
-    });
-
-    const healthProxy = hitProxy(3.6, 2.8, 3.0);
-    healthProxy.userData = { id: "health_pharmacy", district: "civic", name: "מרפאה ופארם", amount: 0, trend: "שירותי רפואה ובריאות", shell: healthGroup };
-    healthGroup.add(healthProxy);
-    interactiveBuildings.push(healthProxy);
-    buildingRoots["health_pharmacy"] = healthGroup;
-
-    // ────────────────────────────────────────────────────────────────
-    // 🏀 10. LEARNING CENTRE & SPORTS COURT
-    // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(-8.6, 8.75, 6.2, 6.7);
-
-    const eduGroup = new THREE.Group(); eduGroup.position.set(-9.7, Y_WALK, 8.0); root.add(eduGroup);
-    eduGroup.add(mesh(roundedBox(2.7, 2.4, 2.7, 0.10), M_CREAM, 0, 1.20, 0));
-    eduGroup.add(mesh(roundedBox(1.5, 1.1, 1.5, 0.08), mat(0xE7DCC8, 0.8), 1.9, 0.55, 0.3));
-    const eduGlass = glassMaterial(0xBFE3FA); registerGlass(eduGlass);
-    for (let i = -1; i <= 1; i++) {
-      eduGroup.add(mesh(new THREE.BoxGeometry(0.46, 0.62, 0.05), eduGlass, i * 0.85, 1.62, 1.38, false, false));
-      eduGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.66, 0.06), M_MULLION, i * 0.85, 1.62, 1.40, false, false));
-    }
-    const learnSignMat = new THREE.MeshStandardMaterial({ map: signTex("LEARN", "#1E3A8A", "#FFFFFF", 36) });
-    eduGroup.add(mesh(new THREE.BoxGeometry(1.7, 0.34, 0.05), learnSignMat, 0, 0.95, 1.38, false, false));
-    eduGroup.add(mesh(new THREE.BoxGeometry(0.60, 0.86, 0.06), M_DARKFRAME, 0, 0.43, 1.38, false, false));
-    roofDeck(eduGroup, 2.7, 2.7, 2.4, { tank: false, vent: true, solar: true });
-    // Flagpole
-    eduGroup.add(mesh(new THREE.CylinderGeometry(0.03, 0.035, 1.5, 6), M_MULLION, -1.5, 0.75, 1.3, false, false));
-    eduGroup.add(mesh(new THREE.BoxGeometry(0.42, 0.26, 0.02), mat(0x2563EB, 0.7), -1.28, 1.36, 1.3, false, false));
-
-    const eduProxy = hitProxy(3.0, 2.9, 3.0);
-    eduProxy.userData = { id: "museum_curiosities", district: "civic", name: "מרכז למידה ומוזיאון", amount: 0, trend: "השכלה, קהילה וסקרנות", shell: eduGroup };
-    eduGroup.add(eduProxy);
-    interactiveBuildings.push(eduProxy);
-    buildingRoots["museum_curiosities"] = eduGroup;
-
-    // Sports court
-    const courtGroup = new THREE.Group(); courtGroup.position.set(-7.1, Y_WALK + 0.02, 10.0); root.add(courtGroup);
-    courtGroup.add(mesh(new THREE.BoxGeometry(3.1, 0.02, 2.4), mat(0x1E8A4A, 0.85), 0, 0, 0, false, true));
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.3, 0.025, 1.8), mat(0xE2652A, 0.85), 0, 0.006, 0, false, true));
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.34, 0.03, 0.04), whiteMarkMat, 0, 0.014, -0.9, false, false));
-    courtGroup.add(mesh(new THREE.BoxGeometry(2.34, 0.03, 0.04), whiteMarkMat, 0, 0.014, 0.9, false, false));
-    courtGroup.add(mesh(new THREE.BoxGeometry(0.04, 0.03, 1.84), whiteMarkMat, -1.15, 0.014, 0, false, false));
-    courtGroup.add(mesh(new THREE.BoxGeometry(0.04, 0.03, 1.84), whiteMarkMat, 1.15, 0.014, 0, false, false));
-    const courtCircle = mesh(new THREE.TorusGeometry(0.42, 0.02, 6, 24), whiteMarkMat, 0, 0.014, 0, false, false);
+    const courtGroup = new THREE.Group(); courtGroup.position.set(-9.2, Y_GRASS + 0.03, 8.8); root.add(courtGroup);
+    courtGroup.add(mesh(new THREE.BoxGeometry(3.4, 0.03, 2.6), mat(0x1E8A4A, 0.85), 0, 0, 0, false, true));
+    courtGroup.add(mesh(new THREE.BoxGeometry(2.5, 0.035, 2.0), mat(0xE2652A, 0.85), 0, 0.008, 0, false, true));
+    courtGroup.add(mesh(new THREE.BoxGeometry(2.54, 0.04, 0.04), whiteMarkMat, 0, 0.016, -1.0, false, false));
+    courtGroup.add(mesh(new THREE.BoxGeometry(2.54, 0.04, 0.04), whiteMarkMat, 0, 0.016, 1.0, false, false));
+    const courtCircle = mesh(new THREE.TorusGeometry(0.45, 0.02, 6, 24), whiteMarkMat, 0, 0.016, 0, false, false);
     courtCircle.rotation.x = -Math.PI / 2; courtGroup.add(courtCircle);
-    const bPost = mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.3, 8), M_SLATE, 0, 0.65, -1.05, false, false);
+    const bPost = mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.3, 8), M_SLATE, 0, 0.65, -1.15, false, false);
     bPost.add(mesh(new THREE.BoxGeometry(0.60, 0.38, 0.03), M_WHITE, 0, 0.55, 0.10, false, false));
     bPost.add(mesh(new THREE.TorusGeometry(0.11, 0.02, 8, 12), mat(0xEA580C, 0.5), 0, 0.45, 0.22, false, false));
     courtGroup.add(bPost);
-    // Fence posts around the court
     for (let i = -1; i <= 1; i += 2) {
-      for (let x = -1.5; x <= 1.5; x += 1.5) {
-        courtGroup.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.75, 5), M_SLATE, x, 0.37, i * 1.25, false, false));
+      for (let x = -1.7; x <= 1.7; x += 1.7) {
+        courtGroup.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.8, 5), M_SLATE, x, 0.40, i * 1.35, false, false));
       }
-      courtGroup.add(mesh(new THREE.BoxGeometry(3.1, 0.03, 0.03), M_SLATE, 0, 0.72, i * 1.25, false, false));
+      courtGroup.add(mesh(new THREE.BoxGeometry(3.4, 0.03, 0.03), M_SLATE, 0, 0.78, i * 1.35, false, false));
     }
+
+    // Picnic table under the trees
+    (function () {
+      const g = new THREE.Group(); g.position.set(-9.6, Y_GRASS, 11.4); g.rotation.y = 0.4; root.add(g);
+      g.add(mesh(roundedBox(1.10, 0.07, 0.62, 0.03), M_WOOD, 0, 0.44, 0, false, false));
+      g.add(mesh(roundedBox(1.10, 0.06, 0.22, 0.02), M_WOOD, 0, 0.26, -0.45, false, false));
+      g.add(mesh(roundedBox(1.10, 0.06, 0.22, 0.02), M_WOOD, 0, 0.26, 0.45, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.07, 0.44, 0.07), M_WOOD, -0.45, 0.22, 0, false, false));
+      g.add(mesh(new THREE.BoxGeometry(0.07, 0.44, 0.07), M_WOOD, 0.45, 0.22, 0, false, false));
+    })();
+    addBenchAt(-6.4, 10.9, -0.5, Y_GRASS);
+    addBenchAt(-11.9, 7.6, 1.4, Y_GRASS);
 
     // ────────────────────────────────────────────────────────────────
     // 🌿 10. NATURE RESERVE: LAKE, BRIDGE & WOODS (Hero Reference)
     // ────────────────────────────────────────────────────────────────
     // x=9.1, not 8.2: at 8.2 the lake spilled across the eastern road corridor.
-    const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.4, Y_GROUND, -8.4); root.add(reserveGroup);
+    const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.4, Y_GROUND, -9.4); root.add(reserveGroup);
 
     // Sandy shore so the water reads as a basin in the ground, not a slab laid on the grass
     const shoreGeo = new THREE.CylinderGeometry(3.05, 3.15, 0.10, 26);
-    shoreGeo.scale(1.15, 1, 0.80);
+    shoreGeo.scale(0.92, 1, 0.68);
     reserveGroup.add(mesh(shoreGeo, mat(0xE8D7A8, 0.92), -0.2, Y_GRASS - 0.02, 0, false, true));
 
     // Organic Lake Basin
     const lakeGeo = new THREE.CylinderGeometry(2.6, 2.8, 0.12, 24);
-    lakeGeo.scale(1.15, 1, 0.80);
+    lakeGeo.scale(0.92, 1, 0.68);
     const lakeMesh = mesh(lakeGeo, M_WATER, -0.2, Y_GRASS - 0.01, 0, false, true);
     reserveGroup.add(lakeMesh);
     lakeMesh.userData = { id: "savings_sanctuary", district: "savings", name: "שמורת הטבע", amount: 0, trend: "יציבות וחיסכון פיננסי" };
@@ -1321,20 +1725,20 @@
     // abandoned without it. Trees are scattered procedurally over whatever ground is not
     // road, pavement or lake, from a fixed seed so the layout is identical every launch.
     // ────────────────────────────────────────────────────────────────
-    const ISLAND_HALF = 12.6;
+    const ISLAND_HALF = 12.2;
 
     function isOpenGround(x, z) {
       if (Math.max(Math.abs(x), Math.abs(z)) > ISLAND_HALF) return false;
       // Road corridors (half-width 1.2, plus 0.7 of verge so nothing grows in the gutter)
-      if (Math.abs(Math.abs(x) - 4.2) < 1.9 && Math.abs(z) < 11.6) return false;
-      if (Math.abs(Math.abs(z) - 4.2) < 1.9 && Math.abs(x) < 11.6) return false;
+      if (Math.abs(Math.abs(x) - ROAD_AT) < 1.9 && Math.abs(z) < 11.4) return false;
+      if (Math.abs(Math.abs(z) - ROAD_AT) < 1.9 && Math.abs(x) < 11.4) return false;
       // Paved blocks, padded so canopies do not overhang a facade
       for (let i = 0; i < pavedBlocks.length; i++) {
         const b = pavedBlocks[i];
         if (x > b.x0 - 0.9 && x < b.x1 + 0.9 && z > b.z0 - 0.9 && z < b.z1 + 0.9) return false;
       }
       // The nature reserve plants itself
-      if (Math.hypot(x - 9.4, z + 8.4) < 4.6) return false;
+      if (Math.hypot(x - 9.4, z + 9.4) < 4.2) return false;
       return true;
     }
 
@@ -1368,28 +1772,20 @@
     const lampGlassMat = mat(0xFEF9C3, 0.3, 0, 0xFDE68A, 0.9);
     function addLamp(lx, lz) {
       const g = new THREE.Group(); g.position.set(lx, Y_WALK, lz);
-      g.add(mesh(new THREE.CylinderGeometry(0.045, 0.06, 1.5, 8), lampMat, 0, 0.75, 0));
-      g.add(mesh(new THREE.SphereGeometry(0.11, 10, 10), lampGlassMat, 0, 1.56, 0));
+      g.add(queueForMerge(mesh(new THREE.CylinderGeometry(0.045, 0.06, 1.5, 8), lampMat, 0, 0.75, 0, false, false)));
+      g.add(queueForMerge(mesh(new THREE.SphereGeometry(0.11, 10, 10), lampGlassMat, 0, 1.56, 0, false, false)));
       root.add(g);
     }
-    [-9.4, -6.6, 6.6, 9.4].forEach(function (v) {
-      addLamp(-2.75, v); addLamp(2.75, v);
-      addLamp(v, -2.75); addLamp(v, 2.75);
+    // Along the four block frontages that face the road ring
+    [-3.6, -1.2, 1.2, 3.6].forEach(function (v) {
+      addLamp(-4.0, v); addLamp(4.0, v);
+      addLamp(v, -4.0); addLamp(v, 4.0);
     });
-    addLamp(-2.75, -2.75); addLamp(2.75, -2.75); addLamp(-2.75, 2.75); addLamp(2.75, 2.75);
+    [-3.2, 0, 3.2].forEach(function (v) {
+      addLamp(v, -7.2); addLamp(v, 7.2);
+      addLamp(-7.2, v); addLamp(7.2, v);
+    });
 
-    // Plaza benches facing the fountain
-    function addBench(bx, bz, rotY) {
-      const g = new THREE.Group(); g.position.set(bx, Y_WALK, bz); g.rotation.y = rotY || 0;
-      g.add(mesh(new THREE.BoxGeometry(1.1, 0.07, 0.34), M_WOOD, 0, 0.30, 0));
-      g.add(mesh(new THREE.BoxGeometry(1.1, 0.30, 0.06), M_WOOD, 0, 0.46, -0.14));
-      g.add(mesh(new THREE.BoxGeometry(0.07, 0.28, 0.30), lampMat, -0.45, 0.15, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.07, 0.28, 0.30), lampMat,  0.45, 0.15, 0));
-      root.add(g);
-    }
-    addBench(-1.9, 1.9, 0.9);
-    addBench( 1.9, 1.9, -0.9);
-    addBench( 2.3, -0.2, -Math.PI / 2);
 
     // ────────────────────────────────────────────────────────────────
     // 🌱 10c. RESERVE HEALTH
@@ -1451,34 +1847,11 @@
     // ────────────────────────────────────────────────────────────────
     // 🚗 11. ROAD VEHICLES (Looping Smoothly on Main Road)
     // ────────────────────────────────────────────────────────────────
-    function createCar(color, isBus, isTaxi) {
-      const g = new THREE.Group();
-      const bMat = mat(color, 0.5, 0.15);
-      const wMat = mat(0x0F172A, 0.9);
-      if (isBus) {
-        g.add(mesh(roundedBox(1.0, 0.8, 2.4, 0.1), bMat, 0, 0.48, 0));
-        g.add(mesh(new THREE.BoxGeometry(1.04, 0.3, 2.1), M_GLASS_BL, 0, 0.55, 0));
-        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat, -0.5, 0.16, -0.7));
-        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat,  0.5, 0.16, -0.7));
-        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat, -0.5, 0.16,  0.7));
-        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 10), wMat,  0.5, 0.16,  0.7));
-      } else {
-        g.add(mesh(roundedBox(0.8, 0.38, 1.5, 0.08), bMat, 0, 0.28, 0));
-        g.add(mesh(roundedBox(0.7, 0.32, 0.85, 0.06), M_GLASS_BL, 0, 0.55, -0.05));
-        if (isTaxi) g.add(mesh(new THREE.BoxGeometry(0.26, 0.08, 0.14), M_WHITE, 0, 0.75, -0.05));
-        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat, -0.42, 0.13, -0.45));
-        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat,  0.42, 0.13, -0.45));
-        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat, -0.42, 0.13,  0.45));
-        g.add(mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.08, 10), wMat,  0.42, 0.13,  0.45));
-      }
-      return g;
-    }
-
     const roadLoopPath = [
-      { x: -4.2, z: -4.2 },
-      { x:  4.2, z: -4.2 },
-      { x:  4.2, z:  4.2 },
-      { x: -4.2, z:  4.2 }
+      { x: -ROAD_AT, z: -ROAD_AT },
+      { x:  ROAD_AT, z: -ROAD_AT },
+      { x:  ROAD_AT, z:  ROAD_AT },
+      { x: -ROAD_AT, z:  ROAD_AT }
     ];
 
     function addVehicle(color, isBus, isTaxi, initP, spd) {
@@ -1488,6 +1861,13 @@
     addVehicle(0x2563EB, true, false, 0.0, 0.14);  // Blue City Bus
     addVehicle(0xFACC15, false, true, 0.45, 0.20); // Yellow Taxi
     addVehicle(0xEF4444, false, false, 0.75, 0.18); // Red Car
+
+    // A delivery rider doing laps — the most recognisable everyday spend on the road.
+    (function () {
+      const rider = makeCourier(0x00C2E8);
+      root.add(rider);
+      vehicleState.push({ obj: rider, path: roadLoopPath, progress: 0.22, speed: 0.26 });
+    })();
 
     // ────────────────────────────────────────────────────────────────
     // 🚶 12. CITIZENS & SPEECH BUBBLE INTERACTION
@@ -1509,7 +1889,7 @@
       activeBubbles.push({ el: el, life: 0, maxLife: 2.6 });
     }
 
-    function addCitizen(color, pants, hatColor, walkPath, phrases, englishPhrases) {
+    function addCitizen(color, pants, hatColor, walkPath, phrases, englishPhrases, withDog) {
       const g = new THREE.Group();
       const torso = mesh(roundedBox(0.20, 0.26, 0.14, 0.03), mat(color, 0.7), 0, 0.35, 0);
       const head  = mesh(new THREE.SphereGeometry(0.08, 8, 8), mat(0xFCD34D, 0.8), 0, 0.56, 0);
@@ -1524,25 +1904,34 @@
       };
       interactiveCitizens.push(torso);
 
+      let dog = null;
+      if (withDog) { dog = makeDog(0xD9A441); root.add(dog); }
       if (walkPath && walkPath.length > 1) {
-        walkingCitizens.push({ obj: g, legL: legL, legR: legR, path: walkPath, pIdx: 0, t: Math.random(), speed: 0.28 });
+        walkingCitizens.push({ obj: g, legL: legL, legR: legR, dog: dog, path: walkPath, pIdx: 0, t: Math.random(), speed: 0.28 });
       }
       return g;
     }
 
-    // Citizens walking on sidewalks
+    // Citizens walking the plaza and each district frontage
     addCitizen(0x3B82F6, 0x1E293B, 0xEF4444, [
-      {x: -3.0, z: -2.8}, {x: 3.0, z: -2.8}, {x: 3.0, z: 2.8}, {x: -3.0, z: 2.8}
+      {x: -3.4, z: -3.4}, {x: 3.4, z: -3.4}, {x: 3.4, z: 3.4}, {x: -3.4, z: 3.4}
     ], ["קופץ לקפה של בוקר ☕", "העיר הזו נראית מעולה! 🏙️"], ["Grabbing a morning coffee ☕", "This city is looking great! 🏙️"]);
 
     addCitizen(0x10B981, 0x334155, null, [
-      {x: -6.8, z: 6.5}, {x: -6.8, z: 8.6}, {x: -9.0, z: 8.6}, {x: -9.0, z: 6.5}
-    ], ["בדרך למשחק כדורסל 🏀", "איזה מזג אוויר מושלם ☀️"], ["Off to a basketball game 🏀", "Perfect weather today ☀️"]);
+      {x: -3.4, z: 7.6}, {x: 3.4, z: 7.6}, {x: 3.4, z: 10.6}, {x: -3.4, z: 10.6}
+    ], ["רץ לבית המרקחת 🩹", "איזה מזג אוויר מושלם ☀️"], ["Popping into the pharmacy 🩹", "Perfect weather today ☀️"]);
 
-    // Kept on the paved perimeter of the reserve — the old loop walked straight over the lake.
     addCitizen(0xEC4899, 0x1E293B, 0xF59E0B, [
-      {x: 7.0, z: -2.9}, {x: 7.0, z: -0.6}, {x: 10.8, z: -0.6}, {x: 10.8, z: -2.9}
-    ], ["טיול שליו בשמורה 🌿", "המים באגם כל כך שלווים 🦆"], ["A quiet walk by the reserve 🌿", "The lake is so calm today 🦆"]);
+      {x: 7.4, z: -3.6}, {x: 7.4, z: 3.6}, {x: 11.0, z: 3.6}, {x: 11.0, z: -3.6}
+    ], ["יוצא לקנות ירקות 🥕", "הקפה כאן הכי טוב בעיר ☕"], ["Out for groceries 🥕", "Best coffee in town ☕"]);
+
+    addCitizen(0xF59E0B, 0x1E3A5F, null, [
+      {x: -7.4, z: 3.6}, {x: -7.4, z: -3.6}, {x: -11.0, z: -3.6}, {x: -11.0, z: 3.6}
+    ], ["מסתכל על חלונות ראווה 🛍️", "אולי בפעם הבאה 😅"], ["Window shopping 🛍️", "Maybe next month 😅"]);
+
+    addCitizen(0x7C3AED, 0x334155, 0x22C55E, [
+      {x: -3.2, z: -7.4}, {x: 3.2, z: -7.4}, {x: 3.2, z: -11.0}, {x: -3.2, z: -11.0}
+    ], ["חוזר הביתה 🏡", "השכנים שלי אחלה"], ["Heading home 🏡", "Good neighbours here"], true);
 
     // ────────────────────────────────────────────────────────────────
     // 🎁 12b. ENRICHMENT SLOTS
@@ -1553,12 +1942,12 @@
       // Positions are checked against the lake, the shore disc, the road corridors, the
       // building footprints and the street lamps — a pad hidden under any of those can
       // never be tapped, and tapping is the only way into the customiser.
-      { id: "slot_park_center",     x:  8.4, z: -11.8, y: Y_GRASS, district: "savings"  },
-      { id: "slot_park_overlook",   x: 12.1, z:  -6.0, y: Y_GRASS, district: "savings"  },
-      { id: "slot_food_plaza",      x: 10.6, z:   1.7, y: Y_WALK,  district: "food"     },
-      { id: "slot_shop_promenade",  x: -7.4, z:   2.9, y: Y_WALK,  district: "shopping" },
-      { id: "slot_housing_terrace", x:  4.6, z:  -8.0, y: Y_WALK,  district: "housing"  },
-      { id: "slot_tech_plaza",      x: -7.4, z:  -2.9, y: Y_WALK,  district: "shopping" }
+      { id: "slot_park_center",     x:  7.4, z: -12.2, y: Y_GRASS, district: "savings"  },
+      { id: "slot_park_overlook",   x: 12.3, z:  -9.4, y: Y_GRASS, district: "savings"  },
+      { id: "slot_food_plaza",      x: 11.3, z:   0.0, y: Y_WALK,  district: "food"     },
+      { id: "slot_shop_promenade",  x: -7.4, z:   2.6, y: Y_WALK,  district: "shopping" },
+      { id: "slot_housing_terrace", x:  4.0, z:  -7.5, y: Y_WALK,  district: "housing"  },
+      { id: "slot_tech_plaza",      x: -7.4, z:  -2.6, y: Y_WALK,  district: "shopping" }
     ];
 
     const interactiveSlots = [];
@@ -1984,17 +2373,20 @@
     // ────────────────────────────────────────────────────────────────
     const I18N_BUILDINGS = {
       finance_bank:       { he: ["עיריית SPENT", "מרכז העיר והממשל"],   en: ["SPENT City Hall", "Civic centre"] },
-      house_tower:        { he: ["מגורים ושכירות", "חיוב מגורים קבוע"], en: ["Housing & rent", "Fixed monthly charge"] },
-      house_util:         { he: ["חשבונות בית", "חשמל, מים וארנונה"],   en: ["Utilities", "Power, water and council tax"] },
+      house_tower:        { he: ["מגורים ושכירות", "שכר דירה או משכנתא"], en: ["Housing & rent", "Rent or mortgage"] },
+      house_util:         { he: ["חשבונות בית", "חשמל, מים, גז וארנונה"], en: ["Utilities", "Power, water, gas, council tax"] },
       house_subs:         { he: ["מנויים וסטרימינג", "שירותים דיגיטליים"], en: ["Subscriptions", "Digital services"] },
       shop_arcade:        { he: ["בילויים וגיימינג", "קולנוע, משחקים ואטרקציות"], en: ["Fun & gaming", "Cinema, games, attractions"] },
       shop_tech:          { he: ["טכנולוגיה", "מחשבים וגאדג'טים"],      en: ["Tech", "Computers and gadgets"] },
       shop_boutique:      { he: ["אופנה ובוטיק", "ביגוד ואופנה"],        en: ["Fashion", "Clothing and style"] },
       shop_travel:        { he: ["חופשות וטיסות", "נסיעות ופנאי"],       en: ["Travel", "Trips and leisure"] },
-      food_coffee:        { he: ["אוכל ומסעדות", "קפה, סופר, מסעדות ומשלוחים"], en: ["Food & drink", "Cafés, groceries, dining, delivery"] },
-      city_sorting_hub:   { he: ["מתחם העסקים והדואר", "מרכז העבודה והמשרדים"], en: ["Work & post", "Offices and admin"] },
-      health_pharmacy:    { he: ["מרפאה ופארם", "שירותי רפואה ובריאות"], en: ["Health", "Clinic and pharmacy"] },
-      museum_curiosities: { he: ["מרכז למידה ומוזיאון", "השכלה, קהילה וסקרנות"], en: ["Learning", "Education and curiosity"] },
+      food_super:         { he: ["סופרמרקט", "קניות שבועיות במכולת"],        en: ["Supermarket", "The weekly shop"] },
+      food_bistro:        { he: ["מסעדות", "ארוחות בחוץ"],                   en: ["Restaurants", "Eating out"] },
+      food_coffee:        { he: ["קפה ומאפים", "הרגל הקפה היומי"],           en: ["Coffee", "The daily coffee habit"] },
+      food_wolt:          { he: ["משלוחי אוכל", "וולט, תן ביס ומשלוחים"],    en: ["Food delivery", "Delivery apps"] },
+      city_sorting_hub:   { he: ["עמדת המיון והדואר", "הוצאות שעוד לא סווגו"], en: ["Sorting & post", "Transactions not filed yet"] },
+      health_pharmacy:    { he: ["בית מרקחת", "תרופות, פארם ובריאות"],       en: ["Pharmacy", "Medicine and everyday health"] },
+      museum_curiosities: { he: ["לימודים וקהילה", "השכלה, ספרים ופנאי מסקרן"], en: ["Learning", "Books, courses and curiosity"] },
       savings_sanctuary:  { he: ["שמורת הטבע", "יציבות וחיסכון פיננסי"], en: ["Nature reserve", "Savings and stability"] }
     };
 
@@ -2145,8 +2537,12 @@
         const fSuper  = (data.foodSub && data.foodSub.groceries  !== undefined) ? data.foodSub.groceries  : 0;
         const fCoffee = (data.foodSub && data.foodSub.coffee     !== undefined) ? data.foodSub.coffee     : 0;
         const fWolt   = (data.foodSub && data.foodSub.delivery   !== undefined) ? data.foodSub.delivery   : 0;
-        // Four food nodes share one cafe model, so the cafe carries their sum.
-        syncBuilding("food_coffee", fRest + fSuper + fCoffee + fWolt);
+        // The food district is four separate places now, exactly as the app already tracks
+        // them, so each one is built by its own habit rather than by a shared total.
+        syncBuilding("food_bistro", fRest);
+        syncBuilding("food_super", fSuper);
+        syncBuilding("food_coffee", fCoffee);
+        syncBuilding("food_wolt", fWolt);
 
         // Shopping District
         const sFashion = (data.shoppingSub && data.shoppingSub.fashion       !== undefined) ? data.shoppingSub.fashion       : 0;
@@ -2168,6 +2564,7 @@
 
         syncBuilding("city_sorting_hub", data.otherAmount || 0);
         syncBuilding("museum_curiosities", data.museumAmount || 0);
+        syncBuilding("health_pharmacy", data.healthAmount || 0);
         syncBuilding("savings_sanctuary", data.savings || 0);
         applyBuildingActivity();
 
@@ -2208,11 +2605,14 @@
       trafficSpeed = 0.55 + level * 1.05;
       const visible = t <= 0 ? 1 : (t < 250 ? 2 : 3);
       for (let i = 0; i < vehicleState.length; i++) vehicleState[i].obj.visible = i < visible;
+      // The ride station fills up with the transport line rather than only the traffic.
+      const units = Math.min(4, 1 + Math.round(level * 3));
+      for (let i = 0; i < transportUnits.length; i++) transportUnits[i].visible = i < units;
     }
 
     // A parked van outside the work complex whenever transactions are waiting to be sorted.
     const deliveryVan = createCar(0xF59E0B, false, false);
-    deliveryVan.position.set(6.9, Y_WALK, 5.2);
+    deliveryVan.position.set(8.6, Y_WALK, 10.6);
     deliveryVan.rotation.y = Math.PI / 2;
     deliveryVan.visible = false;
     root.add(deliveryVan);
@@ -2297,6 +2697,13 @@
       }
 
       stepPlantings(dt);
+      stepRising(dt);
+      stepCrews(dt, now);
+      for (let i = 0; i < pigeons.length; i++) {
+        const pg = pigeons[i];
+        pg.obj.position.y = Y_WALK + Math.max(0, Math.sin(now * 0.0011 + pg.phase) - 0.86) * 1.6;
+        pg.obj.rotation.y += dt * 0.25;
+      }
 
       // Newly placed enrichments grow in rather than popping into existence
       for (let i = slotGrowth.length - 1; i >= 0; i--) {
@@ -2335,6 +2742,12 @@
         const legSwing = Math.sin(now * 0.008) * 0.55;
         if (c.legL) c.legL.rotation.x = legSwing;
         if (c.legR) c.legR.rotation.x = -legSwing;
+        if (c.dog) {
+          c.dog.position.set(c.obj.position.x + Math.sin(c.obj.rotation.y + 1.2) * 0.42,
+                             c.obj.position.y,
+                             c.obj.position.z + Math.cos(c.obj.rotation.y + 1.2) * 0.42);
+          c.dog.rotation.y = c.obj.rotation.y;
+        }
       });
 
       // Step looping vehicles
@@ -2380,6 +2793,8 @@
     if (window._initialDataPayload) {
       window.updateDioramaData(window._initialDataPayload);
     }
+
+    mergeStaticScenery();
 
     // Shadow casting costs a second draw call per mesh. Signs, window panes, wheels, lamp
     // bulbs and other small detail read fine without their own shadow, so only geometry big

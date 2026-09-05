@@ -965,6 +965,213 @@
     ], ["טיול שליו בשמורה 🌿", "המים באגם כל כך שלווים 🦆"], ["A quiet walk by the reserve 🌿", "The lake is so calm today 🦆"]);
 
     // ────────────────────────────────────────────────────────────────
+    // 🎁 12b. ENRICHMENT SLOTS
+    // Six curated spots the user can decorate. Tapping one is the only route into the
+    // slot customiser in the app, so without them every unlocked reward is unreachable.
+    // ────────────────────────────────────────────────────────────────
+    const SLOT_DEFS = [
+      // Positions are checked against the lake, the shore disc, the road corridors, the
+      // building footprints and the street lamps — a pad hidden under any of those can
+      // never be tapped, and tapping is the only way into the customiser.
+      { id: "slot_park_center",     x:  8.6, z: -11.2, y: Y_GRASS, district: "savings"  },
+      { id: "slot_park_overlook",   x: 12.7, z:  -6.6, y: Y_GRASS, district: "savings"  },
+      { id: "slot_food_plaza",      x:  9.4, z:   1.0, y: Y_WALK,  district: "food"     },
+      { id: "slot_shop_promenade",  x: -6.3, z:   1.2, y: Y_WALK,  district: "shopping" },
+      { id: "slot_housing_terrace", x:  3.3, z:  -6.1, y: Y_WALK,  district: "housing"  },
+      { id: "slot_tech_plaza",      x: -6.4, z:  -1.3, y: Y_WALK,  district: "shopping" }
+    ];
+
+    const interactiveSlots = [];
+    const slotGroups = {};
+    const slotItems = {};
+    const M_PEDESTAL = mat(0xE7E1D6, 0.88);
+    const M_PINK  = mat(0xF9A8D4, 0.75);
+    const M_ROSE  = mat(0xFB7185, 0.72);
+    const M_TEAL  = mat(0x0EA5E9, 0.55);
+    const M_CAT   = mat(0x9CA3AF, 0.80);
+    const M_DOG   = mat(0xD9A441, 0.80);
+    const M_MARBLE = mat(0xF8FAFC, 0.35, 0.05);
+
+    function addSlot(def) {
+      const g = new THREE.Group();
+      g.position.set(def.x, def.y, def.z);
+      root.add(g);
+      slotGroups[def.id] = g;
+
+      // The pedestal is the hit target and stays put whatever is standing on it.
+      const pad = mesh(new THREE.CylinderGeometry(0.62, 0.68, 0.09, 20), M_PEDESTAL, 0, 0.045, 0, false, true);
+      pad.userData = { slotId: def.id, district: def.district, currentItem: null };
+      g.add(pad);
+      interactiveSlots.push(pad);
+
+      // Empty-state marker: a small ring so the spot reads as "something goes here".
+      const marker = new THREE.Mesh(
+        new THREE.RingGeometry(0.24, 0.32, 20),
+        new THREE.MeshBasicMaterial({ color: C(0x94A3B8), transparent: true, opacity: 0.55, depthWrite: false })
+      );
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.y = 0.10;
+      g.add(marker);
+
+      const holder = new THREE.Group();
+      holder.position.y = 0.09;
+      g.add(holder);
+
+      slotItems[def.id] = { pad: pad, marker: marker, holder: holder, itemId: null };
+      return g;
+    }
+    SLOT_DEFS.forEach(addSlot);
+
+    // ---- Enrichment prop library (ids match CityProgressEngine) ----
+    function propTreeSakura(g) {
+      g.add(mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.42, 8), M_WOOD, 0, 0.21, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.30, 10, 10), M_PINK, 0, 0.60, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.20, 10, 10), M_PINK, 0.20, 0.48, 0.10));
+      g.add(mesh(new THREE.SphereGeometry(0.18, 10, 10), M_PINK, -0.18, 0.50, -0.10));
+    }
+    function propFlowerBed(g) {
+      g.add(mesh(roundedBox(0.86, 0.14, 0.86, 0.06), M_WOOD, 0, 0.07, 0));
+      const cols = [M_ROSE, M_PINK, M_GOLD, M_TEAL];
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        g.add(mesh(new THREE.SphereGeometry(0.07, 8, 8), cols[i % 4], Math.cos(a) * 0.26, 0.19, Math.sin(a) * 0.26));
+      }
+    }
+    function propBench(g) {
+      g.add(mesh(new THREE.BoxGeometry(0.95, 0.06, 0.30), M_WOOD, 0, 0.28, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.95, 0.26, 0.05), M_WOOD, 0, 0.43, -0.12));
+      g.add(mesh(new THREE.BoxGeometry(0.06, 0.26, 0.26), M_SLATE, -0.40, 0.13, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.06, 0.26, 0.26), M_SLATE,  0.40, 0.13, 0));
+    }
+    function propLamp(g) {
+      g.add(mesh(new THREE.CylinderGeometry(0.04, 0.055, 1.30, 8), mat(0x1E293B, 0.6), 0, 0.65, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.10, 10, 10), mat(0xFEF9C3, 0.3, 0, 0xFDE68A, 1.1), 0, 1.36, 0));
+    }
+    function propArtist(g) {
+      g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.72, 6), M_WOOD, -0.10, 0.36, 0.10));
+      g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.72, 6), M_WOOD,  0.14, 0.36, 0.10));
+      g.add(mesh(new THREE.BoxGeometry(0.46, 0.36, 0.03), M_WHITE, 0.02, 0.58, 0.05));
+      g.add(mesh(roundedBox(0.18, 0.24, 0.12, 0.03), mat(0x7C3AED, 0.7), 0.02, 0.42, -0.28));
+      g.add(mesh(new THREE.SphereGeometry(0.075, 8, 8), mat(0xFCD34D, 0.8), 0.02, 0.62, -0.28));
+    }
+    function propCat(g) {
+      g.add(mesh(roundedBox(0.16, 0.16, 0.34, 0.05), M_CAT, 0, 0.20, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.10, 10, 10), M_CAT, 0, 0.32, 0.20));
+      g.add(mesh(new THREE.ConeGeometry(0.045, 0.09, 5), M_CAT, -0.05, 0.42, 0.20));
+      g.add(mesh(new THREE.ConeGeometry(0.045, 0.09, 5), M_CAT,  0.05, 0.42, 0.20));
+      const tail = mesh(new THREE.CylinderGeometry(0.022, 0.03, 0.30, 6), M_CAT, 0, 0.30, -0.20);
+      tail.rotation.x = 0.7; g.add(tail);
+    }
+    function propDog(g) {
+      g.add(mesh(roundedBox(0.19, 0.19, 0.40, 0.06), M_DOG, 0, 0.22, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.115, 10, 10), M_DOG, 0, 0.36, 0.23));
+      g.add(mesh(roundedBox(0.06, 0.13, 0.05, 0.02), mat(0x8A5A20, 0.8), -0.09, 0.42, 0.22));
+      g.add(mesh(roundedBox(0.06, 0.13, 0.05, 0.02), mat(0x8A5A20, 0.8),  0.09, 0.42, 0.22));
+      const tail = mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.24, 6), M_DOG, 0, 0.34, -0.22);
+      tail.rotation.x = -0.9; g.add(tail);
+    }
+    function propBikeStation(g) {
+      g.add(mesh(new THREE.BoxGeometry(0.90, 0.06, 0.06), M_SLATE, 0, 0.30, -0.10));
+      for (let i = -1; i <= 1; i++) g.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.30, 6), M_SLATE, i * 0.32, 0.15, -0.10));
+      [-0.24, 0.24].forEach(function (bx) {
+        const w1 = mesh(new THREE.TorusGeometry(0.12, 0.022, 8, 14), M_SLATE, bx - 0.16, 0.14, 0.14);
+        const w2 = mesh(new THREE.TorusGeometry(0.12, 0.022, 8, 14), M_SLATE, bx + 0.16, 0.14, 0.14);
+        g.add(w1, w2);
+        g.add(mesh(new THREE.BoxGeometry(0.34, 0.035, 0.035), M_TEAL, bx, 0.22, 0.14));
+      });
+    }
+    function propCafeStand(g) {
+      g.add(mesh(roundedBox(0.72, 0.52, 0.46, 0.06), M_CREAM, 0, 0.26, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.78, 0.07, 0.10), mat(0x92400E, 0.7), 0, 0.55, 0));
+      const aw = mesh(new THREE.BoxGeometry(0.80, 0.06, 0.34), new THREE.MeshStandardMaterial({ map: stripedAwningTex("#EA580C", "#FFFFFF") }), 0, 0.50, 0.30);
+      aw.rotation.x = 0.30; g.add(aw);
+      g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.12, 10), M_WHITE, 0.20, 0.62, 0));
+    }
+    function propSidewalk(g) {
+      g.add(mesh(roundedBox(1.00, 0.07, 1.00, 0.10), paverMat, 0, 0.035, 0, false, true));
+      g.add(mesh(new THREE.BoxGeometry(1.02, 0.03, 0.05), M_WARM_STONE, 0, 0.08, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.05, 0.03, 1.02), M_WARM_STONE, 0, 0.08, 0));
+    }
+    function propFountain(g) {
+      g.add(mesh(new THREE.CylinderGeometry(0.48, 0.54, 0.18, 20), M_MARBLE, 0, 0.09, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.04, 20), M_WATER, 0, 0.17, 0));
+      g.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.26, 10), M_MARBLE, 0, 0.30, 0));
+      const jet = mesh(new THREE.CylinderGeometry(0.04, 0.06, 0.34, 8), mat(0x93C5FD, 0.4, 0, 0x38BDF8, 0.7), 0, 0.56, 0);
+      g.add(jet);
+      animObjects.push({ type: "fountain_spout", spout: jet });
+    }
+    function propBridge(g) {
+      const deck = mesh(new THREE.BoxGeometry(0.55, 0.06, 1.30), M_WOOD, 0, 0.22, 0);
+      g.add(deck);
+      g.add(mesh(new THREE.BoxGeometry(0.04, 0.20, 1.30), M_WOOD, -0.26, 0.34, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.04, 0.20, 1.30), M_WOOD,  0.26, 0.34, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.60, 0.16, 0.10), M_WOOD, 0, 0.11, -0.60));
+      g.add(mesh(new THREE.BoxGeometry(0.60, 0.16, 0.10), M_WOOD, 0, 0.11,  0.60));
+    }
+    function propSculpture(g) {
+      g.add(mesh(roundedBox(0.50, 0.14, 0.50, 0.05), M_MARBLE, 0, 0.07, 0));
+      const a = mesh(new THREE.TorusGeometry(0.22, 0.055, 10, 20), M_GOLD, 0, 0.42, 0);
+      a.rotation.x = Math.PI / 2.4; g.add(a);
+      const b = mesh(new THREE.TorusGeometry(0.16, 0.045, 10, 20), mat(0x7C3AED, 0.5, 0.3), 0.06, 0.62, 0);
+      b.rotation.z = Math.PI / 3; g.add(b);
+    }
+
+    const ENRICHMENT_PROPS = {
+      tree_sakura: propTreeSakura,
+      flower_bed_plaza: propFlowerBed,
+      repair_bench: propBench,
+      repair_lamp: propLamp,
+      resident_artist: propArtist,
+      pet_cat_rooftop: propCat,
+      pet_golden_dog: propDog,
+      bike_station: propBikeStation,
+      cafe_stand: propCafeStand,
+      repair_sidewalk: propSidewalk,
+      fountain_marble: propFountain,
+      park_bridge: propBridge,
+      public_art_sculpture: propSculpture
+    };
+
+    function disposeChildren(group) {
+      for (let i = group.children.length - 1; i >= 0; i--) {
+        const c = group.children[i];
+        group.remove(c);
+        c.traverse(function (o) { if (o.isMesh && o.geometry) o.geometry.dispose(); });
+      }
+      // A marble fountain registers an animated spout. Swapping the slot's item has to drop
+      // that registration too, or every swap leaves the loop animating a detached mesh.
+      for (let i = animObjects.length - 1; i >= 0; i--) {
+        const a = animObjects[i];
+        if (a.spout && !a.spout.parent) animObjects.splice(i, 1);
+      }
+    }
+
+    function setSlotItem(slotId, itemId) {
+      const slot = slotItems[slotId];
+      if (!slot) return;
+      if (slot.itemId === itemId) return;
+      slot.itemId = itemId || null;
+      slot.pad.userData.currentItem = slot.itemId;
+      disposeChildren(slot.holder);
+      const build = slot.itemId && ENRICHMENT_PROPS[slot.itemId];
+      slot.marker.visible = !build;
+      if (build) {
+        build(slot.holder);
+        slot.holder.scale.setScalar(0.01);
+        slotGrowth.push(slot.holder);
+      }
+    }
+    const slotGrowth = [];
+
+    function applySlotPlacements(placements) {
+      const map = placements || {};
+      for (let i = 0; i < SLOT_DEFS.length; i++) {
+        const id = SLOT_DEFS[i].id;
+        setSlotItem(id, map[id] || null);
+      }
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // 👆 13. INTERACTION: ONE FINGER ORBITS, TWO FINGERS ZOOM AND PAN
     // WKWebView never delivers a wheel event, so pinch is the only zoom the phone has.
     // ────────────────────────────────────────────────────────────────
@@ -1070,7 +1277,18 @@
         }
       }
 
-      // 2. Building tapped
+      // 2. Enrichment slot tapped — the only route into the slot customiser
+      const sHits = raycaster.intersectObjects(interactiveSlots, false);
+      if (sHits.length > 0) {
+        const sd = sHits[0].object.userData;
+        if (sd && sd.slotId) {
+          bounceSlot(sd.slotId);
+          post("slotTapped", { slotId: sd.slotId, currentItem: sd.currentItem || null });
+          return;
+        }
+      }
+
+      // 3. Building tapped
       const bHits = raycaster.intersectObjects(interactiveBuildings, false);
       if (bHits.length > 0) {
         const obj = bHits[0].object;
@@ -1262,15 +1480,29 @@
     };
 
     // A newly unlocked upgrade gets one celebratory bounce instead of appearing silently.
+    const celebrations = [];
+    const slotBounces = [];
+
+    function bounceSlot(slotId) {
+      const slot = slotItems[slotId];
+      if (!slot) return;
+      const ex = slotBounces.find(function (b) { return b.slot === slot; });
+      if (ex) { ex.t = 0; return; }
+      slotBounces.push({ slot: slot, t: 0 });
+    }
+
     let lastCelebrated = null;
     window.celebrateNewEnrichment = function (id) {
       if (!id || id === lastCelebrated) return;
       lastCelebrated = id;
+      // An enrichment id names an item, so look for the slot holding it first.
+      for (const sid in slotItems) {
+        if (slotItems[sid].itemId === id) { bounceSlot(sid); return; }
+      }
       const target = buildingRoots[id];
       if (target) { celebrations.push({ obj: target, t: 0 }); return; }
       window.selectDioramaBuilding(id);
     };
-    const celebrations = [];
 
     // ────────────────────────────────────────────────────────────────
     // 🏙️ SPENDING DRIVES THE CITY
@@ -1278,6 +1510,7 @@
     // skyline is the month rather than a decoration sitting next to it.
     // ────────────────────────────────────────────────────────────────
     const buildingAmounts = {};
+    let unlockedEnrichments = [];
 
     function bodyOf(id) {
       for (let i = 0; i < interactiveBuildings.length; i++) {
@@ -1371,6 +1604,10 @@
 
         // Unsorted transactions park a delivery van outside the sorting hub.
         setPendingSorting(data.pendingSortingCount || 0);
+
+        // Placed enrichments. Anything unlocked but not placed simply is not in the map yet.
+        applySlotPlacements(data.slotPlacements);
+        unlockedEnrichments = Array.isArray(data.enrichments) ? data.enrichments : [];
 
         if (data.newlyUnlockedId) window.celebrateNewEnrichment(data.newlyUnlockedId);
       } catch (err) {
@@ -1483,6 +1720,21 @@
 
       stepPlantings(dt);
 
+      // Newly placed enrichments grow in rather than popping into existence
+      for (let i = slotGrowth.length - 1; i >= 0; i--) {
+        const h = slotGrowth[i];
+        const sc = h.scale.x + (1 - h.scale.x) * Math.min(1, dt * 5.0);
+        h.scale.setScalar(sc);
+        if (sc > 0.995) { h.scale.setScalar(1); slotGrowth.splice(i, 1); }
+      }
+      for (let i = slotBounces.length - 1; i >= 0; i--) {
+        const b = slotBounces[i];
+        b.t += dt;
+        const k = Math.min(1, b.t / 0.5);
+        b.slot.holder.position.y = 0.09 + Math.sin(k * Math.PI) * (1 - k) * 0.22;
+        if (k >= 1) { b.slot.holder.position.y = 0.09; slotBounces.splice(i, 1); }
+      }
+
       // Reserve fill: the lake grows toward the user's savings target
       lakeFill += (lakeFillTarget - lakeFill) * Math.min(1, dt * 2.0);
       if (lakeMesh) lakeMesh.scale.set(lakeFill, 1, lakeFill);
@@ -1551,6 +1803,20 @@
       window.updateDioramaData(window._initialDataPayload);
     }
 
+    // Shadow casting costs a second draw call per mesh. Signs, window panes, wheels, lamp
+    // bulbs and other small detail read fine without their own shadow, so only geometry big
+    // enough to be legible as a silhouette keeps casting.
+    (function trimShadowCasters() {
+      let dropped = 0;
+      root.traverse(function (o) {
+        if (!o.isMesh || !o.castShadow || !o.geometry) return;
+        if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+        const r = o.geometry.boundingSphere ? o.geometry.boundingSphere.radius : 1;
+        if (r < 0.34) { o.castShadow = false; dropped++; }
+      });
+      return dropped;
+    })();
+
     // Inspection handle. Costs nothing at runtime and is the only way to reason about the
     // scene from outside the closure when something renders wrong.
     window.__diorama = {
@@ -1558,6 +1824,8 @@
       buildingRoots: buildingRoots, interactiveBuildings: interactiveBuildings,
       materials: { water: M_WATER, grass: M_GRASS_LIME, pine: M_PINE, leaf: M_LEAF },
       plantings: parkPlantings,
+      slots: slotItems,
+      enrichments: function () { return unlockedEnrichments; },
       camModes: CAM_MODES,
       state: function () { return { mode: currentMode, cam: currentCam, target: targetCam, parkHealth: parkHealthValue }; }
     };

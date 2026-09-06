@@ -23,7 +23,7 @@ public struct CitySlotCustomizerSheet: View {
         self.unlockedEnrichments = unlockedEnrichments
         self.currentPlacements = currentPlacements
         self.onAssignSlot = onAssignSlot
-        _selectedSlotId = State(initialValue: initialSlotId ?? CitySlot.allSlots.first?.id ?? "slot_park_center")
+        _selectedSlotId = State(initialValue: initialSlotId.flatMap { CitySlot.slot(for: $0)?.id } ?? CitySlot.allSlots[0].id)
     }
     
     private var isHebrew: Bool { l10n.language == .hebrew }
@@ -40,33 +40,42 @@ public struct CitySlotCustomizerSheet: View {
         guard let id = currentlyPlacedItemId else { return nil }
         return unlockedEnrichments.first(where: { $0.itemId == id })
     }
+
+    private func iconForSlotOrItem(_ name: String) -> MoneyIconName {
+        switch name {
+        case "tree.fill", "tree_sakura", "leaf.fill": return .leaf
+        case "water.waves", "waterDrop", "drop.fill", "fountain_marble": return .waterDrop
+        case "fork.knife", "cutlery", "cafe_stand", "cup.and.saucer.fill": return .cutlery
+        case "bag.fill", "shoppingBag": return .shoppingBag
+        case "house.fill", "home", "flower_bed_plaza", "camera.macro": return .home
+        case "pawprint.fill", "pet_cat_rooftop", "pet_golden_dog", "paw": return .paw
+        case "bicycle", "bike_station": return .car
+        case "person.fill", "resident_artist", "paintpalette.fill", "user": return .user
+        case "building.columns.fill", "public_art_sculpture", "trophy": return .trophy
+        case "building.2.fill", "park_bridge": return .home
+        default: return .star
+        }
+    }
     
     public var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 22) {
-                    // 1. Blueprint Architectural Header
-                    VStack(spacing: 8) {
-                        ZStack {
-                            Circle()
-                                .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
-                                .frame(width: 58, height: 58)
+                VStack(alignment: .leading, spacing: 20) {
+                    // 1. Header Banner
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("עיצוב והצבת שדרוגים")
+                                .font(.system(size: 20, weight: .black, design: .rounded))
+                                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                             
-                            DistrictSkylineVectorIcon(color: Color.primaryBlue)
-                                .scaleEffect(1.2)
+                            Text("בחר מגרש בעיר והצב בו אלמנטים פתוחים")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
                         }
-                        
-                        Text(isHebrew ? "עיצוב והצבת שדרוגים" : "City Slot Customizer")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
-                        
-                        Text(isHebrew ? "בחר מיקום באי והחלט איזה שדרוג יוצב בו (כמו בסימס!)" : "Choose a lot on the island and assign an upgrade (Sims-style!)")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
+                        Spacer()
                     }
-                    .padding(.top, 8)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
                     
                     // 2. City Slots Horizontal Selector
                     VStack(alignment: .leading, spacing: 10) {
@@ -89,13 +98,11 @@ public struct CitySlotCustomizerSheet: View {
                                     }) {
                                         VStack(alignment: .leading, spacing: 6) {
                                             HStack {
-                                                Image(systemName: slot.icon)
-                                                    .font(.system(size: 16, weight: .bold))
+                                                MoneyIcon(iconForSlotOrItem(slot.icon), size: 16)
                                                     .foregroundColor(isSelected ? .white : Color(red: 217/255, green: 119/255, blue: 6/255))
                                                 Spacer()
                                                 if placedItem != nil {
-                                                    Image(systemName: itemIcon)
-                                                        .font(.system(size: 12, weight: .bold))
+                                                    MoneyIcon(iconForSlotOrItem(itemIcon), size: 12)
                                                         .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
                                                         .padding(4)
                                                         .background(Color.white.opacity(0.8))
@@ -116,10 +123,6 @@ public struct CitySlotCustomizerSheet: View {
                                         .frame(width: 140, height: 95)
                                         .background(isSelected ? Color(red: 217/255, green: 119/255, blue: 6/255) : Color.white)
                                         .clipShape(RoundedRectangle(cornerRadius: 16))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 16)
-                                                .stroke(isSelected ? Color.clear : Color(red: 226/255, green: 232/255, blue: 240/255), lineWidth: 1.5)
-                                        )
                                         .shadow(color: isSelected ? Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.3) : Color.black.opacity(0.03), radius: 6, y: 3)
                                     }
                                 }
@@ -131,8 +134,7 @@ public struct CitySlotCustomizerSheet: View {
                     // 3. Current Selected Slot Card
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 10) {
-                            Image(systemName: currentSlot.icon)
-                                .font(.system(size: 20, weight: .bold))
+                            MoneyIcon(iconForSlotOrItem(currentSlot.icon), size: 20)
                                 .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
                                 .frame(width: 40, height: 40)
                                 .background(Color(red: 254/255, green: 243/255, blue: 199/255))
@@ -158,8 +160,7 @@ public struct CitySlotCustomizerSheet: View {
                                 Text("מוצב כעת:")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                Image(systemName: placed.resolvedIcon)
-                                    .font(.system(size: 12, weight: .bold))
+                                MoneyIcon(iconForSlotOrItem(placed.resolvedIcon), size: 14)
                                     .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                                 Text(placed.name)
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -172,7 +173,7 @@ public struct CitySlotCustomizerSheet: View {
                                         .font(.system(size: 12, weight: .bold, design: .rounded))
                                         .foregroundColor(Color(red: 239/255, green: 68/255, blue: 68/255))
                                         .padding(.horizontal, 10)
-                                        .padding(.vertical, 4)
+                                        .frame(minHeight: 44)
                                         .background(Color(red: 254/255, green: 242/255, blue: 242/255))
                                         .clipShape(Capsule())
                                 }
@@ -189,30 +190,25 @@ public struct CitySlotCustomizerSheet: View {
                         }
                     }
                     .padding(16)
-                    .background(Color(red: 248/255, green: 250/255, blue: 252/255))
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18)
-                            .stroke(Color(red: 226/255, green: 232/255, blue: 240/255), lineWidth: 1.5)
-                    )
+                    .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
                     .padding(.horizontal, 20)
                     
                     // 4. Available Inventory to Place
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("שדרוגים פתוחים באינוונטר שלך:")
+                        Text("תוספות מהמלאי שמתאימות למיקום:")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 51/255, green: 65/255, blue: 85/255))
                             .padding(.horizontal, 20)
                         
-                        if unlockedEnrichments.isEmpty {
+                        if unlockedEnrichments.filter({ currentSlot.accepts($0.itemId) }).isEmpty {
                             VStack(spacing: 8) {
-                                Image(systemName: "leaf.fill")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                Text("טרם נפתחו שדרוגים פיזיים")
+                                MoneyIcon(.leaf, size: 28)
+                                Text(unlockedEnrichments.isEmpty ? "טרם נפתחו תוספות" : "התוספת למיקום הזה עדיין לא נפתחה")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
-                                Text("השג התקדמות שבועית כדי לפתוח מזרקות, עצים, חתולים ופסלים!")
+                                Text(unlockedEnrichments.isEmpty ? "התוספות שקיבלת יופיעו כאן, ותוכל לבחור איפה להציב אותן." : "אפשר לבחור מיקום אחר ולהציב בו תוספת מהמלאי שלך.")
                                     .font(.system(size: 12, design: .rounded))
                                     .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
                                     .multilineTextAlignment(.center)
@@ -224,7 +220,7 @@ public struct CitySlotCustomizerSheet: View {
                             .padding(.horizontal, 20)
                         } else {
                             VStack(spacing: 10) {
-                                ForEach(unlockedEnrichments) { item in
+                                ForEach(unlockedEnrichments.filter { currentSlot.accepts($0.itemId) }) { item in
                                     let isPlacedInThisSlot = (currentPlacements[selectedSlotId] == item.itemId)
                                     let isPlacedElsewhere = currentPlacements.values.contains(item.itemId) && !isPlacedInThisSlot
                                     
@@ -236,9 +232,7 @@ public struct CitySlotCustomizerSheet: View {
                                                 RoundedRectangle(cornerRadius: 12)
                                                     .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
                                                     .frame(width: 44, height: 44)
-                                                Image(systemName: item.resolvedIcon)
-                                                    .font(.system(size: 18, weight: .bold))
-                                                    .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
+                                                MoneyIcon(iconForSlotOrItem(item.resolvedIcon), size: 18)
                                             }
                                             
                                             VStack(alignment: .leading, spacing: 2) {
@@ -255,13 +249,16 @@ public struct CitySlotCustomizerSheet: View {
                                             Spacer()
                                             
                                             if isPlacedInThisSlot {
-                                                Label("מוצב כאן", systemImage: "checkmark")
-                                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                                    .padding(.horizontal, 10)
-                                                    .padding(.vertical, 5)
-                                                    .background(Color(red: 209/255, green: 250/255, blue: 229/255))
-                                                    .clipShape(Capsule())
+                                                HStack(spacing: 4) {
+                                                    MoneyIcon(.checkCircle, size: 12)
+                                                    Text("מוצב כאן")
+                                                }
+                                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                                .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 5)
+                                                .background(Color(red: 209/255, green: 250/255, blue: 229/255))
+                                                .clipShape(Capsule())
                                             } else {
                                                 Text(isPlacedElsewhere ? "העבר לכאן" : "הצב כאן")
                                                     .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -277,8 +274,9 @@ public struct CitySlotCustomizerSheet: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 16))
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 16)
-                                                .stroke(isPlacedInThisSlot ? Color(red: 16/255, green: 185/255, blue: 129/255) : Color(red: 226/255, green: 232/255, blue: 240/255), lineWidth: 1.5)
+                                                .stroke(isPlacedInThisSlot ? Color(red: 16/255, green: 185/255, blue: 129/255) : Color.clear, lineWidth: isPlacedInThisSlot ? 1.5 : 0)
                                         )
+                                        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
                                     }
                                 }
                             }

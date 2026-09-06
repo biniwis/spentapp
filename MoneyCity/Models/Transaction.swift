@@ -25,6 +25,11 @@ public final class Transaction: Identifiable {
     /// number, and deleting the transfer from history left the goal claiming money that no
     /// longer existed anywhere.
     public var savingsGoalId: UUID? = nil
+
+    /// The installment plan this charge belongs to, if it was part of an installment purchase.
+    public var installmentPlanId: UUID? = nil
+    /// The 1-based index of this payment within its installment plan (e.g. 1 of 12).
+    public var installmentIndex: Int? = nil
     
     public var category: SpendingCategory {
         get { SpendingCategory(rawValue: categoryRawValue) ?? .other }
@@ -33,7 +38,7 @@ public final class Transaction: Identifiable {
     
     public var buildingId: String {
         if let raw = buildingIdRaw, !raw.isEmpty {
-            return raw
+            return CityBuilding.normalizeBuildingId(raw, for: category)
         }
         return CategorizationEngine.shared.mapToBuildingId(category: category, merchant: merchant)
     }
@@ -60,7 +65,9 @@ public final class Transaction: Identifiable {
         originalAmount: Double? = nil,
         originalCurrency: String? = nil,
         exchangeRate: Double? = nil,
-        savingsGoalId: UUID? = nil
+        savingsGoalId: UUID? = nil,
+        installmentPlanId: UUID? = nil,
+        installmentIndex: Int? = nil
     ) {
         self.id = id
         self.amount = amount
@@ -77,6 +84,8 @@ public final class Transaction: Identifiable {
         self.originalCurrency = originalCurrency
         self.exchangeRate = exchangeRate
         self.savingsGoalId = savingsGoalId
+        self.installmentPlanId = installmentPlanId
+        self.installmentIndex = installmentIndex
     }
 }
 

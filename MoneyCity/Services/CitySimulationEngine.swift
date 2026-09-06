@@ -43,6 +43,60 @@ public final class CitySimulationEngine: Sendable {
         return c != .savings && !committedCategories.contains(c)
     }
 
+    /// Category-specific activity references. These only control how lively a district
+    /// feels; dominance is always determined by the user's actual monthly distribution.
+    private static let districtActivityBaselines: [SpendingCategory: Double] = [
+        .housing: 4_000,
+        .food: 900,
+        .transport: 900,
+        .shopping: 600,
+        .entertainment: 350,
+        .health: 350,
+        .subscriptions: 180,
+        .finance: 250,
+        .miscellaneous: 250,
+        .other: 300
+    ]
+
+    /// Turns raw category totals into the stable, data-driven states used by the city.
+    /// Savings are intentionally rendered through the reserve's own health and fill rules.
+    public static func districtStates(for categoryTotals: [SpendingCategory: Double]) -> [CityDistrictState] {
+        let categories = SpendingCategory.primaryCategories.filter { $0 != .savings }
+
+        func amount(for category: SpendingCategory) -> Double {
+            categoryTotals.reduce(0.0) { partial, entry in
+                entry.key.canonical == category ? partial + entry.value : partial
+            }
+        }
+
+        let amounts = Dictionary(uniqueKeysWithValues: categories.map { ($0, amount(for: $0)) })
+        let totalSpent = amounts.values.reduce(0.0, +)
+
+        return categories.map { category in
+            let amount = max(0.0, amounts[category] ?? 0.0)
+            let share = totalSpent > 0 ? amount / totalSpent : 0.0
+            let activity = min(1.0, amount / max(1.0, districtActivityBaselines[category] ?? 350.0))
+            let prominence: CityDistrictProminence
+            if amount <= 0 {
+                prominence = .quiet
+            } else if share < 0.10 {
+                prominence = .active
+            } else if share < 0.25 {
+                prominence = .developed
+            } else {
+                prominence = .dominant
+            }
+
+            return CityDistrictState(
+                id: category.rawValue,
+                amount: amount,
+                share: share,
+                activity: activity,
+                prominence: prominence
+            )
+        }
+    }
+
     /// Builds the MonthlyCity model with dynamic tile scaling, building breakdowns, and behavioral habit analysis.
     /// A park that is being looked after normally. Spending below your pace lifts it toward 1,
     /// overspending pulls it down. This is the state a brand-new city opens in.
@@ -73,11 +127,15 @@ public final class CitySimulationEngine: Sendable {
             "shop_tech": 0.0,
             "shop_travel": 0.0,
             "shop_arcade": 0.0,
+            "health_pharmacy": 0.0,
+            "finance_bank": 0.0,
             "trans_station": 0.0,
             "house_tower": 0.0,
             "house_util": 0.0,
             "house_subs": 0.0,
-            "savings_sanctuary": 0.0
+            "savings_sanctuary": 0.0,
+            "museum_curiosities": 0.0,
+            "city_sorting_hub": 0.0
         ]
         
         var woltCount = 0
@@ -192,11 +250,6 @@ public final class CitySimulationEngine: Sendable {
                 let good = min(1.0, (1.0 - pace) / 0.35)
                 parkHealth = CitySimulationEngine.healthyParkLevel
                     + (1.0 - CitySimulationEngine.healthyParkLevel) * good
-            } else {
-                // Over pace — gently thins only if significantly exceeding allowance
-                let bad = min(1.0, (pace - 1.0) / 0.85)
-                parkHealth = CitySimulationEngine.healthyParkLevel
-                    - (CitySimulationEngine.healthyParkLevel - 0.20) * bad
             }
         }
         // First week of the month (accruedFraction < 0.25) settles gently into its verdict
@@ -226,6 +279,11 @@ public final class CitySimulationEngine: Sendable {
             activeSubscriptionsCount: activeSubs,
             totalGroceryBags: groceryBags
         )
+        let districtStates = CitySimulationEngine.districtStates(for: totals)
+        let venueStates = CityLifeEngine.states(for: transactions.map {
+            CityLifeEvent(id: $0.id.uuidString, venueID: $0.buildingId, amount: $0.amount,
+                          date: $0.timestamp, merchant: $0.merchant)
+        }, in: monthDate)
         
         var tiles: [BuildingTile] = []
         
@@ -315,6 +373,8 @@ public final class CitySimulationEngine: Sendable {
             everydayBaseline: everydayBaseline,
             categoryTotals: totals,
             buildingTotals: buildingTotals,
+            districtStates: districtStates,
+            venueStates: venueStates,
             tiles: tiles,
             headlineStory: story,
             habits: habits

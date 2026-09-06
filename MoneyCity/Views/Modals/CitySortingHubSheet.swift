@@ -75,9 +75,7 @@ public struct CitySortingHubSheet: View {
                 
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
-                        Image(systemName: "shippingbox.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(Color.themeOrange)
+                        MoneyIcon(.shoppingBag, size: 16)
                         Text(isHebrew ? "מרכז המיון והדואר" : "City Sorting Hub")
                             .font(.system(size: 15, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
@@ -94,9 +92,7 @@ public struct CitySortingHubSheet: View {
                 Circle()
                     .fill(Color.themeOrange.opacity(0.14))
                     .frame(width: 48, height: 48)
-                Image(systemName: "shippingbox.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(Color.themeOrange)
+                MoneyIcon(.shoppingBag, size: 24)
             }
             
             VStack(alignment: .leading, spacing: 3) {
@@ -126,7 +122,6 @@ public struct CitySortingHubSheet: View {
         .padding(14)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.borderSubtle, lineWidth: 1.2))
         .shadow(color: Color.deepNavy.opacity(0.04), radius: 8, y: 2)
     }
     
@@ -139,9 +134,7 @@ public struct CitySortingHubSheet: View {
                     RoundedRectangle(cornerRadius: 12)
                         .fill(Color.themeOrangeSoft)
                         .frame(width: 42, height: 42)
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(Color.themeOrange)
+                    MoneyIcon(.shoppingBag, size: 20)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
@@ -173,15 +166,15 @@ public struct CitySortingHubSheet: View {
                 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        categoryQuickButton(tx: tx, cat: .food, icon: "fork.knife", label: isHebrew ? "אוכל" : "Food", color: Color.themeTurquoise)
-                        categoryQuickButton(tx: tx, cat: .shopping, icon: "bag.fill", label: isHebrew ? "קניות" : "Shop", color: Color.themeLavender)
-                        categoryQuickButton(tx: tx, cat: .housing, icon: "house.fill", label: isHebrew ? "בית" : "Home", color: Color.primaryBlue)
-                        categoryQuickButton(tx: tx, cat: .transport, icon: "car.fill", label: isHebrew ? "תחבורה" : "Transit", color: Color.themeOrange)
-                        categoryQuickButton(tx: tx, cat: .entertainment, icon: "gamecontroller.fill", label: isHebrew ? "בילויים" : "Fun", color: Color.themeOrange)
-                        categoryQuickButton(tx: tx, cat: .health, icon: "heart.fill", label: isHebrew ? "בריאות" : "Health", color: Color.themeMint)
-                        categoryQuickButton(tx: tx, cat: .subscriptions, icon: "play.tv.fill", label: isHebrew ? "מנויים" : "Subs", color: Color.themeLavender)
-                        categoryQuickButton(tx: tx, cat: .finance, icon: "creditcard.fill", label: isHebrew ? "פיננסים" : "Finance", color: Color.deepNavy)
-                        categoryQuickButton(tx: tx, cat: .miscellaneous, icon: "building.columns.fill", label: isHebrew ? "שונות (מוזיאון)" : "Museum", color: Color(red: 139/255, green: 92/255, blue: 246/255))
+                        categoryQuickButton(tx: tx, cat: .food, label: isHebrew ? "אוכל" : "Food", color: Color.themeTurquoise)
+                        categoryQuickButton(tx: tx, cat: .shopping, label: isHebrew ? "קניות" : "Shop", color: Color.themeLavender)
+                        categoryQuickButton(tx: tx, cat: .housing, label: isHebrew ? "בית" : "Home", color: Color.primaryBlue)
+                        categoryQuickButton(tx: tx, cat: .transport, label: isHebrew ? "תחבורה" : "Transit", color: Color.themeOrange)
+                        categoryQuickButton(tx: tx, cat: .entertainment, label: isHebrew ? "בילויים" : "Fun", color: Color.themeOrange)
+                        categoryQuickButton(tx: tx, cat: .health, label: isHebrew ? "בריאות" : "Health", color: Color.themeMint)
+                        categoryQuickButton(tx: tx, cat: .subscriptions, label: isHebrew ? "מנויים" : "Subs", color: Color.themeLavender)
+                        categoryQuickButton(tx: tx, cat: .finance, label: isHebrew ? "פיננסים" : "Finance", color: Color.deepNavy)
+                        categoryQuickButton(tx: tx, cat: .miscellaneous, label: isHebrew ? "שונות (מוזיאון)" : "Museum", color: Color(red: 139/255, green: 92/255, blue: 246/255))
                     }
                     .padding(.vertical, 2)
                 }
@@ -190,11 +183,10 @@ public struct CitySortingHubSheet: View {
         .padding(14)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.borderSubtle, lineWidth: 1.2))
         .shadow(color: Color.deepNavy.opacity(0.04), radius: 6, y: 2)
     }
     
-    private func categoryQuickButton(tx: Transaction, cat: SpendingCategory, icon: String, label: String, color: Color) -> some View {
+    private func categoryQuickButton(tx: Transaction, cat: SpendingCategory, label: String, color: Color) -> some View {
         Button(action: {
             Haptics.impact(.medium)
             withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
@@ -203,8 +195,7 @@ public struct CitySortingHubSheet: View {
             }
         }) {
             HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 10, weight: .bold))
+                CategoryVectorIcon(category: cat, size: 14)
                 Text(label)
                     .font(.system(size: 11, weight: .bold, design: .rounded))
             }
@@ -231,9 +222,7 @@ public struct CitySortingHubSheet: View {
                     .fill(Color.themeMint.opacity(0.30))
                     .frame(width: 90, height: 90)
                 
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 46, weight: .bold))
-                    .foregroundColor(Color.themeMint)
+                MoneyIcon(.checkCircle, size: 52)
             }
             
             VStack(spacing: 8) {

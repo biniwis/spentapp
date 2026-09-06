@@ -126,7 +126,7 @@ public struct BudgetSheet: View {
 
             // Where the plan came from. Without this the page looked like it controlled
             // something it did not, which is what made it feel broken.
-            noteRow(icon: planIcon, text: planExplanation, color: planBasis == .none ? Color.themeYellow : Color.slate400)
+            noteRow(icon: planIcon, text: planExplanation, color: planBasis == .none ? Color.themeYellow : Color.textMuted)
 
             if plannedSpending > 0 {
                 noteRow(icon: paceIcon, text: paceExplanation, color: paceColor)
@@ -134,7 +134,7 @@ public struct BudgetSheet: View {
 
             if income > 0 && plannedSpending > income {
                 noteRow(
-                    icon: "exclamationmark.triangle.fill",
+                    icon: .warningCircle,
                     text: isHebrew
                         ? "התוכנית גדולה מההכנסה ב-\(l10n.format(amount: (plannedSpending - income).rounded()))"
                         : "The plan exceeds income by \(l10n.format(amount: (plannedSpending - income).rounded()))",
@@ -142,7 +142,7 @@ public struct BudgetSheet: View {
                 )
             } else if income > 0 && plannedSpending > 0 {
                 noteRow(
-                    icon: "checkmark.circle.fill",
+                    icon: .checkCircle,
                     text: isHebrew
                         ? "\(l10n.format(amount: (income - plannedSpending).rounded())) נשארים לחיסכון אם תעמוד בתוכנית"
                         : "\(l10n.format(amount: (income - plannedSpending).rounded())) left to save if you keep to the plan",
@@ -152,14 +152,13 @@ public struct BudgetSheet: View {
         }
         .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
     }
 
-    private func noteRow(icon: String, text: String, color: Color) -> some View {
+    private func noteRow(icon: MoneyIconName, text: String, color: Color) -> some View {
         HStack(alignment: .top, spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
+            MoneyIcon(icon, size: 14)
             Text(text)
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .fixedSize(horizontal: false, vertical: true)
@@ -168,11 +167,11 @@ public struct BudgetSheet: View {
         .foregroundColor(color)
     }
 
-    private var planIcon: String {
+    private var planIcon: MoneyIconName {
         switch planBasis {
-        case .ceilings: return "list.bullet"
-        case .overall:  return "target"
-        case .none:     return "questionmark.circle.fill"
+        case .ceilings: return .document
+        case .overall:  return .target
+        case .none:     return .questionCircle
         }
     }
 
@@ -197,9 +196,9 @@ public struct BudgetSheet: View {
     /// different month from two thirds on the twenty-fifth.
     private var expectedByNow: Double { plannedSpending * monthElapsed }
 
-    private var paceIcon: String {
-        if expectedByNow <= 0 { return "clock" }
-        return spentThisMonth > expectedByNow ? "hare.fill" : "tortoise.fill"
+    private var paceIcon: MoneyIconName {
+        if expectedByNow <= 0 { return .clock }
+        return spentThisMonth > expectedByNow ? .flame : .leaf
     }
 
     private var paceColor: Color {
@@ -232,7 +231,7 @@ public struct BudgetSheet: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundColor(Color.slate400)
+                .foregroundColor(Color.textMuted)
             Text("\(l10n.format(amount: value.rounded()))")
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .minimumScaleFactor(0.6)
@@ -249,15 +248,14 @@ public struct BudgetSheet: View {
             HStack {
                 Text(isHebrew ? "מקורות הכנסה" : "Income sources")
                     .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
                 Spacer()
                 Button { showIncomeEditor.toggle() } label: {
                     ZStack {
                         Circle()
                             .fill(Color.primaryBlue.opacity(0.12))
                             .frame(width: 26, height: 26)
-                        Image(systemName: showIncomeEditor ? "minus" : "plus")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(Color.primaryBlue)
+                        MoneyIcon(showIncomeEditor ? .minusCircle : .plusCircle, size: 14)
                     }
                 }
                 .buttonStyle(.plain)
@@ -268,28 +266,26 @@ public struct BudgetSheet: View {
                      ? "בלי הכנסה, כל חישוב החיסכון נשען על מספר שהאפליקציה המציאה."
                      : "Without income, the savings figure rests on a number the app invented.")
                     .font(.system(size: 12, design: .rounded))
-                    .foregroundColor(Color.slate400)
+                    .foregroundColor(Color.textMuted)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             ForEach(incomeSources) { source in
                 HStack(spacing: 10) {
-                    Image(systemName: "banknote.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(Color.themeMint)
+                    MoneyIcon(.coins, size: 16)
                     Text(source.name)
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
                     Spacer()
                     Text("\(l10n.format(amount: source.amount.rounded()))")
                         .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
                     Button {
                         modelContext.delete(source)
                         try? modelContext.save()
                         Haptics.impact(.light)
                     } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.slate300)
+                        MoneyIcon(.xmarkCircle, size: 16)
                             .frame(width: 24, height: 24)
                     }
                     .buttonStyle(.plain)
@@ -321,15 +317,15 @@ public struct BudgetSheet: View {
 
                     Button(isHebrew ? "הוסף" : "Add") { addIncome() }
                         .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(canAddIncome ? Color.primaryBlue : Color.slate300)
+                        .foregroundColor(canAddIncome ? Color.primaryBlue : Color.borderSubtle)
                         .disabled(!canAddIncome)
                 }
             }
         }
         .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
     }
 
     private var canAddIncome: Bool {
@@ -366,7 +362,7 @@ public struct BudgetSheet: View {
                  ? "או פרט לפי קטגוריה — כל תקרה שתמלא כאן מחליפה את הסכום הכולל."
                  : "Or break it down by category — any ceiling you fill in here replaces the overall figure.")
                 .font(.system(size: 11, design: .rounded))
-                .foregroundColor(Color.slate400)
+                .foregroundColor(Color.textMuted)
                 .fixedSize(horizontal: false, vertical: true)
 
             ForEach(budgetableCategories) { cat in
@@ -376,29 +372,28 @@ public struct BudgetSheet: View {
         }
         .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
     }
 
     private var overallRow: some View {
         HStack(spacing: 10) {
-            Image(systemName: "target")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundColor(draftedCeilings > 0 ? Color.slate300 : Color.primaryBlue)
+            MoneyIcon(.target, size: 18)
                 .frame(width: 18)
             VStack(alignment: .leading, spacing: 1) {
                 Text(isHebrew ? "סכום כולל" : "Overall")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
                 if draftedCeilings > 0 {
                     Text(isHebrew ? "לא בשימוש — התקרות למטה גוברות" : "Not in use — the ceilings below take over")
                         .font(.system(size: 10, design: .rounded))
-                        .foregroundColor(Color.slate400)
+                        .foregroundColor(Color.textMuted)
                 }
             }
             Spacer()
             Text(symbol)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundColor(Color.slate400)
+                .foregroundColor(Color.textMuted)
 
             #if os(iOS)
             TextField("—", text: $overallDraft)
@@ -433,10 +428,11 @@ public struct BudgetSheet: View {
                 CategoryVectorIcon(category: cat, size: 18)
                 Text(cat.localizedName(for: l10n.language))
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
                 Spacer()
                 Text(symbol)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.slate400)
+                    .foregroundColor(Color.textMuted)
 
                 #if os(iOS)
                 TextField("—", text: draftBinding(cat))
@@ -473,7 +469,7 @@ public struct BudgetSheet: View {
                     HStack {
                         Text("\(l10n.format(amount: spent.rounded())) \(isHebrew ? "מתוך" : "of") \(l10n.format(amount: limit.rounded()))")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.slate400)
+                            .foregroundColor(Color.textMuted)
                         Spacer()
                         Text(statusLabel(usage))
                             .font(.system(size: 11, weight: .bold, design: .rounded))

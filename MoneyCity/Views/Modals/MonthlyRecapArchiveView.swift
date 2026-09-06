@@ -34,9 +34,7 @@ public struct MonthlyRecapArchiveView: View {
                 
                 if availableMonths.isEmpty {
                     VStack(spacing: 12) {
-                        Image(systemName: "calendar.badge.clock")
-                            .font(.system(size: 44))
-                            .foregroundColor(Color.textMuted)
+                        MoneyIcon(.calendar, size: 44)
                         Text(l10n.language == .hebrew ? "אין עדיין סיכומים חודשיים" : "No Monthly Recaps Yet")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
@@ -55,21 +53,22 @@ public struct MonthlyRecapArchiveView: View {
                                     monthlyBudget: effectiveMonthlyBudget
                                 )
                                 
-                                Button(action: {
-                                    Haptics.impact(.light)
+                                Button {
                                     selectedRecap = recap
-                                }) {
+                                } label: {
                                     recapRow(recap)
                                 }
-                                .bouncyPress(scale: 0.96)
+                                .buttonStyle(.plain)
                             }
                             Spacer(minLength: 40)
                         }
-                        .padding(16)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 32)
                     }
                 }
             }
-            .navigationTitle(l10n.language == .hebrew ? "סיכומים חודשיים" : "Monthly Recaps")
+            .navigationTitle(l10n.language == .hebrew ? "ארכיון סיכומים" : "Recaps Archive")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -78,15 +77,18 @@ public struct MonthlyRecapArchiveView: View {
                     Button(l10n.language == .hebrew ? "סגור" : "Close") {
                         dismiss()
                     }
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.primaryBlue)
                 }
             }
             .sheet(item: $selectedRecap) { recap in
-                MonthlyRecapSheet(recap: recap) { targetDate in
-                    dismiss()
-                    onNavigateToCity?(targetDate)
-                }
-                .presentationDetents([.large])
+                MonthlyRecapSheet(
+                    recap: recap,
+                    onNavigateToCity: { targetDate in
+                        dismiss()
+                        onNavigateToCity?(targetDate)
+                    }
+                )
                 .environmentObject(l10n)
             }
         }
@@ -98,9 +100,7 @@ public struct MonthlyRecapArchiveView: View {
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color.themeLavenderSoft)
                     .frame(width: 48, height: 48)
-                Image(systemName: recap.cityVibe.badgeIcon)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(Color.themeLavender)
+                MoneyIcon(recap.cityVibe.moneyIcon, size: 22)
             }
             
             VStack(alignment: .leading, spacing: 3) {
@@ -125,15 +125,13 @@ public struct MonthlyRecapArchiveView: View {
                     .foregroundColor(Color.textMuted)
             }
             
-            Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
-                .font(.system(size: 12, weight: .bold))
+            MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 12)
                 .foregroundColor(Color.borderSubtle)
                 .padding(.leading, 4)
         }
         .padding(14)
-        .background(Color.cardBackground)
+        .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.borderSubtle, lineWidth: 1.2))
         .shadow(color: Color.deepNavy.opacity(0.03), radius: 8, y: 2)
     }
 }

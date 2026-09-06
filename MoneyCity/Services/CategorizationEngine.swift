@@ -179,8 +179,11 @@ public final class CategorizationEngine: Sendable {
         case .other:
             return "city_sorting_hub"
             
-        case .health, .finance:
-            return "shop_boutique"
+        case .health:
+            return "health_pharmacy"
+
+        case .finance:
+            return "finance_bank"
         }
     }
 }

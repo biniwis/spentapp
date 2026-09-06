@@ -11,7 +11,7 @@ public struct ProgressRewardOption: Identifiable, Sendable {
     public let tier: String // "small", "medium", "large"
     public let actionType: String // "ADD" or "IMPROVE / REPAIR"
     public let districtId: String // "food", "shopping", "housing", "savings", "city"
-    
+
     public init(
         id: String,
         title: String,
@@ -41,7 +41,7 @@ public struct WeeklyProgressReport: Sendable {
     public let hasPositiveProgress: Bool
     public let progressTier: String // "small", "medium", "large", "none"
     public let availableOptions: [ProgressRewardOption]
-    
+
     public init(
         currentWeekTotal: Double,
         previousWeekTotal: Double,
@@ -62,11 +62,21 @@ public struct WeeklyProgressReport: Sendable {
 /// Evaluates personal progress (Week-over-Week) independently from spending-driven city reality.
 public final class CityProgressEngine: Sendable {
     public static let shared = CityProgressEngine()
-    
+
     private init() {}
-    
-    /// Catalog of available progress additions and repairs across tiers
+
+    /// Small living companions, never purchasable infrastructure or spending milestones.
     public let allCatalogOptions: [ProgressRewardOption] = [
+        ProgressRewardOption(id: "pet_cat_rooftop", title: "מישמיש החתול", subtitle: "מצא פינה ליד החנויות. עכשיו היא שלו.", icon: "pawprint.fill", type: .pet, tier: "small", actionType: "JOIN", districtId: "shopping"),
+        ProgressRewardOption(id: "pet_golden_dog", title: "טופי הכלב", subtitle: "בא לטיול ליד האגם. נשאר בשביל החברה.", icon: "pawprint.fill", type: .pet, tier: "small", actionType: "JOIN", districtId: "savings"),
+        ProgressRewardOption(id: "resident_artist", title: "נוגה האמנית", subtitle: "מציירת את העיר, בקצב שלה.", icon: "paintpalette.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "city"),
+        ProgressRewardOption(id: "resident_skater", title: "גל על גלגלים", subtitle: "עוד סיבוב קטן. ועוד אחד.", icon: "person.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "shopping"),
+        ProgressRewardOption(id: "resident_musician", title: "לני והגיטרה", subtitle: "הופעת רחוב קטנה, בלי כרטיסים.", icon: "music.note", type: .resident, tier: "small", actionType: "JOIN", districtId: "city"),
+        ProgressRewardOption(id: "resident_balloon", title: "אורי והבלון", subtitle: "יוצא לטיול. הבלון מתעקש לבוא.", icon: "person.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "food")
+    ]
+
+    /// Historical metadata only. Never offered to new recipients or deleted from storage.
+    public let legacyCatalogOptions: [ProgressRewardOption] = [
         // --- SMALL PROGRESS (₪30 - ₪200 less than previous week) ---
         ProgressRewardOption(
             id: "tree_sakura",
@@ -108,7 +118,7 @@ public final class CityProgressEngine: Sendable {
             actionType: "IMPROVE / REPAIR",
             districtId: "food"
         ),
-        
+
         // --- MEDIUM PROGRESS (₪201 - ₪500 less than previous week) ---
         ProgressRewardOption(
             id: "resident_artist",
@@ -160,7 +170,7 @@ public final class CityProgressEngine: Sendable {
             actionType: "IMPROVE / REPAIR",
             districtId: "shopping"
         ),
-        
+
         // --- LARGE PROGRESS (₪500+ less than previous week) ---
         ProgressRewardOption(
             id: "fountain_marble",
@@ -203,33 +213,19 @@ public final class CityProgressEngine: Sendable {
             districtId: "shopping"
         )
     ]
-    
+
     /// Evaluates personal week-over-week progress accurately, excluding fixed costs (rent, subscriptions, savings)
     public func evaluateProgress(
         transactions: [Transaction],
         unlockedItemIds: Set<String>,
         referenceDate: Date = Date()
     ) -> WeeklyProgressReport {
-        let calendar = Calendar.current
-        
-        let currentWeekStart = calendar.date(byAdding: .day, value: -7, to: referenceDate) ?? referenceDate
-        let previousWeekStart = calendar.date(byAdding: .day, value: -14, to: referenceDate) ?? referenceDate
-        
-        // Exclude fixed housing, subscriptions, finance, and savings to focus purely on variable daily behavior
-        let isVariableExpense: (Transaction) -> Bool = { tx in
-            tx.category != .savings && tx.category != .housing && tx.category != .subscriptions && tx.category != .finance
-        }
-        
-        let currentWeekTxs = transactions.filter {
-            $0.timestamp >= currentWeekStart && $0.timestamp <= referenceDate && isVariableExpense($0)
-        }
-        let prevWeekTxs = transactions.filter {
-            $0.timestamp >= previousWeekStart && $0.timestamp < currentWeekStart && isVariableExpense($0)
-        }
-        
-        let currentTotal = currentWeekTxs.reduce(0.0) { $0 + $1.amount }
-        let prevTotal = prevWeekTxs.reduce(0.0) { $0 + $1.amount }
-        
+        let totals = CityCompanions.weeklyTotals(transactions.map {
+            CityCompanions.Expense(id: $0.id.uuidString, amount: $0.amount, date: $0.timestamp, category: $0.category.rawValue)
+        }, now: referenceDate)
+        let currentTotal = totals.current
+        let prevTotal = totals.previous
+
         // If there are no past week transactions, we do not invent fake baseline
         guard prevTotal > 0 else {
             return WeeklyProgressReport(
@@ -241,11 +237,11 @@ public final class CityProgressEngine: Sendable {
                 availableOptions: []
             )
         }
-        
+
         let diff = prevTotal - currentTotal
         let hasProgress = diff > 10.0 // At least ₪10 real reduction
         let saved = max(0.0, diff)
-        
+
         let tier: String
         if !hasProgress {
             tier = "none"
@@ -256,7 +252,7 @@ public final class CityProgressEngine: Sendable {
         } else {
             tier = "large"
         }
-        
+
         // Filter options suitable for the tier that haven't been unlocked yet
         let tierFiltered = allCatalogOptions.filter { opt in
             if unlockedItemIds.contains(opt.id) { return false }
@@ -265,9 +261,9 @@ public final class CityProgressEngine: Sendable {
             if tier == "small" { return opt.tier == "small" }
             return false
         }
-        
+
         let available = Array(tierFiltered.prefix(3))
-        
+
         return WeeklyProgressReport(
             currentWeekTotal: currentTotal,
             previousWeekTotal: prevTotal,
@@ -276,5 +272,13 @@ public final class CityProgressEngine: Sendable {
             progressTier: tier,
             availableOptions: available
         )
+    }
+
+    /// Returns progressive choices for the weekly prompt from catalog items not yet unlocked.
+    /// Always supplies up to 3 diverse options so user can add something to their city.
+    public func availableWeeklyOptions(unlockedItemIds: Set<String>) -> [ProgressRewardOption] {
+        let remaining = allCatalogOptions.filter { !unlockedItemIds.contains($0.id) }
+        guard !remaining.isEmpty else { return [] }
+        return Array(remaining.prefix(3))
     }
 }

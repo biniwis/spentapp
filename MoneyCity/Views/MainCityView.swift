@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 /// Remembers the derived values the main view reads over and over within a single render.
 ///
@@ -47,6 +48,15 @@ private final class CityDerivedCache {
         cachedReport = value
         return value
     }
+}
+
+/// A single row in a district's building list — used both by the top pill strip
+/// and the bottom DistrictDeepDiveCard.
+struct BuildingPillItem: Identifiable {
+    let id: String
+    let title: String
+    let amount: Double
+    let info: DistrictBuildingInfo
 }
 
 /// The main edge-to-edge view showcasing the real-time 3D living diorama with Multi-Building Neighborhood Deep-Dive and Spatial Inspection.
@@ -99,8 +109,10 @@ public struct MainCityView: View {
     @State private var showFeed = false
     @State private var showProgressSheet = false
     @State private var showOnboarding = false
-    @State private var showSlotCustomizer = false
-    @State private var customizerSelectedSlotId: String? = nil
+    @Environment(\.scenePhase) private var companionScenePhase
+    @AppStorage("cityCompanionsStartedAt") private var companionsStartedAt: Double = 0
+    @State private var companionNow = Date()
+    @State private var pendingCompanionWelcome: String? = nil
     @State private var isZenMode = false
     /// The month being looked back at, when the user opened one from the profile chart.
     ///
@@ -114,11 +126,17 @@ public struct MainCityView: View {
     @State private var selectedDistrict: String? = nil
     @State private var inspectedBuilding: DistrictBuildingInfo? = nil
     @State private var showSortingHubSheet = false
+    @State private var showReserveSanctuarySheet = false
     @State private var activeTab: String = "city"
     /// Bumped on every press of the city tab. The map watches it and puts the camera back to
     /// the view the app opens on — the district alone is not enough, because rotating and
     /// panning happen inside city mode and leave nothing for a district change to undo.
     @State private var cityViewResetToken: Int = 0
+
+    // ── Live Expense Confirmation & Rolling Amount ──
+    @ObservedObject private var confirmationCoordinator = ExpenseConfirmationCoordinator.shared
+    @State private var animatedSpentValue: Double? = nil
+    @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
     
     public init() {}
     
@@ -211,6 +229,7 @@ public struct MainCityView: View {
         var hasher = Hasher()
         hasher.combine(transactionsDigest)
         hasher.combine(allEnrichments.count)
+        hasher.combine(Int(companionNow.timeIntervalSince1970 / 60))
         return derived.report(key: hasher.finalize()) {
             let unlockedIds = Set(allEnrichments.map { $0.itemId })
             // The engine does its own 7/14-day windowing, so it needs the full history —
@@ -218,7 +237,7 @@ public struct MainCityView: View {
             return CityProgressEngine.shared.evaluateProgress(
                 transactions: allTransactions,
                 unlockedItemIds: unlockedIds,
-                referenceDate: Date()
+                referenceDate: companionNow
             )
         }
     }
@@ -227,14 +246,29 @@ public struct MainCityView: View {
         allEnrichments.filter { $0.isApplied }.map { $0.itemId }
     }
     
+    private var companionFirstUse: Date { Date(timeIntervalSince1970: companionsStartedAt > 0 ? companionsStartedAt : companionNow.timeIntervalSince1970) }
+    private var nextCompanionDate: Date {
+        CityCompanions.nextDate(firstUse: companionFirstUse, lastReward: allEnrichments.map(\.unlockedDate).max())
+    }
+    
+    private var weeklyRewardOptions: [ProgressRewardOption] {
+        guard hasCompletedOnboarding, companionsStartedAt > 0, companionNow >= nextCompanionDate,
+              progressReport.hasPositiveProgress else { return [] }
+        let unlockedIds = Set(allEnrichments.map { $0.itemId })
+        return CityProgressEngine.shared.availableWeeklyOptions(unlockedItemIds: unlockedIds)
+    }
+    
+    private var currentCalendarWeekKey: String {
+        let cal = Calendar.current
+        let year = cal.component(.yearForWeekOfYear, from: Date())
+        let week = cal.component(.weekOfYear, from: Date())
+        return "\(year)-W\(week)"
+    }
+    
     private var currentSlotPlacements: [String: String] {
-        var dict: [String: String] = [:]
-        for e in allEnrichments where e.isApplied {
-            if let s = e.placedSlotId, !s.isEmpty {
-                dict[s] = e.itemId
-            }
-        }
-        return dict
+        CitySlot.resolvedPlacements(allEnrichments.filter { !CityCompanions.ids.contains($0.itemId) }.map {
+            CityPlacement(itemId: $0.itemId, slotId: $0.placedSlotId, isApplied: $0.isApplied)
+        })
     }
     
     public var body: some View {
@@ -253,6 +287,8 @@ public struct MainCityView: View {
                     isOverview: isSnapshotMode,
                     categoryTotals: currentCity.categoryTotals,
                     buildingTotals: currentCity.buildingTotals,
+                    districtStates: currentCity.districtStates,
+                    venueStates: currentCity.venueStates,
                     habits: currentCity.habits,
                     enrichmentIds: activeEnrichmentIds,
                     newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
@@ -262,15 +298,12 @@ public struct MainCityView: View {
                     isPaused: (activeTab != "city"),
                     onSelectDistrict: handleSelectDistrict,
                     onBuildingSelected: handleSelectBuilding,
-                    onSlotTapped: handleSlotTapped
+                    onSlotTapped: nil
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // 2. Top Category Circles (Fixed at Top, hidden in Map Only mode)
-                if !isChromeHidden {
-                    districtSelectorRow
-                        .padding(.top, 2)
-                }
+                // 2. Top Header & Category Selector (Reference Screen 1)
+                topControlsHeader
             }
             .opacity(activeTab == "city" ? 1.0 : 0.0)
             .allowsHitTesting(activeTab == "city")
@@ -287,14 +320,13 @@ public struct MainCityView: View {
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             }
 
-            // Zen mode expand/collapse button (city only)
+            // Zen mode and Past Month indicators (city only)
             if activeTab == "city" {
                 HStack {
                     if isSnapshotMode {
                         Button(action: closeMonthSnapshot) {
                             HStack(spacing: 8) {
-                                Image(systemName: l10n.language == .hebrew ? "chevron.right" : "chevron.left")
-                                    .font(.system(size: 13, weight: .black))
+                                MoneyIcon(l10n.language == .hebrew ? .chevronRight : .chevronLeft, size: 14)
                                 VStack(alignment: .leading, spacing: 0) {
                                     Text(monthYearString)
                                         .font(.system(size: 13.5, weight: .black, design: .rounded))
@@ -322,8 +354,7 @@ public struct MainCityView: View {
                         // temporary and reversible at a glance.
                         Button(action: returnToCurrentMonth) {
                             HStack(spacing: 7) {
-                                Image(systemName: "clock.arrow.circlepath")
-                                    .font(.system(size: 12, weight: .bold))
+                                MoneyIcon(.refresh, size: 14)
                                 VStack(alignment: .leading, spacing: 0) {
                                     Text(monthYearString)
                                         .font(.system(size: 12.5, weight: .black, design: .rounded))
@@ -358,28 +389,32 @@ public struct MainCityView: View {
                         .shadow(color: Color.black.opacity(0.10), radius: 6, y: 2)
                         .padding(.leading, 16)
                         .transition(.opacity)
-                    }
-                    Spacer()
-                    if !isSnapshotMode {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                            isZenMode.toggle()
+
+                        Spacer()
+
+                        // Clean exit button when in Zen mode
+                        Button(action: {
+                            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                                isZenMode = false
+                            }
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white.opacity(0.94))
+                                    .frame(width: 38, height: 38)
+                                    .shadow(color: Color.black.opacity(0.12), radius: 6, y: 2)
+                                    .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                                DioramaExpandVectorIcon(isExpanded: true, color: Color.deepNavy)
+                                    .frame(width: 15, height: 15)
+                            }
                         }
-                    }) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.white.opacity(0.92))
-                                .frame(width: 42, height: 42)
-                                .shadow(color: Color.black.opacity(0.12), radius: 8, x: 0, y: 3)
-                                .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
-                            DioramaExpandVectorIcon(isExpanded: isZenMode, color: Color.deepNavy)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 16)
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 16)
+                    } else {
+                        Spacer()
                     }
                 }
-                .padding(.top, isChromeHidden ? 56 : 94)
+                .padding(.top, 56)
                 .frame(maxHeight: .infinity, alignment: .top)
             }
 
@@ -396,7 +431,7 @@ public struct MainCityView: View {
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                     inspectedBuilding = nil
                                 }
-                            }, onShowFeed: { showFeed = true })
+                            }, onShowFeed: { showReserveSanctuarySheet = true })
                             .id(b.id)
                             .transition(.asymmetric(
                                 insertion: .offset(y: 16).combined(with: .opacity),
@@ -425,9 +460,15 @@ public struct MainCityView: View {
                                 removal: .opacity
                             ))
                         } else if let dist = selectedDistrict {
-                            DistrictDeepDiveCard(districtId: dist) {
-                                withAnimation { selectedDistrict = nil; inspectedBuilding = nil }
-                            }
+                            DistrictDeepDiveCard(
+                                districtId: dist,
+                                onBack: {
+                                    withAnimation { selectedDistrict = nil; inspectedBuilding = nil }
+                                },
+                                onSelectBuilding: handleSelectBuilding,
+                                pills: districtBuildingPills(for: dist),
+                                total: districtTotal(for: dist)
+                            )
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         } else {
                             spendingCard
@@ -462,13 +503,33 @@ public struct MainCityView: View {
         }
 
         .onAppear {
+            if companionsStartedAt == 0 {
+                let previousStart = UserDefaults.standard.object(forKey: "firstAppLaunchDate") as? Date
+                companionsStartedAt = min(previousStart ?? Date(), Date()).timeIntervalSince1970
+            }
+            companionNow = Date()
             if !hasCompletedOnboarding && allTransactions.isEmpty {
                 showOnboarding = true
             }
             syncWidgetData()
+            checkWeeklyEnrichmentPrompt()
+            
+            // Check if app was cold-launched or opened via payment notification tap
+            if let pending = confirmationCoordinator.activeConfirmation {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    triggerExpenseRollConfirmation(pending)
+                    confirmationCoordinator.activeConfirmation = nil
+                }
+            }
         }
         .onChange(of: transactionsDigest) { _, _ in
             syncWidgetData()
+        }
+        .onReceive(confirmationCoordinator.$activeConfirmation) { newConf in
+            if let newConf {
+                triggerExpenseRollConfirmation(newConf)
+                confirmationCoordinator.activeConfirmation = nil
+            }
         }
         .onOpenURL { url in
             let scheme = url.scheme?.lowercased() ?? ""
@@ -507,6 +568,14 @@ public struct MainCityView: View {
                 )
                 modelContext.insert(tx)
                 try? modelContext.save()
+
+                let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+                let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
+                ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                    amount: amount,
+                    merchant: merchantTitle,
+                    isRefund: false
+                )
             }
             .environmentObject(l10n)
         }
@@ -520,11 +589,28 @@ public struct MainCityView: View {
             )
             .environmentObject(l10n)
         }
-        .sheet(isPresented: $showProgressSheet) {
+        .onChange(of: companionScenePhase) { _, phase in
+            if phase == .active { companionNow = Date(); checkWeeklyEnrichmentPrompt() }
+        }
+        .sheet(isPresented: $showProgressSheet, onDismiss: {
+            guard let id = pendingCompanionWelcome else { return }
+            pendingCompanionWelcome = nil
+            newlyUnlockedEnrichmentId = id
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                if newlyUnlockedEnrichmentId == id { newlyUnlockedEnrichmentId = nil }
+            }
+        }) {
             CityProgressSheet(
-                report: progressReport,
+                options: weeklyRewardOptions,
                 unlockedEnrichments: allEnrichments,
+                nextDate: nextCompanionDate,
+                savedAmount: progressReport.savedAmount,
+                hasBaseline: progressReport.previousWeekTotal > 0,
                 onSelectOption: { opt in
+                    companionNow = Date()
+                    guard pendingCompanionWelcome == nil,
+                          weeklyRewardOptions.contains(where: { $0.id == opt.id }),
+                          !allEnrichments.contains(where: { $0.itemId == opt.id }) else { return false }
                     let newEnrichment = CityEnrichment(
                         itemId: opt.id,
                         name: opt.title,
@@ -533,20 +619,23 @@ public struct MainCityView: View {
                         type: opt.type,
                         tier: opt.tier,
                         savedAmount: progressReport.savedAmount,
-                        districtId: opt.districtId
+                        districtId: opt.districtId,
+                        isApplied: true,
+                        placedSlotId: nil
                     )
                     modelContext.insert(newEnrichment)
-                    try? modelContext.save()
+                    do { try modelContext.save() }
+                    catch {
+                        modelContext.delete(newEnrichment)
+                        return false
+                    }
+                    
                     
                     Haptics.notify(.success)
                     Haptics.impact(.heavy)
                     
-                    newlyUnlockedEnrichmentId = opt.id
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-                        if newlyUnlockedEnrichmentId == opt.id {
-                            newlyUnlockedEnrichmentId = nil
-                        }
-                    }
+                    pendingCompanionWelcome = opt.id
+                    return true
                 }
             )
             .environmentObject(l10n)
@@ -566,15 +655,6 @@ public struct MainCityView: View {
             )
             .environmentObject(l10n)
         }
-        .sheet(isPresented: $showSlotCustomizer) {
-            CitySlotCustomizerSheet(
-                initialSlotId: customizerSelectedSlotId,
-                unlockedEnrichments: allEnrichments,
-                currentPlacements: currentSlotPlacements,
-                onAssignSlot: handleAssignSlot
-            )
-            .environmentObject(l10n)
-        }
         .sheet(isPresented: $showSortingHubSheet) {
             CitySortingHubSheet(
                 transactions: currentMonthTransactions.filter { $0.category == .other },
@@ -586,6 +666,10 @@ public struct MainCityView: View {
                 }
             )
             .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showReserveSanctuarySheet) {
+            ReserveSanctuarySheet()
+                .environmentObject(l10n)
         }
     }
     
@@ -605,38 +689,70 @@ public struct MainCityView: View {
         #endif
     }
     
-    private func handleSlotTapped(slotId: String, currentItem: String?) {
-        customizerSelectedSlotId = slotId
-        showSlotCustomizer = true
-    }
-    
-    private func handleAssignSlot(slotId: String, itemId: String?) {
-        for e in allEnrichments {
-            if e.placedSlotId == slotId {
-                e.placedSlotId = nil
+    /// Triggers visual rolling number interpolation on the hero spending KPI and displays a subtle confirmation pill.
+    private func triggerExpenseRollConfirmation(_ conf: PendingExpenseConfirmation) {
+        // Ensure city tab is active so the user visibly sees their numbers update
+        activeTab = "city"
+        
+        let targetTotal = currentCity.totalSpent
+        let startingVal = max(0, targetTotal - conf.amount)
+        
+        // 1. Immediately set starting value and show confirmation banner
+        animatedSpentValue = startingVal
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            visibleConfirmationBanner = conf
+        }
+        Haptics.impact(.light)
+        
+        // 2. Count up smoothly to targetTotal
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            withAnimation(.spring(response: 0.85, dampingFraction: 0.82)) {
+                animatedSpentValue = targetTotal
             }
         }
-        if let id = itemId, let enrichment = allEnrichments.first(where: { $0.itemId == id }) {
-            enrichment.placedSlotId = slotId
-            enrichment.isApplied = true
-            newlyUnlockedEnrichmentId = id
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                if newlyUnlockedEnrichmentId == id {
-                    newlyUnlockedEnrichmentId = nil
+        
+        // 3. Success haptic when counter settles
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) {
+            Haptics.notify(.success)
+        }
+        
+        // 4. Fade out confirmation pill after 3.8 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.8) {
+            withAnimation(.easeOut(duration: 0.35)) {
+                if visibleConfirmationBanner?.id == conf.id {
+                    visibleConfirmationBanner = nil
+                    animatedSpentValue = nil
                 }
             }
         }
-        try? modelContext.save()
-        Haptics.impact(.medium)
+    }
+    
+    private func checkWeeklyEnrichmentPrompt() {
+        guard hasCompletedOnboarding, !isSnapshotMode, !showProgressSheet, !showOnboarding else { return }
+        guard !weeklyRewardOptions.isEmpty else { return }
+        
+        let currentWeek = currentCalendarWeekKey
+        let lastPromptWeek = UserDefaults.standard.string(forKey: "lastAdditionsPromptWeekKey")
+        
+        // Trigger only once per calendar week
+        guard lastPromptWeek != currentWeek else { return }
+        
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                guard !weeklyRewardOptions.isEmpty, !showOnboarding, !isSnapshotMode else { return }
+                UserDefaults.standard.set(currentWeek, forKey: "lastAdditionsPromptWeekKey")
+                showProgressSheet = true
+            }
     }
     
     private func handleSelectDistrict(_ dist: String?) {
         if dist != selectedDistrict { Haptics.selection() }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
             selectedDistrict = dist
-            if dist == nil {
-                inspectedBuilding = nil
-            }
+            // Always clear the building card when changing district/mode,
+            // so the next tap on a building is a fresh selection.
+            inspectedBuilding = nil
+            // Collapse expanded details so the card doesn't open pre-expanded next time.
+            isDetailsExpanded = false
         }
     }
     
@@ -685,78 +801,201 @@ public struct MainCityView: View {
     }
     
 
+    @ViewBuilder
+    private var topControlsHeader: some View {
+        if !isChromeHidden {
+            VStack(spacing: 10) {
+                topNavigationBar
+                heroKpiRow
+                confirmationBannerView
+                districtSelectorRow
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var topNavigationBar: some View {
+        HStack(alignment: .center) {
+            Text("SPENT")
+                .font(.system(size: 22, weight: .black, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+                .tracking(0.5)
+
+            Spacer()
+
+            Button {
+                companionNow = Date()
+                showProgressSheet = true
+            } label: {
+                MoneyIcon(.gift, size: 22)
+                    .frame(width: 44, height: 44)
+                    .background(Color.white.opacity(0.94), in: Circle())
+                    .overlay(alignment: .topTrailing) {
+                        if !weeklyRewardOptions.isEmpty {
+                            Circle().fill(Color.themeMint).frame(width: 10, height: 10)
+                        }
+                    }
+            }
+            .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — הפרס השבועי" : "City companions — weekly reward")
+
+            Button(action: {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                    isZenMode.toggle()
+                }
+            }) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.94))
+                        .frame(width: 38, height: 38)
+                        .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
+                    DioramaExpandVectorIcon(isExpanded: isZenMode, color: Color.deepNavy)
+                        .frame(width: 15, height: 15)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 4)
+    }
+
+    private var heroKpiRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            RollingNumberText(
+                value: animatedSpentValue ?? currentCity.totalSpent,
+                format: { (amt: Double) -> String in l10n.format(amount: amt) }
+            )
+
+            HStack(spacing: 3) {
+                MoneyIcon(.chevronDown, size: 11)
+                Text("12%")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(red: 220/255, green: 252/255, blue: 231/255))
+            .clipShape(Capsule())
+
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private var confirmationBannerView: some View {
+        if let banner = visibleConfirmationBanner {
+            let label: String = banner.merchant.isEmpty
+                ? (l10n.isHebrew ? "הוצאה עודכנה" : "Expense recorded")
+                : banner.merchant
+            let amountStr: String = l10n.format(amount: banner.amount)
+
+            HStack(spacing: 7) {
+                MoneyIcon(.checkCircle, size: 13)
+                    .foregroundColor(MoneyCityTheme.mint)
+
+                Text("+\(amountStr) · \(label)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.borderSubtle, lineWidth: 1)
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, -4)
+        }
+    }
     
     private var districtSelectorRow: some View {
         HStack(spacing: 0) {
             topDistrictPill(
                 id: nil,
-                title: l10n.language == .hebrew ? "כל העיר" : "All City"
+                title: l10n.language == .hebrew ? "כל העיר" : "All City",
+                unselectedBg: Color(red: 243/255, green: 244/255, blue: 246/255)
             ) { isSelected in
-                DistrictSkylineVectorIcon(color: isSelected ? .white : Color.deepNavy)
+                MoneyIcon(.citySkyline, size: 24)
             }
             topDistrictPill(
                 id: "food",
-                title: l10n.language == .hebrew ? "אוכל" : "Food"
+                title: l10n.language == .hebrew ? "אוכל" : "Food",
+                unselectedBg: Color(red: 254/255, green: 242/255, blue: 232/255)
             ) { isSelected in
-                DistrictBistroVectorIcon(color: isSelected ? .white : Color(red: 217/255, green: 119/255, blue: 6/255))
+                MoneyIcon(.cutlery, size: 24)
             }
             topDistrictPill(
                 id: "shopping",
-                title: l10n.language == .hebrew ? "קניות" : "Shopping"
+                title: l10n.language == .hebrew ? "קניות" : "Shopping",
+                unselectedBg: Color(red: 253/255, green: 238/255, blue: 244/255)
             ) { isSelected in
-                DistrictBoutiqueVectorIcon(color: isSelected ? .white : Color(red: 99/255, green: 102/255, blue: 241/255))
+                MoneyIcon(.shoppingBag, size: 24)
             }
             topDistrictPill(
                 id: "housing",
-                title: l10n.language == .hebrew ? "מגורים" : "Housing"
+                title: l10n.language == .hebrew ? "מגורים" : "Housing",
+                unselectedBg: Color(red: 238/255, green: 245/255, blue: 254/255)
             ) { isSelected in
-                DistrictHousingVectorIcon(color: isSelected ? .white : Color(red: 59/255, green: 130/255, blue: 246/255))
+                MoneyIcon(.home, size: 24)
             }
             topDistrictPill(
                 id: "savings",
-                title: l10n.language == .hebrew ? "חיסכון" : "Savings"
+                title: l10n.language == .hebrew ? "חיסכון" : "Savings",
+                unselectedBg: Color(red: 234/255, green: 248/255, blue: 240/255)
             ) { isSelected in
-                DistrictParkVectorIcon(color: isSelected ? .white : Color(red: 16/255, green: 185/255, blue: 129/255))
+                MoneyIcon(.leaf, size: 24)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 8)
         .padding(.vertical, 8)
+        .background(Color.white.opacity(0.92))
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 3)
+        .padding(.horizontal, 16)
     }
     
     private func topDistrictPill<V: View>(
         id: String?,
         title: String,
+        unselectedBg: Color = Color(red: 246/255, green: 247/255, blue: 250/255),
         @ViewBuilder icon: (Bool) -> V
     ) -> some View {
         let isSelected = (id == nil && selectedDistrict == nil) || (id != nil && selectedDistrict == id)
         return Button(action: {
             handleSelectDistrict(id)
         }) {
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? Color(red: 15/255, green: 23/255, blue: 42/255) : Color(red: 246/255, green: 247/255, blue: 250/255))
-                        .frame(width: 46, height: 46)
+                        .fill(isSelected ? Color.white : unselectedBg)
+                        .frame(width: 44, height: 44)
                         .overlay(
                             Circle()
-                                .stroke(isSelected ? Color(red: 15/255, green: 23/255, blue: 42/255) : Color(red: 226/255, green: 232/255, blue: 240/255), lineWidth: 1.2)
+                                .stroke(isSelected ? Color(red: 24/255, green: 24/255, blue: 27/255) : Color.clear, lineWidth: 2.2)
                         )
-                        .shadow(color: isSelected ? Color.black.opacity(0.12) : Color.black.opacity(0.02), radius: 4, y: 2)
+                        .shadow(color: isSelected ? Color.black.opacity(0.12) : Color.clear, radius: 4, y: 2)
+                        .scaleEffect(isSelected ? 1.06 : 1.0)
                     
                     icon(isSelected)
                 }
                 
                 Text(title)
-                    .font(.system(size: 11.5, weight: isSelected ? .bold : .medium, design: .rounded))
-                    .foregroundColor(isSelected ? Color(red: 15/255, green: 23/255, blue: 42/255) : Color(red: 100/255, green: 116/255, blue: 139/255))
+                    .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .rounded))
+                    .foregroundColor(isSelected ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 100/255, green: 116/255, blue: 139/255))
                 
                 // Crisp Minimal Selection Indicator
                 if isSelected {
                     RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 15/255, green: 23/255, blue: 42/255))
-                        .frame(width: 14, height: 2.5)
+                        .fill(Color(red: 17/255, green: 24/255, blue: 39/255))
+                        .frame(width: 12, height: 2.5)
                 } else {
-                    Color.clear.frame(width: 14, height: 2.5)
+                    Color.clear.frame(width: 12, height: 2.5)
                 }
             }
             .contentShape(Rectangle())
@@ -765,17 +1004,32 @@ public struct MainCityView: View {
         .frame(maxWidth: .infinity)
     }
     
+    @ViewBuilder
+    private func buildingIcon(_ id: String) -> some View {
+        switch id {
+        case "food_bistro": MoneyIcon(.cutlery, size: 18)
+        case "food_super": MoneyIcon(.cart, size: 18)
+        case "food_coffee": MoneyIcon(.coffee, size: 18)
+        case "food_wolt": MoneyIcon(.car, size: 18)
+        case "shop_boutique": MoneyIcon(.shoppingBag, size: 18)
+        case "shop_tech": MoneyIcon(.gamepad, size: 18)
+        case "shop_travel": MoneyIcon(.airplane, size: 18)
+        case "shop_arcade": MoneyIcon(.gamepad, size: 18)
+        case "house_tower": MoneyIcon(.home, size: 18)
+        case "house_util": MoneyIcon(.lightning, size: 18)
+        case "house_subs": MoneyIcon(.refresh, size: 18)
+        case "savings_sanctuary": MoneyIcon(.leaf, size: 18)
+        case "city_sorting_hub": MoneyIcon(.mail, size: 18)
+        case "museum_curiosities": MoneyIcon(.gift, size: 18)
+        default: MoneyIcon(.home, size: 18)
+        }
+    }
+
     private func isPillSelected(_ pill: BuildingPillItem) -> Bool {
         inspectedBuilding?.id == pill.id
     }
 
-    private struct BuildingPillItem: Identifiable {
-        let id: String
-        let title: String
-        let amount: Double
-        let info: DistrictBuildingInfo
-    }
-    
+
     private func districtName(for dist: String) -> String {
         let isHebrew = l10n.language == .hebrew
         switch dist {
@@ -834,9 +1088,9 @@ public struct MainCityView: View {
             let c = currentCity.buildingTotals["food_coffee"] ?? 0
             let d = currentCity.buildingTotals["food_wolt"] ?? 0
             return [
-                BuildingPillItem(id: "food_bistro", title: isHe ? "מסעדות" : "Dining", amount: r, info: DistrictBuildingInfo(id: "food_bistro", districtId: "food", name: isHe ? "ביסטרו ומסעדות" : "Bistro & Dining", amount: r, visitCount: buildingVisitCount(for: "food_bistro"), trendText: buildingTrendText(for: "food_bistro"))),
-                BuildingPillItem(id: "food_super", title: isHe ? "סופרמרקט" : "Groceries", amount: g, info: DistrictBuildingInfo(id: "food_super", districtId: "food", name: isHe ? "סופרמרקט ומזון" : "Supermarket & Food", amount: g, visitCount: buildingVisitCount(for: "food_super"), trendText: buildingTrendText(for: "food_super"))),
-                BuildingPillItem(id: "food_coffee", title: isHe ? "קפה" : "Coffee", amount: c, info: DistrictBuildingInfo(id: "food_coffee", districtId: "food", name: isHe ? "אספרסו בר" : "Espresso Bar", amount: c, visitCount: buildingVisitCount(for: "food_coffee"), trendText: buildingTrendText(for: "food_coffee"))),
+                BuildingPillItem(id: "food_bistro", title: isHe ? "מסעדות" : "Restaurants", amount: r, info: DistrictBuildingInfo(id: "food_bistro", districtId: "food", name: isHe ? "מסעדות" : "Restaurants", amount: r, visitCount: buildingVisitCount(for: "food_bistro"), trendText: buildingTrendText(for: "food_bistro"))),
+                BuildingPillItem(id: "food_super", title: isHe ? "סופר ומכולת" : "Groceries", amount: g, info: DistrictBuildingInfo(id: "food_super", districtId: "food", name: isHe ? "סופר ומכולת" : "Supermarket & Groceries", amount: g, visitCount: buildingVisitCount(for: "food_super"), trendText: buildingTrendText(for: "food_super"))),
+                BuildingPillItem(id: "food_coffee", title: isHe ? "בתי קפה" : "Coffee", amount: c, info: DistrictBuildingInfo(id: "food_coffee", districtId: "food", name: isHe ? "בתי קפה" : "Cafes", amount: c, visitCount: buildingVisitCount(for: "food_coffee"), trendText: buildingTrendText(for: "food_coffee"))),
                 BuildingPillItem(id: "food_wolt", title: isHe ? "משלוחים" : "Delivery", amount: d, info: DistrictBuildingInfo(id: "food_wolt", districtId: "food", name: isHe ? "משלוחי אוכל" : "Food Delivery", amount: d, visitCount: buildingVisitCount(for: "food_wolt"), trendText: buildingTrendText(for: "food_wolt")))
             ]
         case "shopping":
@@ -888,8 +1142,7 @@ public struct MainCityView: View {
                         }
                     }) {
                         HStack(spacing: 5) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .bold))
+                            MoneyIcon(.xmarkCircle, size: 14)
                             Text(l10n.language == .hebrew ? "חזרה לעיר" : "Back to City")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                         }
@@ -924,7 +1177,7 @@ public struct MainCityView: View {
                                 handleSelectBuilding(pill.info)
                             }) {
                                 HStack(spacing: 6) {
-                                    CategoryVectorIcon(category: districtToCategory(dist), size: 15)
+                                    buildingIcon(pill.id)
                                     
                                     VStack(alignment: .leading, spacing: 1) {
                                         Text(pill.title)
@@ -942,8 +1195,8 @@ public struct MainCityView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(isPillSelected(pill) ? Color.primaryBlue : Color.borderSubtle,
-                                                lineWidth: isPillSelected(pill) ? 2 : 1.2)
+                                        .stroke(isPillSelected(pill) ? Color.primaryBlue : Color.clear,
+                                                lineWidth: isPillSelected(pill) ? 2 : 0)
                                 )
                                 // Lifted and slightly larger, so which one is selected reads
                                 // from the corner of the eye rather than needing to be looked
@@ -965,62 +1218,101 @@ public struct MainCityView: View {
             .padding(.vertical, 6)
             .background(Color.white.opacity(0.96))
             .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(Color(red: 226/255, green: 232/255, blue: 240/255), lineWidth: 1)
-            )
             .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
             .padding(.horizontal, 14)
             .padding(.top, 4)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
-    
+
     private var spendingCard: some View {
-        VStack(spacing: 8) {
-            // Header Row: Total Monthly Spending (Tappable -> Expands/Collapses District Breakdown)
+        let foodAmt = (currentCity.categoryTotals[.food] ?? 0) + (currentCity.categoryTotals[.groceries] ?? 0)
+        let shopAmt = currentCity.categoryTotals[.shopping] ?? 0
+        let houseAmt = currentCity.categoryTotals[.housing] ?? 0
+        let savingsAmt = currentCity.totalSavings
+        let displayTotal = max(currentCity.totalSpent, 1.0)
+
+        let (badgeBg, title, subtitle, amount): (Color, String, String, Double) = {
+            switch selectedDistrict {
+            case "food":
+                return (Color(red: 254/255, green: 242/255, blue: 232/255),
+                        l10n.language == .hebrew ? "רובע האוכל" : "Food District",
+                        l10n.language == .hebrew ? "\(Int(round((foodAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((foodAmt / displayTotal) * 100)))% of spending",
+                        foodAmt)
+            case "shopping":
+                return (Color(red: 253/255, green: 238/255, blue: 244/255),
+                        l10n.language == .hebrew ? "שדרת הקניות" : "Shopping District",
+                        l10n.language == .hebrew ? "\(Int(round((shopAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((shopAmt / displayTotal) * 100)))% of spending",
+                        shopAmt)
+            case "housing":
+                return (Color(red: 238/255, green: 245/255, blue: 254/255),
+                        l10n.language == .hebrew ? "מתחם המגורים" : "Housing District",
+                        l10n.language == .hebrew ? "\(Int(round((houseAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((houseAmt / displayTotal) * 100)))% of spending",
+                        houseAmt)
+            case "savings":
+                return (Color(red: 234/255, green: 248/255, blue: 240/255),
+                        l10n.language == .hebrew ? "שמורת הטבע" : "Savings Sanctuary",
+                        l10n.language == .hebrew ? "יעדי חיסכון והשקעות" : "Savings & Investments",
+                        savingsAmt)
+            default:
+                return (Color(red: 243/255, green: 244/255, blue: 246/255),
+                        l10n.language == .hebrew ? "כל העיר" : "All City",
+                        l10n.language == .hebrew ? "לחץ להצגת פירוט רבעים" : "Tap for district breakdown",
+                        currentCity.totalSpent)
+            }
+        }()
+
+        return VStack(spacing: 8) {
+            // Header Row: Floating District Row (Reference Screen 1)
             Button(action: {
                 withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
                     isDetailsExpanded.toggle()
                 }
             }) {
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 4) {
-                            Text(l10n.language == .hebrew ? "סה״כ הוצאות החודש" : "Total Monthly Spending")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 107/255, green: 114/255, blue: 128/255))
-                            
-                            Text(verbatim: isDetailsExpanded ? "▲" : "▼")
-                                .font(.system(size: 8, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.textMuted)
+                HStack(spacing: 12) {
+                    // 42pt circular pastel badge
+                    ZStack {
+                        Circle()
+                            .fill(badgeBg)
+                            .frame(width: 42, height: 42)
+
+                        if selectedDistrict == "shopping" {
+                            DistrictBoutiqueVectorIcon(color: Color(red: 236/255, green: 72/255, blue: 153/255))
+                                .scaleEffect(0.85)
+                        } else if selectedDistrict == "housing" {
+                            DistrictHousingVectorIcon(color: Color(red: 59/255, green: 130/255, blue: 246/255))
+                                .scaleEffect(0.85)
+                        } else if selectedDistrict == "savings" {
+                            DistrictParkVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
+                                .scaleEffect(0.85)
+                        } else if selectedDistrict == "food" {
+                            DistrictBistroVectorIcon(color: Color(red: 249/255, green: 115/255, blue: 22/255))
+                                .scaleEffect(0.85)
+                        } else {
+                            DistrictSkylineVectorIcon(color: Color(red: 17/255, green: 24/255, blue: 39/255))
+                                .scaleEffect(0.85)
                         }
-                        
-                        Text(l10n.format(amount: currentCity.totalSpent))
-                            .font(.system(size: 26, weight: .black, design: .rounded))
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
+
+                        Text(subtitle)
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
                     }
-                    
+
                     Spacer()
-                    
-                    // Mint Green Savings Park Badge
-                    HStack(spacing: 5) {
-                        DistrictParkVectorIcon(color: Color.themeMint)
-                            .frame(width: 14, height: 14)
-                            .scaleEffect(0.65)
-                        // "in Park" named a place, not the number. It is what the user tagged
-                        // as savings or investment, so it takes that category's name.
-                        Text("\(l10n.format(amount: currentCity.totalSavings)) \(SpendingCategory.savings.displayName(for: l10n.language))")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+
+                    HStack(spacing: 6) {
+                        Text(l10n.format(amount: amount))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+
+                        MoneyIcon(isDetailsExpanded ? .chevronDown : (l10n.language == .hebrew ? .chevronLeft : .chevronRight), size: 12)
                     }
-                    .foregroundColor(Color.themeMint)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.themeMintSoft)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.themeMint.opacity(0.25), lineWidth: 1))
                 }
             }
             .buttonStyle(.plain)
@@ -1028,9 +1320,7 @@ public struct MainCityView: View {
             // Contextual Month Milestone
             if displayTransactions.isEmpty {
                 HStack(spacing: 6) {
-                    Image(systemName: "leaf.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.themeMint)
+                    MoneyIcon(.leaf, size: 14)
                     Text(l10n.language == .hebrew ? "עיר חדשה מתחילה לצמוח" : "A new city is growing")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textSecondary)
@@ -1040,9 +1330,7 @@ public struct MainCityView: View {
                 .padding(.top, 1)
             } else if displayTransactions.count == 1 {
                 HStack(spacing: 6) {
-                    Image(systemName: "building.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color.primaryBlue)
+                    MoneyIcon(.home, size: 14)
                     Text(l10n.language == .hebrew ? "המבנה הראשון שלך לחודש זה" : "Your first building of the month")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textSecondary)
@@ -1052,40 +1340,7 @@ public struct MainCityView: View {
                 .padding(.top, 1)
             }
             
-            // Clean, integrated upgrade notification (inside spendingCard)
-            if progressReport.hasPositiveProgress && !progressReport.availableOptions.isEmpty {
-                Button(action: { showProgressSheet = true }) {
-                    HStack(spacing: 8) {
-                        DistrictSkylineVectorIcon(color: Color.themeYellow)
-                            .scaleEffect(0.6)
-                            .frame(width: 14, height: 14)
-                        
-                        Text(l10n.language == .hebrew ? "שדרוג לעיר זמין" : "City Upgrade Ready")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        
-                        Spacer()
-                        
-                        Text("-\(l10n.format(amount: progressReport.savedAmount)) \(l10n.language == .hebrew ? "השבוע" : "this week")")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.themeMint)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(Color.themeMintSoft)
-                            .clipShape(Capsule())
-                        
-                        Text(verbatim: l10n.language == .hebrew ? "‹" : "›")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(Color.appBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.borderSubtle, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-            }
+
             
             // District Details (Expanded only on tap!)
             if isDetailsExpanded {
@@ -1094,9 +1349,10 @@ public struct MainCityView: View {
                 let foodAmt = (currentCity.categoryTotals[.food] ?? 0) + (currentCity.categoryTotals[.groceries] ?? 0)
                 let shopAmt = currentCity.categoryTotals[.shopping] ?? 0
                 let houseAmt = currentCity.categoryTotals[.housing] ?? 0
+                let savingsAmt = currentCity.totalSavings
                 let displayTotal = max(currentCity.totalSpent, 1.0)
                 
-                if currentCity.totalSpent <= 0 {
+                if currentCity.totalSpent <= 0 && savingsAmt <= 0 {
                     HStack(spacing: 8) {
                         DistrictSkylineVectorIcon(color: Color.textMuted)
                             .frame(width: 18, height: 18)
@@ -1111,11 +1367,11 @@ public struct MainCityView: View {
                 } else {
                     VStack(spacing: 4) {
                         districtRow(
-                            bgColor: Color.themeTurquoiseSoft,
+                            bgColor: Color(red: 254/255, green: 242/255, blue: 232/255),
                             title: l10n.language == .hebrew ? "רובע האוכל" : "Food District",
                             amount: foodAmt,
                             percentage: Int(round((foodAmt / displayTotal) * 100)),
-                            icon: { DistrictBistroVectorIcon(color: Color.themeTurquoise).scaleEffect(0.65) }
+                            icon: { MoneyIcon(.cutlery, size: 22) }
                         ) {
                             handleSelectDistrict("food")
                         }
@@ -1123,11 +1379,11 @@ public struct MainCityView: View {
                         Divider().background(Color.borderSubtle)
                         
                         districtRow(
-                            bgColor: Color.themeLavenderSoft,
+                            bgColor: Color(red: 253/255, green: 238/255, blue: 244/255),
                             title: l10n.language == .hebrew ? "שדרת הקניות" : "Shopping Street",
                             amount: shopAmt,
                             percentage: Int(round((shopAmt / displayTotal) * 100)),
-                            icon: { DistrictBoutiqueVectorIcon(color: Color.themeLavender).scaleEffect(0.65) }
+                            icon: { MoneyIcon(.shoppingBag, size: 22) }
                         ) {
                             handleSelectDistrict("shopping")
                         }
@@ -1135,13 +1391,25 @@ public struct MainCityView: View {
                         Divider().background(Color.borderSubtle)
                         
                         districtRow(
-                            bgColor: Color(red: 238/255, green: 237/255, blue: 254/255),
+                            bgColor: Color(red: 238/255, green: 245/255, blue: 254/255),
                             title: l10n.language == .hebrew ? "מתחם המגורים" : "Housing Quarter",
                             amount: houseAmt,
                             percentage: Int(round((houseAmt / displayTotal) * 100)),
-                            icon: { DistrictHousingVectorIcon(color: Color.primaryBlue).scaleEffect(0.65) }
+                            icon: { MoneyIcon(.home, size: 22) }
                         ) {
                             handleSelectDistrict("housing")
+                        }
+
+                        Divider().background(Color.borderSubtle)
+
+                        districtRow(
+                            bgColor: Color(red: 234/255, green: 248/255, blue: 240/255),
+                            title: l10n.language == .hebrew ? "שמורת הטבע (חיסכון)" : "Savings Sanctuary",
+                            amount: savingsAmt,
+                            percentage: Int(round((savingsAmt / displayTotal) * 100)),
+                            icon: { MoneyIcon(.leaf, size: 22) }
+                        ) {
+                            handleSelectDistrict("savings")
                         }
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
@@ -1149,11 +1417,10 @@ public struct MainCityView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22))
-        .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.borderSubtle, lineWidth: 1.5))
-        .shadow(color: Color.deepNavy.opacity(0.06), radius: 14, y: 4)
+        .padding(.vertical, 14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.045), radius: 14, x: 0, y: 3)
         .padding(.horizontal, 16)
     }
     
@@ -1167,11 +1434,11 @@ public struct MainCityView: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                // Soft colored rounded square icon tile
+                // Soft pastel circle badge (matches reference)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 9)
+                    Circle()
                         .fill(bgColor)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 34, height: 34)
                     
                     icon()
                 }
@@ -1187,7 +1454,7 @@ public struct MainCityView: View {
                     .foregroundColor(Color.deepNavy)
                 
                 Text("\(percentage)%")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                     .foregroundColor(Color.textMuted)
                     .frame(width: 34, alignment: .trailing)
             }
@@ -1291,14 +1558,20 @@ public struct MainCityView: View {
                     return (tx.category == .transport || tx.category == .shopping) && (tx.merchant.contains("טיסה") || tx.merchant.contains("מלון") || tx.merchant.contains("booking") || tx.merchant.contains("אל על"))
                 case "shop_arcade":
                     return tx.category == .entertainment
+                case "health_pharmacy":
+                    return tx.category == .health || tx.buildingId == "health_pharmacy"
+                case "finance_bank":
+                    return tx.category == .finance || tx.buildingId == "finance_bank"
+                case "museum_curiosities":
+                    return tx.category == .miscellaneous || tx.category == .misc || tx.buildingId == "museum_curiosities"
                 case "savings_sanctuary":
                     return tx.category == .savings
                 case "trans_station":
                     return tx.category == .transport
                 case "city_sorting_hub":
-                    return tx.category == .other || tx.buildingIdRaw == "city_sorting_hub"
+                    return tx.category == .other || tx.buildingId == "city_sorting_hub"
                 default:
-                    return tx.buildingIdRaw == building.id
+                    return tx.buildingId == building.id
                 }
             }
         } else if let dist = selectedDistrict {
@@ -1327,69 +1600,121 @@ public struct MainCityView: View {
     }
 }
 
-/// District deep-dive bottom bar
-
 struct DistrictDeepDiveCard: View {
     let districtId: String
     let onBack: () -> Void
+    let onSelectBuilding: (DistrictBuildingInfo) -> Void
+    let pills: [BuildingPillItem]
+    let total: Double
     @EnvironmentObject private var l10n: LocalizationManager
-    
+
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(districtTitle.uppercased())
-                    .font(.system(size: 10, weight: .black, design: .rounded))
-                    .foregroundColor(Color(red: 156/255, green: 163/255, blue: 175/255))
-                    .tracking(0.6)
-                
-                HStack(spacing: 5) {
-                    CategoryVectorIcon(category: districtCategory, size: 14)
-                    Text(l10n.language == .hebrew ? "לחץ על מבנה לצפייה בעסקאות" : "Tap building for details")
+        VStack(alignment: .leading, spacing: 12) {
+            // ── Header: district name + total + back ──
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(districtTitle)
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Text(l10n.format(amount: total))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 15/255, green: 13/255, blue: 23/255))
+                        .foregroundColor(Color.primaryBlue)
                 }
+
+                Spacer()
+
+                Button(action: onBack) {
+                    HStack(spacing: 5) {
+                        MoneyIcon(.citySkyline, size: 13)
+                        Text(l10n.language == .hebrew ? "חזרה" : "Back")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(Color.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color(red: 17/255, green: 24/255, blue: 39/255))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.94)
             }
-            
-            Spacer()
-            
-            Button(action: onBack) {
-                HStack(spacing: 6) {
-                    DistrictSkylineVectorIcon(color: .white)
-                        .frame(width: 14, height: 14)
-                        .scaleEffect(0.85)
-                    Text(l10n.language == .hebrew ? "חזרה לעיר" : "Back to City")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+
+            // ── Building rows: tap → open building card ──
+            VStack(spacing: 0) {
+                ForEach(pills) { pill in
+                    Button(action: { onSelectBuilding(pill.info) }) {
+                        HStack(spacing: 12) {
+                            buildingVectorIcon(pill.id, size: 16)
+                                .frame(width: 28, height: 28)
+                                .background(Color(red: 248/255, green: 250/255, blue: 252/255))
+                                .clipShape(Circle())
+
+                            Text(pill.title)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+
+                            Spacer()
+
+                            if pill.amount > 0 {
+                                Text(l10n.format(amount: pill.amount))
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.textSecondary)
+                            }
+
+                            MoneyIcon(.chevronRight, size: 11)
+                                .foregroundColor(Color.textMuted)
+                        }
+                        .padding(.vertical, 9)
+                    }
+                    .buttonStyle(.plain)
+
+                    if pill.id != pills.last?.id {
+                        Divider().opacity(0.5)
+                    }
                 }
-                .foregroundColor(Color.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.obsidianBlack)
-                .clipShape(Capsule())
-                .shadow(color: Color.obsidianBlack.opacity(0.25), radius: 6, y: 3)
             }
         }
-        .padding(18)
+        .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(red: 243/255, green: 244/255, blue: 246/255), lineWidth: 1.5))
-        .shadow(color: Color.black.opacity(0.06), radius: 16, y: 8)
-        .padding(.horizontal, 20)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.05), radius: 14, y: 4)
+        .padding(.horizontal, 16)
     }
-    
+
     private var districtTitle: String {
         let isHebrew = l10n.language == .hebrew
         switch districtId {
-        case "food": return isHebrew ? "אוכל ומסעדות" : "Food & Dining"
-        case "shopping": return isHebrew ? "קניות וביגוד" : "Shopping & Clothes"
-        case "housing": return isHebrew ? "דיור וחשבונות בית" : "Housing & Bills"
-        case "savings": return isHebrew ? "חיסכון והשקעות" : "Savings & Reserve"
-        case "transport": return isHebrew ? "תחבורה ורכב" : "Mobility & Transport"
-        default: return isHebrew ? "רובע בעיר" : "City District"
+        case "food":     return isHebrew ? "רובע האוכל" : "Food District"
+        case "shopping": return isHebrew ? "שדרת הקניות" : "Shopping District"
+        case "housing":  return isHebrew ? "מתחם המגורים" : "Housing District"
+        case "savings":  return isHebrew ? "שמורת הטבע" : "Savings Sanctuary"
+        case "transport": return isHebrew ? "מרכז התחבורה" : "Transport Hub"
+        default:         return isHebrew ? "רובע בעיר" : "City District"
         }
     }
-    
-    private var districtCategory: SpendingCategory {
-        districtToCategory(districtId)
+}
+
+@ViewBuilder
+public func buildingVectorIcon(_ id: String, size: CGFloat = 18) -> some View {
+    switch id {
+    case "food_bistro": MoneyIcon(.cutlery, size: size)
+    case "food_super": MoneyIcon(.cart, size: size)
+    case "food_coffee": MoneyIcon(.coffee, size: size)
+    case "food_wolt": MoneyIcon(.car, size: size)
+    case "shop_boutique": MoneyIcon(.shoppingBag, size: size)
+    case "shop_tech": MoneyIcon(.gamepad, size: size)
+    case "shop_travel": MoneyIcon(.airplane, size: size)
+    case "shop_arcade": MoneyIcon(.gamepad, size: size)
+    case "house_tower": MoneyIcon(.home, size: size)
+    case "house_util": MoneyIcon(.lightning, size: size)
+    case "house_subs": MoneyIcon(.refresh, size: size)
+    case "savings_sanctuary": MoneyIcon(.leaf, size: size)
+    case "city_sorting_hub": MoneyIcon(.mail, size: size)
+    case "museum_curiosities": MoneyIcon(.gift, size: size)
+    case "trans_station": MoneyIcon(.car, size: size)
+    case "health_pharmacy": MoneyIcon(.medicalCross, size: size)
+    case "finance_bank": MoneyIcon(.creditCard, size: size)
+    default: MoneyIcon(.home, size: size)
     }
 }
 
@@ -1418,19 +1743,22 @@ struct InspectorModalView: View {
     private var localizedBuildingTitle: String {
         let isHe = l10n.language == .hebrew
         switch info.id {
-        case "food_bistro": return isHe ? "ביסטרו ומסעדות" : "Bistro & Dining"
-        case "food_super": return isHe ? "סופרמרקט ומזון" : "Supermarket & Food"
-        case "food_coffee": return isHe ? "אספרסו בר" : "Espresso Bar"
-        case "food_wolt": return isHe ? "וולט ומשלוחי אוכל" : "Food Delivery"
-        case "shop_boutique": return isHe ? "בוטיק אופנה" : "Fashion Boutique"
-        case "shop_tech": return isHe ? "חנות אלקטרוניקה" : "Electronics Store"
-        case "shop_travel": return isHe ? "סוכנות נסיעות" : "Travel Agency"
-        case "shop_arcade": return isHe ? "מתחם ארקייד" : "Arcade Complex"
-        case "house_tower": return isHe ? "מגדל מגורים" : "Residential Tower"
-        case "house_util": return isHe ? "חשמל ומים" : "Power & Water"
+        case "food_bistro": return isHe ? "מסעדות" : "Restaurants"
+        case "food_super": return isHe ? "סופר ומכולת" : "Supermarket & Groceries"
+        case "food_coffee": return isHe ? "בתי קפה" : "Cafes"
+        case "food_wolt": return isHe ? "משלוחי אוכל" : "Food Delivery"
+        case "shop_boutique": return isHe ? "ביגוד ואופנה" : "Fashion & Boutique"
+        case "shop_tech": return isHe ? "טכנולוגיה וחשמל" : "Electronics & Tech"
+        case "shop_travel": return isHe ? "חופשות וטיסות" : "Travel & Vacations"
+        case "shop_arcade": return isHe ? "קולנוע ובידור" : "Entertainment"
+        case "house_tower": return isHe ? "שכירות ודיור" : "Rent & Housing"
+        case "house_util": return isHe ? "חשבונות הבית" : "Utilities & Bills"
         case "house_subs": return isHe ? "מנויים וסטרימינג" : "Subscriptions & Streaming"
         case "savings_sanctuary": return isHe ? "שמורת הטבע והחיסכון" : "Nature & Savings Park"
         case "trans_station": return isHe ? "תחבורה וחניה" : "Transit & Parking"
+        case "health_pharmacy": return isHe ? "פארם ובריאות" : "Health & Pharmacy"
+        case "finance_bank": return isHe ? "בנקאות ועמלות" : "Banking & Finance"
+        case "museum_curiosities": return isHe ? "מוזיאון הדברים המשונים" : "Museum of Curiosities"
         case "city_sorting_hub": return isHe ? "מרכז המיון והדואר" : "City Sorting Hub"
         default:
             return info.name
@@ -1443,9 +1771,7 @@ struct InspectorModalView: View {
             
             if isSortingHub {
                 HStack(spacing: 8) {
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Color(red: 234/255, green: 88/255, blue: 12/255))
+                    MoneyIcon(.shoppingBag, size: 14)
                     Text(l10n.language == .hebrew ? "הוצאות שונות מצטברות כאן כחבילות. לחץ למיון מהיר ושיוך למבנים הנכונים בעיר." : "Uncategorized expenses gather here. Tap to triage and send funds to their buildings.")
                         .font(.system(size: 11.5, weight: .medium, design: .rounded))
                         .foregroundColor(Color(red: 120/255, green: 53/255, blue: 15/255))
@@ -1459,12 +1785,11 @@ struct InspectorModalView: View {
             Divider().background(Color(red: 243/255, green: 244/255, blue: 246/255))
             trendRow
         }
-        .padding(18)
+        .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(red: 243/255, green: 244/255, blue: 246/255), lineWidth: 1.5))
-        .shadow(color: Color.black.opacity(0.08), radius: 16, y: 6)
-        .padding(.horizontal, 20)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.05), radius: 14, x: 0, y: 4)
+        .padding(.horizontal, 16)
         .contentShape(Rectangle())
         .onTapGesture {
             onShowFeed()
@@ -1474,15 +1799,13 @@ struct InspectorModalView: View {
     private var headerRow: some View {
         HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
+                Circle()
                     .fill(isSortingHub ? Color(red: 254/255, green: 243/255, blue: 199/255) : Color(red: 241/255, green: 245/255, blue: 249/255))
-                    .frame(width: 46, height: 46)
+                    .frame(width: 44, height: 44)
                 if isSortingHub {
-                    Image(systemName: "shippingbox.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(Color(red: 234/255, green: 88/255, blue: 12/255))
+                    MoneyIcon(.mail, size: 24)
                 } else {
-                    CategoryVectorIcon(category: districtToCategory(info.districtId), size: 24)
+                    buildingVectorIcon(info.id, size: 24)
                 }
             }
             
@@ -1497,8 +1820,7 @@ struct InspectorModalView: View {
                             .foregroundColor(Color(red: 234/255, green: 88/255, blue: 12/255))
                     } else {
                         HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                            MoneyIcon(.checkCircle, size: 14)
                             Text(l10n.language == .hebrew ? "הכל ממוין ומסודר!" : "All sorted & clean!")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
@@ -1518,14 +1840,13 @@ struct InspectorModalView: View {
             Spacer()
             
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(Color.textMuted)
+                MoneyIcon(.xmarkCircle, size: 20)
                     .frame(width: 32, height: 32)
                     .background(Color.appBackground)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
+            .highPriorityGesture(TapGesture().onEnded { onClose() })
         }
     }
     
@@ -1627,147 +1948,45 @@ struct ReserveModalView: View {
         return snapshot.savedThisMonth / snapshot.monthElapsed
     }
 
-    /// The two numbers being compared, each said out loud.
-    ///
-    /// The old card gave one sentence with a single figure in it and no label, so there was
-    /// no way to tell whether it meant "you spent this" or "you are this much over" — and if
-    /// the verdict looked wrong there was nothing to check it against. Both sides are now
-    /// shown: what was spent, and what the target was by today.
-    private var targetSoFar: Double { snapshot.plannedSpending * snapshot.monthElapsed }
-    private var overUnder: Double { snapshot.spentThisMonth - targetSoFar }
-
-    private var hasComparison: Bool { snapshot.plannedSpending > 0 && snapshot.monthElapsed > 0 }
-
-    private var verdictLine: String {
-        guard hasComparison else {
-            return isHebrew
-                ? "מוקדם מדי בחודש בשביל מסקנה — השמורה מחכה לנתונים."
-                : "Too early in the month to judge — the reserve is waiting for data."
-        }
-        let d = overUnder.rounded()
-        if snapshot.monthElapsed < 0.25 {
-            if d > 0 {
-                return isHebrew
-                    ? "תחילת חודש: ₪\(Int(abs(d))) מעל הממוצע היומי (יתאזן לאורך החודש)"
-                    : "Early month: ₪\(Int(abs(d))) under daily average"
-            }
-            return isHebrew
-                ? "קצב מצוין מתחת לתקציב!"
-                : "Great pace under budget!"
-        }
-        if d > 0 {
-            return isHebrew
-                ? "\(l10n.format(amount: d)) מעל הקצב הצפוי להיום"
-                : "\(l10n.format(amount: d)) ahead of expected pace"
-        }
-        return isHebrew
-            ? "\(l10n.format(amount: -d)) מתחת לקצב הצפוי להיום"
-            : "\(l10n.format(amount: -d)) under expected pace"
-    }
-
-    /// What is actually being counted, which depends on how the user set their plan.
-    private var scopeTitle: String {
-        if snapshot.budgetedCategoryCount > 0 {
-            return isHebrew ? "הקטגוריות שתקצבת, החודש" : "The categories you budgeted, this month"
-        }
-        return isHebrew ? "הוצאות יומיומיות שבוצעו החודש" : "Everyday spending this month"
-    }
-
-    private var scopeNote: String {
-        if snapshot.budgetedCategoryCount > 0 {
-            return isHebrew
-                ? "נמדד מול התקרות שהגדרת בעמוד התקציב. שכירות, חשבונות ומנויים לא נספרים כאן."
-                : "Measured against the ceilings you set on the budget screen. Rent, bills and subscriptions are not counted."
-        }
-        return isHebrew
-            ? "שכירות, חשבונות בית ומנויים לא נספרים כאן — הם קבועים ולא חלק מההוצאות היומיומיות."
-            : "Rent, household bills and subscriptions are not counted here — they are fixed, not daily decisions."
-    }
-
-    private var comparisonRow: some View {
-        let pct = Int((snapshot.monthElapsed * 100).rounded())
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(scopeTitle)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                    Text("\(l10n.format(amount: snapshot.spentThisMonth.rounded()))")
-                        .font(.system(size: 21, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                }
-                Spacer()
-                if hasComparison {
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(isHebrew ? "קצב צפוי להיום (\(pct)% מהחודש):" : "Expected by today (\(pct)%):")
-                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                        Text("\(l10n.format(amount: targetSoFar.rounded()))")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                    }
-                }
-            }
-
-            if hasComparison {
-                GeometryReader { geo in
-                    ZStack(alignment: isHebrew ? .trailing : .leading) {
-                        Capsule().fill(Color.appBackground).frame(height: 6)
-                        Capsule()
-                            .fill(conditionColor)
-                            .frame(width: max(4, geo.size.width * CGFloat(min(1.35, snapshot.spentThisMonth / max(targetSoFar, 1)) / 1.35)),
-                                   height: 6)
-                    }
-                }
-                .frame(height: 6)
-
-                HStack(spacing: 6) {
-                    Text(verdictLine)
-                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                        .foregroundColor(conditionColor)
-                    Spacer()
-                    Text(isHebrew ? "תקציב יומיומי: \(l10n.format(amount: snapshot.plannedSpending.rounded()))"
-                                  : "Everyday budget: \(l10n.format(amount: snapshot.plannedSpending.rounded()))")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-            }
-
-            Text(scopeNote)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
-                .foregroundColor(Color.textMuted)
+    private var sanctuaryNoteRow: some View {
+        HStack(spacing: 8) {
+            MoneyIcon(.leaf, size: 14)
+            Text(isHebrew
+                 ? "שמורת הטבע והחיסכון צומחת עם כל שקל שנשמר או הופקד ליעד. לחץ על התפריט המיוחד לניהול יעדים והפקדות."
+                 : "The Nature Sanctuary grows with every shekel saved or deposited into goals. Tap below to manage goals.")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundColor(Color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(11)
-        .background(Color.appBackground.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(.vertical, 2)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerRow
             figuresRow
-            comparisonRow
+            sanctuaryNoteRow
 
             Divider().background(Color(red: 243/255, green: 244/255, blue: 246/255))
             footerRow
         }
-        .padding(18)
+        .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 28))
-        .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(red: 243/255, green: 244/255, blue: 246/255), lineWidth: 1.5))
-        .shadow(color: Color.black.opacity(0.08), radius: 16, y: 6)
-        .padding(.horizontal, 20)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.05), radius: 14, x: 0, y: 4)
+        .padding(.horizontal, 16)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onShowFeed()
+        }
     }
 
     private var headerRow: some View {
         HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(reserveGreen.opacity(0.12))
-                    .frame(width: 46, height: 46)
+                Circle()
+                    .fill(Color.themeMintSoft)
+                    .frame(width: 44, height: 44)
                 CategoryVectorIcon(category: .savings, size: 24)
             }
 
@@ -1787,14 +2006,13 @@ struct ReserveModalView: View {
             Spacer()
 
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(Color.textMuted)
+                MoneyIcon(.xmarkCircle, size: 20)
                     .frame(width: 32, height: 32)
                     .background(Color.appBackground)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
+            .highPriorityGesture(TapGesture().onEnded { onClose() })
         }
     }
 
@@ -1861,7 +2079,8 @@ struct ReserveModalView: View {
 
             Button(action: onShowFeed) {
                 HStack(spacing: 5) {
-                    Text(isHebrew ? "הפקדות" : "Deposits")
+                    MoneyIcon(.leaf, size: 14)
+                    Text(isHebrew ? "תפריט השמורה ויעדים" : "Sanctuary & Goals")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                     Text(verbatim: isHebrew ? "‹" : "›")
                         .font(.system(size: 14, weight: .bold, design: .rounded))

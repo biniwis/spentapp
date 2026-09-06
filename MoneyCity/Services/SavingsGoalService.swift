@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Pure goal maths — progress, pace, and whether the user is on track.
 public enum SavingsGoalService {
@@ -117,6 +118,26 @@ public enum SavingsGoalService {
             // `completedAt` is deliberately left alone. Clearing it would let the goal be
             // "completed" a second time and insert the same landmark twice; the progress
             // the user sees comes from `savedAmount`, which is now correct either way.
+        }
+        return changed
+    }
+
+    /// Fetches all savings goals and all linked transactions, runs reconciliation across them,
+    /// and saves the context if any goal moved.
+    @MainActor
+    @discardableResult
+    public static func reconcileAll(context: ModelContext) -> Bool {
+        let goalsDesc = FetchDescriptor<SavingsGoal>()
+        guard let goals = try? context.fetch(goalsDesc), !goals.isEmpty else { return false }
+
+        let txDesc = FetchDescriptor<Transaction>(
+            predicate: #Predicate<Transaction> { $0.savingsGoalId != nil }
+        )
+        let txs = (try? context.fetch(txDesc)) ?? []
+
+        let changed = reconcile(goals: goals, transactions: txs)
+        if changed {
+            DatabaseService.safeSave(context)
         }
         return changed
     }

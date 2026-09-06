@@ -87,7 +87,7 @@ public struct BackupSheet: View {
     // MARK: - Export
 
     private var exportCard: some View {
-        card(icon: "square.and.arrow.up.fill", tint: Color.primaryBlue,
+        card(icon: .upload, tint: Color.primaryBlue,
              title: isHebrew ? "ייצוא לקובץ" : "Export to a file",
              body: isHebrew
                 ? "כל ההוצאות, התקציבים, היעדים, הכללים וההוצאות הקבועות — בקובץ JSON אחד. שמור אותו ב־Files או בדרייב."
@@ -123,7 +123,7 @@ public struct BackupSheet: View {
     // MARK: - Import
 
     private var importCard: some View {
-        card(icon: "square.and.arrow.down.fill", tint: MoneyCityTheme.mint,
+        card(icon: .download, tint: MoneyCityTheme.mint,
              title: isHebrew ? "שחזור מקובץ" : "Restore from a file",
              body: isHebrew
                 ? "טוען קובץ גיבוי שייצאת. \"מיזוג\" מוסיף רק רשומות שאין כאן; \"החלפה\" מוחק הכול ומחליף בקובץ."
@@ -188,7 +188,7 @@ public struct BackupSheet: View {
     // MARK: - Snapshots
 
     private var snapshotCard: some View {
-        card(icon: "clock.arrow.circlepath", tint: MoneyCityTheme.lavender,
+        card(icon: .refresh, tint: MoneyCityTheme.lavender,
              title: isHebrew ? "תצלומים אוטומטיים" : "Automatic snapshots",
              body: isHebrew
                 ? "עותק של מסד הנתונים נשמר לפני כל בנייה חדשה — הרגע היחיד שבו מבנה הנתונים יכול להישבר. נשמרים שלושה אחרונים."
@@ -250,7 +250,7 @@ public struct BackupSheet: View {
 
     @ViewBuilder
     private func card<Content: View>(
-        icon: String,
+        icon: MoneyIconName,
         tint: Color,
         title: String,
         body text: String,
@@ -258,9 +258,7 @@ public struct BackupSheet: View {
     ) -> some View {
         VStack(alignment: isHebrew ? .trailing : .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(tint)
+                MoneyIcon(icon, size: 16)
                 Text(title)
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(MoneyCityTheme.textPrimary)
@@ -275,11 +273,9 @@ public struct BackupSheet: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: isHebrew ? .trailing : .leading)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.cardBackground))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.borderSubtle, lineWidth: 1)
-        )
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
     }
 
     private func actionLabel(_ text: String, filled: Bool) -> some View {

@@ -174,9 +174,14 @@ public struct ProfileView: View {
                         Spacer()
 
                         Button(action: { showSettings = true }) {
-                            SettingsGearVectorIcon(color: Color.deepNavy)
-                                .frame(width: 44, height: 41)
-                                .cityCard(.plain, radius: MoneyCityTheme.radiusSmall)
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 40, height: 40)
+                                    .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
+                                SettingsGearVectorIcon(color: Color.deepNavy)
+                                    .frame(width: 18, height: 18)
+                            }
                         }
                         .buttonStyle(.plain)
                     }
@@ -234,154 +239,164 @@ public struct ProfileView: View {
         }
     }
 
-    // MARK: - User Profile Greeting Card (Bespoke Light Mayor Card)
+    // MARK: - User Profile Greeting Card (Mayor Hero Badge)
 
     private var userProfileCard: some View {
         HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(Color.themeTurquoiseSoft)
-                    .frame(width: 52, height: 52)
-                DistrictSkylineVectorIcon(color: Color.themeTurquoise)
-                    .scaleEffect(1.15)
+                Circle()
+                    .fill(Color(red: 254/255, green: 242/255, blue: 232/255))
+                    .frame(width: 56, height: 56)
+                MoneyIcon(.user, size: 36)
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(greetingText)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
+                Text(displayName.isEmpty ? (l10n.language == .hebrew ? "היי, ראש העיר" : "Hey, Mayor") : (l10n.language == .hebrew ? "שלום, \(displayName)" : "Hey, \(displayName)"))
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
-                
+
+                Text(l10n.language == .hebrew ? "בונים עתיד פיננסי טוב יותר 🌱" : "Building a better financial future 🌱")
+                    .font(.system(size: 12, weight: .medium, design: .default))
+                    .foregroundColor(Color.textSecondary)
+
                 HStack(spacing: 6) {
-                    Text(l10n.language == .hebrew ? "ראש העיר" : "Mayor")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.themeTurquoise)
+                    HStack(spacing: 4) {
+                        MoneyIcon(.calendar, size: 12)
+                        Text(l10n.language == .hebrew ? "החודש: \(l10n.format(amount: totalThisMonth))" : "This month: \(l10n.format(amount: totalThisMonth))")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(Color.deepNavy)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                    .clipShape(Capsule())
+
+                    if activeStreakDays > 0 {
+                        HStack(spacing: 3) {
+                            Text("⚡️")
+                                .font(.system(size: 10))
+                            Text("\(activeStreakDays)d")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(Color.themeTurquoiseSoft)
+                        .padding(.vertical, 4)
+                        .background(Color(red: 209/255, green: 250/255, blue: 229/255))
                         .clipShape(Capsule())
-                    
-                    Text(l10n.language == .hebrew ? "• \(transactionCount) עסקאות בעיר" : "• \(transactionCount) transactions")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                    }
                 }
+                .padding(.top, 2)
             }
 
             Spacer()
         }
-        .padding(16)
-        .background(Color.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.borderSubtle, lineWidth: 1.2)
-        )
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 4 Bento Metric Tiles (Handcrafted with Character)
+    // MARK: - 4 Bento Metric Tiles (Clean Modern Surfaces)
 
     private var statsGridCard: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             // 1. Total This Year
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.themeLavender.opacity(0.15))
-                            .frame(width: 32, height: 32)
-                        AnnualVaultVectorIcon(color: Color.themeLavender)
-                    }
-                    Spacer()
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 243/255, green: 232/255, blue: 255/255))
+                        .frame(width: 36, height: 36)
+                    AnnualVaultVectorIcon(color: Color(red: 168/255, green: 85/255, blue: 247/255))
+                        .scaleEffect(0.85)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(l10n.baseCurrency.symbol)\(shortAmt(totalThisYear))")
-                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     Text(l10n.language == .hebrew ? "סך הכל השנה" : "Total This Year")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
 
             // 2. This Month Transactions
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.themeTurquoise.opacity(0.15))
-                            .frame(width: 32, height: 32)
-                        BarMetricVectorIcon(color: Color.themeTurquoise)
-                    }
-                    Spacer()
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.themeTurquoiseSoft)
+                        .frame(width: 36, height: 36)
+                    BarMetricVectorIcon(color: Color.themeTurquoise)
+                        .scaleEffect(0.85)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(thisMonthTransactions.count)")
-                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "עסקאות החודש" : "This Month")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                    Text(l10n.language == .hebrew ? "עסקאות החודש" : "Transactions")
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
 
             // 3. Active Streak 🔥
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.themeOrange.opacity(0.15))
-                            .frame(width: 32, height: 32)
-                        StreakFlameVectorIcon(color: Color.themeOrange)
-                    }
-                    Spacer()
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.themeOrangeSoft)
+                        .frame(width: 36, height: 36)
+                    StreakFlameVectorIcon(color: Color.themeOrange)
+                        .scaleEffect(0.85)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(activeStreakDays) " + (l10n.language == .hebrew ? "ימים" : "days"))
-                        .font(.system(size: 19, weight: .black, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     Text(l10n.language == .hebrew ? "רצף ימים פעיל" : "Active Streak")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cityCard(.habit, radius: MoneyCityTheme.radiusCard)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
 
             // 4. Budget Goal 🎯 (with Live Micro Progress Bar)
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(Color.themeMint.opacity(0.15))
-                            .frame(width: 32, height: 32)
-                        TargetReticleVectorIcon(color: Color.themeMint)
-                    }
-                    Spacer()
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.themeMintSoft)
+                        .frame(width: 36, height: 36)
+                    TargetReticleVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
+                        .scaleEffect(0.85)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(budgetGoalText)
-                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
-                    
+
                     let limit = effectiveBudgetLimit
                     let fraction = limit > 0 ? min(totalThisMonth / limit, 1.0) : 0.0
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.deepNavy.opacity(0.08))
-                            Capsule()
-                                .fill(Color.themeMint)
+                            Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                            Capsule().fill(Color(red: 16/255, green: 185/255, blue: 129/255))
                                 .frame(width: geo.size.width * CGFloat(fraction))
                         }
                     }
@@ -389,44 +404,41 @@ public struct ProfileView: View {
                     .padding(.top, 2)
 
                     Text(l10n.language == .hebrew ? "יעד תקציב חודשי" : "Monthly Budget")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
                 }
             }
-            .padding(14)
+            .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .cityCard(.savings, radius: MoneyCityTheme.radiusCard)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
         }
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 12-Month Spending Bar Chart (Clean Architectural)
+    // MARK: - 12-Month Spending Bar Chart (Lilac / Purple Architectural Styling)
 
     private var yearChartCard: some View {
         let maxAmt = max(monthlyTotals.map(\.amount).max() ?? 1, 100)
         return VStack(alignment: .leading, spacing: 14) {
-            // The selected month's figure used to be a capsule sitting on top of its own bar.
-            // Each of the twelve columns is about 22pt wide on a phone and the shortest
-            // possible amount needs roughly 36pt, so the number the tap existed to reveal was
-            // always truncated — which is why tapping a bar looked like it did nothing. It
-            // reads out here instead, where there is room for it.
             HStack(spacing: 8) {
                 if let sel = selectedMonth, let m = monthlyTotals.first(where: { $0.label == sel }) {
                     Text(monthFullName(m.monthDate))
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundColor(Color.themeTurquoise)
+                        .font(.system(size: 15, weight: .bold, design: .default))
+                        .foregroundColor(Color.deepNavy)
                     Spacer()
                     Text(l10n.format(amount: m.amount.rounded()))
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundColor(Color.themeTurquoise)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 168/255, green: 85/255, blue: 247/255))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                    // And now the tap leads somewhere: the city as it stood that month.
+
                     Button {
                         Haptics.impact(.light)
                         onNavigateToCity?(m.monthDate)
                     } label: {
-                        HStack(spacing: 3) {
+                        HStack(spacing: 4) {
                             Text(l10n.language == .hebrew ? "לעיר" : "City")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                             Text(verbatim: l10n.language == .hebrew ? "‹" : "›")
@@ -435,61 +447,59 @@ public struct ProfileView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Color.themeTurquoise)
+                        .background(Color(red: 168/255, green: 85/255, blue: 247/255))
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .bouncyPress(scale: 0.94)
                 } else {
-                    Text(l10n.language == .hebrew ? "הוצאות 12 חודשים" : "12-Month Overview")
-                        .font(.system(size: 15, weight: .black, design: .rounded))
+                    Text(l10n.language == .hebrew ? "סקירת 12 חודשים" : "12-Month Overview")
+                        .font(.system(size: 16, weight: .bold, design: .default))
                         .foregroundColor(Color.deepNavy)
                     Spacer()
                     Text("\(l10n.baseCurrency.symbol)\(shortAmt(total12Months))")
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundColor(Color.primaryBlue)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 168/255, green: 85/255, blue: 247/255))
                 }
             }
             .frame(minHeight: 28)
             .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedMonth)
 
-            HStack(alignment: .bottom, spacing: 5) {
+            HStack(alignment: .bottom, spacing: 6) {
                 ForEach(Array(monthlyTotals.enumerated()), id: \.element.label) { idx, month in
                     let isCurrentMonth = (idx == monthlyTotals.count - 1)
                     let isSelected = (selectedMonth == month.label)
                     let frac = maxAmt > 0 ? CGFloat(month.amount / maxAmt) : 0
-                    
+
                     Button(action: {
                         Haptics.impact(.light)
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             selectedMonth = isSelected ? nil : month.label
                         }
                     }) {
-                        VStack(spacing: 4) {
+                        VStack(spacing: 6) {
                             Spacer(minLength: 0)
 
                             ZStack(alignment: .bottom) {
                                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(Color.borderSubtle.opacity(0.5))
-                                    .frame(height: 68)
+                                    .fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                                    .frame(height: 72)
 
                                 if month.amount > 0 {
                                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                                         .fill(
-                                            isSelected
-                                                ? Color.themeTurquoise
-                                                : (isCurrentMonth
-                                                   ? Color.primaryBlue
-                                                   : Color.primaryBlue.opacity(0.65))
+                                            (isSelected || isCurrentMonth)
+                                                ? Color(red: 168/255, green: 85/255, blue: 247/255)
+                                                : Color(red: 221/255, green: 214/255, blue: 254/255)
                                         )
-                                        .frame(height: max(frac * 68, 8))
-                                        .scaleEffect(isSelected ? 1.08 : 1.0)
+                                        .frame(height: max(frac * 72, 8))
+                                        .scaleEffect(isSelected ? 1.06 : 1.0)
                                 }
                             }
 
                             Text(month.label)
-                                .font(.system(size: 9, weight: (isCurrentMonth || isSelected) ? .black : .bold, design: .rounded))
-                                .foregroundColor(isSelected ? Color.themeTurquoise : (isCurrentMonth ? Color.primaryBlue : Color.textMuted))
+                                .font(.system(size: 9.5, weight: (isCurrentMonth || isSelected) ? .bold : .medium, design: .default))
+                                .foregroundColor((isCurrentMonth || isSelected) ? Color.deepNavy : Color.textSecondary)
                         }
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
@@ -497,10 +507,12 @@ public struct ProfileView: View {
                     .bouncyPress(scale: 0.94)
                 }
             }
-            .frame(height: 108)
+            .frame(height: 112)
         }
         .padding(18)
-        .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
         .padding(.horizontal, 16)
     }
 
@@ -513,80 +525,78 @@ public struct ProfileView: View {
                 subtitle: l10n.language == .hebrew ? "צפייה בסיפורי העיר וההוצאות בכל חודש" : "View city growth and spending stories",
                 iconBg: Color.themeTurquoiseSoft
             ) {
-                AnnualVaultVectorIcon(color: Color.themeTurquoise)
+                MoneyIcon(.receipt, size: 24)
             } action: {
                 showRecapArchive = true
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 62)
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
                 title: l10n.language == .hebrew ? "תקציבים ויעדים חודשיים" : "Budgets & Monthly Targets",
                 subtitle: l10n.language == .hebrew ? "ניהול תקרות הוצאה לפי רובע" : "Manage spending caps by district",
-                iconBg: Color.themeLavenderSoft
+                iconBg: Color(red: 243/255, green: 232/255, blue: 255/255)
             ) {
-                TreasuryVectorIcon(color: Color.themeLavender)
+                MoneyIcon(.barChart, size: 24)
             } action: {
                 showBudgetsSheet = true
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 62)
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
                 title: l10n.language == .hebrew ? "יעדי חיסכון והשקעה" : "Savings & Growth Goals",
                 subtitle: l10n.language == .hebrew ? "מעקב אחר חסכונות ושמורת הפארק" : "Track nature park savings reserves",
-                iconBg: Color.themeMintSoft
+                iconBg: Color(red: 209/255, green: 250/255, blue: 229/255)
             ) {
-                DistrictParkVectorIcon(color: Color.themeMint)
+                MoneyIcon(.coins, size: 24)
             } action: {
                 showGoalsSheet = true
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 62)
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
                 title: l10n.language == .hebrew ? "הוצאות קבועות ומנויים" : "Fixed Expenses & Subscriptions",
                 subtitle: l10n.language == .hebrew ? "שכירות, חשבונות והוראות קבע" : "Rent, utilities, recurring charges",
-                iconBg: Color.themeOrangeSoft
+                iconBg: Color(red: 254/255, green: 242/255, blue: 232/255)
             ) {
-                RecurringCalendarVectorIcon(color: Color.themeOrange)
+                MoneyIcon(.refresh, size: 24)
             } action: {
                 showRecurringSheet = true
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 62)
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
                 title: l10n.language == .hebrew ? "הגדרת קליטת Apple Pay באייפון" : "Apple Pay Shortcuts Setup",
                 subtitle: l10n.language == .hebrew ? "מדריך פשוט צעד-אחר-צעד לחיבור אוטומטי" : "Step-by-step automation guide",
-                iconBg: Color.themeTurquoiseSoft
+                iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
             ) {
-                DistrictFinanceVectorIcon(color: Color.themeTurquoise)
+                MoneyIcon(.creditCard, size: 24)
             } action: {
                 showApplePayGuideSheet = true
             }
 
-
-            Divider().background(Color.borderSubtle).padding(.leading, 62)
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
                 title: l10n.language == .hebrew ? "גיבוי ושחזור" : "Backup & Restore",
                 subtitle: l10n.language == .hebrew
                     ? "ייצוא הנתונים לקובץ, שחזור מקובץ, ותצלומים אוטומטיים"
                     : "Export to a file, restore from one, and automatic snapshots",
-                iconBg: Color.themeTurquoiseSoft
+                iconBg: Color(red: 243/255, green: 244/255, blue: 246/255)
             ) {
-                Image(systemName: "externaldrive.fill.badge.timemachine")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(Color.themeTurquoise)
+                MoneyIcon(.cloud, size: 24)
             } action: {
                 showBackupSheet = true
             }
         }
-        .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
         .padding(.horizontal, 16)
     }
-
 
     private func menuRow<IconContent: View>(
         title: String,
@@ -598,29 +608,31 @@ public struct ProfileView: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12)
+                    Circle()
                         .fill(iconBg)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 42, height: 42)
                     icon()
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .semibold, design: .default))
                         .foregroundColor(Color.deepNavy)
                     Text(subtitle)
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundColor(Color.textSecondary)
                 }
 
                 Spacer()
 
-                Text(verbatim: l10n.language == .hebrew ? "‹" : "›")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
+                MoneyIcon(
+                    l10n.language == .hebrew ? .chevronLeft : .chevronRight,
+                    size: 12,
+                    color: Color.textMuted
+                )
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 13)
+            .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
         .bouncyPress(scale: 0.98)
@@ -632,7 +644,7 @@ public struct ProfileView: View {
         let activeEnrichments = allEnrichments.filter { $0.isApplied }
         return VStack(alignment: .leading, spacing: 14) {
             Text(l10n.language == .hebrew ? "שדרוגי עיר שנפתחו" : "City Upgrades Unlocked")
-                .font(.system(size: 15, weight: .black, design: .rounded))
+                .font(.system(size: 16, weight: .bold, design: .default))
                 .foregroundColor(Color.deepNavy)
 
             if activeEnrichments.isEmpty {
@@ -641,16 +653,16 @@ public struct ProfileView: View {
                         .frame(width: 32, height: 32)
                         .scaleEffect(1.2)
                     Text(l10n.language == .hebrew ? "שמור כסף בפארק החודש כדי לפתוח שדרוגים מיוחדים!" : "Save money in your park this month to unlock special monuments!")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.textMuted)
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.vertical, 10)
+                .padding(.vertical, 12)
                 .frame(maxWidth: .infinity)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     ForEach(activeEnrichments) { e in
-                        VStack(spacing: 6) {
+                        VStack(spacing: 8) {
                             ZStack {
                                 Circle()
                                     .fill(enrichmentSoftBg(for: e.type))
@@ -658,23 +670,24 @@ public struct ProfileView: View {
                                 enrichmentBadgeIcon(for: e)
                             }
                             Text(e.name)
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
                                 .multilineTextAlignment(.center)
                                 .lineLimit(2)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.borderSubtle, lineWidth: 1))
+                        .padding(.vertical, 12)
+                        .background(Color(red: 248/255, green: 250/255, blue: 252/255))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
                     }
                 }
             }
         }
         .padding(18)
-        .background(Color.cardBackground)
-        .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
         .padding(.horizontal, 16)
     }
 
@@ -916,13 +929,13 @@ public struct SettingsSheet: View {
             .padding(.vertical, 8)
             .background(Color.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.borderSubtle, lineWidth: 1.2))
+            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
             .padding(.horizontal, 16)
         }
     }
 }
 
-// MARK: - Bespoke Profile & Management Vector Icons (Zero Default Apple Emojis)
+// MARK: - Bespoke Profile & Management Vector Icons (Signature Set)
 
 /// 1. Settings Precision Cog / Dial
 public struct SettingsGearVectorIcon: View {
@@ -930,26 +943,7 @@ public struct SettingsGearVectorIcon: View {
     public init(color: Color = Color.deepNavy) { self.color = color }
     
     public var body: some View {
-        ZStack {
-            // 6 Gear teeth
-            ForEach(0..<3) { i in
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(color)
-                    .frame(width: 5, height: 19)
-                    .rotationEffect(.degrees(Double(i) * 60))
-            }
-            
-            // Outer gear rim
-            Circle()
-                .fill(color)
-                .frame(width: 14, height: 14)
-            
-            // Center axle hole
-            Circle()
-                .fill(Color.cardBackground)
-                .frame(width: 5.5, height: 5.5)
-        }
-        .frame(width: 22, height: 22)
+        MoneyIcon(.gear, size: 22, color: color)
     }
 }
 
@@ -959,38 +953,7 @@ public struct AnnualVaultVectorIcon: View {
     public init(color: Color = Color.themeLavender) { self.color = color }
     
     public var body: some View {
-        ZStack {
-            // Back coin
-            Circle()
-                .fill(color.opacity(0.6))
-                .frame(width: 15, height: 15)
-                .offset(x: -3.5, y: -2)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.8), lineWidth: 0.8)
-                        .frame(width: 15, height: 15)
-                        .offset(x: -3.5, y: -2)
-                )
-            
-            // Front primary coin
-            Circle()
-                .fill(color)
-                .frame(width: 16, height: 16)
-                .offset(x: 2.5, y: 2)
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.9), lineWidth: 1)
-                        .frame(width: 12, height: 12)
-                        .offset(x: 2.5, y: 2)
-                )
-            
-            // Center coin glyph
-            Rectangle()
-                .fill(Color.white.opacity(0.95))
-                .frame(width: 2, height: 6)
-                .offset(x: 2.5, y: 2)
-        }
-        .frame(width: 24, height: 24)
+        MoneyIcon(.coins, size: 24, color: color)
     }
 }
 
@@ -1000,18 +963,7 @@ public struct BarMetricVectorIcon: View {
     public init(color: Color = Color.themeTurquoise) { self.color = color }
     
     public var body: some View {
-        HStack(alignment: .bottom, spacing: 2.5) {
-            RoundedRectangle(cornerRadius: 1)
-                .fill(color.opacity(0.7))
-                .frame(width: 4, height: 8)
-            RoundedRectangle(cornerRadius: 1)
-                .fill(color.opacity(0.85))
-                .frame(width: 4, height: 13)
-            RoundedRectangle(cornerRadius: 1)
-                .fill(color)
-                .frame(width: 4, height: 18)
-        }
-        .frame(width: 24, height: 24)
+        MoneyIcon(.barChart, size: 24, color: color)
     }
 }
 
@@ -1021,48 +973,7 @@ public struct StreakFlameVectorIcon: View {
     public init(color: Color = Color.themeOrange) { self.color = color }
     
     public var body: some View {
-        ZStack {
-            // Outer Flame Body
-            FlameShape()
-                .fill(color)
-                .frame(width: 14, height: 18)
-            
-            // Inner Core Spark
-            FlameShape()
-                .fill(Color.white.opacity(0.85))
-                .frame(width: 7, height: 9)
-                .offset(y: 3)
-        }
-        .frame(width: 24, height: 24)
-    }
-}
-
-private struct FlameShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        p.addCurve(
-            to: CGPoint(x: rect.maxX, y: rect.maxY * 0.7),
-            control1: CGPoint(x: rect.maxX * 0.8, y: rect.minY + rect.height * 0.25),
-            control2: CGPoint(x: rect.maxX, y: rect.maxY * 0.5)
-        )
-        p.addCurve(
-            to: CGPoint(x: rect.midX, y: rect.maxY),
-            control1: CGPoint(x: rect.maxX, y: rect.maxY * 0.9),
-            control2: CGPoint(x: rect.midX + rect.width * 0.25, y: rect.maxY)
-        )
-        p.addCurve(
-            to: CGPoint(x: rect.minX, y: rect.maxY * 0.7),
-            control1: CGPoint(x: rect.midX - rect.width * 0.25, y: rect.maxY),
-            control2: CGPoint(x: rect.minX, y: rect.maxY * 0.9)
-        )
-        p.addCurve(
-            to: CGPoint(x: rect.midX, y: rect.minY),
-            control1: CGPoint(x: rect.minX, y: rect.maxY * 0.5),
-            control2: CGPoint(x: rect.minX + rect.width * 0.2, y: rect.minY + rect.height * 0.25)
-        )
-        p.closeSubpath()
-        return p
+        MoneyIcon(.flame, size: 24, color: color)
     }
 }
 
@@ -1072,24 +983,7 @@ public struct TargetReticleVectorIcon: View {
     public init(color: Color = Color.themeMint) { self.color = color }
     
     public var body: some View {
-        ZStack {
-            // Outer Ring
-            Circle()
-                .stroke(color, lineWidth: 2)
-                .frame(width: 17, height: 17)
-            
-            // 4 Reticle Tick Lines
-            Rectangle().fill(color).frame(width: 1.8, height: 4).offset(y: -8.5)
-            Rectangle().fill(color).frame(width: 1.8, height: 4).offset(y: 8.5)
-            Rectangle().fill(color).frame(width: 4, height: 1.8).offset(x: -8.5)
-            Rectangle().fill(color).frame(width: 4, height: 1.8).offset(x: 8.5)
-            
-            // Center Bullseye Dot
-            Circle()
-                .fill(color)
-                .frame(width: 5.5, height: 5.5)
-        }
-        .frame(width: 24, height: 24)
+        MoneyIcon(.target, size: 24, color: color)
     }
 }
 
@@ -1099,40 +993,7 @@ public struct TreasuryVectorIcon: View {
     public init(color: Color = Color.themeLavender) { self.color = color }
     
     public var body: some View {
-        ZStack {
-            // Triangular Pediment
-            TriangleShape()
-                .fill(color)
-                .frame(width: 20, height: 7)
-                .offset(y: -7)
-            
-            // Entablature bar
-            RoundedRectangle(cornerRadius: 0.5)
-                .fill(color)
-                .frame(width: 19, height: 2)
-                .offset(y: -3)
-            
-            // 3 Classical Pillars
-            HStack(spacing: 3.5) {
-                RoundedRectangle(cornerRadius: 0.5)
-                    .fill(color)
-                    .frame(width: 2.8, height: 9)
-                RoundedRectangle(cornerRadius: 0.5)
-                    .fill(color)
-                    .frame(width: 2.8, height: 9)
-                RoundedRectangle(cornerRadius: 0.5)
-                    .fill(color)
-                    .frame(width: 2.8, height: 9)
-            }
-            .offset(y: 2)
-            
-            // Base plinth steps
-            RoundedRectangle(cornerRadius: 0.8)
-                .fill(color)
-                .frame(width: 21, height: 2.5)
-                .offset(y: 7.5)
-        }
-        .frame(width: 24, height: 24)
+        MoneyIcon(.trophy, size: 24, color: color)
     }
 }
 
@@ -1142,37 +1003,7 @@ public struct RecurringCalendarVectorIcon: View {
     public init(color: Color = Color.themeOrange) { self.color = color }
     
     public var body: some View {
-        ZStack {
-            // Calendar Backplate
-            RoundedRectangle(cornerRadius: 3.5)
-                .fill(color)
-                .frame(width: 18, height: 18)
-            
-            // Header Bar
-            RoundedRectangle(cornerRadius: 1)
-                .fill(Color.white.opacity(0.4))
-                .frame(width: 18, height: 4.5)
-                .offset(y: -6.75)
-            
-            // 2 Binder Rings
-            HStack(spacing: 6) {
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.white)
-                    .frame(width: 2, height: 4)
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.white)
-                    .frame(width: 2, height: 4)
-            }
-            .offset(y: -9)
-            
-            // Circular Repeat Loop Arrow Inside
-            Circle()
-                .trim(from: 0.15, to: 0.95)
-                .stroke(Color.white, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                .frame(width: 8, height: 8)
-                .offset(y: 1.5)
-        }
-        .frame(width: 24, height: 24)
+        MoneyIcon(.calendar, size: 24, color: color)
     }
 }
 
@@ -1324,7 +1155,8 @@ public struct ApplePayGuideSheet: View {
                     }
                     .padding(18)
                     .background(Color.white)
-                    .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
 
                     // Simple Step-by-Step Instructions Card
                     VStack(alignment: .leading, spacing: 18) {
@@ -1406,7 +1238,8 @@ public struct ApplePayGuideSheet: View {
                     }
                     .padding(20)
                     .background(Color.white)
-                    .cityCard(.plain, radius: MoneyCityTheme.radiusCard)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                     
                     // Action Links
                     #if os(iOS)
@@ -1414,8 +1247,7 @@ public struct ApplePayGuideSheet: View {
                         if let url = URL(string: "shortcuts://") {
                             Link(destination: url) {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "bolt.fill")
-                                        .font(.system(size: 16, weight: .bold))
+                                    MoneyIcon(.lightning, size: 18)
                                     Text(isHebrew ? "פתח את אפליקציית 'קיצורים' עכשיו" : "Open Shortcuts App Now")
                                         .font(.system(size: 15, weight: .bold, design: .rounded))
                                 }

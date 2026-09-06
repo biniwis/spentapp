@@ -144,7 +144,7 @@ public struct MonthlyRecapSheet: View {
             HStack(spacing: 5) {
                 ForEach(0..<totalSteps, id: \.self) { idx in
                     Capsule()
-                        .fill(idx <= currentStep ? (currentStep == 5 ? Color.white : Color.primaryBlue) : Color.slate300.opacity(0.4))
+                        .fill(idx <= currentStep ? (currentStep == 5 ? Color.white : Color.primaryBlue) : Color.borderSubtle)
                         .frame(height: 4)
                         .animation(.spring(response: 0.35), value: currentStep)
                 }
@@ -152,8 +152,7 @@ public struct MonthlyRecapSheet: View {
             
             HStack {
                 HStack(spacing: 6) {
-                    Image(systemName: "building.2.fill")
-                        .font(.system(size: 11, weight: .bold))
+                    MoneyIcon(.home, size: 14)
                     Text(isHebrew ? "סיכום חודש " + recap.monthNameHe : recap.monthNameEn + " City Story")
                         .font(.system(size: 13, weight: .black, design: .rounded))
                 }
@@ -166,10 +165,8 @@ public struct MonthlyRecapSheet: View {
                 Spacer()
                 
                 Button(action: { dismiss() }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundColor(currentStep == 5 ? Color.white : Color.deepNavy.opacity(0.8))
-                        .padding(8)
+                    MoneyIcon(.xmarkCircle, size: 20)
+                        .padding(4)
                         .background(currentStep == 5 ? Color.white.opacity(0.15) : Color.white)
                         .clipShape(Circle())
                         .shadow(color: Color.black.opacity(0.06), radius: 4, y: 1)
@@ -194,9 +191,7 @@ public struct MonthlyRecapSheet: View {
                     .frame(width: 100, height: 100)
                     .scaleEffect(animateBeat ? 1.0 : 0.7)
                 
-                Image(systemName: recap.cityVibe.badgeIcon)
-                    .font(.system(size: 48, weight: .bold))
-                    .foregroundColor(vibeColor)
+                MoneyIcon(recap.cityVibe.moneyIcon, size: 48)
                     .scaleEffect(animateBeat ? 1.0 : 0.4)
             }
             .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
@@ -390,9 +385,7 @@ public struct MonthlyRecapSheet: View {
                         .frame(width: 130, height: 130)
                         .scaleEffect(animateBeat ? 1.0 : 0.6)
                     
-                    Image(systemName: "cup.and.saucer.fill")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundColor(Color.themeOrange)
+                    MoneyIcon(.coffee, size: 52)
                         .scaleEffect(animateBeat ? 1.0 : 0.4)
                 }
                 .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
@@ -415,7 +408,9 @@ public struct MonthlyRecapSheet: View {
                         .offset(y: animateBeat ? 0 : 20)
                         .opacity(animateBeat ? 1 : 0)
                     
-                    Text(isHebrew ? String(hangout.visitCount) + " ביקורים החודש" : String(hangout.visitCount) + " visits this month")
+                    Text(isHebrew 
+                         ? (hangout.visitCount > 1 ? String(hangout.visitCount) + " ביקורים החודש" : "ביקור ראשון שנרשם החודש")
+                         : (hangout.visitCount > 1 ? String(hangout.visitCount) + " visits this month" : "First visit this month"))
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(Color.textSecondary)
                         .offset(y: animateBeat ? 0 : 25)
@@ -423,7 +418,13 @@ public struct MonthlyRecapSheet: View {
                 }
                 .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
                 
-                Text(isHebrew ? "אם הייתה לך שם חניה שמורה עם השם שלך, אף אחד לא היה מופתע." : "You visited often enough that they probably know your order by heart.")
+                Text(isHebrew
+                     ? (hangout.visitCount > 1
+                        ? "אם הייתה לך שם חניה שמורה עם השם שלך, אף אחד לא היה מופתע."
+                        : "התחנה הראשונה שנרשמה החודש בעיר — נראה אם היא תהפוך למקום הקבוע שלך.")
+                     : (hangout.visitCount > 1
+                        ? "You visited often enough that they probably know your order by heart."
+                        : "First recorded stop this month — let's see if it becomes a regular."))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
                     .multilineTextAlignment(.center)
@@ -453,9 +454,7 @@ public struct MonthlyRecapSheet: View {
                         .frame(width: 130, height: 130)
                         .scaleEffect(animateBeat ? 1.0 : 0.6)
                     
-                    Image(systemName: "calendar.badge.clock")
-                        .font(.system(size: 48, weight: .bold))
-                        .foregroundColor(Color.themeYellow)
+                    MoneyIcon(.calendar, size: 52)
                         .scaleEffect(animateBeat ? 1.0 : 0.4)
                 }
                 .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
@@ -486,7 +485,13 @@ public struct MonthlyRecapSheet: View {
                 }
                 .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
                 
-                Text(isHebrew ? "היום שבו כרטיס האשראי שלך עבד מסביב לשעון והקים שכונה שלמה." : "The single day your wallet worked overtime.")
+                Text(isHebrew
+                     ? (recap.transactionCount <= 1
+                        ? "העסקה שהניחה את אבן הפינה הראשונה לחודש זה בעיר."
+                        : "היום שבו כרטיס האשראי שלך עבד מסביב לשעון והקים שכונה שלמה.")
+                     : (recap.transactionCount <= 1
+                        ? "The first cornerstone laid for this month's city."
+                        : "The single day your wallet worked overtime."))
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
                     .multilineTextAlignment(.center)
@@ -525,7 +530,7 @@ public struct MonthlyRecapSheet: View {
                     
                     // Vibe Pill
                     HStack(spacing: 4) {
-                        Image(systemName: recap.cityVibe.badgeIcon)
+                        MoneyIcon(recap.cityVibe.moneyIcon, size: 14)
                         Text(isHebrew ? recap.cityVibe.titleHe : recap.cityVibe.titleEn)
                             .font(.system(size: 11, weight: .black, design: .rounded))
                     }
@@ -542,7 +547,7 @@ public struct MonthlyRecapSheet: View {
                 VStack(spacing: 8) {
                     if let district = recap.biggestDistrict {
                         posterMetricRow(
-                            icon: "building.columns.fill",
+                            icon: .home,
                             label: isHebrew ? "רובע מוביל" : "Top District",
                             value: (isHebrew ? district.category.displayName : district.category.displayNameEn) + " (" + l10n.baseCurrency.symbol + String(Int(district.amount)) + ")"
                         )
@@ -550,7 +555,7 @@ public struct MonthlyRecapSheet: View {
                     
                     if let skyscraper = recap.tallestBuilding {
                         posterMetricRow(
-                            icon: "building.2.fill",
+                            icon: .trophy,
                             label: isHebrew ? "גורד שחקים" : "Top Landmark",
                             value: skyscraper.merchantName + " (" + l10n.baseCurrency.symbol + String(Int(skyscraper.amount)) + ")"
                         )
@@ -558,7 +563,7 @@ public struct MonthlyRecapSheet: View {
                     
                     if let hangout = recap.mostRepeatedStop {
                         posterMetricRow(
-                            icon: "cup.and.saucer.fill",
+                            icon: .coffee,
                             label: isHebrew ? "תחנת קבע" : "Regular Stop",
                             value: hangout.merchantName + " (" + String(hangout.visitCount) + (isHebrew ? " פעמים)" : " visits)")
                         )
@@ -566,7 +571,7 @@ public struct MonthlyRecapSheet: View {
                     
                     if let peak = recap.biggestSpendingDay {
                         posterMetricRow(
-                            icon: "calendar",
+                            icon: .calendar,
                             label: isHebrew ? "יום שיא" : "Peak Day",
                             value: (isHebrew ? peak.formattedDateHe : peak.formattedDateEn) + " (" + l10n.baseCurrency.symbol + String(Int(peak.amount)) + ")"
                         )
@@ -632,11 +637,9 @@ public struct MonthlyRecapSheet: View {
         }
     }
     
-    private func posterMetricRow(icon: String, label: String, value: String) -> some View {
+    private func posterMetricRow(icon: MoneyIconName, label: String, value: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(Color.themeTurquoise)
+            MoneyIcon(icon, size: 14)
                 .frame(width: 18)
             Text(label + ":")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -671,9 +674,7 @@ public struct MonthlyRecapSheet: View {
         HStack(spacing: 12) {
             if currentStep > 0 {
                 Button(action: prevStep) {
-                    Image(systemName: isHebrew ? "chevron.right" : "chevron.left")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(currentStep == 5 ? Color.white : Color.deepNavy)
+                    MoneyIcon(isHebrew ? .chevronRight : .chevronLeft, size: 16)
                         .frame(width: 48, height: 48)
                         .background(currentStep == 5 ? Color.white.opacity(0.15) : Color.white)
                         .clipShape(Circle())
@@ -682,12 +683,24 @@ public struct MonthlyRecapSheet: View {
             }
             
             if currentStep < totalSteps - 1 {
+                // Step 0: show a "Close" escape alongside the Next button
+                if currentStep == 0 {
+                    Button(action: { dismiss() }) {
+                        Text(isHebrew ? "סגור" : "Close")
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.7))
+                            .frame(height: 48)
+                            .padding(.horizontal, 20)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+
                 Button(action: nextStep) {
                     HStack(spacing: 6) {
                         Text(isHebrew ? "המשך" : "Next")
                             .font(.system(size: 15, weight: .black, design: .rounded))
-                        Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
-                            .font(.system(size: 13, weight: .bold))
+                        MoneyIcon(isHebrew ? .chevronLeft : .chevronRight, size: 14)
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -699,8 +712,7 @@ public struct MonthlyRecapSheet: View {
                 #if os(iOS)
                 ShareLink(item: shareableRecapText) {
                     HStack(spacing: 6) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.system(size: 13, weight: .bold))
+                        MoneyIcon(.upload, size: 16)
                         Text(isHebrew ? "שתף סיכום" : "Share")
                             .font(.system(size: 14, weight: .black, design: .rounded))
                     }
@@ -714,7 +726,8 @@ public struct MonthlyRecapSheet: View {
                 
                 Button(action: {
                     dismiss()
-                    onNavigateToCity?(recap.date)
+                    // Navigate to the CURRENT month's city, not the recap's past month
+                    onNavigateToCity?(Date())
                 }) {
                     HStack(spacing: 6) {
                         Text(isHebrew ? "חזרה לעיר" : "Back to City")
@@ -776,7 +789,7 @@ public struct MonthlyRecapSheet: View {
         case .recordMetropolis: return Color.themeOrange
         case .greenMonth:        return Color.themeMint
         case .busy:              return Color.primaryBlue
-        case .quiet:             return Color.slate400
+        case .quiet:             return Color.textMuted
         case .growing:           return Color.themeMint
         }
     }

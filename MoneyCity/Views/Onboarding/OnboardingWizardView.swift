@@ -24,6 +24,29 @@ public struct OnboardingWizardView: View {
             Color(red: 248/255, green: 250/255, blue: 252/255).ignoresSafeArea()
             
             VStack(spacing: 24) {
+                // Back + Skip nav row
+                HStack {
+                    if currentStep > 1 {
+                        Button(action: { withAnimation(.spring(response: 0.3)) { currentStep -= 1 } }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: l10n.isHebrew ? "chevron.right" : "chevron.left")
+                                    .font(.system(size: 13, weight: .bold))
+                                Text(l10n.isHebrew ? "חזרה" : "Back")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundColor(Color.textSecondary)
+                        }
+                    }
+                    Spacer()
+                    Button(action: { onComplete() }) {
+                        Text(l10n.isHebrew ? "דלג" : "Skip")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 16)
+
                 Spacer()
                 
                 // Step Visual Icon
@@ -32,9 +55,7 @@ public struct OnboardingWizardView: View {
                         .fill(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.12))
                         .frame(width: 100, height: 100)
                     
-                    Image(systemName: stepIcon)
-                        .font(.system(size: 42, weight: .bold))
-                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                    MoneyIcon(stepIcon, size: 48)
                 }
                 
                 // Titles
@@ -125,8 +146,8 @@ public struct OnboardingWizardView: View {
                     }
                     .padding(16)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
                     .padding(.horizontal, 20)
 
                     Text("💡 תוכל לגשת למדריך זה בכל עת גם מעמוד הפרופיל וההגדרות")
@@ -155,8 +176,8 @@ public struct OnboardingWizardView: View {
                     .padding(.horizontal, 20)
                     .padding(.vertical, 14)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
                     .padding(.horizontal, 40)
                 }
 
@@ -180,8 +201,7 @@ public struct OnboardingWizardView: View {
                             if let url = URL(string: "shortcuts://") {
                                 Link(destination: url) {
                                     HStack(spacing: 8) {
-                                        Image(systemName: "bolt.fill")
-                                            .font(.system(size: 16, weight: .bold))
+                                        MoneyIcon(.lightning, size: 18)
                                         Text("פתח את אפליקציית 'קיצורים'")
                                             .font(.system(size: 15, weight: .bold))
                                     }
@@ -218,8 +238,7 @@ public struct OnboardingWizardView: View {
                             onComplete()
                         }) {
                             HStack(spacing: 8) {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 15, weight: .bold))
+                                MoneyIcon(.star, size: 18)
                                 Text("בוא נתחיל לבנות את העיר")
                                     .font(.system(size: 15, weight: .bold))
                             }
@@ -249,12 +268,12 @@ public struct OnboardingWizardView: View {
         currentStep = 4
     }
 
-    private var stepIcon: String {
+    private var stepIcon: MoneyIconName {
         switch currentStep {
-        case 1: return "building.2.fill"
-        case 2: return "bolt.fill"
-        case 3: return "banknote.fill"
-        default: return "leaf.fill"
+        case 1: return .home
+        case 2: return .lightning
+        case 3: return .coins
+        default: return .leaf
         }
     }
     

@@ -27,7 +27,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "food_super",
                     category: .food,
-                    nameHe: "סופרמרקט ומכולת",
+                    nameHe: "סופר ומכולת",
                     nameEn: "Supermarket & Groceries",
                     emoji: "🛒",
                     sfSymbol: "cart.fill",
@@ -37,7 +37,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "food_coffee",
                     category: .food,
-                    nameHe: "בית קפה ומאפייה",
+                    nameHe: "בתי קפה",
                     nameEn: "Cafe & Bakery",
                     emoji: "☕",
                     sfSymbol: "cup.and.saucer.fill",
@@ -47,7 +47,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "food_wolt",
                     category: .food,
-                    nameHe: "מרכז משלוחים (Wolt)",
+                    nameHe: "משלוחי אוכל",
                     nameEn: "Food Delivery (Wolt)",
                     emoji: "🛵",
                     sfSymbol: "bicycle",
@@ -57,12 +57,12 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "food_bistro",
                     category: .food,
-                    nameHe: "מסעדה וביסטרו",
-                    nameEn: "Restaurant & Bistro",
+                    nameHe: "מסעדות",
+                    nameEn: "Restaurants",
                     emoji: "🍽️",
                     sfSymbol: "fork.knife",
-                    descriptionHe: "מסעדות, ברים, פיצות והמבורגר",
-                    descriptionEn: "Dining, bars & restaurants"
+                    descriptionHe: "מסעדות, פיצות, המבורגר ואוכל בחוץ",
+                    descriptionEn: "Dining & restaurants"
                 )
             ]
         case .shopping:
@@ -70,7 +70,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "shop_boutique",
                     category: .shopping,
-                    nameHe: "בוטיק אופנה וביגוד",
+                    nameHe: "ביגוד ואופנה",
                     nameEn: "Fashion & Boutique",
                     emoji: "👗",
                     sfSymbol: "tshirt.fill",
@@ -116,7 +116,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "house_tower",
                     category: .housing,
-                    nameHe: "מגדל מגורים",
+                    nameHe: "שכירות ודיור",
                     nameEn: "Residential Tower",
                     emoji: "🏢",
                     sfSymbol: "building.2.fill",
@@ -126,7 +126,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "house_util",
                     category: .housing,
-                    nameHe: "חשבונות ותשתיות",
+                    nameHe: "חשבונות הבית",
                     nameEn: "Utilities & Bills",
                     emoji: "⚡",
                     sfSymbol: "bolt.fill",
@@ -163,7 +163,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         case .health:
             return [
                 CityBuilding(
-                    id: "shop_boutique",
+                    id: "health_pharmacy",
                     category: .health,
                     nameHe: "פארם ובריאות",
                     nameEn: "Health & Pharmacy",
@@ -189,7 +189,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         case .finance:
             return [
                 CityBuilding(
-                    id: "shop_boutique",
+                    id: "finance_bank",
                     category: .finance,
                     nameHe: "עמלות ובנקים",
                     nameEn: "Banking & Fees",
@@ -230,6 +230,24 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         @unknown default:
             return []
         }
+    }
+
+    /// Normalizes a legacy or ambiguous building ID based on transaction category.
+    /// Ensures backward compatibility with existing user stores where Health and Finance
+    /// previously stored "shop_boutique".
+    public static func normalizeBuildingId(_ id: String?, for category: SpendingCategory) -> String {
+        guard let id = id, !id.isEmpty else {
+            return defaultBuildingId(for: category)
+        }
+        if id == "shop_boutique" {
+            if category == .health { return "health_pharmacy" }
+            if category == .finance { return "finance_bank" }
+        }
+        return id
+    }
+
+    public static func defaultBuildingId(for category: SpendingCategory) -> String {
+        buildings(for: category).first?.id ?? "city_sorting_hub"
     }
 
     /// Finds the building by its unique ID

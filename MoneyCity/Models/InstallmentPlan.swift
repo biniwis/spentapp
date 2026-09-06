@@ -16,10 +16,18 @@ public final class InstallmentPlan: Identifiable {
     public var firstChargeDate: Date = Date()
     public var categoryRawValue: String = SpendingCategory.shopping.rawValue
     public var createdAt: Date = Date()
+    /// Tracks the highest 1-based payment index that has been materialized into a Transaction.
+    public var lastMaterializedIndex: Int = 0
+    /// The building assigned in the 3D diorama.
+    public var buildingIdRaw: String? = nil
 
     public var category: SpendingCategory {
         get { SpendingCategory(rawValue: categoryRawValue) ?? .shopping }
         set { categoryRawValue = newValue.rawValue }
+    }
+
+    public var isComplete: Bool {
+        lastMaterializedIndex >= numberOfPayments
     }
 
     public init(
@@ -30,7 +38,9 @@ public final class InstallmentPlan: Identifiable {
         numberOfPayments: Int,
         firstChargeDate: Date = Date(),
         category: SpendingCategory,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        lastMaterializedIndex: Int = 0,
+        buildingIdRaw: String? = nil
     ) {
         self.id = id
         self.merchant = merchant
@@ -40,5 +50,7 @@ public final class InstallmentPlan: Identifiable {
         self.firstChargeDate = firstChargeDate
         self.categoryRawValue = category.rawValue
         self.createdAt = createdAt
+        self.lastMaterializedIndex = lastMaterializedIndex
+        self.buildingIdRaw = buildingIdRaw
     }
 }

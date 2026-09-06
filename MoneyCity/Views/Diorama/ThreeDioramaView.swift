@@ -44,6 +44,8 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let isOverview: Bool
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
+    public let districtStates: [CityDistrictState]
+    public let venueStates: [CityVenueState]
     public let habits: BehavioralHabits
     public let enrichmentIds: [String]
     public let newlyUnlockedEnrichmentId: String?
@@ -64,6 +66,8 @@ public struct ThreeDioramaView: ViewRepresentable {
         isOverview: Bool = false,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double] = [:],
+        districtStates: [CityDistrictState] = [],
+        venueStates: [CityVenueState] = [],
         habits: BehavioralHabits = BehavioralHabits(),
         enrichmentIds: [String] = [],
         newlyUnlockedEnrichmentId: String? = nil,
@@ -83,6 +87,8 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.isOverview = isOverview
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
+        self.districtStates = districtStates
+        self.venueStates = venueStates
         self.habits = habits
         self.enrichmentIds = enrichmentIds
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
@@ -116,6 +122,13 @@ public struct ThreeDioramaView: ViewRepresentable {
     }
     
     public struct DioramaDataPayload: Codable, Sendable {
+        public struct DistrictStatePayload: Codable, Sendable {
+            public let id: String
+            public let amount: Double
+            public let share: Double
+            public let activity: Double
+            public let prominence: String
+        }
         public struct FoodSub: Codable, Sendable {
             public let restaurant: Double
             public let groceries: Double
@@ -158,6 +171,9 @@ public struct ThreeDioramaView: ViewRepresentable {
         /// Pharmacy and everyday health spending. The map shows this as a small chemist's
         /// shop; without it the health category never appears in the city at all.
         public let healthAmount: Double?
+        public let financeAmount: Double?
+        public let districts: [DistrictStatePayload]
+        public let venues: [CityVenueState]
         public let pendingSortingCount: Int?
         public let targetDistrict: String?
         public let language: String
@@ -190,6 +206,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         let otherSpend = buildingTotals["city_sorting_hub"] ?? (categoryTotals[.other] ?? 0)
         let museumSpend = buildingTotals["museum_curiosities"] ?? (categoryTotals[.miscellaneous] ?? 0)
         let healthSpend = buildingTotals["health_pharmacy"] ?? (categoryTotals[.health] ?? 0)
+        let financeSpend = buildingTotals["finance_bank"] ?? (categoryTotals[.finance] ?? 0)
         
         let payload = DioramaDataPayload(
             food: food,
@@ -205,7 +222,19 @@ public struct ThreeDioramaView: ViewRepresentable {
             otherAmount: otherSpend,
             museumAmount: museumSpend,
             healthAmount: healthSpend,
-            pendingSortingCount: (categoryTotals[.other] ?? 0) > 0 ? 1 : 0,
+            financeAmount: financeSpend,
+            districts: districtStates.map {
+                DioramaDataPayload.DistrictStatePayload(
+                    id: $0.id,
+                    amount: $0.amount,
+                    share: $0.share,
+                    activity: $0.activity,
+                    prominence: $0.prominence.rawValue
+                )
+            },
+            venues: venueStates,
+            pendingSortingCount: venueStates.first(where: { $0.id == "city_sorting_hub" })?.purchaseCount
+                ?? ((categoryTotals[.other] ?? 0) > 0 ? 1 : 0),
             targetDistrict: selectedDistrict,
             language: language,
             enrichments: enrichmentIds,

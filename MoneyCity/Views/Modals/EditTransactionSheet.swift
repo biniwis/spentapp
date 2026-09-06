@@ -44,7 +44,7 @@ public struct EditTransactionSheet: View {
         VStack(spacing: 0) {
             // Handle
             Capsule()
-                .fill(Color.slate200)
+                .fill(Color.borderSubtle)
                 .frame(width: 36, height: 4)
                 .padding(.top, 12)
 
@@ -53,7 +53,7 @@ public struct EditTransactionSheet: View {
                 Button(action: { dismiss() }) {
                     Text(l10n.language == .hebrew ? "ביטול" : "Cancel")
                         .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.slate500)
+                        .foregroundColor(Color.textSecondary)
                 }
                 Spacer()
                 Text(l10n.language == .hebrew ? "עריכת הוצאה" : "Edit Transaction")
@@ -81,9 +81,7 @@ public struct EditTransactionSheet: View {
                                 Circle()
                                     .fill(Color.themeMint.opacity(0.15))
                                     .frame(width: 36, height: 36)
-                                Image(systemName: "arrow.uturn.backward.circle.fill")
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(Color.themeMint)
+                                MoneyIcon(.refresh, size: 20)
                             }
                             
                             VStack(alignment: .leading, spacing: 2) {
@@ -99,34 +97,29 @@ public struct EditTransactionSheet: View {
                         .padding(12)
                         .background(Color.themeMintSoft)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.themeMint.opacity(0.3), lineWidth: 1))
                     }
 
                     // Merchant
                     VStack(alignment: .leading, spacing: 6) {
                         Text(l10n.language == .hebrew ? "שם העסק" : "Merchant")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.slate400)
+                            .foregroundColor(Color.textMuted)
                             .padding(.leading, 4)
                         TextField(l10n.language == .hebrew ? "שם העסק" : "Merchant name", text: $merchantText)
                             .font(.system(size: 15, weight: .medium, design: .rounded))
                             .padding(14)
                             .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.slate200, lineWidth: 1))
+                            .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
 
                         if merchantVisitsCount > 1 {
                             Button(action: { showMerchantDetails = true }) {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "clock.arrow.circlepath")
-                                        .font(.system(size: 12, weight: .bold))
-                                        .foregroundColor(Color.primaryBlue)
+                                    MoneyIcon(.clock, size: 14)
                                     Text(l10n.language == .hebrew ? "ביקרת כאן \(merchantVisitsCount) פעמים (סה״כ \(l10n.format(amount: merchantTotalSpent))) • צפה בהיסטוריה" : "\(merchantVisitsCount) visits (\(l10n.format(amount: merchantTotalSpent)) total) • View Details")
                                         .font(.system(size: 11, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.primaryBlue)
-                                    Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundColor(Color.primaryBlue)
+                                    MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 10)
                                 }
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
@@ -142,23 +135,23 @@ public struct EditTransactionSheet: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(l10n.language == .hebrew ? "סכום" : "Amount")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.slate400)
+                            .foregroundColor(Color.textMuted)
                             .padding(.leading, 4)
                         HStack(spacing: 8) {
                             Text(l10n.baseCurrency.symbol)
                                 .font(.system(size: 18, weight: .black, design: .rounded))
-                                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                                .foregroundColor(Color.deepNavy)
                             #if os(iOS)
                             TextField("0", text: $amountText)
                                 .font(.system(size: 22, weight: .black, design: .rounded))
-                                .foregroundColor(showAmountError ? Color.red : Color(red: 15/255, green: 23/255, blue: 42/255))
+                                .foregroundColor(showAmountError ? Color.red : Color.deepNavy)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(TextAlignment.leading)
                                 .onChange(of: amountText) { _, _ in showAmountError = false }
                             #else
                             TextField("0", text: $amountText)
                                 .font(.system(size: 22, weight: .black, design: .rounded))
-                                .foregroundColor(showAmountError ? Color.red : Color(red: 15/255, green: 23/255, blue: 42/255))
+                                .foregroundColor(showAmountError ? Color.red : Color.deepNavy)
                                 .multilineTextAlignment(TextAlignment.leading)
                                 .onChange(of: amountText) { _, _ in showAmountError = false }
                             #endif
@@ -166,7 +159,11 @@ public struct EditTransactionSheet: View {
                         .padding(14)
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(showAmountError ? Color.red.opacity(0.5) : Color.slate200, lineWidth: 1))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(showAmountError ? Color.red.opacity(0.5) : Color.clear, lineWidth: showAmountError ? 1 : 0)
+                        )
+                        .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
                         if showAmountError {
                             Text(l10n.language == .hebrew ? "נא להזין סכום תקין" : "Please enter a valid amount")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
@@ -179,7 +176,7 @@ public struct EditTransactionSheet: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text(l10n.language == .hebrew ? "קטגוריה ראשית" : "Main Category")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.slate400)
+                            .foregroundColor(Color.textMuted)
                             .padding(.leading, 4)
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {
                             ForEach(SpendingCategory.primaryCategories, id: \.self) { cat in
@@ -193,7 +190,7 @@ public struct EditTransactionSheet: View {
                         HStack {
                             Text(l10n.language == .hebrew ? "שיוך לבניין בעיר" : "Assign to 3D Building")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.slate400)
+                                .foregroundColor(Color.textMuted)
                             Spacer()
                             if let b = CityBuilding.find(id: selectedBuildingId) {
                                 Text(b.displayName(for: l10n.language))
@@ -217,7 +214,7 @@ public struct EditTransactionSheet: View {
                                         Text(b.emoji)
                                             .font(.system(size: 20))
                                             .frame(width: 38, height: 38)
-                                            .background(isSelected ? selectedCategory.themeColor.opacity(0.15) : Color.slate100)
+                                            .background(isSelected ? selectedCategory.themeColor.opacity(0.15) : Color(red: 243/255, green: 244/255, blue: 246/255))
                                             .clipShape(RoundedRectangle(cornerRadius: 10))
 
                                         VStack(alignment: .leading, spacing: 2) {
@@ -226,18 +223,16 @@ public struct EditTransactionSheet: View {
                                                 .foregroundColor(isSelected ? selectedCategory.themeColor : Color.deepNavy)
                                             Text(b.description(for: l10n.language))
                                                 .font(.system(size: 11, weight: .medium, design: .rounded))
-                                                .foregroundColor(Color.slate400)
+                                                .foregroundColor(Color.textMuted)
                                         }
 
                                         Spacer()
 
                                         if isSelected {
-                                            Image(systemName: "checkmark.circle.fill")
-                                                .font(.system(size: 18, weight: .bold))
-                                                .foregroundColor(selectedCategory.themeColor)
+                                            MoneyIcon(.checkCircle, size: 18)
                                         } else {
                                             Circle()
-                                                .stroke(Color.slate200, lineWidth: 1.5)
+                                                .stroke(Color.borderSubtle, lineWidth: 1.5)
                                                 .frame(width: 18, height: 18)
                                         }
                                     }
@@ -247,8 +242,9 @@ public struct EditTransactionSheet: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 14))
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 14)
-                                            .stroke(isSelected ? selectedCategory.themeColor : Color.slate200, lineWidth: isSelected ? 1.5 : 1)
+                                            .stroke(isSelected ? selectedCategory.themeColor : Color.clear, lineWidth: isSelected ? 1.5 : 0)
                                     )
+                                    .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -267,7 +263,6 @@ public struct EditTransactionSheet: View {
                         .padding(.vertical, 14)
                         .background(Color(red: 254/255, green: 242/255, blue: 242/255))
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(red: 254/255, green: 202/255, blue: 202/255), lineWidth: 1))
                     }
                     .padding(.top, 12)
 
@@ -322,7 +317,7 @@ public struct EditTransactionSheet: View {
                 CategoryBadge(category: cat, size: 48, isSelected: isSelected)
                 Text(cat.localizedShortName(for: l10n.language))
                     .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundColor(isSelected ? cat.themeColor : Color.slate500)
+                    .foregroundColor(isSelected ? cat.themeColor : Color.textSecondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
@@ -373,7 +368,10 @@ public struct EditTransactionSheet: View {
         transaction.buildingIdRaw = selectedBuildingId
         transaction.isConfirmed = true
         transaction.confidenceScore = 1.0
-        try? modelContext.save()
+        DatabaseService.safeSave(modelContext)
+        if transaction.savingsGoalId != nil {
+            SavingsGoalService.reconcileAll(context: modelContext)
+        }
         Haptics.notify(.success)
         dismiss()
     }
@@ -381,10 +379,14 @@ public struct EditTransactionSheet: View {
     // MARK: - Delete
 
     private func deleteTransaction() {
+        let hadGoal = transaction.savingsGoalId != nil
         withAnimation {
             modelContext.delete(transaction)
         }
-        try? modelContext.save()
+        DatabaseService.safeSave(modelContext)
+        if hadGoal {
+            SavingsGoalService.reconcileAll(context: modelContext)
+        }
         Haptics.notify(.success)
         dismiss()
     }

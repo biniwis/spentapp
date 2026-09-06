@@ -36,6 +36,12 @@ struct MoneyCityApp: App {
                     // Post any fixed expenses that came due while the app was closed.
                     RecurringExpenseService.materializeDue(context: DatabaseService.shared.context)
 
+                    // Post any installment charges that came due while the app was closed.
+                    InstallmentService.materializeDue(context: DatabaseService.shared.context)
+
+                    // Reconcile savings goals in background to ensure 100% parity with ledger.
+                    SavingsGoalService.reconcileAll(context: DatabaseService.shared.context)
+
                     #if canImport(UserNotifications)
                     NotificationService.setupDelegate()
                     #endif

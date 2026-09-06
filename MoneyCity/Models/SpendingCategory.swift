@@ -176,33 +176,33 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
     
     public var themeColor: Color {
         switch self {
-        case .housing: return Color(red: 37/255, green: 60/255, blue: 196/255)       // Royal Blue #253CC4
-        case .food, .groceries, .coffee: return Color(red: 53/255, green: 174/255, blue: 183/255) // Turquoise #35AEB7
-        case .transport: return Color(red: 244/255, green: 122/255, blue: 40/255)    // Warm Orange #F47A28
-        case .shopping: return Color(red: 124/255, green: 114/255, blue: 255/255)    // Lavender #7C72FF
-        case .entertainment: return Color(red: 245/255, green: 158/255, blue: 11/255)// Soft Amber #F59E0B
-        case .health: return Color(red: 236/255, green: 72/255, blue: 153/255)       // Soft Pink #EC4899
-        case .subscriptions: return Color(red: 59/255, green: 130/255, blue: 246/255) // Ocean Blue #3B82F6
-        case .finance: return Color(red: 100/255, green: 116/255, blue: 139/255)     // Slate Navy #64748B
+        case .housing: return Color(red: 2/255, green: 132/255, blue: 199/255)       // Sky Blue #0284C7
+        case .food, .groceries, .coffee: return Color(red: 249/255, green: 115/255, blue: 22/255) // Warm Orange #F97316
+        case .transport: return Color(red: 34/255, green: 197/255, blue: 94/255)    // Fresh Green #22C55E
+        case .shopping: return Color(red: 236/255, green: 72/255, blue: 153/255)    // Soft Pink #EC4899
+        case .entertainment: return Color(red: 168/255, green: 85/255, blue: 247/255)// Purple #A855F7
+        case .health: return Color(red: 244/255, green: 63/255, blue: 94/255)       // Soft Rose #F43F5E
+        case .subscriptions: return Color(red: 59/255, green: 130/255, blue: 246/255) // Royal Blue #3B82F6
+        case .finance: return Color(red: 139/255, green: 92/255, blue: 246/255)     // Lavender Violet #8B5CF6
         case .savings: return Color(red: 16/255, green: 185/255, blue: 129/255)      // Mint Green #10B981
-        case .miscellaneous, .misc: return Color(red: 139/255, green: 92/255, blue: 246/255) // Royal Violet #8B5CF6
-        case .other: return Color(red: 249/255, green: 115/255, blue: 22/255)        // Postal Amber Orange #F97316
+        case .miscellaneous, .misc: return Color(red: 99/255, green: 102/255, blue: 241/255) // Indigo #6366F1
+        case .other: return Color(red: 100/255, green: 116/255, blue: 139/255)        // Neutral Slate #64748B
         }
     }
 
     public var softBackgroundColor: Color {
         switch self {
-        case .housing: return Color(red: 238/255, green: 237/255, blue: 254/255)     // #EEEDFE
-        case .food, .groceries, .coffee: return Color(red: 230/255, green: 247/255, blue: 248/255) // #E6F7F8
-        case .transport: return Color(red: 254/255, green: 242/255, blue: 232/255)    // #FEF2E8
-        case .shopping: return Color(red: 232/255, green: 229/255, blue: 255/255)     // #E8E5FF
-        case .entertainment: return Color(red: 255/255, green: 240/255, blue: 199/255)// #FFF0C7
-        case .health: return Color(red: 249/255, green: 225/255, blue: 232/255)        // #F9E1E8
-        case .subscriptions: return Color(red: 239/255, green: 246/255, blue: 255/255)// #EFF6FF
-        case .finance: return Color(red: 241/255, green: 245/255, blue: 249/255)       // #F1F5F9
-        case .savings: return Color(red: 221/255, green: 243/255, blue: 234/255)       // #DDF3EA
-        case .miscellaneous, .misc: return Color(red: 245/255, green: 243/255, blue: 255/255) // #F5F3FF
-        case .other: return Color(red: 255/255, green: 247/255, blue: 237/255)         // #FFF7ED
+        case .housing: return Color(red: 224/255, green: 242/255, blue: 254/255)     // #E0F2FE
+        case .food, .groceries, .coffee: return Color(red: 255/255, green: 237/255, blue: 213/255) // #FFEDD5 Warm Peach
+        case .transport: return Color(red: 220/255, green: 252/255, blue: 231/255)    // #DCFCE7 Mint Soft
+        case .shopping: return Color(red: 252/255, green: 231/255, blue: 243/255)     // #FCE7F3 Pink Soft
+        case .entertainment: return Color(red: 243/255, green: 232/255, blue: 255/255)// #F3E8FF Lavender Soft
+        case .health: return Color(red: 255/255, green: 228/255, blue: 230/255)        // #FFE4E6 Rose Soft
+        case .subscriptions: return Color(red: 219/255, green: 234/255, blue: 254/255)// #DBEAFE Periwinkle Soft
+        case .finance: return Color(red: 237/255, green: 233/255, blue: 254/255)       // #EDE9FE Violet Soft
+        case .savings: return Color(red: 209/255, green: 250/255, blue: 229/255)       // #D1FAE5 Sage Soft
+        case .miscellaneous, .misc: return Color(red: 238/255, green: 242/255, blue: 255/255) // #EEF2FF
+        case .other: return Color(red: 241/255, green: 245/255, blue: 249/255)         // #F1F5F9 Neutral Soft
         }
     }
 }

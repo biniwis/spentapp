@@ -21,7 +21,33 @@ public struct SavingsGoalsSheet: View {
     @State private var depositAmount = ""
 
     private let sheetBg = Color(red: 248/255, green: 250/255, blue: 252/255)
-    private let icons = ["target", "airplane", "house.fill", "car.fill", "laptopcomputer", "graduationcap.fill", "gift.fill", "cart.fill"]
+    private let goalIconOptions: [(id: String, icon: MoneyIconName)] = [
+        ("target", .target),
+        ("airplane", .airplane),
+        ("house.fill", .home),
+        ("car.fill", .car),
+        ("island", .island),
+        ("graduationcap.fill", .gradCap),
+        ("gift.fill", .gift),
+        ("cart.fill", .cart)
+    ]
+
+    private func iconForGoal(_ iconString: String) -> MoneyIconName {
+        switch iconString {
+        case "target": return .target
+        case "airplane": return .airplane
+        case "house.fill", "house", "home": return .home
+        case "car.fill", "car": return .car
+        case "laptopcomputer", "laptop": return .gamepad
+        case "graduationcap.fill", "gradCap", "school": return .gradCap
+        case "gift.fill", "gift": return .gift
+        case "cart.fill", "cart": return .cart
+        case "island": return .island
+        case "heart": return .heart
+        case "trophy": return .trophy
+        default: return .target
+        }
+    }
 
     public init() {}
 
@@ -37,14 +63,20 @@ public struct SavingsGoalsSheet: View {
                     emptyState
                 } else {
                     ScrollView(showsIndicators: false) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 14) {
+                            totalSavedCard
+
                             if showAdd { addCard }
-                            ForEach(goals) { goal in
-                                goalCard(goal)
+
+                            if !goals.isEmpty {
+                                ForEach(goals) { goal in
+                                    goalCard(goal)
+                                }
                             }
-                            Spacer(minLength: 40)
                         }
-                        .padding(.horizontal, 16).padding(.top, 12)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 24)
                     }
                 }
             }
@@ -64,8 +96,7 @@ public struct SavingsGoalsSheet: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button { withAnimation { showAdd.toggle() } } label: {
-                        Image(systemName: showAdd ? "xmark" : "plus")
-                            .font(.system(size: 14, weight: .bold))
+                        MoneyIcon(showAdd ? .xmarkCircle : .plusCircle, size: 20)
                     }
                 }
             }
@@ -82,7 +113,7 @@ public struct SavingsGoalsSheet: View {
                     .font(.system(size: 17, weight: .black, design: .rounded))
                 Text(isHebrew ? "כמה ברצונך להפקיד?" : "How much to deposit?")
                     .font(.system(size: 13, design: .rounded))
-                    .foregroundColor(Color.slate400)
+                    .foregroundColor(Color.textMuted)
 
                 HStack(spacing: 6) {
                     Text(symbol)
@@ -136,18 +167,80 @@ public struct SavingsGoalsSheet: View {
         }
     }
 
+    // MARK: - Total Saved Hero Card (Reference Screen 4)
+    private var totalSavedCard: some View {
+        let totalSaved = goals.reduce(0) { $0 + $1.savedAmount }
+        let totalTarget = goals.reduce(0) { $0 + $1.targetAmount }
+        let fraction = totalTarget > 0 ? min(1.0, max(0.0, totalSaved / totalTarget)) : 0.0
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isHebrew ? "סך כל החיסכון" : "Total Saved")
+                        .font(.system(size: 13, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
+
+                    Text(l10n.format(amount: totalSaved))
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 220/255, green: 252/255, blue: 231/255))
+                        .frame(width: 48, height: 48)
+
+                    MoneyIcon(.leaf, size: 24)
+                }
+            }
+
+            // Progress bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color(red: 241/255, green: 243/255, blue: 247/255))
+                        .frame(height: 8)
+
+                    Capsule()
+                        .fill(Color(red: 16/255, green: 185/255, blue: 129/255))
+                        .frame(width: max(8, geo.size.width * fraction), height: 8)
+                }
+            }
+            .frame(height: 8)
+
+            HStack {
+                Text("\(Int(round(fraction * 100)))%")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+
+                Spacer()
+
+                if totalTarget > 0 {
+                    Text("\(l10n.format(amount: totalSaved)) / \(l10n.format(amount: totalTarget))")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                }
+            }
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "target")
-                .font(.system(size: 40, weight: .bold))
-                .foregroundColor(Color.primaryBlue)
+            MoneyIcon(.target, size: 44)
             Text(isHebrew ? "אין עדיין יעדים" : "No goals yet")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
             Text(isHebrew
                  ? "יעד נותן סיבה לפתוח את האפליקציה גם כשלא קנית כלום."
                  : "A goal gives you a reason to open the app on a day you bought nothing.")
                 .font(.system(size: 13, design: .rounded))
-                .foregroundColor(Color.slate400)
+                .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
             Button { withAnimation { showAdd = true } } label: {
@@ -186,52 +279,54 @@ public struct SavingsGoalsSheet: View {
             .background(sheetBg).clipShape(RoundedRectangle(cornerRadius: 12))
 
             HStack(spacing: 8) {
-                ForEach(icons, id: \.self) { icon in
-                    Button { newIcon = icon } label: {
-                        Image(systemName: icon)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(newIcon == icon ? Color.primaryBlue : Color.slate400)
-                            .frame(width: 34, height: 34)
+                ForEach(goalIconOptions, id: \.id) { item in
+                    Button { newIcon = item.id } label: {
+                        MoneyIcon(item.icon, size: 20)
+                            .frame(width: 36, height: 36)
                             .background(
-                                Circle().fill(newIcon == icon ? Color.primaryBlue.opacity(0.14) : Color.clear)
+                                Circle().fill(newIcon == item.id ? Color.primaryBlue.opacity(0.14) : Color.clear)
                             )
-                            .overlay(Circle().stroke(newIcon == icon ? Color.primaryBlue : Color.clear, lineWidth: 1.5))
+                            .overlay(Circle().stroke(newIcon == item.id ? Color.primaryBlue : Color.clear, lineWidth: 1.5))
                     }
                     .buttonStyle(.plain)
                 }
                 Spacer()
                 Button(isHebrew ? "צור" : "Create") { createGoal() }
                     .font(.system(size: 14, weight: .black, design: .rounded))
-                    .foregroundColor(canCreate ? Color.primaryBlue : Color.slate300)
+                    .foregroundColor(canCreate ? Color.primaryBlue : Color.borderSubtle)
                     .disabled(!canCreate)
             }
         }
         .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.primaryBlue.opacity(0.35), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
     }
 
     private func goalCard(_ goal: SavingsGoal) -> some View {
         let fraction = SavingsGoalService.fraction(saved: goal.savedAmount, target: goal.targetAmount)
         let left = SavingsGoalService.remaining(saved: goal.savedAmount, target: goal.targetAmount)
 
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: icons.contains(goal.icon) || goal.icon.contains(".") ? goal.icon : "target")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(Color.primaryBlue)
-                    .frame(width: 36, height: 36)
-                    .background(Color.primaryBlue.opacity(0.1))
-                    .clipShape(Circle())
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(goal.name)
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                    Text("\(l10n.format(amount: goal.savedAmount.rounded())) \(isHebrew ? "מתוך" : "of") \(l10n.format(amount: goal.targetAmount.rounded()))")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.slate400)
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 238/255, green: 245/255, blue: 254/255))
+                        .frame(width: 42, height: 42)
+                    MoneyIcon(iconForGoal(goal.icon), size: 22)
                 }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal.name)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Text("\(l10n.format(amount: goal.savedAmount.rounded())) / \(l10n.format(amount: goal.targetAmount.rounded()))")
+                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                }
+                
                 Spacer()
+                
                 if goal.isComplete {
                     Text(isHebrew ? "הושלם" : "Done")
                         .font(.system(size: 11, weight: .black, design: .rounded))
@@ -245,41 +340,42 @@ public struct SavingsGoalsSheet: View {
                         depositing = goal
                     } label: {
                         Text(isHebrew ? "הפקדה" : "Deposit")
-                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(Capsule().fill(Color.primaryBlue))
+                            .background(Capsule().fill(Color(red: 17/255, green: 24/255, blue: 39/255)))
                     }
                     .buttonStyle(.plain)
                 }
             }
 
+            // Clean Rounded Progress Bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(sheetBg).frame(height: 8)
+                    Capsule().fill(Color(red: 241/255, green: 243/255, blue: 247/255)).frame(height: 7)
                     Capsule()
-                        .fill(goal.isComplete ? Color.themeMint : Color.primaryBlue)
-                        .frame(width: max(6, geo.size.width * fraction), height: 8)
+                        .fill(Color(red: 16/255, green: 185/255, blue: 129/255))
+                        .frame(width: max(6, geo.size.width * fraction), height: 7)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 7)
 
             HStack {
                 Text("\(Int((fraction * 100).rounded()))%")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .foregroundColor(goal.isComplete ? Color.themeMint : Color.primaryBlue)
+                    .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
                 Spacer()
                 if !goal.isComplete {
-                    Text(isHebrew ? "נשאר \(l10n.format(amount: left.rounded()))" : "\(l10n.format(amount: left.rounded())) to go")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.slate400)
+                    Text("\(isHebrew ? "נותרו" : "Left:") \(l10n.format(amount: left.rounded()))")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
                 }
             }
         }
-        .padding(16)
+        .padding(14)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.035), radius: 8, x: 0, y: 2)
         .contextMenu {
             Button(role: .destructive) {
                 modelContext.delete(goal)
@@ -306,7 +402,7 @@ public struct SavingsGoalsSheet: View {
             targetAmount: target,
             currency: symbol
         ))
-        try? modelContext.save()
+        DatabaseService.safeSave(modelContext)
         newName = ""; newTarget = ""; newIcon = "target"
         withAnimation { showAdd = false }
         Haptics.notify(.success)
@@ -345,7 +441,7 @@ public struct SavingsGoalsSheet: View {
             Haptics.impact(.medium)
         }
 
-        try? modelContext.save()
+        DatabaseService.safeSave(modelContext)
         depositing = nil
         depositAmount = ""
     }

@@ -45,12 +45,12 @@ public struct MerchantDetailSheet: View {
     
     public var body: some View {
         ZStack {
-            Color(red: 248/255, green: 250/255, blue: 252/255).ignoresSafeArea()
+            Color.appBackground.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Drag Handle
                 Capsule()
-                    .fill(Color.slate200)
+                    .fill(Color.borderSubtle)
                     .frame(width: 36, height: 4)
                     .padding(.top, 12)
                 
@@ -196,7 +196,7 @@ public struct MerchantDetailSheet: View {
                             .padding(14)
                             .background(Color.cardBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 18))
-                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.borderSubtle, lineWidth: 1.2))
+                            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
                         }
                         .padding(.horizontal, 16)
                         
@@ -227,9 +227,7 @@ public struct MerchantDetailSheet: View {
                                                 .font(.system(size: 15, weight: .black, design: .rounded))
                                                 .foregroundColor(Color.deepNavy)
                                             
-                                            Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
-                                                .font(.system(size: 11, weight: .bold))
-                                                .foregroundColor(Color.borderSubtle)
+                                            MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 12)
                                         }
                                         .padding(.horizontal, 14)
                                         .padding(.vertical, 12)
@@ -242,7 +240,7 @@ public struct MerchantDetailSheet: View {
                             }
                             .background(Color.cardBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 18))
-                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.borderSubtle, lineWidth: 1.2))
+                            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
                         }
                         .padding(.horizontal, 16)
                         
@@ -294,7 +292,7 @@ public struct MerchantDetailSheet: View {
         .padding(12)
         .background(Color.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.borderSubtle, lineWidth: 1.2))
+        .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
     }
     
     private func applyCategoryChange(_ cat: SpendingCategory) {

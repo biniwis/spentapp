@@ -23,7 +23,7 @@ public struct StorageHealthBanner: View {
             EmptyView()
         case .recoveredFreshStore(let backupPath):
             banner(
-                icon: "arrow.counterclockwise.circle.fill",
+                icon: .refresh,
                 tint: MoneyCityTheme.yellow,
                 surface: MoneyCityTheme.yellowSoft,
                 title: isHebrew
@@ -36,7 +36,7 @@ public struct StorageHealthBanner: View {
             )
         case .memoryOnly:
             banner(
-                icon: "exclamationmark.triangle.fill",
+                icon: .warningCircle,
                 tint: MoneyCityTheme.orange,
                 surface: MoneyCityTheme.orangeSoft,
                 title: isHebrew
@@ -52,7 +52,7 @@ public struct StorageHealthBanner: View {
 
     @ViewBuilder
     private func banner(
-        icon: String,
+        icon: MoneyIconName,
         tint: Color,
         surface: Color,
         title: String,
@@ -61,9 +61,7 @@ public struct StorageHealthBanner: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(tint)
+                MoneyIcon(icon, size: 18)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)

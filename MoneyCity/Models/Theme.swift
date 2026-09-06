@@ -5,16 +5,16 @@ import SwiftUI
 public struct MoneyCityTheme {
     // ── Primary Brand & Base Palette ──
     public static let primaryBlue = Color(red: 37/255, green: 60/255, blue: 196/255)   // #253CC4 Vivid Royal Blue
-    public static let deepNavy = Color(red: 16/255, green: 23/255, blue: 45/255)       // #10172D Deep Navy Text
-    public static let background = Color(red: 245/255, green: 247/255, blue: 250/255)  // #F5F7FA Cool Light Gray-Blue
+    public static let deepNavy = Color(red: 17/255, green: 24/255, blue: 39/255)       // #111827 Crisp Charcoal Primary Text
+    public static let background = Color(red: 248/255, green: 249/255, blue: 250/255)  // #F8F9FA Breathable Warm Off-White
     public static let cardSurface = Color.white                                         // #FFFFFF Pure White Cards
-    public static let borderSubtle = Color(red: 232/255, green: 237/255, blue: 245/255)// #E8EDF5 Soft Slate Border
-    public static let borderHairline = Color(red: 226/255, green: 232/255, blue: 240/255) // #E2E8F0
+    public static let borderSubtle = Color(red: 229/255, green: 231/255, blue: 235/255)// #E5E7EB Soft Slate Border
+    public static let borderHairline = Color(red: 243/255, green: 244/255, blue: 246/255) // #F3F4F6
 
     // ── Typography Colors ──
-    public static let textPrimary = Color(red: 16/255, green: 23/255, blue: 45/255)    // #10172D
-    public static let textSecondary = Color(red: 100/255, green: 116/255, blue: 139/255) // #64748B
-    public static let textMuted = Color(red: 148/255, green: 163/255, blue: 184/255)   // #94A3B8
+    public static let textPrimary = Color(red: 17/255, green: 24/255, blue: 39/255)    // #111827
+    public static let textSecondary = Color(red: 107/255, green: 114/255, blue: 128/255) // #6B7280
+    public static let textMuted = Color(red: 156/255, green: 163/255, blue: 175/255)   // #9CA3AF
 
     // ── Secondary / Category Palette ──
     public static let turquoise = Color(red: 53/255, green: 174/255, blue: 183/255)     // #35AEB7
@@ -89,6 +89,31 @@ public extension Color {
     static let slate800 = Color(red: 30/255, green: 41/255, blue: 59/255)
     static let slate900 = Color(red: 16/255, green: 23/255, blue: 45/255)
     static let slate950 = Color(red: 10/255, green: 15/255, blue: 30/255)
+
+    /// Initialize a Color from a hexadecimal string (e.g., "#9333EA", "9333EA", "#FFF")
+    init(hex: String) {
+        let cleanHex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: cleanHex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch cleanHex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
+    }
 }
 
 // ─── Global App Font: Rounded SF Pro (matches the ₪ spending amount style) ───
@@ -123,36 +148,31 @@ public extension Font {
 
 public extension MoneyCityTheme {
 
-    // ── Radii ────────────────────────────────────────────────────────
     /// Chips, small controls, inline badges.
-    static let radiusSmall: CGFloat = 13
+    static let radiusSmall: CGFloat = 12
     /// The default for anything card-shaped.
-    static let radiusCard: CGFloat = 22
+    static let radiusCard: CGFloat = 20
     /// Hero surfaces and sheets — the largest thing on a screen.
-    static let radiusHero: CGFloat = 26
+    static let radiusHero: CGFloat = 24
 
-    /// Height of the solid lip under a surface.
-    static let edgeThickness: CGFloat = 3
+    /// Edge thickness set to 0 for flat modern Apple HIG surfaces
+    static let edgeThickness: CGFloat = 0
 
     // ── Edge shades ──────────────────────────────────────────────────
-    // Each is a deeper version of the surface above it, not a grey. A grey lip
-    // under a mint card reads as a shadow that got stuck; a deeper mint reads
-    // as the same object seen from the side.
-    static let edgeNeutral = Color(red: 223/255, green: 229/255, blue: 241/255)   // #DFE5F1
-    static let edgeTurquoise = Color(red: 191/255, green: 230/255, blue: 232/255) // #BFE6E8
-    static let edgeLavender = Color(red: 207/255, green: 202/255, blue: 255/255)  // #CFCAFF
-    static let edgeMint = Color(red: 182/255, green: 230/255, blue: 211/255)      // #B6E6D3
-    static let edgeOrange = Color(red: 247/255, green: 213/255, blue: 187/255)    // #F7D5BB
-    static let edgeYellow = Color(red: 245/255, green: 224/255, blue: 160/255)    // #F5E0A0
-    static let edgePink = Color(red: 240/255, green: 200/255, blue: 214/255)      // #F0C8D6
-    static let edgeBlue = Color(red: 26/255, green: 43/255, blue: 146/255)        // #1A2B92
-    static let edgeNavy = Color(red: 6/255, green: 10/255, blue: 22/255)          // #060A16
+    static let edgeNeutral = Color(red: 236/255, green: 240/255, blue: 246/255)
+    static let edgeTurquoise = Color(red: 200/255, green: 235/255, blue: 237/255)
+    static let edgeLavender = Color(red: 215/255, green: 212/255, blue: 255/255)
+    static let edgeMint = Color(red: 195/255, green: 238/255, blue: 222/255)
+    static let edgeOrange = Color(red: 254/255, green: 228/255, blue: 208/255)
+    static let edgeYellow = Color(red: 254/255, green: 235/255, blue: 185/255)
+    static let edgePink = Color(red: 250/255, green: 215/255, blue: 226/255)
+    static let edgeBlue = Color(red: 37/255, green: 60/255, blue: 196/255)
+    static let edgeNavy = Color(red: 15/255, green: 23/255, blue: 42/255)
 
-    // ── The one blur that is allowed ─────────────────────────────────
-    // For the tab bar and the add button. Nothing else floats.
-    static let floatShadow = Color(red: 16/255, green: 23/255, blue: 45/255).opacity(0.10)
-    static let floatShadowRadius: CGFloat = 20
-    static let floatShadowY: CGFloat = 8
+    // ── Ambient Soft Shadow ──────────────────────────────────────────
+    static let floatShadow = Color(red: 15/255, green: 23/255, blue: 42/255).opacity(0.08)
+    static let floatShadowRadius: CGFloat = 16
+    static let floatShadowY: CGFloat = 6
 }
 
 /// What a surface is *about*, which is the only reason it may be coloured.
@@ -192,13 +212,12 @@ public enum CitySurface: Equatable {
         }
     }
 
-    /// The hairline. A tinted surface borrows its own edge colour rather than a
-    /// neutral line, so the outline never looks like a separate object.
+    /// The hairline. A clean subtle stroke for crisp Apple HIG contrast.
     public var line: Color {
         switch self {
         case .plain:  return MoneyCityTheme.borderSubtle
         case .night:  return Color.clear
-        default:      return edge
+        default:      return edge.opacity(0.6)
         }
     }
 
@@ -215,8 +234,6 @@ public enum CitySurface: Equatable {
         }
     }
 
-    /// Where a spending category lives in the city, so a card about groceries
-    /// and the food district are never two different greens.
     public static func forCategory(_ category: SpendingCategory) -> CitySurface {
         switch category.canonical {
         case .food:      return .food
@@ -228,44 +245,37 @@ public enum CitySurface: Equatable {
     }
 }
 
-/// A surface with a solid lip instead of a blurred shadow.
-///
-/// The lip is drawn by letting the fill stop `edgeThickness` short of the
-/// bottom, revealing the deeper shape behind it — the same trick a physical
-/// key uses, and the reason a tap feels like it presses something.
+/// Clean Apple HIG card surface with subtle hairline and soft ambient shadow
 public struct CityCardModifier: ViewModifier {
     let surface: CitySurface
     let radius: CGFloat
 
     public func body(content: Content) -> some View {
         content
-            // The content sits in the fill, never over the lip.
-            .padding(.bottom, MoneyCityTheme.edgeThickness)
             .background(
-                ZStack {
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(surface.edge)
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .fill(surface.fill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                                .strokeBorder(surface.line, lineWidth: 1)
-                        )
-                        .padding(.bottom, MoneyCityTheme.edgeThickness)
-                }
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(surface.fill)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(surface.line, lineWidth: 1)
+                    )
+                    .shadow(
+                        color: surface == .night ? Color.black.opacity(0.18) : Color.black.opacity(0.035),
+                        radius: surface == .night ? 14 : 10,
+                        x: 0,
+                        y: 3
+                    )
             )
     }
 }
 
 public extension View {
-    /// The app's card surface. Use this instead of hand-rolling a background,
-    /// a stroke and a shadow — that is how twenty radii happened.
+    /// The app's card surface. Clean Apple HIG card with continuous corners, hairline border, and soft shadow.
     func cityCard(_ surface: CitySurface = .plain, radius: CGFloat = MoneyCityTheme.radiusCard) -> some View {
         modifier(CityCardModifier(surface: surface, radius: radius))
     }
 
-    /// The only blurred elevation in the app: for the tab bar and the add
-    /// button, which really do float over the content.
+    /// Blurred elevation for floating components like tab bar and buttons.
     func cityFloat() -> some View {
         shadow(
             color: MoneyCityTheme.floatShadow,

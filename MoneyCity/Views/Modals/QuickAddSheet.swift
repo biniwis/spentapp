@@ -30,6 +30,10 @@ public struct QuickAddSheet: View {
     @State private var paymentCount: Int = 1
 
     @State private var showAdvancedOptions = false
+    @State private var cursorVisible = true
+    @State private var transactionDate = Date()
+    @State private var showDatePicker = false
+    @State private var showCategoryPickerSheet = false
 
     #if canImport(PhotosUI)
     @State private var selectedPhotoItem: PhotosPickerItem? = nil
@@ -56,221 +60,417 @@ public struct QuickAddSheet: View {
         #endif
     }
 
-    /// The 9 primary distinct categories for the 3x3 grid (no duplicate aliases)
+    /// The primary distinct categories for user selection (including finance and other/sorting hub)
     private var allCategories: [SpendingCategory] {
-        [.food, .shopping, .transport, .housing, .entertainment, .health, .subscriptions, .savings, .miscellaneous]
+        SpendingCategory.primaryCategories
+    }
+    
+    private var displayAmountString: String {
+        if amountText.isEmpty {
+            return "0.00"
+        }
+        return amountText
+    }
+
+    private func handleKeypadPress(_ key: String) {
+        Haptics.selection()
+        if key == "⌫" {
+            if !amountText.isEmpty {
+                amountText.removeLast()
+            }
+        } else if key == "." {
+            if !amountText.contains(".") {
+                if amountText.isEmpty {
+                    amountText = "0."
+                } else {
+                    amountText += "."
+                }
+            }
+        } else {
+            // Digits 0-9
+            if amountText == "0" {
+                amountText = key
+            } else {
+                // Prevent more than 2 decimal places
+                if let dotIndex = amountText.firstIndex(of: ".") {
+                    let decimals = amountText.distance(from: dotIndex, to: amountText.endIndex)
+                    if decimals <= 2 {
+                        amountText += key
+                    }
+                } else if amountText.count < 8 {
+                    amountText += key
+                }
+            }
+        }
     }
     
     public var body: some View {
         NavigationStack {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        dismissKeyboard()
-                    }
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 16) {
                         if isScanningScreenshot {
                             ReceiptScanningSkeletonView()
                                 .padding(.horizontal, 20)
                                 .padding(.top, 4)
                         }
 
-                        // 0. MULTI-TRANSACTION CARDS (if multiple detected in screenshot)
+                        // Multi-transaction review if screenshot contained multiple
                         multiTransactionReviewSection
 
-                        // 1. HERO AMOUNT CARD (Integrated Currency Dropdown)
-                        amountHeroCard
+                        // ── 1. Hero Amount Display (Reference: ₪0.00 with cursor) ──
+                        HStack(alignment: .center, spacing: 4) {
+                            Text(selectedCurrency.symbol)
+                                .font(.system(size: 44, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
 
-                        // 2. UNIFIED 3x3 CATEGORY GRID (Clean single-layer cards)
-                        categoryGridSection
+                            Text(displayAmountString)
+                                .font(.system(size: 44, weight: .bold, design: .rounded))
+                                .foregroundColor(amountText.isEmpty ? Color.textMuted.opacity(0.6) : Color.deepNavy)
 
-                        // 3. EXPANDABLE MORE OPTIONS (Note, Installments)
+                            // Blinking cursor
+                            Rectangle()
+                                .fill(Color.primaryBlue)
+                                .frame(width: 2.5, height: 40)
+                                .opacity(cursorVisible ? 1.0 : 0.0)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 10)
+                        .padding(.bottom, 6)
+
+                        // Currency switcher pill if not ILS
+                        if selectedCurrency != .ils, let val = parseAmount(amountText), val > 0 {
+                            let inILS = val * selectedCurrency.rateToILS
+                            HStack(spacing: 4) {
+                                ExchangeVectorIcon(color: Color.themeMint)
+                                Text("≈ \(l10n.format(amount: inILS, showDecimals: true))")
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            }
+                            .foregroundColor(Color.themeMint)
+                        }
+
+                        // ── 2. Built-in Numeric Keypad (Reference Screen 5) ──
+                        numericKeypadView
+                            .padding(.horizontal, 20)
+
+                        // ── 3. Meta Rows (Merchant, Category, Date) ── Grouped Clean White Card
+                        VStack(spacing: 0) {
+                            // Merchant Input Row
+                            HStack(spacing: 12) {
+                                MoneyIcon(.user, size: 18)
+                                    .frame(width: 24)
+
+                                TextField(l10n.language == .hebrew ? "בית עסק / תיאור" : "Merchant", text: $note)
+                                    .font(.system(size: 15, weight: .medium, design: .default))
+                                    .foregroundColor(Color.deepNavy)
+                            }
+                            .padding(.horizontal, 16)
+                            .frame(height: 52)
+
+                            Divider()
+                                .padding(.horizontal, 16)
+                                .opacity(0.5)
+
+                            // Category Selector Row
+                            Button(action: {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    showCategoryPickerSheet.toggle()
+                                }
+                            }) {
+                                HStack(spacing: 12) {
+                                    if let cat = selectedCategory {
+                                        CategoryBadge(category: cat, size: 28)
+                                    } else {
+                                        Circle()
+                                            .fill(Color(red: 255/255, green: 237/255, blue: 213/255))
+                                            .frame(width: 28, height: 28)
+                                            .overlay(
+                                                MoneyIcon(.bookmark, size: 14)
+                                            )
+                                    }
+
+                                    Text(l10n.language == .hebrew ? "קטגוריה" : "Category")
+                                        .font(.system(size: 15, weight: .medium, design: .default))
+                                        .foregroundColor(Color.deepNavy)
+
+                                    Spacer()
+
+                                    HStack(spacing: 4) {
+                                        Text(selectedCategory?.displayName ?? (l10n.language == .hebrew ? "בחר ∨" : "Select ∨"))
+                                            .font(.system(size: 14, weight: .semibold, design: .default))
+                                            .foregroundColor(selectedCategory != nil ? Color.deepNavy : Color.textMuted)
+
+                                        MoneyIcon(.chevronDown, size: 11)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(height: 52)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider()
+                                .padding(.horizontal, 16)
+                                .opacity(0.5)
+
+                            // Date Row
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3)) {
+                                    showDatePicker.toggle()
+                                }
+                            }) {
+                                HStack(spacing: 12) {
+                                    MoneyIcon(.calendar, size: 18)
+                                        .frame(width: 24)
+
+                                    Text(formattedDateString(transactionDate))
+                                        .font(.system(size: 15, weight: .medium, design: .default))
+                                        .foregroundColor(Color.deepNavy)
+
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 16)
+                                .frame(height: 52)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+
+                            if showDatePicker {
+                                Divider()
+                                    .padding(.horizontal, 16)
+                                    .opacity(0.5)
+
+                                DatePicker("", selection: $transactionDate, displayedComponents: [.date, .hourAndMinute])
+                                    .datePickerStyle(.graphical)
+                                    .padding(12)
+                                    .transition(.opacity)
+                            }
+                        }
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+                        .padding(.horizontal, 20)
+
+                        // Dynamic Building Chips
+                        if let cat = selectedCategory {
+                            let buildings = CityBuilding.buildings(for: cat)
+                            if buildings.count > 1 {
+                                buildingChipsSection(cat: cat, buildings: buildings)
+                            }
+                        }
+
+                        // Installment options toggle
                         expandableMoreOptionsSection
 
-                        // 4. BIG SAVE BUTTON
+                        // ── 4. Save Button (Solid Black Rounded Button) ──
                         saveTransactionButton
-                        
-                        Spacer(minLength: 30)
+
+                        Spacer(minLength: 20)
                     }
                     .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        dismissKeyboard()
-                    }
                 }
-                .scrollDismissesKeyboard(.immediately)
+
+                // Modal Popup Overlay for Category Selection (fast popup, no page scrolling)
+                if showCategoryPickerSheet {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                showCategoryPickerSheet = false
+                            }
+                        }
+                        .transition(.opacity)
+
+                    categoryPickerModalView
+                        .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        .zIndex(100)
+                }
             }
-            .navigationTitle(l10n.language == .hebrew ? "הוספת הוצאה" : "Add Transaction")
+            .navigationTitle(l10n.language == .hebrew ? "הוספת הוצאה" : "Add Expense")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(l10n.language == .hebrew ? "ביטול" : "Cancel") {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        MoneyIcon(.xmarkCircle, size: 24)
+                            .frame(width: 32, height: 32)
+                            .background(Color.white)
+                            .clipShape(Circle())
+                            .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
                     }
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
                 }
-                
+
                 #if canImport(PhotosUI)
                 ToolbarItem(placement: .primaryAction) {
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        HStack(spacing: 4) {
-                            CameraVectorIcon(color: Color.primaryBlue)
-                            Text(l10n.language == .hebrew ? "סריקה" : "Scan")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.primaryBlue)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(Color.primaryBlue.opacity(0.1))
-                        .clipShape(Capsule())
+                        MoneyIcon(.camera, size: 22)
+                            .frame(width: 32, height: 32)
+                            .background(Color.white)
+                            .clipShape(Circle())
+                            .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
                     }
-                }
-                #endif
-                
-                #if os(iOS)
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button(l10n.language == .hebrew ? "סיום" : "Done") {
-                        isAmountFocused = false
-                    }
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.primaryBlue)
                 }
                 #endif
             }
             .onAppear {
-                isAmountFocused = true
-                #if canImport(PhotosUI)
-                if initialOpenScan {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        showPhotoPicker = true
-                    }
-                }
-                #endif
-            }
-            #if canImport(PhotosUI)
-            .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotoItem, matching: .images)
-            .onChange(of: selectedPhotoItem) { _, newItem in
-                guard let newItem else { return }
-                Task {
-                    await processPickedPhoto(newItem)
+                // Default to food category if none selected
+                if selectedCategory == nil {
+                    selectedCategory = .food
                 }
             }
-            #endif
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 550_000_000)
+                    cursorVisible.toggle()
+                }
+            }
         }
     }
 
-    // MARK: - 1. Hero Amount Card (Amount + Currency Selector)
+    // MARK: - Numeric Keypad View (Reference Screen 5)
     @ViewBuilder @MainActor
-    private var amountHeroCard: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 8) {
-                // Inline currency menu button (Takes 0 extra rows!)
-                Menu {
-                    ForEach(CurrencyType.allCases) { cur in
+    private var numericKeypadView: some View {
+        let keys: [[String]] = [
+            ["1", "2", "3"],
+            ["4", "5", "6"],
+            ["7", "8", "9"],
+            [".", "0", "⌫"]
+        ]
+
+        VStack(spacing: 8) {
+            ForEach(keys, id: \.self) { row in
+                HStack(spacing: 8) {
+                    ForEach(row, id: \.self) { key in
                         Button(action: {
-                            Haptics.selection()
-                            selectedCurrency = cur
+                            handleKeypadPress(key)
                         }) {
-                            HStack {
-                                Text("\(cur.symbol) \(cur.rawValue)")
-                                if selectedCurrency == cur {
-                                    Image(systemName: "checkmark")
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color.white)
+                                    .shadow(color: Color.black.opacity(0.04), radius: 3.5, y: 1.5)
+
+                                if key == "⌫" {
+                                    MoneyIcon(.backspace, size: 22)
+                                } else {
+                                    Text(key)
+                                        .font(.system(size: 24, weight: .semibold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
                                 }
                             }
+                            .frame(height: 50)
                         }
+                        .buttonStyle(.plain)
+                        .bouncyPress(scale: 0.94)
                     }
-                } label: {
-                    HStack(spacing: 3) {
-                        Text(selectedCurrency.symbol)
-                            .font(.system(size: 36, weight: .black, design: .rounded))
-                            .foregroundColor(Color.primaryBlue)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(Color.primaryBlue.opacity(0.6))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Color.primaryBlue.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
-                
-                #if os(iOS)
-                TextField("0", text: $amountText)
-                    .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .keyboardType(.decimalPad)
-                    .focused($isAmountFocused)
-                    .multilineTextAlignment(.leading)
-                    .onChange(of: amountText) { _, _ in
-                        showErrorHint = false
-                    }
-                #else
-                TextField("0", text: $amountText)
-                    .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .multilineTextAlignment(.leading)
-                #endif
             }
-            
-            if showErrorHint {
-                Text(l10n.language == .hebrew ? "נא להזין סכום ולבחור קטגוריה" : "Please enter amount and pick category")
+        }
+    }
+
+    private func formattedDateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+        if Calendar.current.isDateInToday(date) {
+            return l10n.language == .hebrew ? "היום" : "Today"
+        } else if Calendar.current.isDateInYesterday(date) {
+            return l10n.language == .hebrew ? "אתמול" : "Yesterday"
+        } else {
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
+        }
+    }
+
+    // MARK: - Dynamic Building Chips
+    @ViewBuilder @MainActor
+    private func buildingChipsSection(cat: SpendingCategory, buildings: [CityBuilding]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(l10n.language == .hebrew ? "בניין בעיר:" : "3D Building:")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.red)
-                    .transition(.opacity)
-            }
-            
-            if selectedCurrency != .ils, let val = parseAmount(amountText), val > 0 {
-                let inILS = val * selectedCurrency.rateToILS
-                HStack(spacing: 4) {
-                    ExchangeVectorIcon(color: Color.themeMint)
-                    Text(l10n.language == .hebrew ? "שווה ערך ל-\(l10n.format(amount: inILS, showDecimals: true))" : "≈ \(l10n.format(amount: inILS, showDecimals: true))")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Spacer()
+                if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
+                    Text(building.displayName(for: l10n.language))
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(cat.themeColor)
                 }
-                .foregroundColor(Color.themeMint)
-                .padding(.top, 2)
+            }
+            .padding(.horizontal, 4)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(buildings) { b in
+                        let isBSelected = (selectedBuildingId == b.id)
+                        Button(action: {
+                            Haptics.selection()
+                            withAnimation(.spring(response: 0.25)) {
+                                selectedBuildingId = b.id
+                            }
+                        }) {
+                            HStack(spacing: 5) {
+                                Text(b.emoji)
+                                    .font(.system(size: 13))
+                                Text(b.displayName(for: l10n.language))
+                                    .font(.system(size: 11, weight: isBSelected ? .bold : .medium, design: .rounded))
+                                    .foregroundColor(isBSelected ? cat.themeColor : Color.deepNavy)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(isBSelected ? cat.softBackgroundColor : Color.white)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(isBSelected ? cat.themeColor : Color.clear, lineWidth: isBSelected ? 1.5 : 0)
+                            )
+                            .shadow(color: Color.black.opacity(isBSelected ? 0 : 0.03), radius: 3, y: 1)
+                        }
+                        .bouncyPress(scale: 0.95)
+                    }
+                }
             }
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.cardBackground)
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(showErrorHint ? Color.red.opacity(0.4) : Color.borderSubtle, lineWidth: 1.5))
-                .shadow(color: Color.deepNavy.opacity(0.04), radius: 8, y: 3)
-        )
-        .padding(.horizontal, 20)
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    // MARK: - 2. Unified 3x3 Category Grid (Single-layer clean cards)
+    // MARK: - Category Picker Popup Modal (Screen 6 Modal / Popup)
     @ViewBuilder @MainActor
-    private var categoryGridSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private var categoryPickerModalView: some View {
+        VStack(spacing: 16) {
+            // Header: Title + Close Button
+            HStack {
+                Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+
+                Spacer()
+
+                Button(action: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        showCategoryPickerSheet = false
+                    }
+                }) {
+                    MoneyIcon(.xmarkCircle, size: 22)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 4)
+
             if let scanError = scanErrorMessage {
                 HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                        .font(.system(size: 13))
+                    MoneyIcon(.warningCircle, size: 16)
                     Text(scanError)
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(.orange)
                         .lineLimit(2)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 4)
             }
 
-            Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
-                .font(.system(size: 13, weight: .black, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-                .padding(.horizontal, 20)
-            
+            // 3x3 Category Grid
             LazyVGrid(
                 columns: [
                     GridItem(.flexible(), spacing: 10),
@@ -283,100 +483,65 @@ public struct QuickAddSheet: View {
                     let isSelected = selectedCategory == cat
                     Button(action: {
                         Haptics.selection()
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) {
-                            selectedCategory = cat
-                            showErrorHint = false
-                            let available = CityBuilding.buildings(for: cat)
-                            if !available.contains(where: { $0.id == selectedBuildingId }) {
-                                selectedBuildingId = CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
-                                if !available.contains(where: { $0.id == selectedBuildingId }), let first = available.first {
-                                    selectedBuildingId = first.id
-                                }
+                        selectedCategory = cat
+                        showErrorHint = false
+                        let available = CityBuilding.buildings(for: cat)
+                        if !available.contains(where: { $0.id == selectedBuildingId }) {
+                            selectedBuildingId = CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
+                            if !available.contains(where: { $0.id == selectedBuildingId }), let first = available.first {
+                                selectedBuildingId = first.id
                             }
                         }
-                        // Dismiss keyboard so user has full view of save button & options
                         isAmountFocused = false
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                            showCategoryPickerSheet = false
+                        }
                     }) {
-                        VStack(spacing: 6) {
-                            CategoryVectorIcon(
-                                category: cat,
-                                color: isSelected ? cat.themeColor : Color.deepNavy.opacity(0.85),
-                                size: 22
-                            )
+                        VStack(spacing: 8) {
+                            // Circular Pastel Container
+                            ZStack {
+                                Circle()
+                                    .fill(isSelected ? cat.themeColor : cat.softBackgroundColor)
+                                    .frame(width: 44, height: 44)
+                                    .overlay(
+                                        Circle()
+                                            .stroke(isSelected ? cat.themeColor : Color.black.opacity(0.04), lineWidth: 1)
+                                    )
+                                    .shadow(color: isSelected ? cat.themeColor.opacity(0.28) : Color.clear, radius: 4, y: 2)
+
+                                CategoryVectorIcon(
+                                    category: cat,
+                                    color: isSelected ? Color.white : cat.themeColor,
+                                    size: 22
+                                )
+                            }
                             
                             Text(cat.shortName)
-                                .font(.system(size: 13, weight: isSelected ? .black : .semibold, design: .rounded))
-                                .foregroundColor(isSelected ? cat.themeColor : Color.deepNavy)
+                                .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
+                                .foregroundColor(isSelected ? Color.deepNavy : Color.textSecondary)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.8)
                         }
                         .frame(maxWidth: .infinity)
-                        .frame(height: 64)
-                        .background(isSelected ? cat.softBackgroundColor : Color.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .padding(.vertical, 12)
+                        .background(isSelected ? cat.softBackgroundColor.opacity(0.5) : Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(isSelected ? cat.themeColor : Color.borderSubtle, lineWidth: isSelected ? 2 : 1)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(isSelected ? cat.themeColor : Color.clear, lineWidth: isSelected ? 1.6 : 0)
                         )
-                        .shadow(color: isSelected ? cat.themeColor.opacity(0.16) : Color.deepNavy.opacity(0.02), radius: 4, y: 2)
-                        .scaleEffect(isSelected ? 1.04 : 1.0)
+                        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
                     }
+                    .buttonStyle(.plain)
                     .bouncyPress(scale: 0.94)
                 }
             }
-            .padding(.horizontal, 20)
-
-            // Dynamic Building Chips
-            if let cat = selectedCategory {
-                let buildings = CityBuilding.buildings(for: cat)
-                if buildings.count > 1 {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text(l10n.language == .hebrew ? "בניין בעיר:" : "3D Building:")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.slate400)
-                            Spacer()
-                            if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
-                                Text(building.displayName(for: l10n.language))
-                                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                                    .foregroundColor(cat.themeColor)
-                            }
-                        }
-                        .padding(.horizontal, 22)
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(buildings) { b in
-                                    let isBSelected = (selectedBuildingId == b.id)
-                                    Button(action: {
-                                        Haptics.selection()
-                                        withAnimation(.spring(response: 0.25)) {
-                                            selectedBuildingId = b.id
-                                        }
-                                    }) {
-                                        HStack(spacing: 5) {
-                                            Text(b.emoji)
-                                                .font(.system(size: 13))
-                                            Text(b.displayName(for: l10n.language))
-                                                .font(.system(size: 11, weight: isBSelected ? .bold : .medium, design: .rounded))
-                                                .foregroundColor(isBSelected ? cat.themeColor : Color.deepNavy)
-                                        }
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 6)
-                                        .background(isBSelected ? cat.softBackgroundColor : Color.cardBackground)
-                                        .clipShape(Capsule())
-                                        .overlay(Capsule().stroke(isBSelected ? cat.themeColor : Color.borderSubtle, lineWidth: isBSelected ? 1.5 : 1))
-                                    }
-                                    .bouncyPress(scale: 0.95)
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                        }
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
         }
+        .padding(20)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: Color.black.opacity(0.12), radius: 24, y: 8)
+        .padding(.horizontal, 20)
     }
 
     // MARK: - 3. Expandable More Options (Note, Installments)
@@ -389,8 +554,7 @@ public struct QuickAddSheet: View {
                 }
             }) {
                 HStack(spacing: 6) {
-                    Image(systemName: showAdvancedOptions ? "chevron.up.circle.fill" : "plus.circle.fill")
-                        .font(.system(size: 13, weight: .bold))
+                    MoneyIcon(showAdvancedOptions ? .chevronUp : .plusCircle, size: 14)
                     Text(showAdvancedOptions
                          ? (l10n.language == .hebrew ? "הסתר אפשרויות נוספות" : "Hide additional options")
                          : (l10n.language == .hebrew ? "＋ אפשרויות נוספות (הערה, תשלומים)" : "＋ Additional options (note, installments)")
@@ -412,9 +576,9 @@ public struct QuickAddSheet: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.cardBackground)
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
                     
                     // Installments Selector Card
                     VStack(alignment: .leading, spacing: 8) {
@@ -453,9 +617,9 @@ public struct QuickAddSheet: View {
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.cardBackground)
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
                 }
                 .padding(.horizontal, 20)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -475,8 +639,7 @@ public struct QuickAddSheet: View {
             }
         }) {
             HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 18, weight: .bold))
+                MoneyIcon(.checkCircle, size: 20)
                 Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Transaction")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
@@ -485,11 +648,11 @@ public struct QuickAddSheet: View {
             .frame(height: 52)
             .background(
                 (parseAmount(amountText) != nil && selectedCategory != nil)
-                    ? Color.primaryBlue
-                    : Color.primaryBlue.opacity(0.65)
+                    ? Color(red: 17/255, green: 24/255, blue: 39/255)
+                    : Color(red: 17/255, green: 24/255, blue: 39/255).opacity(0.4)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .shadow(color: Color.primaryBlue.opacity(0.35), radius: 10, y: 5)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
         }
         .bouncyPress(scale: 0.96)
         .padding(.horizontal, 20)
@@ -538,21 +701,29 @@ public struct QuickAddSheet: View {
             currency: l10n.baseCurrency.symbol,
             numberOfPayments: paymentCount,
             firstChargeDate: Date(),
-            category: category
+            category: category,
+            lastMaterializedIndex: 0,
+            buildingIdRaw: selectedBuildingId
         )
         modelContext.insert(plan)
 
-        for tx in InstallmentService.makeTransactions(
+        // Only materialize payments whose charge date is due (payment 1)
+        let dueTxs = InstallmentService.makeDueTransactions(
             for: plan,
             buildingId: selectedBuildingId,
             originalAmount: origAmt,
             originalCurrency: origCurr,
-            exchangeRate: rate
-        ) {
+            exchangeRate: rate,
+            asOf: Date()
+        )
+        for tx in dueTxs {
             modelContext.insert(tx)
+            if let idx = tx.installmentIndex {
+                plan.lastMaterializedIndex = max(plan.lastMaterializedIndex, idx)
+            }
         }
 
-        try? modelContext.save()
+        DatabaseService.safeSave(modelContext)
         Haptics.notify(.success)
         dismiss()
     }
@@ -577,9 +748,7 @@ public struct QuickAddSheet: View {
     @ViewBuilder @MainActor
     private var multiHeaderView: some View {
         HStack {
-            Image(systemName: "sparkles.rectangle.stack.fill")
-                .foregroundColor(Color.primaryBlue)
-                .font(.system(size: 14))
+            MoneyIcon(.photo, size: 16)
             let titleText = scannedMultiCandidates.count > 1
                 ? (l10n.language == .hebrew ? "זוהו \(scannedMultiCandidates.count) עסקאות בצילום המסך" : "Found \(scannedMultiCandidates.count) Purchases")
                 : (l10n.language == .hebrew ? "זוהתה עסקה 1 בצילום המסך" : "Found 1 Purchase")
@@ -592,9 +761,7 @@ public struct QuickAddSheet: View {
                     scannedMultiCandidates = []
                 }
             }) {
-                Image(systemName: "xmark.circle.fill")
-                    .foregroundColor(Color.slate400)
-                    .font(.system(size: 16))
+                MoneyIcon(.xmarkCircle, size: 18)
             }
         }
         .padding(.horizontal, 4)
@@ -616,14 +783,7 @@ public struct QuickAddSheet: View {
 
         HStack(spacing: 10) {
             // Category Icon
-            ZStack {
-                Circle()
-                    .fill(candidate.category.themeColor.opacity(0.15))
-                    .frame(width: 36, height: 36)
-                Image(systemName: candidate.category.sfSymbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(candidate.category.themeColor)
-            }
+            CategoryBadge(category: candidate.category, size: 36)
 
             // Info (Merchant + Category)
             VStack(alignment: .leading, spacing: 2) {
@@ -633,7 +793,7 @@ public struct QuickAddSheet: View {
                     .lineLimit(1)
                 Text(candidate.category.displayName)
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.slate500)
+                    .foregroundColor(Color.textSecondary)
             }
 
             Spacer()
@@ -650,9 +810,7 @@ public struct QuickAddSheet: View {
                     scannedMultiCandidates.removeAll(where: { $0.id == candidate.id })
                 }
             }) {
-                Image(systemName: "trash.circle.fill")
-                    .font(.system(size: 20))
-                    .foregroundColor(Color.red.opacity(0.75))
+                MoneyIcon(.trash, size: 20)
             }
             .buttonStyle(.plain)
             .padding(.leading, 4)
@@ -660,10 +818,7 @@ public struct QuickAddSheet: View {
         .padding(10)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.slate200, lineWidth: 0.8)
-        )
+        .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.spring(response: 0.25)) {
@@ -691,8 +846,7 @@ public struct QuickAddSheet: View {
             saveAllScannedMultiTransactions()
         }) {
             HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 14, weight: .bold))
+                MoneyIcon(.checkCircle, size: 16)
                 Text(buttonText)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
             }
@@ -724,7 +878,7 @@ public struct QuickAddSheet: View {
             )
             modelContext.insert(tx)
         }
-        try? modelContext.save()
+        DatabaseService.safeSave(modelContext)
         Haptics.notify(.success)
         dismiss()
     }

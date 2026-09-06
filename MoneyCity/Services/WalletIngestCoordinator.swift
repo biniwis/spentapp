@@ -59,11 +59,12 @@ public enum WalletIngestCoordinator {
         do {
             let newTransaction = try TransactionIngest.makeTransaction(
                 amount: salvaged.amount,
-                amountText: nil,
+                amountText: amountText,
                 merchant: salvaged.merchant,
                 currency: finalCurrency,
                 date: date,
                 existing: recent,
+                isRefundHint: salvaged.isRefund,
                 rules: rules
             )
 
@@ -84,6 +85,12 @@ public enum WalletIngestCoordinator {
                 isRefund: isRefund
             )
             #endif
+
+            ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                amount: abs(newTransaction.amount),
+                merchant: newTransaction.merchant,
+                isRefund: isRefund
+            )
 
             if isRefund {
                 log.outcome = "נשמר — זוהה זיכוי (ממתין לבדיקתך)"

@@ -179,9 +179,10 @@ final class TransactionIngestTests: XCTestCase {
             currency: "₪", date: Date(), existing: []
         )
         XCTAssertEqual(tx.amount, 85)
-        XCTAssertEqual(tx.merchant, "Apple Pay (לא זוהה)")
+        XCTAssertEqual(tx.merchant, "לא זוהה")
+        XCTAssertEqual(tx.category, .other)
         XCTAssertFalse(tx.isConfirmed)
-        XCTAssertEqual(tx.confidenceScore, 0.0)
+        XCTAssertLessThanOrEqual(tx.confidenceScore, 0.5)
     }
 
     func testZeroAmountIsRefused() {

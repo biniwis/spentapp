@@ -78,17 +78,15 @@ public struct RecurringExpensesSheet: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "repeat")
-                .font(.system(size: 38, weight: .bold))
-                .foregroundColor(Color.primaryBlue)
+            MoneyIcon(.refresh, size: 44)
             Text(isHebrew ? "אין עדיין הוצאות קבועות" : "No fixed expenses yet")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                .foregroundColor(Color.deepNavy)
             Text(isHebrew
                  ? "שכר דירה, ארנונה, מנויים — הגדר פעם אחת והם ייווצרו לבד כל חודש."
                  : "Rent, bills, subscriptions — set them up once and they post themselves each month.")
                 .font(.system(size: 13, design: .rounded))
-                .foregroundColor(Color.slate400)
+                .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
 
@@ -112,10 +110,10 @@ public struct RecurringExpensesSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(isHebrew ? "סה״כ קבוע בחודש" : "Fixed monthly total")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.slate400)
+                    .foregroundColor(Color.textMuted)
                 Text(l10n.format(amount: monthlyTotal))
                     .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                    .foregroundColor(Color.deepNavy)
             }
             Spacer()
             Text("\(templates.filter { $0.isActive }.count) \(isHebrew ? "פעילות" : "active")")
@@ -128,8 +126,8 @@ public struct RecurringExpensesSheet: View {
         }
         .padding(16)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
     }
 
     private func row(_ template: RecurringExpense) -> some View {
@@ -143,10 +141,10 @@ public struct RecurringExpensesSheet: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(template.merchant)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                        .foregroundColor(Color.deepNavy)
                     Text(isHebrew ? "כל \(template.dayOfMonth) בחודש" : "Day \(template.dayOfMonth) each month")
                         .font(.system(size: 11, design: .rounded))
-                        .foregroundColor(Color.slate400)
+                        .foregroundColor(Color.textMuted)
                 }
 
                 Spacer()
@@ -154,18 +152,18 @@ public struct RecurringExpensesSheet: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("\(template.currency)\(String(format: "%.2f", template.amount))")
                         .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                        .foregroundColor(Color.deepNavy)
                     if !template.isActive {
                         Text(isHebrew ? "מושהה" : "Paused")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.slate400)
+                            .foregroundColor(Color.textMuted)
                     }
                 }
             }
             .padding(14)
             .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.slate200, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
             .opacity(template.isActive ? 1 : 0.7)
         }
         .buttonStyle(.plain)
@@ -251,7 +249,7 @@ struct RecurringExpenseEditor: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(isHebrew ? "קטגוריה" : "Category")
                                 .font(.system(size: 12, weight: .black, design: .rounded))
-                                .foregroundColor(Color.slate400)
+                                .foregroundColor(Color.textMuted)
 
                             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                                 ForEach(SpendingCategory.primaryCategories) { cat in
@@ -262,7 +260,7 @@ struct RecurringExpenseEditor: View {
                                             CategoryVectorIcon(category: cat, size: 16)
                                             Text(cat.localizedShortName(for: l10n.language))
                                                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                                                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                                                .foregroundColor(Color.deepNavy)
                                             Spacer(minLength: 0)
                                         }
                                         .padding(.horizontal, 12)
@@ -272,8 +270,9 @@ struct RecurringExpenseEditor: View {
                                                 .fill(category == cat ? cat.themeColor.opacity(0.14) : Color.white)
                                                 .overlay(
                                                     RoundedRectangle(cornerRadius: 14)
-                                                        .stroke(category == cat ? cat.themeColor : Color.slate200, lineWidth: category == cat ? 1.6 : 1)
+                                                        .stroke(category == cat ? cat.themeColor : Color.clear, lineWidth: category == cat ? 1.6 : 0)
                                                 )
+                                                .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
                                         )
                                     }
                                     .buttonStyle(.plain)
@@ -285,7 +284,7 @@ struct RecurringExpenseEditor: View {
                              ? "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים."
                              : "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated.")
                             .font(.system(size: 11, design: .rounded))
-                            .foregroundColor(Color.slate400)
+                            .foregroundColor(Color.textMuted)
                             .fixedSize(horizontal: false, vertical: true)
 
                         Spacer(minLength: 20)
@@ -302,11 +301,11 @@ struct RecurringExpenseEditor: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(l10n.text(for: "cancel")) { dismiss() }
-                        .foregroundColor(Color.slate400)
+                        .foregroundColor(Color.textSecondary)
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button(isHebrew ? "שמור" : "Save") { save() }
-                        .foregroundColor(canSave ? Color.primaryBlue : Color.slate300)
+                        .foregroundColor(canSave ? Color.primaryBlue : Color.borderSubtle)
                         .disabled(!canSave)
                 }
             }
@@ -318,13 +317,13 @@ struct RecurringExpenseEditor: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.system(size: 12, weight: .black, design: .rounded))
-                .foregroundColor(Color.slate400)
+                .foregroundColor(Color.textMuted)
             content()
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.slate200, lineWidth: 1))
+                .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
         }
     }
 

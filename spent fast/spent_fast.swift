@@ -60,7 +60,12 @@ public struct SpentWidgetProvider: TimelineProvider {
     }
     
     private func fetchCurrentEntry() -> SpentWidgetEntry {
-        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? UserDefaults.standard
+        guard let defaults = UserDefaults(suiteName: "group.com.moneycity.app") else {
+            #if DEBUG
+            print("[spent_fast] Error: App Group 'group.com.moneycity.app' not accessible in widget extension.")
+            #endif
+            return SpentWidgetEntry()
+        }
         let spent = defaults.double(forKey: "widget_monthly_spent")
         let budget = defaults.double(forKey: "widget_monthly_budget")
         let savings = defaults.double(forKey: "widget_monthly_savings")

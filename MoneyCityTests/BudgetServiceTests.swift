@@ -109,9 +109,11 @@ final class BudgetServiceTests: XCTestCase {
         XCTAssertEqual(flow.leftover, 2610)
     }
 
-    func testLeftoverNeverGoesNegative() {
+    func testLeftoverReflectsRealDeficitWhenExpensesExceedIncome() {
         let flow = BudgetService.cashFlow(income: 1000, transactions: [tx(4000, .housing)])
-        XCTAssertEqual(flow.leftover, 0)
+        XCTAssertEqual(flow.leftover, -3000)
+        XCTAssertTrue(flow.isDeficit)
+        XCTAssertEqual(flow.deficit, 3000)
     }
 
     // MARK: - Forecast

@@ -116,4 +116,52 @@ final class InstallmentServiceTests: XCTestCase {
         let owed = InstallmentService.totalOutstanding(plans: [a, b], asOf: date(2026, 3, 15), calendar: cal)
         XCTAssertEqual(owed, 3600, accuracy: 0.0001)
     }
+
+    // MARK: - Due Transactions & Materialization Lifecycle
+
+    func testMakeDueTransactionsMaterializesOnlyDueCharges() {
+        let plan = InstallmentPlan(
+            merchant: "KSP מחשב נייד",
+            totalAmount: 6000,
+            numberOfPayments: 6,
+            firstChargeDate: date(2026, 3, 10),
+            category: .shopping
+        )
+        // On purchase day, only payment 1 is due
+        let dueOnDayOne = InstallmentService.makeDueTransactions(for: plan, asOf: date(2026, 3, 10), calendar: cal)
+        XCTAssertEqual(dueOnDayOne.count, 1)
+        XCTAssertEqual(dueOnDayOne[0].installmentIndex, 1)
+        XCTAssertEqual(dueOnDayOne[0].amount, 1000)
+        XCTAssertEqual(dueOnDayOne[0].installmentPlanId, plan.id)
+    }
+
+    func testMakeDueTransactionsAdvancesWithLastMaterializedIndex() {
+        let plan = InstallmentPlan(
+            merchant: "KSP מחשב נייד",
+            totalAmount: 6000,
+            numberOfPayments: 6,
+            firstChargeDate: date(2026, 3, 10),
+            category: .shopping,
+            lastMaterializedIndex: 1
+        )
+        // Two months later (May 15), payments 2 and 3 are due because payment 1 was already materialized
+        let dueLater = InstallmentService.makeDueTransactions(for: plan, asOf: date(2026, 5, 15), calendar: cal)
+        XCTAssertEqual(dueLater.count, 2)
+        XCTAssertEqual(dueLater[0].installmentIndex, 2)
+        XCTAssertEqual(dueLater[1].installmentIndex, 3)
+    }
+
+    func testFuturePaymentsRemainUnmaterializedUntilTheirMonth() {
+        let plan = InstallmentPlan(
+            merchant: "KSP מחשב נייד",
+            totalAmount: 6000,
+            numberOfPayments: 6,
+            firstChargeDate: date(2026, 3, 10),
+            category: .shopping,
+            lastMaterializedIndex: 1
+        )
+        // Still in March: no additional payments are due
+        let dueStillInMarch = InstallmentService.makeDueTransactions(for: plan, asOf: date(2026, 3, 25), calendar: cal)
+        XCTAssertTrue(dueStillInMarch.isEmpty)
+    }
 }

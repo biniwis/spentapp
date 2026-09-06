@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// What is still owed on a plan.
 public struct InstallmentProgress: Sendable {
@@ -108,9 +109,73 @@ public enum InstallmentService {
                 buildingId: building,
                 originalAmount: shareOfOriginal.map { $0[index] },
                 originalCurrency: originalCurrency,
-                exchangeRate: exchangeRate
+                exchangeRate: exchangeRate,
+                installmentPlanId: plan.id,
+                installmentIndex: index + 1
             )
         }
+    }
+
+    /// Transactions that are due (date <= now) and have not yet been materialized.
+    public static func makeDueTransactions(
+        for plan: InstallmentPlan,
+        buildingId: String? = nil,
+        originalAmount: Double? = nil,
+        originalCurrency: String? = nil,
+        exchangeRate: Double? = nil,
+        asOf now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [Transaction] {
+        let all = makeTransactions(
+            for: plan,
+            buildingId: buildingId,
+            originalAmount: originalAmount,
+            originalCurrency: originalCurrency,
+            exchangeRate: exchangeRate,
+            calendar: calendar
+        )
+        return all.filter { tx in
+            guard let idx = tx.installmentIndex else { return false }
+            return idx > plan.lastMaterializedIndex && tx.timestamp <= now
+        }
+    }
+
+    /// Checks all plans in the database, materializes any charges that have become due up to `now`,
+    /// and advances their `lastMaterializedIndex`.
+    @MainActor
+    @discardableResult
+    public static func materializeDue(
+        now: Date = Date(),
+        context: ModelContext,
+        calendar: Calendar = .current
+    ) -> Int {
+        let descriptor = FetchDescriptor<InstallmentPlan>()
+        guard let plans = try? context.fetch(descriptor) else { return 0 }
+
+        var materializedCount = 0
+        for plan in plans {
+            guard plan.lastMaterializedIndex < plan.numberOfPayments else { continue }
+
+            let dueTxs = makeDueTransactions(
+                for: plan,
+                buildingId: plan.buildingIdRaw,
+                asOf: now,
+                calendar: calendar
+            )
+
+            for tx in dueTxs {
+                context.insert(tx)
+                if let idx = tx.installmentIndex, idx > plan.lastMaterializedIndex {
+                    plan.lastMaterializedIndex = idx
+                }
+                materializedCount += 1
+            }
+        }
+
+        if materializedCount > 0 {
+            DatabaseService.safeSave(context)
+        }
+        return materializedCount
     }
 
     /// How far along a plan is, as of a given date.

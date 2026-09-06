@@ -114,10 +114,71 @@ public enum NotificationService {
             content: content,
             trigger: nil // Delivers immediately
         )
+        content.userInfo = [
+            "type": "expense_logged",
+            "amount": amount,
+            "currency": currency,
+            "merchant": merchant,
+            "categoryName": categoryName,
+            "isRefund": isRefund
+        ]
         center.add(request, withCompletionHandler: nil)
     }
 
     #endif
+}
+
+// MARK: - Expense Confirmation Coordinator
+public struct PendingExpenseConfirmation: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let amount: Double
+    public let merchant: String
+    public let timestamp: Date
+    public let isRefund: Bool
+    
+    public init(
+        id: String = UUID().uuidString,
+        amount: Double,
+        merchant: String,
+        timestamp: Date = Date(),
+        isRefund: Bool = false
+    ) {
+        self.id = id
+        self.amount = amount
+        self.merchant = merchant
+        self.timestamp = timestamp
+        self.isRefund = isRefund
+    }
+}
+
+@MainActor
+public final class ExpenseConfirmationCoordinator: ObservableObject {
+    public static let shared = ExpenseConfirmationCoordinator()
+    
+    @Published public var activeConfirmation: PendingExpenseConfirmation? = nil
+    
+    private var lastConfirmedSignature: String? = nil
+    
+    private init() {}
+    
+    public func triggerConfirmation(amount: Double, merchant: String, isRefund: Bool = false) {
+        guard amount > 0 else { return }
+        let signature = "\(amount)_\(merchant)_\(Int(Date().timeIntervalSince1970 / 8))"
+        guard signature != lastConfirmedSignature else { return }
+        lastConfirmedSignature = signature
+        
+        let item = PendingExpenseConfirmation(
+            amount: amount,
+            merchant: merchant,
+            timestamp: Date(),
+            isRefund: isRefund
+        )
+        self.activeConfirmation = item
+    }
+    
+    public func clearActiveConfirmation() {
+        self.activeConfirmation = nil
+    }
 }
 
 #if canImport(UserNotifications)
@@ -129,6 +190,26 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @u
     ) {
         // Show banner and play sound even if app is in the foreground
         completionHandler([.banner, .sound, .badge, .list])
+    }
+    
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        let userInfo = response.notification.request.content.userInfo
+        if let amount = userInfo["amount"] as? Double {
+            let merchant = userInfo["merchant"] as? String ?? ""
+            let isRefund = userInfo["isRefund"] as? Bool ?? false
+            DispatchQueue.main.async {
+                ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                    amount: amount,
+                    merchant: merchant,
+                    isRefund: isRefund
+                )
+            }
+        }
+        completionHandler()
     }
 }
 #endif

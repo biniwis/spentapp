@@ -157,6 +157,13 @@ public enum TransactionIngest {
     public struct Salvaged: Sendable, Equatable {
         public let amount: Double?
         public let merchant: String?
+        public let isRefund: Bool
+
+        public init(amount: Double?, merchant: String?, isRefund: Bool = false) {
+            self.amount = amount
+            self.merchant = merchant
+            self.isRefund = isRefund
+        }
     }
 
     /// Recovers an amount and a merchant from whichever fields actually carry them.
@@ -171,6 +178,20 @@ public enum TransactionIngest {
         amountText: String?,
         merchant: String?
     ) -> Salvaged {
+        var isRefund = false
+        if let a = amount, a < 0 {
+            isRefund = true
+        }
+        for txt in [amountText, merchant] {
+            if let raw = txt?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                if raw.hasPrefix("-") || raw.hasPrefix("\u{2212}") || raw.hasPrefix("\u{2013}") || raw.hasPrefix("(")
+                    || raw.localizedCaseInsensitiveContains("זיכוי") || raw.localizedCaseInsensitiveContains("החזר")
+                    || raw.localizedCaseInsensitiveContains("refund") || raw.localizedCaseInsensitiveContains("credit") {
+                    isRefund = true
+                }
+            }
+        }
+
         // 0. Support structured JSON payloads (e.g. {"amount": 45.9, "merchant": "AM:PM"})
         for candidate in [merchant, amountText] {
             if let text = candidate, text.contains("{") && text.contains("}") {
@@ -185,7 +206,9 @@ public enum TransactionIngest {
                         ?? (dict["Merchant"] as? String)
                         ?? (dict["Name"] as? String)
                     if jsonAmount != nil || jsonMerchant != nil {
-                        return Salvaged(amount: jsonAmount, merchant: jsonMerchant)
+                        let finalJsonAmt = jsonAmount.map { abs($0) }
+                        let finalIsRefund = isRefund || (jsonAmount.map { $0 < 0 } ?? false)
+                        return Salvaged(amount: finalJsonAmt, merchant: jsonMerchant, isRefund: finalIsRefund)
                     }
                 }
             }
@@ -194,15 +217,26 @@ public enum TransactionIngest {
         // The merchant field is only a last resort for the amount, and only when the text
         // actually looks like money. "Kokpit 67" is a shop with a number in its name, not a
         // ₪67 charge — guessing there would invent a wrong amount instead of asking.
-        let recoveredAmount = normalizedAmount(amount, amountText)
-            ?? amountLikeValue(in: merchant)
+        var recoveredAmount = normalizedAmount(amount, amountText)
+        if recoveredAmount == nil && isRefund {
+            if let a = amount, a < 0, a.isFinite {
+                recoveredAmount = abs(a)
+            } else if let raw = amountText?.trimmingCharacters(in: .whitespacesAndNewlines) {
+                let stripped = raw.trimmingCharacters(in: CharacterSet(charactersIn: "-–—() \t\n\u{2212}\u{2013}"))
+                recoveredAmount = normalizedAmount(nil, stripped)
+            }
+        }
+
+        if recoveredAmount == nil {
+            recoveredAmount = amountLikeValue(in: merchant)
+        }
 
         var recoveredMerchant = normalizedMerchant(merchant).flatMap(nameWithoutAmount)
         if recoveredMerchant == nil {
             recoveredMerchant = normalizedMerchant(amountText).flatMap(nameWithoutAmount)
         }
 
-        return Salvaged(amount: recoveredAmount, merchant: recoveredMerchant)
+        return Salvaged(amount: recoveredAmount, merchant: recoveredMerchant, isRefund: isRefund)
     }
 
     /// An amount embedded in free text, accepted only when it is marked as money — by a
@@ -392,11 +426,12 @@ public enum TransactionIngest {
         date: Date,
         existing: [Transaction],
         allowZeroFallback: Bool = false,
+        isRefundHint: Bool = false,
         rules: [MerchantRule] = []
     ) throws -> Transaction {
         // 1. Recover amount from numeric parameter, text parameter, or embedded within merchant string
         var cleanAmount = normalizedAmount(amount, amountText)
-        var isRefund = false
+        var isRefund = isRefundHint
         if cleanAmount == nil {
             // Check if it was a negative amount (refund)
             if let a = amount, a < 0, a.isFinite {
@@ -419,7 +454,8 @@ public enum TransactionIngest {
         }
 
         // 2. Recover merchant name
-        let cleanMerchant = normalizedMerchant(merchant) ?? "Apple Pay (לא זוהה)"
+        let hasExplicitMerchant = (normalizedMerchant(merchant) != nil)
+        let cleanMerchant = normalizedMerchant(merchant) ?? "לא זוהה"
 
         if finalParsedAmount > 0 {
             guard !isDuplicate(merchant: cleanMerchant, amount: finalParsedAmount, date: date, in: existing) else {
@@ -429,13 +465,22 @@ public enum TransactionIngest {
 
         // The user's own corrections win over keyword guessing — a rule the user set is
         // knowledge, not a guess, so it also lands at full confidence.
-        let classification = MerchantRuleService.classify(
-            merchant: cleanMerchant,
-            amount: finalParsedAmount,
-            rules: rules
-        )
+        let classification: ClassificationResult
+        if hasExplicitMerchant {
+            classification = MerchantRuleService.classify(
+                merchant: cleanMerchant,
+                amount: finalParsedAmount,
+                rules: rules
+            )
+        } else {
+            classification = ClassificationResult(
+                category: .other,
+                buildingId: "city_sorting_hub",
+                confidence: 0.0
+            )
+        }
 
-        let isRecognized = (finalParsedAmount > 0) && (normalizedMerchant(merchant) != nil) && (classification.confidence >= 0.8)
+        let isRecognized = (finalParsedAmount > 0) && hasExplicitMerchant && (classification.confidence >= 0.8)
 
         // Currency FX conversion
         var finalAmount = finalParsedAmount
@@ -455,11 +500,6 @@ public enum TransactionIngest {
         // swapping the label meant one ₺2,400 dinner in Istanbul raised the Israeli month by
         // 2,400 shekels, with the stored currency correctly reading "TRY" and nothing
         // anywhere looking wrong.
-        //
-        // Two ways in, neither of them a mistake by the user: a currency outside the four the
-        // app knows (sanitizedCurrency accepts any short non-numeric string, so "CHF", "TRY"
-        // and "AED" all reach here), or the FX toggle turned off — which reads like it only
-        // stops a network call.
         var needsCurrencyReview = false
 
         if let rawCurrType = CurrencyType(symbolOrCode: currency) {
@@ -470,12 +510,8 @@ public enum TransactionIngest {
                 finalCurrency = baseCurrType.symbol
                 originalAmount = finalParsedAmount
                 originalCurrency = rawCurrType.symbol
-                // The rate actually applied, which is not the rate to shekels whenever the
-                // base currency is not the shekel.
                 exchangeRate = finalParsedAmount > 0 ? finalAmount / finalParsedAmount : nil
             } else {
-                // Left in its own currency on purpose, and parked so it cannot be silently
-                // added to a total kept in another one.
                 finalAmount = finalParsedAmount
                 finalCurrency = rawCurrType.symbol
                 originalAmount = finalParsedAmount
@@ -484,7 +520,6 @@ public enum TransactionIngest {
             }
         } else if !currency.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   currency != baseCurrType.symbol {
-            // A currency the app has no rate for at all.
             finalAmount = finalParsedAmount
             finalCurrency = currency
             originalAmount = finalParsedAmount
@@ -494,19 +529,22 @@ public enum TransactionIngest {
             finalCurrency = baseCurrType.symbol
         }
 
+        let isConfirmed = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? false : isRecognized
+        let confidenceScore: Double = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? 0.5 : (isRecognized ? classification.confidence : 0.0)
+        let note: String? = isRefund
+            ? "זיכוי / החזר מ-Apple Pay (ממתין לבדיקתך)"
+            : (!hasExplicitMerchant ? "Apple Pay (בית עסק לא זוהה - ממתין למיון)" : nil)
+
         return Transaction(
             amount: isRefund ? -finalAmount : finalAmount,
             currency: finalCurrency,
             merchant: cleanMerchant,
             category: classification.category,
             timestamp: date,
-            confidenceScore: (isRefund || needsCurrencyReview) ? 0.5 : (isRecognized ? classification.confidence : 0.0),
+            confidenceScore: confidenceScore,
             isManual: false,
-            // Anything missing a merchant, amount, or with low confidence is parked for the user to review.
-            // Refunds are always parked for user review so they never alter spending without confirmation.
-            // So is an amount in a currency the app could not convert.
-            isConfirmed: (isRefund || needsCurrencyReview) ? false : isRecognized,
-            note: isRefund ? "זיכוי / החזר מ-Apple Pay (ממתין לבדיקתך)" : nil,
+            isConfirmed: isConfirmed,
+            note: note,
             buildingId: classification.buildingId,
             originalAmount: originalAmount,
             originalCurrency: originalCurrency,

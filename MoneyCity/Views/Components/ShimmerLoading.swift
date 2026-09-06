@@ -159,7 +159,6 @@ public struct CategorySkeletonGrid: View {
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .background(Color.cardBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.borderSubtle, lineWidth: 1.2))
             }
         }
         .padding(.horizontal, 20)

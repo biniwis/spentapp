@@ -183,15 +183,27 @@ public final class DatabaseService {
     }
     
     public func delete(transaction: Transaction) async throws {
+        let hadGoal = transaction.savingsGoalId != nil
         context.delete(transaction)
         try context.save()
+        if hadGoal {
+            _ = await MainActor.run {
+                SavingsGoalService.reconcileAll(context: context)
+            }
+        }
     }
     
     public func delete(transactions: [Transaction]) async throws {
+        let hadGoal = transactions.contains { $0.savingsGoalId != nil }
         for t in transactions {
             context.delete(t)
         }
         try context.save()
+        if hadGoal {
+            _ = await MainActor.run {
+                SavingsGoalService.reconcileAll(context: context)
+            }
+        }
     }
     
     public func deleteAllTransactions() async throws {
@@ -382,11 +394,15 @@ public final class DatabaseService {
             "shop_tech": 0.0,
             "shop_travel": 0.0,
             "shop_arcade": 0.0,
+            "health_pharmacy": 0.0,
+            "finance_bank": 0.0,
             "trans_station": 0.0,
             "house_tower": 0.0,
             "house_util": 0.0,
             "house_subs": 0.0,
-            "savings_sanctuary": 0.0
+            "savings_sanctuary": 0.0,
+            "museum_curiosities": 0.0,
+            "city_sorting_hub": 0.0
         ]
         
         for t in txs {
@@ -394,6 +410,57 @@ public final class DatabaseService {
             totals[bId, default: 0.0] += t.amount
         }
         return totals
+    }
+
+    // MARK: - Safe Persistence Boundary
+
+    /// Standardized persistence boundary for SwiftData writes.
+    /// Captures errors, logs with caller context, and returns whether save succeeded.
+    @discardableResult
+    public func save(context: ModelContext? = nil, caller: String = #function) -> Bool {
+        let ctx = context ?? self.context
+        guard ctx.hasChanges else { return true }
+        do {
+            try ctx.save()
+            return true
+        } catch {
+            MoneyCityLog.error("[DatabaseService.save] Failed to save in \(caller): \(error)")
+            #if DEBUG
+            print("[DatabaseService.save] Failed to save in \(caller): \(error)")
+            #endif
+            return false
+        }
+    }
+
+    /// Throws when callers need to present error UI or rollback.
+    public func saveOrThrow(context: ModelContext? = nil, caller: String = #function) throws {
+        let ctx = context ?? self.context
+        guard ctx.hasChanges else { return }
+        do {
+            try ctx.save()
+        } catch {
+            MoneyCityLog.error("[DatabaseService.saveOrThrow] Failed in \(caller): \(error)")
+            #if DEBUG
+            print("[DatabaseService.saveOrThrow] Failed in \(caller): \(error)")
+            #endif
+            throw error
+        }
+    }
+
+    /// Static safe save helper for Views with injected @Environment(\.modelContext)
+    @discardableResult
+    public static func safeSave(_ context: ModelContext, caller: String = #function) -> Bool {
+        guard context.hasChanges else { return true }
+        do {
+            try context.save()
+            return true
+        } catch {
+            MoneyCityLog.error("[DatabaseService.safeSave] Failed in \(caller): \(error)")
+            #if DEBUG
+            print("[DatabaseService.safeSave] Failed in \(caller): \(error)")
+            #endif
+            return false
+        }
     }
     
     // MARK: - Reset

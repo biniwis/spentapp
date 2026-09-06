@@ -27,6 +27,40 @@ public struct BehavioralHabits: Sendable {
     }
 }
 
+/// The visual weight of a district in the living city. A district is always present;
+/// spending only determines how active and prominent it becomes this month.
+public enum CityDistrictProminence: String, Codable, Sendable {
+    case quiet
+    case active
+    case developed
+    case dominant
+}
+
+/// A presentation-ready reading of one financial category for the city renderer.
+/// Keeping this derived state in Swift makes the city rules testable and prevents the
+/// WebGL scene from having to invent financial meaning from raw transactions.
+public struct CityDistrictState: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let amount: Double
+    public let share: Double
+    public let activity: Double
+    public let prominence: CityDistrictProminence
+
+    public init(
+        id: String,
+        amount: Double,
+        share: Double,
+        activity: Double,
+        prominence: CityDistrictProminence
+    ) {
+        self.id = id
+        self.amount = amount
+        self.share = share
+        self.activity = activity
+        self.prominence = prominence
+    }
+}
+
 /// Computed model for a specific month's diorama state and living city simulation.
 public struct MonthlyCity: Identifiable, Sendable {
     public let id: String // Format: "YYYY-MM"
@@ -47,6 +81,8 @@ public struct MonthlyCity: Identifiable, Sendable {
     public var everydayBaseline: Double
     public var categoryTotals: [SpendingCategory: Double]
     public var buildingTotals: [String: Double]
+    public var districtStates: [CityDistrictState]
+    public var venueStates: [CityVenueState]
     public var tiles: [BuildingTile]
     public var headlineStory: String
     public var habits: BehavioralHabits
@@ -68,6 +104,8 @@ public struct MonthlyCity: Identifiable, Sendable {
         everydayBaseline: Double = 0,
         categoryTotals: [SpendingCategory: Double] = [:],
         buildingTotals: [String: Double] = [:],
+        districtStates: [CityDistrictState] = [],
+        venueStates: [CityVenueState] = [],
         tiles: [BuildingTile] = [],
         headlineStory: String = "",
         habits: BehavioralHabits = BehavioralHabits()
@@ -84,6 +122,8 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.everydayBaseline = everydayBaseline
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
+        self.districtStates = districtStates
+        self.venueStates = venueStates
         self.tiles = tiles
         self.headlineStory = headlineStory
         self.habits = habits

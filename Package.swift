@@ -14,6 +14,9 @@ let package = Package(
         .target(
             name: "MoneyCity",
             path: "MoneyCity",
+            exclude: [
+                "MoneyCity.entitlements"
+            ],
             resources: [
                 .process("Resources")
             ]

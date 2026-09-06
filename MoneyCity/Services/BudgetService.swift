@@ -47,7 +47,14 @@ public struct CashFlow: Sendable {
     public let savedToSavings: Double
 
     /// What is genuinely unspent — income minus everything that left, transfers included.
-    public var leftover: Double { max(0, income - spent - savedToSavings) }
+    /// Net cashflow leftover. Can be negative when spending + savings exceed income (deficit).
+    public var leftover: Double { income - spent - savedToSavings }
+    
+    /// True when the user is operating at a financial deficit for the month.
+    public var isDeficit: Bool { leftover < 0 }
+
+    /// The deficit amount (positive value) if operating at a deficit, or 0.
+    public var deficit: Double { max(0, -leftover) }
 
     public init(income: Double, spent: Double, savedToSavings: Double) {
         self.income = income

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// Represents a completed month's structured recap and architectural story.
 public struct MonthlyRecap: Identifiable, Sendable, Equatable {
@@ -81,6 +82,16 @@ public struct MonthlyRecap: Identifiable, Sendable, Equatable {
         public let subtitleHe: String
         public let subtitleEn: String
         public let badgeIcon: String
+
+        public var moneyIcon: MoneyIconName {
+            switch badgeIcon {
+            case "leaf.fill", "leaf": return .leaf
+            case "building.2.fill", "building": return .home
+            case "tree.fill", "tree": return .island
+            case "flame.fill", "flame": return .flame
+            default: return .star
+            }
+        }
     }
 }
 

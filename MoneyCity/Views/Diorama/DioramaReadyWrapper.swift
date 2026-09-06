@@ -14,6 +14,8 @@ public struct DioramaReadyWrapper: View {
     public let isOverview: Bool
     public let categoryTotals: [SpendingCategory: Double]
     public let buildingTotals: [String: Double]
+    public let districtStates: [CityDistrictState]
+    public let venueStates: [CityVenueState]
     public let habits: BehavioralHabits
     public let enrichmentIds: [String]
     public let newlyUnlockedEnrichmentId: String?
@@ -36,6 +38,8 @@ public struct DioramaReadyWrapper: View {
         isOverview: Bool = false,
         categoryTotals: [SpendingCategory: Double],
         buildingTotals: [String: Double],
+        districtStates: [CityDistrictState],
+        venueStates: [CityVenueState] = [],
         habits: BehavioralHabits,
         enrichmentIds: [String],
         newlyUnlockedEnrichmentId: String?,
@@ -55,6 +59,8 @@ public struct DioramaReadyWrapper: View {
         self.isOverview = isOverview
         self.categoryTotals = categoryTotals
         self.buildingTotals = buildingTotals
+        self.districtStates = districtStates
+        self.venueStates = venueStates
         self.habits = habits
         self.enrichmentIds = enrichmentIds
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
@@ -78,6 +84,8 @@ public struct DioramaReadyWrapper: View {
                 isOverview: isOverview,
                 categoryTotals: categoryTotals,
                 buildingTotals: buildingTotals,
+                districtStates: districtStates,
+                venueStates: venueStates,
                 habits: habits,
                 enrichmentIds: enrichmentIds,
                 newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,

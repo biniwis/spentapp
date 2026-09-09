@@ -597,6 +597,9 @@ public struct MainCityView: View {
                         // you were already on the city tab, and the only way out was the
                         // "back to city" button on a card that is not always on screen.
                         onTabTapped: { tab in
+                            if isQuickActionActive {
+                                closeQuickAction()
+                            }
                             guard tab == "city" else { return }
                             handleSelectDistrict(nil)
                             // Rotation, tilt, zoom and pan all live inside city mode, so
@@ -665,6 +668,11 @@ public struct MainCityView: View {
             if canPresent {
                 checkCityTapHint()
                 checkRecurringCoachmark()
+            }
+        }
+        .onChange(of: activeTab) { _, _ in
+            if isQuickActionActive {
+                closeQuickAction()
             }
         }
         .onReceive(confirmationCoordinator.$activeConfirmation) { newConf in

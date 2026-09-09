@@ -437,12 +437,14 @@ struct RecapSceneFrame: View {
     }
     private var textAlignment: TextAlignment { .leading }
     private var alignment: Alignment { .leading }
+    private var hAlignment: HorizontalAlignment { .leading }
     private func text(_ value: String, size: CGFloat, at start: Double, width: CGFloat = 338, hero: Bool = false) -> some View {
         Text(value).font(.appFont(size, weight: hero ? .black : .medium))
             .tracking(hero && !he ? -2 : 0)
             .multilineTextAlignment(textAlignment)
             .lineLimit(hero && (shot == .total || shot == .activity) ? 1 : (hero ? 2 : 3)).minimumScaleFactor(hero ? 0.48 : 0.75)
             .frame(width: width, alignment: alignment)
+            .fixedSize(horizontal: false, vertical: true)
             .offset(y: (1 - beat.ease(start, 0.55)) * (hero ? 25 : 14))
             .mask(Rectangle().scaleEffect(y: hero ? beat.ease(start, 0.55) : 1, anchor: .bottom))
             .opacity(hero ? 1 : Double(beat.ease(start, 0.4)))
@@ -454,8 +456,14 @@ struct RecapSceneFrame: View {
             Circle().fill(accent.opacity(0.3)).frame(width: 320, height: 320)
                 .offset(x: 230 - 45 * beat.ease(0.5, 1.8), y: -70)
                 .opacity(Double(beat.progress(0.5, 0.3)))
-            text(copy.hero, size: 100, at: 1.0, width: 358, hero: true).offset(x: 20, y: 190)
-            text(copy.year + " · " + copy.statement, size: 14, at: 1.8).offset(x: 26, y: 340)
+
+            VStack(alignment: hAlignment, spacing: 10) {
+                text(copy.hero, size: he ? 74 : 88, at: 1.0, width: 358, hero: true)
+                text(copy.year + " · " + copy.statement, size: 14, at: 1.8)
+            }
+            .frame(width: 358, alignment: alignment)
+            .offset(x: 20, y: 180)
+
             RecapSkyline(beat: beat, start: 2.3, lights: 3.2, accent: accent, quiet: recap.transactionCount == 0)
                 .frame(width: 280, height: 160).offset(x: 84, y: 510)
             RecapRoad(progress: beat.ease(2.3, 0.6), color: .deepNavy).frame(width: W, height: 3).offset(y: 672)
@@ -465,9 +473,14 @@ struct RecapSceneFrame: View {
         ZStack(alignment: .topLeading) {
             RecapSkyline(beat: beat, start: 0.6, lights: 3.5, accent: accent, quiet: recap.transactionCount == 0)
                 .frame(width: 390, height: 220).offset(x: 0, y: 450)
-            text(copy.hero, size: 100, at: 1.9, hero: true)
-                .scaleEffect(0.96 + 0.04 * beat.ease(1.9)).offset(x: 26, y: 180)
-            text(copy.statement, size: 23, at: 3.0).offset(x: 26, y: 340)
+
+            VStack(alignment: hAlignment, spacing: 12) {
+                text(copy.hero, size: he ? 74 : 84, at: 1.9, hero: true)
+                    .scaleEffect(0.96 + 0.04 * beat.ease(1.9))
+                text(copy.statement, size: 22, at: 3.0)
+            }
+            .frame(width: 338, alignment: alignment)
+            .offset(x: 26, y: 175)
         }.frame(width: W, height: H, alignment: .topLeading)
     }
     private var activity: some View {
@@ -483,10 +496,14 @@ struct RecapSceneFrame: View {
                 .frame(width: 260, height: 440)
                 .offset(x: 120, y: 375)
 
-            text(copy.hero, size: 84, at: 0.5, width: 338, hero: true).offset(x: 26, y: 105)
-            text(copy.statement, size: 28, at: 2.1, width: 338).offset(x: 26, y: 195)
-            text(recap.transactionCount == 0 ? (he ? "החלונות מחכים לרגע הבא." : "Windows waiting for the next moment.") : copy.detail,
-                 size: 16, at: 2.7, width: 338).offset(x: 26, y: 240)
+            VStack(alignment: hAlignment, spacing: 8) {
+                text(copy.hero, size: 68, at: 0.5, width: 338, hero: true)
+                text(copy.statement, size: 24, at: 2.1, width: 338)
+                text(recap.transactionCount == 0 ? (he ? "החלונות מחכים לרגע הבא." : "Windows waiting for the next moment.") : copy.detail,
+                     size: 16, at: 2.7, width: 338)
+            }
+            .frame(width: 338, alignment: alignment)
+            .offset(x: 26, y: 105)
         }.frame(width: W, height: H, alignment: .topLeading)
     }
     private var district: some View {
@@ -496,9 +513,13 @@ struct RecapSceneFrame: View {
                 .frame(width: 320, height: 380)
                 .offset(x: -30, y: 440)
 
-            text(copy.statement, size: 15, at: 2.3).offset(x: 26, y: 115)
-            text(copy.hero, size: 85, at: 2.8, hero: true).offset(x: 26, y: 155)
-            text(copy.detail, size: 21, at: 3.5).offset(x: 26, y: 290)
+            VStack(alignment: hAlignment, spacing: 10) {
+                text(copy.statement, size: 16, at: 2.3)
+                text(copy.hero, size: he ? 54 : 64, at: 2.8, hero: true)
+                text(copy.detail, size: 20, at: 3.5)
+            }
+            .frame(width: 338, alignment: alignment)
+            .offset(x: 26, y: 115)
         }.frame(width: W, height: H, alignment: .topLeading)
     }
     @ViewBuilder private func dynamic(_ insight: MonthlyRecapDynamicInsight) -> some View {
@@ -512,9 +533,13 @@ struct RecapSceneFrame: View {
                         .frame(width: 125, height: 140)
                         .offset(x: CGFloat(item) * 115 - 40 + (1 - beat.ease(0.6 + [0, 0.5, 0.8, 1.0][item])) * 200, y: 510)
                 }
-                text(copy.statement, size: 27, at: 2.0).offset(x: 26, y: 110)
-                text(copy.hero, size: 79, at: 2.5, hero: true).offset(x: 26, y: 230)
-                text(copy.detail, size: 20, at: 3.2).offset(x: 26, y: 370)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 24, at: 2.0)
+                    text(copy.hero, size: he ? 54 : 64, at: 2.5, hero: true)
+                    text(copy.detail, size: 19, at: 3.2)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
             }
         case .biggestPurchase:
             ZStack(alignment: .topLeading) {
@@ -523,16 +548,24 @@ struct RecapSceneFrame: View {
                 RecapBuilding(accent: accent, rows: 9, beat: beat, lights: 4.5)
                     .frame(width: 96, height: 320 * beat.ease(1.0, 1.5))
                     .position(x: 320, y: 670 - 320 * beat.ease(1, 1.5) / 2)
-                text(copy.statement, size: 26, at: 2.5).offset(x: 26, y: 110)
-                text(copy.hero, size: 88, at: 3.0, hero: true).offset(x: 26, y: 230)
-                text(copy.detail, size: 18, at: 3.6, width: 248).offset(x: 26, y: 370)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 24, at: 2.5)
+                    text(copy.hero, size: he ? 58 : 68, at: 3.0, hero: true)
+                    text(copy.detail, size: 18, at: 3.6, width: 338)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
             }
         case .biggestDay:
             ZStack(alignment: .topLeading) {
                 RecapStreet(beat: beat, accent: accent).frame(width: W, height: 180).offset(y: 490)
-                text(copy.statement, size: 28, at: 2.2).offset(x: 26, y: 110)
-                text(copy.hero, size: 85, at: 2.6, hero: true).offset(x: 26, y: 230)
-                text(copy.detail, size: 19, at: 3.3).offset(x: 26, y: 370)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 24, at: 2.2)
+                    text(copy.hero, size: he ? 58 : 68, at: 2.6, hero: true)
+                    text(copy.detail, size: 19, at: 3.3)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
             }
         case .monthChange:
             ZStack(alignment: .topLeading) {
@@ -540,9 +573,13 @@ struct RecapSceneFrame: View {
                     .frame(width: 330, height: 150).offset(x: 34 - 400 * beat.ease(1.1, 0.7), y: 520)
                 RecapSkyline(beat: beat, start: 1.3, lights: 4.5, accent: accent, quiet: insight.primaryValue < 0)
                     .frame(width: 350, height: 180).offset(x: 26 + 390 * (1 - beat.ease(1.3, 0.7)), y: 490)
-                text(copy.statement, size: 28, at: 2.0).offset(x: 26, y: 110)
-                text(copy.hero, size: 106, at: 2.6, hero: true).offset(x: 26, y: 230)
-                text(copy.detail, size: 19, at: 3.3).offset(x: 26, y: 370)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 24, at: 2.0)
+                    text(copy.hero, size: he ? 64 : 76, at: 2.6, hero: true)
+                    text(copy.detail, size: 19, at: 3.3)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
             }
         case .categoryChange:
             ZStack(alignment: .topLeading) {
@@ -551,16 +588,24 @@ struct RecapSceneFrame: View {
                     .rotationEffect(.degrees(-24)).offset(x: -40, y: 550)
                 RecapTree(accent: accent).frame(width: 80, height: 120).offset(x: 250, y: 430)
                     .opacity(Double(beat.ease(0.4)))
-                text(copy.statement, size: 28, at: 2.0).offset(x: 26, y: 110)
-                text(copy.hero, size: 104, at: 2.6, hero: true).offset(x: 26, y: 230)
-                text(copy.detail, size: 19, at: 3.3).offset(x: 26, y: 370)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 24, at: 2.0)
+                    text(copy.hero, size: he ? 58 : 68, at: 2.6, hero: true)
+                    text(copy.detail, size: 19, at: 3.3)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
             }
         case .weekendRhythm:
             ZStack(alignment: .topLeading) {
                 RecapPark(beat: beat, start: 0.5).frame(width: 330, height: 200).offset(x: 44, y: 470)
-                text(copy.statement, size: 23, at: 1.6).offset(x: 26, y: 110)
-                text(copy.hero, size: 84, at: 2.2, hero: true).offset(x: 26, y: 190)
-                text(copy.detail, size: 18, at: 3.2).offset(x: 26, y: 370)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 22, at: 1.6)
+                    text(copy.hero, size: he ? 54 : 64, at: 2.2, hero: true)
+                    text(copy.detail, size: 18, at: 3.2)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
             }
         }
         }.frame(width: W, height: H, alignment: .topLeading)
@@ -583,74 +628,73 @@ struct RecapSceneFrame: View {
             .scaleEffect(1.65 - 0.65 * beat.ease(0, 2.7), anchor: .bottom)
             .offset(x: 24, y: 430)
 
-            // ── Hero title ──
-            text(copy.hero, size: 46, at: 3.2, hero: true).offset(x: 26, y: 135)
+            VStack(alignment: hAlignment, spacing: 8) {
+                // ── Hero title ──
+                text(copy.hero, size: 40, at: 3.2, hero: true)
 
-            // ── Row 1: total spend · transaction count ──
-            text(
-                currency + recap.totalSpent.formatted(.number.precision(.fractionLength(0))) +
-                " · " + String(recap.transactionCount) +
-                (he
-                    ? (recap.transactionCount == 1 ? " רכישה" : " רכישות")
-                    : (recap.transactionCount == 1 ? " purchase" : " purchases")),
-                size: 18, at: 3.7, width: 270
-            ).offset(x: 26, y: 240)
+                // ── Row 1: total spend · transaction count ──
+                text(
+                    currency + recap.totalSpent.formatted(.number.precision(.fractionLength(0))) +
+                    " · " + String(recap.transactionCount) +
+                    (he
+                        ? (recap.transactionCount == 1 ? " רכישה" : " רכישות")
+                        : (recap.transactionCount == 1 ? " purchase" : " purchases")),
+                    size: 17, at: 3.7, width: 280
+                )
 
-            // ── Row 2: budget remaining OR biggest spending day ──
-            Group {
+                // ── Row 2: budget remaining OR biggest spending day ──
                 if let remaining = recap.remainingBudget, remaining > 0 {
                     let line = he
                         ? "נותרו \(currency)\(Int(remaining.rounded())) מהתקציב החודשי"
                         : "\(currency)\(Int(remaining.rounded())) left of monthly budget"
-                    text(line, size: 14, at: 4.1, width: 270).offset(x: 26, y: 272)
+                    text(line, size: 14, at: 4.1, width: 280)
                 } else if let day = recap.biggestSpendingDay {
                     let line = he
                         ? "יום שיא: \(day.formattedDateHe) · \(currency)\(Int(day.amount.rounded()))"
                         : "Peak day: \(day.formattedDateEn) · \(currency)\(Int(day.amount.rounded()))"
-                    text(line, size: 14, at: 4.1, width: 270).offset(x: 26, y: 272)
+                    text(line, size: 14, at: 4.1, width: 280)
                 }
-            }
 
-            // ── Row 3: biggest district + share-of-total ──
-            if let d = recap.biggestDistrict, recap.totalSpent > 0 {
-                let pct = Int((d.amount / recap.totalSpent * 100).rounded())
-                let line = he
-                    ? "רובע מוביל: \(d.nameHe) · \(pct)% · \(currency)\(Int(d.amount.rounded()))"
-                    : "Top district: \(d.nameEn) · \(pct)% · \(currency)\(Int(d.amount.rounded()))"
-                text(line, size: 14, at: 4.5, width: 270).offset(x: 26, y: 300)
-            }
+                // ── Row 3: biggest district + share-of-total ──
+                if let d = recap.biggestDistrict, recap.totalSpent > 0 {
+                    let pct = Int((d.amount / recap.totalSpent * 100).rounded())
+                    let line = he
+                        ? "רובע מוביל: \(d.nameHe) · \(pct)% · \(currency)\(Int(d.amount.rounded()))"
+                        : "Top district: \(d.nameEn) · \(pct)% · \(currency)\(Int(d.amount.rounded()))"
+                    text(line, size: 14, at: 4.5, width: 280)
+                }
 
-            // ── Row 4: month-over-month comparison ──
-            if let comp = recap.comparisonVsPrevMonth {
-                let sign = comp.isDecrease ? "↓" : "↑"
-                let dir = comp.isDecrease ? (he ? "פחות" : "less") : (he ? "יותר" : "more")
-                let pct = Int(comp.percentChange.rounded())
-                let name = he ? comp.prevMonthNameHe : comp.prevMonthNameEn
-                let line = he
-                    ? "\(sign) \(pct)% \(dir) מ\(name)"
-                    : "\(sign) \(pct)% \(dir) than \(name)"
-                text(line, size: 14, at: 5.0, width: 270).offset(x: 26, y: 328)
-            }
+                // ── Row 4: month-over-month comparison ──
+                if let comp = recap.comparisonVsPrevMonth {
+                    let sign = comp.isDecrease ? "↓" : "↑"
+                    let dir = comp.isDecrease ? (he ? "פחות" : "less") : (he ? "יותר" : "more")
+                    let pct = Int(comp.percentChange.rounded())
+                    let name = he ? comp.prevMonthNameHe : comp.prevMonthNameEn
+                    let line = he
+                        ? "\(sign) \(pct)% \(dir) מ\(name)"
+                        : "\(sign) \(pct)% \(dir) than \(name)"
+                    text(line, size: 14, at: 5.0, width: 280)
+                }
 
-            // ── Row 5: top repeated merchant OR busiest district fallback ──
-            Group {
+                // ── Row 5: top repeated merchant OR busiest district fallback ──
                 if let m = recap.mostRepeatedStop {
                     let line = he
                         ? "\(m.merchantName) — \(m.visitCount) ביקורים החודש"
                         : "\(m.merchantName) — \(m.visitCount) visits this month"
-                    text(line, size: 14, at: 5.5, width: 270).offset(x: 26, y: 356)
+                    text(line, size: 14, at: 5.5, width: 280)
                 } else if let b = recap.busiestDistrict, b.category != recap.biggestDistrict?.category {
                     let line = he
                         ? "הכי פעיל: \(b.nameHe) · \(b.transactionCount) עסקאות"
                         : "Most active: \(b.nameEn) · \(b.transactionCount) transactions"
-                    text(line, size: 14, at: 5.5, width: 270).offset(x: 26, y: 356)
+                    text(line, size: 14, at: 5.5, width: 280)
                 }
             }
+            .frame(width: 290, alignment: alignment)
+            .offset(x: 26, y: 130)
 
             // Car animation sweeps across bottom safely above footer
             RecapCar(accent: accent).frame(width: 44, height: 26)
                 .offset(x: -60 + 530 * beat.progress(7.2, 0.8), y: 690)
-                .opacity(time >= 7.2 && time < 8.0 ? 1 : 0)
         }.frame(width: W, height: H, alignment: .topLeading)
     }
 }

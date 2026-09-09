@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מדיניות פרטיות | SPENT Privacy Policy</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-light: #EEF2FF;
+            --text-main: #0F172A;
+            --text-secondary: #475569;
+            --bg-page: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --border-color: #E2E8F0;
+            --success: #10B981;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #6366F1;
+                --primary-light: #1E1B4B;
+                --text-main: #F8FAFC;
+                --text-secondary: #94A3B8;
+                --bg-page: #0B0F19;
+                --bg-card: #151C2C;
+                --border-color: #242E42;
+                --success: #34D399;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            line-height: 1.65;
+            padding: 24px 16px;
+        }
+
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border-color);
+            padding: 40px 32px;
+        }
+
+        .header {
+            text-align: center;
+            padding-bottom: 28px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 32px;
+        }
+
+        .app-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .lang-switch {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .lang-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn.active {
+            background: var(--primary);
+            color: #FFFFFF;
+            border-color: var(--primary);
+        }
+
+        .highlight-box {
+            background: var(--primary-light);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .highlight-box .icon {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .highlight-box p {
+            font-size: 14px;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+
+        section {
+            margin-bottom: 28px;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        p {
+            font-size: 14.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        ul {
+            padding-right: 20px;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 14.5px;
+        }
+
+        li {
+            margin-bottom: 6px;
+        }
+
+        .footer {
+            text-align: center;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        [dir="ltr"] {
+            direction: ltr;
+            text-align: left;
+        }
+
+        [dir="ltr"] ul {
+            padding-right: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="app-badge">
+            <span>🏙️</span> SPENT
+        </div>
+        <h1 id="title">מדיניות פרטיות</h1>
+        <p class="subtitle" id="subtitle">עדכון אחרון: מרץ 2026 | Last updated: March 2026</p>
+        
+        <div class="lang-switch">
+            <button class="lang-btn active" onclick="setLang('he')">עברית</button>
+            <button class="lang-btn" onclick="setLang('en')">English</button>
+        </div>
+    </div>
+
+    <!-- Hebrew Content -->
+    <div id="content-he">
+        <div class="highlight-box">
+            <span class="icon">🛡️</span>
+            <p><strong>העיקרון המנחה של SPENT:</strong> ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד. אין לנו שרת מרכזי, ואיננו מחזיקים מאגר נתונים של ההוצאות שלך.</p>
+        </div>
+
+        <section>
+            <h2>1. עיבוד ושמירה מקומיים</h2>
+            <p>פרטי העסקאות, התקציבים ונתוני העיר נשמרים מקומית במכשיר באמצעות SwiftData. SPENT אינה מפעילה חשבון משתמש או בסיס נתונים בענן עבור המידע הפיננסי שלך.</p>
+        </section>
+
+        <section>
+            <h2>2. ללא מעקב וללא פרסום</h2>
+            <p>בהתאם להנחיות הפרטיות של Apple (App Store Review Guidelines 5.1.1):</p>
+            <ul>
+                <li>SPENT אינה משתמשת במידע הפיננסי שלך לצורכי מעקב, פרסום או פרופיל משתמש, ואינה שולחת את פרטי העסקאות לשירותי אנליטיקה של צד שלישי.</li>
+                <li>האפליקציה אינה כוללת ספריות צד שלישי למעקב פרסומי (ללא Facebook SDK, Google AdMob וכיו״ב).</li>
+                <li>איננו עוקבים אחר זהותך או פעילותך באפליקציות ואתרים אחרים, ומזהה המעקב של Apple (IDFA) אינו פעיל ואינו מבוקש.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>3. קליטת עסקאות באמצעות Shortcuts</h2>
+            <p>SPENT אינה ניגשת ל-Apple Pay או ל-Wallet ישירות. אם בחרת להגדיר אוטומציה אישית ב-Shortcuts, iOS מעביר ל-SPENT את פרטי העסקה שהוגדרו באוטומציה. SPENT אינה שולחת את פרטי העסקה לשרת שלה או לשירות צד שלישי.</p>
+        </section>
+
+        <section>
+            <h2>4. שערי מטבע</h2>
+            <p>לצורך המרת מט"ח, SPENT מבקשת משירות שערי חליפין את המטבעות הדרושים לחישוב. הבקשה אינה כוללת שמות בתי עסק, סכומי עסקאות או היסטוריית הוצאות. כמו בכל בקשת אינטרנט, ספק השירות עשוי לקבל מידע טכני של החיבור בהתאם למדיניות שלו.</p>
+        </section>
+
+        <section>
+            <h2>5. שליטה, ייצוא ומחיקה</h2>
+            <p>המידע שלך נשאר בשליטתך המלאה:</p>
+            <ul>
+                <li>אפשר לייצא גיבוי מקומי ולמחוק את נתוני SPENT מהמכשיר דרך ההגדרות.</li>
+                <li>קבצי גיבוי שייצאת בעצמך נשארים בשליטתך ויש למחוק אותם בנפרד.</li>
+                <li>מחיקת האפליקציה מהמכשיר מסירה את מסדי הנתונים המקומיים המשויכים לה.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>6. יצירת קשר</h2>
+            <p>לשאלות, הבהרות או סיוע בנושאי פרטיות, ניתן ליצור קשר ישירות בדוא"ל התמיכה: <a href="mailto:support@moneycity.app" style="color: var(--primary);">support@moneycity.app</a>.</p>
+        </section>
+    </div>
+
+    <!-- English Content -->
+    <div id="content-en" style="display: none;" dir="ltr">
+        <div class="highlight-box">
+            <span class="icon">🛡️</span>
+            <p><strong>SPENT Core Privacy Principle:</strong> At SPENT, your financial records, budgets, and city data are processed and stored locally on your device. We do not operate remote servers holding your financial data.</p>
+        </div>
+
+        <section>
+            <h2>1. Local Storage & Processing</h2>
+            <p>Your transaction history, budgets, and city data are stored locally on your device using SwiftData. SPENT does not operate user accounts or cloud databases for your financial data.</p>
+        </section>
+
+        <section>
+            <h2>2. No Tracking & No Advertising</h2>
+            <p>In accordance with Apple App Store Review Guideline 5.1.1:</p>
+            <ul>
+                <li>SPENT does not use your financial data for tracking, advertising, or user profiling, and does not send transaction details to third-party analytics services.</li>
+                <li>The app contains no third-party ad tracking or behavioral profiling SDKs.</li>
+                <li>Apple's Identifier for Advertisers (IDFA) is neither requested nor used.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>3. Transaction Ingest via Shortcuts</h2>
+            <p>SPENT does not directly access Apple Pay or Apple Wallet. If you choose to set up a personal automation in Shortcuts, iOS passes the transaction details configured in the automation to SPENT. SPENT does not send transaction details to its own server or any third-party service.</p>
+        </section>
+
+        <section>
+            <h2>4. Foreign Exchange Rates</h2>
+            <p>For foreign exchange conversion, SPENT requests the necessary currencies for calculation from an exchange rate service. The request does not include merchant names, transaction amounts, or spending history. As with any internet request, the service provider may receive technical connection information according to its policy.</p>
+        </section>
+
+        <section>
+            <h2>5. Control, Export & Deletion</h2>
+            <p>You maintain control of your data:</p>
+            <ul>
+                <li>You can export a local backup and delete SPENT data from your device through Settings.</li>
+                <li>Backup files you exported yourself remain under your control and must be deleted separately.</li>
+                <li>Deleting the app from your device removes all associated local databases.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>6. Contact & Inquiries</h2>
+            <p>If you have any questions regarding SPENT's privacy practices, please contact us at: <a href="mailto:support@moneycity.app" style="color: var(--primary);">support@moneycity.app</a>.</p>
+        </section>
+    </div>
+
+    <div class="footer">
+        <p>© 2026 SPENT. All rights reserved. Built with privacy by design.</p>
+    </div>
+</div>
+
+<script>
+    function setLang(lang) {
+        const heContent = document.getElementById('content-he');
+        const enContent = document.getElementById('content-en');
+        const title = document.getElementById('title');
+        const btns = document.querySelectorAll('.lang-btn');
+
+        if (lang === 'en') {
+            heContent.style.display = 'none';
+            enContent.style.display = 'block';
+            document.documentElement.dir = 'ltr';
+            document.documentElement.lang = 'en';
+            title.textContent = 'Privacy Policy';
+            btns[0].classList.remove('active');
+            btns[1].classList.add('active');
+        } else {
+            heContent.style.display = 'block';
+            enContent.style.display = 'none';
+            document.documentElement.dir = 'rtl';
+            document.documentElement.lang = 'he';
+            title.textContent = 'מדיניות פרטיות';
+            btns[0].classList.add('active');
+            btns[1].classList.remove('active');
+        }
+    }
+</script>
+
+</body>
+</html>

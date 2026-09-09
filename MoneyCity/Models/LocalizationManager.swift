@@ -210,7 +210,7 @@ public final class LocalizationManager: ObservableObject {
         // Settings Modal
         case "settings_header": return isHebrew ? "הגדרות" : "Settings"
         case "user_and_city": return isHebrew ? "פרטי העיר והמשתמש" : "User & City Info"
-        case "city_name": return isHebrew ? "שם העיר:" : "City Name:"
+        case "mayor_name": return isHebrew ? "שם ראש העיר:" : "Mayor Name:"
         case "base_currency": return isHebrew ? "מטבע ראשי:" : "Base Currency:"
         case "language_pref": return isHebrew ? "שפת הממשק:" : "App Language:"
         case "fx_auto_convert": return isHebrew ? "חישוב והמרת מט״ח אוטומטית" : "Auto Foreign Currency (FX) Conversion"

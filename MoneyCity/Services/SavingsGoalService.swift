@@ -133,7 +133,10 @@ public enum SavingsGoalService {
         let txDesc = FetchDescriptor<Transaction>(
             predicate: #Predicate<Transaction> { $0.savingsGoalId != nil }
         )
-        let txs = (try? context.fetch(txDesc)) ?? []
+        guard let txs = try? context.fetch(txDesc) else {
+            MoneyCityLog.error("SavingsGoalService.reconcileAll failed to fetch transactions; aborting reconciliation")
+            return false
+        }
 
         let changed = reconcile(goals: goals, transactions: txs)
         if changed {

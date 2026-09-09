@@ -162,7 +162,7 @@ public struct spent_fastEntryView: View {
             HStack(spacing: 5) {
                 Image(systemName: "building.2.fill")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color(red: 79/255, green: 70/255, blue: 229/255))
+                    .foregroundColor(Color(red: 34/255, green: 197/255, blue: 94/255))
                 Text(entry.isHebrew ? "הוצאות החודש" : "SPENT Month")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
@@ -193,15 +193,9 @@ public struct spent_fastEntryView: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(
-                LinearGradient(
-                    colors: [Color(red: 79/255, green: 70/255, blue: 229/255), Color(red: 99/255, green: 102/255, blue: 241/255)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
+            .background(Color(red: 34/255, green: 197/255, blue: 94/255))
             .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-            .shadow(color: Color(red: 79/255, green: 70/255, blue: 229/255).opacity(0.35), radius: 4, y: 2)
+            .shadow(color: Color(red: 34/255, green: 197/255, blue: 94/255).opacity(0.35), radius: 4, y: 2)
         }
         .padding(13)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -216,7 +210,7 @@ public struct spent_fastEntryView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "building.2.fill")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(Color(red: 79/255, green: 70/255, blue: 229/255))
+                        .foregroundColor(Color(red: 34/255, green: 197/255, blue: 94/255))
                     Text(entry.isHebrew ? "העיר שלך החודש" : "SPENT City")
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
@@ -236,44 +230,26 @@ public struct spent_fastEntryView: View {
             
             Spacer()
             
-            // Right Quick Action Buttons
-            VStack(spacing: 8) {
-                Link(destination: URL(string: "spentapp://quick-add")!) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 16, weight: .bold))
-                        Text(entry.isHebrew ? "הוסף הוצאה" : "Add Expense")
-                            .font(.system(size: 13, weight: .black, design: .rounded))
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(
-                            colors: [Color(red: 79/255, green: 70/255, blue: 229/255), Color(red: 99/255, green: 102/255, blue: 241/255)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    .shadow(color: Color(red: 79/255, green: 70/255, blue: 229/255).opacity(0.35), radius: 5, y: 2)
+            // Right Quick Action Button
+            Link(destination: URL(string: "spentapp://quick-add")!) {
+                VStack(spacing: 6) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22, weight: .bold))
+                    Text(entry.isHebrew ? "הוסף הוצאה" : "Add Expense")
+                        .font(.system(size: 13, weight: .black, design: .rounded))
+                    Text(entry.isHebrew ? "בלחיצה אחת +" : "Tap to Add +")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .opacity(0.85)
                 }
-                
-                Link(destination: URL(string: "spentapp://scan")!) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "camera.viewfinder")
-                            .font(.system(size: 13, weight: .bold))
-                        Text(entry.isHebrew ? "סריקת קבלה" : "Scan Receipt")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(Color(red: 79/255, green: 70/255, blue: 229/255))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 7)
-                    .background(Color(red: 238/255, green: 242/255, blue: 255/255))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.vertical, 12)
+                .padding(.horizontal, 8)
+                .background(Color(red: 34/255, green: 197/255, blue: 94/255))
+                .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                .shadow(color: Color(red: 34/255, green: 197/255, blue: 94/255).opacity(0.35), radius: 5, y: 2)
             }
-            .frame(width: 135)
+            .frame(width: 125)
         }
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

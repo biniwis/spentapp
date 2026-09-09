@@ -22,8 +22,14 @@ public struct MerchantDetailSheet: View {
     }
     
     private var merchantTransactions: [Transaction] {
-        allTransactions.filter {
-            $0.merchant.trimmingCharacters(in: .whitespacesAndNewlines).localizedCaseInsensitiveCompare(merchantName.trimmingCharacters(in: .whitespacesAndNewlines)) == .orderedSame
+        let target = merchantName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return allTransactions.filter { tx in
+            let m = tx.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+            if m.localizedCaseInsensitiveCompare(target) == .orderedSame {
+                return true
+            }
+            let sub = SubcategoryBreakdownService.shared.subcategoryName(for: tx, isHebrew: l10n.language == .hebrew)
+            return sub.localizedCaseInsensitiveCompare(target) == .orderedSame
         }
     }
     
@@ -81,7 +87,7 @@ public struct MerchantDetailSheet: View {
                                 Circle()
                                     .fill(selectedCategory.themeColor.opacity(0.15))
                                     .frame(width: 68, height: 68)
-                                CategoryVectorIcon(category: selectedCategory, color: selectedCategory.themeColor, size: 32)
+                                CategoryVectorIcon(category: selectedCategory, size: 36)
                             }
                             
                             VStack(spacing: 4) {
@@ -135,7 +141,7 @@ public struct MerchantDetailSheet: View {
                                                 applyCategoryChange(cat)
                                             }) {
                                                 HStack(spacing: 6) {
-                                                    CategoryVectorIcon(category: cat, color: isSel ? .white : cat.themeColor, size: 14)
+                                                    CategoryVectorIcon(category: cat, size: 16)
                                                     Text(cat.displayName)
                                                         .font(.system(size: 12, weight: isSel ? .bold : .semibold, design: .rounded))
                                                 }

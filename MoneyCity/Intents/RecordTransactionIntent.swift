@@ -78,25 +78,8 @@ public struct RecordTransactionIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        var effectiveAmount = amount
+        let effectiveAmount = amount
         var effectiveMerchant = merchant
-
-        let hasAmount = (effectiveAmount != nil && effectiveAmount! > 0)
-            || TransactionIngest.amountLikeValue(in: amountText) != nil
-            || TransactionIngest.normalizedAmount(nil, amountText) != nil
-            || TransactionIngest.amountLikeValue(in: merchant) != nil
-
-        if !hasAmount {
-            do {
-                let promptDialog = IntentDialog("💳 זוהה תשלום ב-Apple Pay. מה הסכום ששילמת?")
-                let requested = try await $amount.requestValue(promptDialog)
-                if requested > 0 {
-                    effectiveAmount = requested
-                }
-            } catch {
-                // If user dismissed or cancelled, proceed to log failure gracefully
-            }
-        }
 
         if (effectiveMerchant == nil || effectiveMerchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true) && (effectiveAmount != nil && effectiveAmount! > 0) {
             effectiveMerchant = "תשלום Apple Pay"
@@ -121,9 +104,24 @@ public struct RecordTransactionIntent: AppIntent {
             intentName: "RecordTransactionIntent"
         )
 
+        guard result.succeeded else {
+            throw IngestIntentError.executionFailed(result.message)
+        }
+
         let dialogMessage = MoneyCityLog.isDebugBuild
             ? "\(debugRaw)\n\n\(result.message)"
             : result.message
         return .result(dialog: IntentDialog(stringLiteral: dialogMessage))
+    }
+}
+
+public enum IngestIntentError: Swift.Error, CustomLocalizedStringResourceConvertible {
+    case executionFailed(String)
+
+    public var localizedStringResource: LocalizedStringResource {
+        switch self {
+        case .executionFailed(let msg):
+            return LocalizedStringResource(stringLiteral: msg)
+        }
     }
 }

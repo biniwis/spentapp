@@ -1,9 +1,26 @@
 #if !SWIFT_PACKAGE
 import SwiftUI
 import SwiftData
+#if canImport(UserNotifications)
+import UserNotifications
+#endif
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        #if canImport(UserNotifications)
+        NotificationService.setupDelegate()
+        #endif
+        return true
+    }
+}
 
 @main
 struct MoneyCityApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var l10n = LocalizationManager.shared
 
     var body: some Scene {
@@ -22,12 +39,9 @@ struct MoneyCityApp: App {
                 .environment(\.layoutDirection, l10n.layoutDirection)
                 .environmentObject(l10n)
                 .onAppear {
-                    // Pre-warm 3D Diorama WebGL context for zero-latency presentation
-                    ThreeDioramaView.warmUp()
-
                     // Background fetch latest currency exchange rates
                     Task {
-                        await FXService.shared.fetchLatestRates()
+                        await FXService.shared.fetchLatestRatesIfNeeded()
                     }
 
                     // Age out stale raw payloads even if no new one has arrived.
@@ -42,10 +56,6 @@ struct MoneyCityApp: App {
                     // Reconcile savings goals in background to ensure 100% parity with ledger.
                     SavingsGoalService.reconcileAll(context: DatabaseService.shared.context)
 
-                    #if canImport(UserNotifications)
-                    NotificationService.setupDelegate()
-                    #endif
-
                     NotificationService.sync(
                         enabled: NotificationService.isEnabled,
                         isHebrew: l10n.language == .hebrew
@@ -53,6 +63,22 @@ struct MoneyCityApp: App {
                     
                     MoneyCityShortcuts.updateAppShortcutParameters()
                     syncPendingWidgetTransactions()
+                    Task {
+                        await WalletIngestCoordinator.drainPendingBackgroundCompletions()
+                    }
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .active {
+                        syncPendingWidgetTransactions()
+                        Task {
+                            await WalletIngestCoordinator.drainPendingBackgroundCompletions()
+                        }
+                    }
+                }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in
+                    Task {
+                        await WalletIngestCoordinator.drainPendingBackgroundCompletions()
+                    }
                 }
                 .onOpenURL { url in
                     Task {

@@ -205,6 +205,22 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .other: return Color(red: 241/255, green: 245/255, blue: 249/255)         // #F1F5F9 Neutral Soft
         }
     }
+
+    public var iconType: MoneyIconType {
+        switch self.canonical {
+        case .housing: return .home
+        case .food, .groceries, .coffee: return .cutlery
+        case .transport: return .car
+        case .shopping: return .shoppingBag
+        case .entertainment: return .gamepad
+        case .health: return .medicalCross
+        case .subscriptions: return .refresh
+        case .savings: return .leaf
+        case .finance: return .creditCard
+        case .miscellaneous, .misc: return .gift
+        case .other: return .mail
+        }
+    }
 }
 
 public enum ExpenseType: String, Sendable {

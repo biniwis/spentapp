@@ -5,9 +5,11 @@ const path = require('path');
 // Reconciled losslessly with the existing V2 scene on 2026-09-06.
 const threeMinJs = fs.readFileSync(path.join(__dirname, 'vendor/three.min.js'), 'utf8');
 const cityLifeJs = fs.readFileSync(path.join(__dirname, 'city_v2_life.js'), 'utf8');
+const cityCrowdsJs = fs.readFileSync(path.join(__dirname, 'city_v2_crowds.js'), 'utf8');
 const citySlotsJs = fs.readFileSync(path.join(__dirname, 'city_v2_slots.js'), 'utf8');
 const cityRewardModelsJs = fs.readFileSync(path.join(__dirname, 'city_v2_reward_models.js'), 'utf8');
 const cityCompanionsJs = fs.readFileSync(path.join(__dirname, 'city_v2_companions.js'), 'utf8');
+const cityEnergyJs = fs.readFileSync(path.join(__dirname, 'city_v2_energy.js'), 'utf8');
 
 const htmlContent = `<!DOCTYPE html>
 <html lang="he">
@@ -76,6 +78,64 @@ const htmlContent = `<!DOCTYPE html>
       transform: translate3d(-50%, -130%, 0) scale(0.8);
       opacity: 0;
     }
+
+    /* First-use coach mark. Its position is projected from the actual Three.js building,
+       so it remains attached while the user rotates the city or the camera eases. */
+    .diorama-tutorial-target {
+      display: none;
+      padding: 0;
+      background: transparent;
+      position: absolute;
+      top: 0; left: 0;
+      width: 68px; height: 68px;
+      border: 2px solid rgba(34, 197, 94, 0.96);
+      border-radius: 50%;
+      box-shadow: 0 0 0 7px rgba(255,255,255,0.86), 0 10px 28px rgba(15,23,42,0.22);
+      transform: translate3d(-50%, -50%, 0) scale(0.72);
+      opacity: 0;
+      transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.2, 1.15);
+      will-change: left, top, transform;
+      pointer-events: auto;
+    }
+    .diorama-tutorial-target::before {
+      content: "";
+      position: absolute;
+      inset: -12px;
+      border: 2px solid rgba(34, 197, 94, 0.62);
+      border-radius: 50%;
+      animation: tutorialRipple 1.65s ease-out infinite;
+    }
+    .diorama-tutorial-target::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 16px; height: 16px;
+      margin: -8px 0 0 -8px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #22C55E;
+      box-shadow: 0 3px 10px rgba(15,23,42,0.22);
+      animation: tutorialTap 1.65s ease-in-out infinite;
+    }
+    .diorama-tutorial-target.active {
+      display: block;
+      opacity: 1;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+    @keyframes tutorialRipple {
+      0%, 24% { transform: scale(0.78); opacity: 0; }
+      38% { opacity: 0.78; }
+      82%, 100% { transform: scale(1.32); opacity: 0; }
+    }
+    @keyframes tutorialTap {
+      0%, 22%, 100% { transform: scale(1); }
+      34%, 45% { transform: scale(0.68); }
+      62% { transform: scale(1.08); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .diorama-tutorial-target::before,
+      .diorama-tutorial-target::after { animation: none; }
+    }
   </style>
   <script>
 ${threeMinJs}
@@ -94,11 +154,11 @@ ${threeMinJs}
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
-      powerPreference: "high-performance",
+      powerPreference: "default",
       precision: "highp"
     });
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(2.0, window.devicePixelRatio || 1.5));
+    renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -121,6 +181,7 @@ ${threeMinJs}
       shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
       housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 0,    lookY: 0.6, lookZ: -9.2 },
       savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 9.4,  lookY: 0.4, lookZ: -9.4 },
+      transport:{ az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 9.2, lookY: 0.6, lookZ: 9.2 },
       civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: -0.4 }
     };
 
@@ -141,11 +202,13 @@ ${threeMinJs}
     // Fit the frustum to the NARROW axis of the viewport. Fitting to the tall axis on a
     // portrait phone squeezes the horizontal half-width down to FR*aspect (~8.9 units on a
     // 420x720 screen), which cuts the shops and the reserve clean off the sides.
+    let viewportWidth = 1, viewportHeight = 1, previousFrustumKey = "";
     function applyFrustum() {
-      const w = stage.clientWidth || window.innerWidth;
-      const h = stage.clientHeight || window.innerHeight;
-      const a = w / h;
+      const a = viewportWidth / viewportHeight;
       const z = (currentCam && currentCam.zoom) ? currentCam.zoom : 1.0;
+      const key = a + ":" + z;
+      if (key === previousFrustumKey) return;
+      previousFrustumKey = key;
       const halfW = (a >= 1 ? FR * a : FR) / z;
       const halfH = (a >= 1 ? FR : FR / a) / z;
       camera.left   = -halfW;
@@ -160,6 +223,7 @@ ${threeMinJs}
     function resize() {
       const w = stage.clientWidth || window.innerWidth;
       const h = stage.clientHeight || window.innerHeight;
+      viewportWidth = w; viewportHeight = h;
       renderer.setSize(w, h);
       applyFrustum();
       placeCam();
@@ -1460,11 +1524,11 @@ ${threeMinJs}
         [0.39, 0.48].forEach(function (y) {
           chair.add(mesh(new THREE.BoxGeometry(0.25, 0.06, 0.03), M_WOOD, 0, y, -0.11, false, false));
         });
-        if (opts.occupied && i === 0) {
-          const guest = makeFigure({ seated: true, shirt: opts.shirt || 0xE49B4D, dark: !!opts.dark });
+        if (opts.occupied) {
+          const guest = makeFigure({ seated: true, shirt: i ? 0x527FA7 : (opts.shirt || 0xE49B4D), dark: i ? !opts.dark : !!opts.dark });
           guest.position.z = 0.015; chair.add(guest);
           packRigidModel(guest);
-          if (opts.venue) bindVenueActor(guest, opts.venue, opts.threshold || 0.18);
+          if (opts.venue) bindVenueActor(guest, opts.venue, (opts.threshold || 0.18) + i * 0.28);
         }
         g.add(mesh(new THREE.CylinderGeometry(0.063, 0.063, 0.010, 12), M_WHITE, 0.035, 0.44, side * 0.145, false, false));
         g.add(mesh(new THREE.CylinderGeometry(0.040, 0.030, 0.067, 12), M_WHITE, 0.035, 0.475, side * 0.145, false, false));
@@ -1496,8 +1560,8 @@ ${threeMinJs}
       },
       food_bistro: function (g, w, d) {
         aFrameBoard(g, -w * 0.38, d / 2 + 0.46, 0.5);
-        cafeTableSet(g, -w * 0.18, d / 2 + 0.86, { occupied: true, venue: "food_bistro", threshold: 0.18, shirt: 0x417BA9 });
-        cafeTableSet(g, w * 0.30, d / 2 + 0.86, { occupied: true, venue: "food_bistro", threshold: 0.45, dark: true, umbrella: 0xDD7352 });
+        cafeTableSet(g, -0.48, d / 2 + 0.48, { occupied: true, venue: "food_bistro", threshold: 0.18, shirt: 0x417BA9 });
+        cafeTableSet(g, 0.48, d / 2 + 0.48, { occupied: true, venue: "food_bistro", threshold: 0.45, dark: true, umbrella: 0xDD7352 });
       },
       food_coffee: function (g, w, d) {
         // Oversized cup sign on a bracket
@@ -2296,8 +2360,10 @@ ${threeMinJs}
     // 🍜 7. EAST — FOOD. Four separate places, because groceries, a restaurant, coffee
     // and delivery are four different habits and the app already tracks them apart.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(9.2, 0, 4.8, 8.8);
-    addKerb(9.2, 0, 4.8, 8.8);
+    // A wider outer pavement separates cafe seating from the busier walking lane.
+    // The inner kerb stays at x=6.8; no road or building moves.
+    addSidewalkBlock(9.8, 0, 6.0, 8.8);
+    addKerb(9.8, 0, 6.0, 8.8);
 
     makeBuilding({
       id: "food_super", minTier: 1, district: "food", name: "סופרמרקט", trend: "קניות שבועיות במכולת",
@@ -2434,6 +2500,13 @@ ${threeMinJs}
     })();
     transportYard.add(mesh(new THREE.BoxGeometry(0.7, 0.34, 0.06), new THREE.MeshStandardMaterial({ map: signTex("RIDE", "#0F766E", "#FFFFFF", 26) }), 0.55, 0.95, 2.55, false, false));
     transportYard.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.95, 6), M_DARKFRAME, 0.55, 0.47, 2.55, false, false));
+
+    const transportHit = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.8, 5.2), new THREE.MeshBasicMaterial({ visible: false }));
+    transportHit.position.set(0, 1.4, 0);
+    transportHit.userData = { id: "trans_station", district: "transport", name: "מתחם תחבורה", amount: 0, trend: "התניידות ונסיעות" };
+    transportYard.add(transportHit);
+    interactiveBuildings.push(transportHit);
+    buildingRoots["trans_station"] = transportYard;
 
     // ────────────────────────────────────────────────────────────────
     // 🏀 10. SOUTH-WEST — THE FREE PARK
@@ -2688,8 +2761,10 @@ ${threeMinJs}
     });
     [-3.2, 0, 3.2].forEach(function (v) {
       addLamp(v, -7.2); addLamp(v, 7.2);
-      addLamp(-7.2, v); addLamp(7.2, v);
+      addLamp(7.2, v);
     });
+    // Keep west-side poles between the local crowd routes, not in the walking lane.
+    [-2.15, 2.15].forEach(function (v) { addLamp(-7.2, v); });
 
     // ────────────────────────────────────────────────────────────────
     // 🎪 10c. MICRO-DETAILS, STREET ACCESSORIES & VIBRANT WILDLIFE
@@ -3003,6 +3078,10 @@ ${threeMinJs}
         if (!p.obj.visible) continue;
         const target = p.wanted ? 1 : 0;
         const cur = p.obj.scale.y;
+        if (p.wanted && Math.abs(cur - target) < 0.001) {
+          if (cur !== target) p.obj.scale.setScalar(target);
+          continue;
+        }
         const next = cur + (target - cur) * Math.min(1, dt * 4.5);
         if (!p.wanted && next < 0.02) { p.obj.visible = false; p.obj.scale.setScalar(0.01); continue; }
         p.obj.scale.setScalar(Math.max(0.01, next));
@@ -3158,19 +3237,10 @@ ${threeMinJs}
       {x: -3.2, z: -7.4}, {x: 3.2, z: -7.4}, {x: 3.2, z: -11.0}, {x: -3.2, z: -11.0}
     ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34);
 
-    // 6. Cafe Patio Customer
-    addCitizen(0xEC4899, 0x1E293B, 0xF59E0B, [
-      {x: 7.6, z: -2.0}, {x: 8.8, z: -1.0}, {x: 8.8, z: 0.5}, {x: 7.6, z: -2.0}
-    ], ["הפוך לקחת מבית הקפה ☕", "המאפים כאן חמים מהתנור 🥐"], ["Latte to go from the cafe ☕", "Fresh croissants 🥐"], false, 0.32);
-
-    // 7. Shopping Avenue Shopper
-    addCitizen(0xF59E0B, 0x1E3A5F, null, [
-      {x: -7.4, z: 3.6}, {x: -7.4, z: -3.6}, {x: -10.5, z: -3.6}, {x: -10.5, z: 3.6}
-    ], ["מסתכל על חלונות ראווה 🛍️", "שומר על יעדי החיסכון 🎯"], ["Window shopping 🛍️", "Sticking to savings goals 🎯"], false, 0.35);
-
     // ────────────────────────────────────────────────────────────────
     // Derived frontages are not rewards or a second financial ledger.
     ${cityLifeJs}
+    ${cityCrowdsJs}
 
     // 🎁 12b. ENRICHMENT SLOTS
     // Six curated spots the user can decorate. Tapping one is the only route into the
@@ -3343,6 +3413,7 @@ ${threeMinJs}
     }
 
     function onDown(id, x, y) {
+      noteEnergyInteraction();
       pointers.set(id, { x: x, y: y });
       if (pointers.size === 1) {
         isDragging = false; downX = x; downY = y; downTime = performance.now();
@@ -3355,6 +3426,7 @@ ${threeMinJs}
     }
 
     function onMove(id, x, y) {
+      noteEnergyInteraction();
       const p = pointers.get(id);
       if (!p) return;
       p.x = x; p.y = y;
@@ -3422,13 +3494,17 @@ ${threeMinJs}
           // there's nothing to choose between, so go straight to the building card.
           const SINGLE_BUILDING_DISTRICTS = { savings: true, transport: true };
           const isSingleDistrict = SINGLE_BUILDING_DISTRICTS[bData.district];
-          if (currentMode === "city" && CAM_MODES[bData.district] && !isSingleDistrict) {
+          // During the hands-on lesson, one tap must fulfil the promise in the copy and open
+          // the inspector. Requiring an unexplained second tap made the map feel broken.
+          const tutorialIsActive = !!currentTutorialBuilding;
+          if (currentMode === "city" && CAM_MODES[bData.district] && !isSingleDistrict && !tutorialIsActive) {
             // ── First tap from city overview: enter the district, show district card ──
             setSelectedBuilding(null);
             setDistrict(bData.district);
             post("districtSelected", bData.district);
           } else {
             // ── Direct to building card: already in district, OR single-building district ──
+            if (tutorialIsActive) setTutorialBuilding(null);
             if (CAM_MODES[bData.district]) setDistrict(bData.district);
             setSelectedBuilding(obj);
             post("buildingTapped", {
@@ -3457,6 +3533,7 @@ ${threeMinJs}
     });
     stage.addEventListener("pointercancel", function (e) { pointers.delete(e.pointerId); gesture = null; isDragging = true; spinVel = 0; tiltVel = 0; });
     stage.addEventListener("wheel", function (e) {
+      noteEnergyInteraction();
       targetCam.zoom = clamp((targetCam.zoom || 1.0) - e.deltaY * 0.0015, ZOOM_MIN, ZOOM_MAX);
     }, { passive: true });
     // iOS fires gesturestart/change for pinch on some WebKit paths; swallow them so the
@@ -3510,28 +3587,7 @@ ${threeMinJs}
     // The map keeps rendering at full rate behind other tabs otherwise, which is battery
     // spent on pixels nobody is looking at.
     // ────────────────────────────────────────────────────────────────
-    let renderPaused = false;
-    let rafId = null;
-
-    function startLoop() {
-      if (rafId !== null) return;
-      lastTime = performance.now();
-      rafId = requestAnimationFrame(loop);
-    }
-
-    window.pauseDioramaRendering = function (on) {
-      const want = !!on;
-      if (want === renderPaused) return;
-      renderPaused = want;
-      if (renderPaused) {
-        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
-      } else {
-        startLoop();
-      }
-    };
-    document.addEventListener("visibilitychange", function () {
-      window.pauseDioramaRendering(document.hidden);
-    });
+    ${cityEnergyJs}
 
     // ────────────────────────────────────────────────────────────────
     // 🔤 LANGUAGE
@@ -3681,6 +3737,58 @@ ${threeMinJs}
       return null;
     }
 
+    window.pulseHintBuilding = function () {
+      const b = bodyOf("food_bistro") || bodyOf("food_coffee") || bodyOf("trans_station");
+      if (b) pulseBuilding(b);
+    };
+
+    const tutorialMarker = document.createElement("button");
+    tutorialMarker.type = "button";
+    tutorialMarker.className = "diorama-tutorial-target";
+    overlaysContainer.appendChild(tutorialMarker);
+    const tutorialWorldPoint = new THREE.Vector3();
+    const tutorialScreenPoint = new THREE.Vector3();
+    let currentTutorialBuilding = null;
+    ["pointerdown", "pointerup", "pointermove"].forEach(function (event) {
+      tutorialMarker.addEventListener(event, function (e) { e.stopPropagation(); });
+    });
+    tutorialMarker.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const obj = currentTutorialBuilding;
+      if (!obj) return;
+      const data = obj.userData;
+      setTutorialBuilding(null);
+      if (CAM_MODES[data.district]) setDistrict(data.district);
+      setSelectedBuilding(obj);
+      pulseBuilding(obj);
+      post("buildingTapped", { id: data.id, district: data.district, name: data.name });
+    });
+
+    function setTutorialBuilding(id) {
+      const next = id ? bodyOf(id) : null;
+      tutorialMarker.setAttribute("aria-label", currentLang === "he" ? "פתיחת פרטי הבניין המסומן" : "Open highlighted building details");
+      if (next === currentTutorialBuilding) return;
+      currentTutorialBuilding = next;
+      tutorialMarker.classList.toggle("active", !!next);
+      if (next && !companionMotionPreference.matches) pulseBuilding(next);
+    }
+
+    function updateTutorialMarker() {
+      if (!currentTutorialBuilding || !visibleInScene(currentTutorialBuilding)) {
+        tutorialMarker.classList.remove("active");
+        return;
+      }
+      // The proxy is a stable, cheap anchor; hidden upper floors must not push the marker
+      // above the visible building. The marker itself is also a 68px accessible tap target.
+      currentTutorialBuilding.getWorldPosition(tutorialWorldPoint);
+      tutorialScreenPoint.copy(tutorialWorldPoint).project(camera);
+      const inFront = tutorialScreenPoint.z >= -1 && tutorialScreenPoint.z <= 1;
+      tutorialMarker.classList.toggle("active", inFront);
+      if (!inFront) return;
+      tutorialMarker.style.left = ((tutorialScreenPoint.x * 0.5 + 0.5) * viewportWidth) + "px";
+      tutorialMarker.style.top = ((-tutorialScreenPoint.y * 0.5 + 0.5) * viewportHeight) + "px";
+    }
+
     function tierForBuilding(amount, totalShare, state) {
       // A busy neighbourhood may add people, lights and detail around this plot, but it may
       // never turn a place the user did not spend at into a large building.
@@ -3748,11 +3856,51 @@ ${threeMinJs}
     // ────────────────────────────────────────────────────────────────
     // 🔄 14. DATA BRIDGE: window.updateDioramaData (Swift Inbound Contract)
     // ────────────────────────────────────────────────────────────────
+    // Validate the entire envelope before mutating the live scene.
+    function validateDioramaPayload(data) {
+      const fail = field => { throw new Error("DioramaPayloadV1: invalid " + field); };
+      if (!data || data.schemaVersion !== 1) fail("schemaVersion");
+      const number = (value, field) => { if (typeof value !== "number" || !Number.isFinite(value)) fail(field); };
+      ["food", "shopping", "housing", "transport", "savings", "savingsTarget", "parkHealth"].forEach(k => number(data[k], k));
+      for (const [group, fields] of Object.entries({foodSub:["restaurant","groceries","coffee","delivery"], shoppingSub:["fashion","tech","travel","entertainment"], housingSub:["rent","utilities","subs"]})) {
+        if (!data[group]) fail(group);
+        fields.forEach(k => number(data[group][k], group + "." + k));
+      }
+      const districtIDs = new Set(Object.values(buildingDistrictKeys).concat(["savings"]));
+      for (const [key, ids] of [["districts", districtIDs], ["venues", new Set(Object.keys(buildingDistrictKeys).concat(["savings_sanctuary"]))]]) {
+        if (!Array.isArray(data[key])) fail(key);
+        const seen = new Set();
+        data[key].forEach(state => {
+          if (!state || !ids.has(state.id) || seen.has(state.id)) fail(key + ".id");
+          seen.add(state.id);
+          ["amount", "share", "activity"].forEach(k => number(state[k], key + "." + k));
+          if (key === "districts" && !["quiet","active","developed","dominant"].includes(state.prominence)) fail("prominence");
+          if (key === "venues") ["purchaseCount","activeDays","merchantCount","presence","additionalPlaces"].forEach(k => number(state[k], "venues." + k));
+        });
+      }
+      if (!data.habits || typeof data.habits.hasTravelOrFlight !== "boolean") fail("habits");
+      ["woltCount","coffeeCount","onlinePackagesCount","activeSubscriptionsCount"].forEach(k => number(data.habits[k], "habits." + k));
+      ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
+      if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
+      if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");
+      if (!data.slotPlacements || typeof data.slotPlacements !== "object" || Array.isArray(data.slotPlacements)) fail("slotPlacements");
+      return data;
+    }
+    function reportDioramaError(error) {
+      const message = error instanceof Error ? error.message : "Diorama update failed";
+      console.error(message);
+      if (window.webkit && window.webkit.messageHandlers.dioramaError) {
+        window.webkit.messageHandlers.dioramaError.postMessage(message);
+      }
+      return false;
+    }
     window.updateDioramaData = function (data) {
-      if (!data) return;
+      try { validateDioramaPayload(data); } catch (error) { return reportDioramaError(error); }
+      shadowDirty = true;
       try {
         if (data.language) setDioramaLanguage(data.language);
         if (data.targetDistrict) setDistrict(data.targetDistrict);
+        setTutorialBuilding(data.tutorialBuildingId || null);
         syncDistrictStates(data.districts);
 
         function syncBuilding(id, amount) {
@@ -3829,7 +3977,7 @@ ${threeMinJs}
 
         if (data.newlyUnlockedId) window.celebrateNewEnrichment(data.newlyUnlockedId);
       } catch (err) {
-        console.warn("updateDioramaData caught error:", err);
+        return reportDioramaError(err);
       }
     };
 
@@ -3870,7 +4018,10 @@ ${threeMinJs}
     let lastTime = performance.now();
 
     function loop(now) {
+      rafId = null;
+      if (renderPaused || energyDisposed) return;
       rafId = requestAnimationFrame(loop);
+      if (!energyFrameDue(now)) return;
       // The first rAF timestamp can predate the performance.now() taken while this script
       // was still parsing, so dt must never go negative — a negative dt drove vehicle
       // progress below zero and JS's negative modulo then indexed path[-1].
@@ -3878,24 +4029,33 @@ ${threeMinJs}
       lastTime = now;
 
       // Camera smoothing lerp
-      currentCam.az += (targetCam.az - currentCam.az) * 0.12;
-      currentCam.el += (targetCam.el - currentCam.el) * 0.12;
-      currentCam.zoom += ((targetCam.zoom || 1.0) - currentCam.zoom) * 0.10;
-      currentCam.lookX += (targetCam.lookX - currentCam.lookX) * 0.12;
-      currentCam.lookY += (targetCam.lookY - currentCam.lookY) * 0.12;
-      currentCam.lookZ += (targetCam.lookZ - currentCam.lookZ) * 0.12;
+      const smoothing = 1 - Math.pow(0.88, dt * 60);
+      const zoomSmoothing = 1 - Math.pow(0.90, dt * 60);
+      ["az", "el", "lookX", "lookY", "lookZ"].forEach(function (key) {
+        const delta = targetCam[key] - currentCam[key];
+        currentCam[key] = Math.abs(delta) < 0.0001 ? targetCam[key] : currentCam[key] + delta * smoothing;
+      });
+      const zoomDelta = (targetCam.zoom || 1) - currentCam.zoom;
+      currentCam.zoom = Math.abs(zoomDelta) < 0.0001 ? (targetCam.zoom || 1) : currentCam.zoom + zoomDelta * zoomSmoothing;
 
       if (pointers.size === 0) {
-        targetCam.az += spinVel; spinVel *= 0.92;
-        targetCam.el = clamp(targetCam.el + tiltVel, 0.25, 1.25); tiltVel *= 0.92;
+        const decay = Math.pow(0.92, dt * 60), travel = (1 - decay) / (1 - 0.92);
+        targetCam.az += spinVel * travel; spinVel *= decay;
+        targetCam.el = clamp(targetCam.el + tiltVel * travel, 0.25, 1.25); tiltVel *= decay;
+        if (Math.abs(spinVel) < 0.00001) spinVel = 0;
+        if (Math.abs(tiltVel) < 0.00001) tiltVel = 0;
       }
 
       placeCam();
       applyFrustum();
+      updateTutorialMarker();
 
       // Window glow follows how busy the city is
-      cityGlow += (cityGlowTarget - cityGlow) * Math.min(1, dt * 1.6);
-      for (let i = 0; i < litGlass.length; i++) litGlass[i].emissiveIntensity = cityGlow;
+      if (cityGlow !== cityGlowTarget) {
+        cityGlow += (cityGlowTarget - cityGlow) * Math.min(1, dt * 1.6);
+        if (Math.abs(cityGlow - cityGlowTarget) < 0.0001) cityGlow = cityGlowTarget;
+        for (let i = 0; i < litGlass.length; i++) litGlass[i].emissiveIntensity = cityGlow;
+      }
 
       // Tap pulse. The tap target is an invisible proxy box, so the squash has to be applied
       // to the shell it stands for — scaling the proxy would move the hit area, not the building.
@@ -3980,7 +4140,7 @@ ${threeMinJs}
           c.obj.position.z = p1.z + (p2.z - p1.z) * frac;
           c.obj.rotation.y = Math.atan2(p2.x - p1.x, p2.z - p1.z);
         }
-        const walkCycle = now * 0.0055 * Math.max(0.6, (c.speed || 0.35) / 0.35);
+        const walkCycle = now * 0.0055 * Math.max(0.6, (c.speed || 0.35) / 0.35) + (c.phase || 0);
         const legSwing = Math.sin(walkCycle) * 0.38;
         if (c.legL) c.legL.rotation.x = legSwing;
         if (c.legR) c.legR.rotation.x = -legSwing;
@@ -4135,6 +4295,7 @@ ${threeMinJs}
         }
       }
 
+      prepareEnergyRender(now);
       renderer.render(scene, camera);
     }
 
@@ -4171,7 +4332,8 @@ ${threeMinJs}
       plantings: parkPlantings,
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
-        plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces },
+        plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,
+        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, crowdBatches: crowdBatches },
       slots: slotItems,
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },

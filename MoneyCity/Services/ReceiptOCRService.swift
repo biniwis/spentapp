@@ -428,16 +428,30 @@ public enum ReceiptOCRService {
     /// the upscale matters because Vision will not read a line below a minimum height.
     public static func prepareImage(_ image: UIImage, pass: ScanPass) -> CGImage? {
         guard let cg = image.cgImage else { return nil }
-        if pass == .plain { return cg }
+        let orientation = image.imageOrientation
+        if pass == .plain && orientation == .up { return cg }
 
         let context = CIContext(options: [.useSoftwareRenderer: false])
         var ci = CIImage(cgImage: cg)
+        if orientation != .up {
+            ci = ci.oriented(forExifOrientation: exifOrientation(from: orientation))
+        }
+
+        let maxDim = max(ci.extent.width, ci.extent.height)
+        if maxDim > 4096 {
+            let downFactor = 4096.0 / maxDim
+            ci = ci.transformed(by: CGAffineTransform(scaleX: downFactor, y: downFactor))
+        }
 
         let shortSide = min(ci.extent.width, ci.extent.height)
         let wanted: CGFloat = (pass == .highContrast) ? 2200 : 1800
         if shortSide > 0 && shortSide < wanted {
             let factor = min(3.0, wanted / shortSide)
             ci = ci.transformed(by: CGAffineTransform(scaleX: factor, y: factor))
+        }
+
+        if pass == .plain {
+            return context.createCGImage(ci, from: ci.extent)
         }
 
         if let mono = CIFilter(name: "CIPhotoEffectMono") {
@@ -461,6 +475,20 @@ public enum ReceiptOCRService {
         }
 
         return context.createCGImage(ci, from: ci.extent)
+    }
+
+    private static func exifOrientation(from orientation: UIImage.Orientation) -> Int32 {
+        switch orientation {
+        case .up: return 1
+        case .upMirrored: return 2
+        case .down: return 3
+        case .downMirrored: return 4
+        case .leftMirrored: return 5
+        case .right: return 6
+        case .rightMirrored: return 7
+        case .left: return 8
+        @unknown default: return 1
+        }
     }
     #endif
 
@@ -958,14 +986,22 @@ public enum ReceiptOCRService {
             // Assert positive amount
             guard c.amount > 0.01 else { continue }
 
-            // If a candidate with almost identical amount already exists
-            if let existingIndex = valid.firstIndex(where: { abs($0.amount - c.amount) < 0.01 }) {
-                let existing = valid[existingIndex]
-                let existingName = existing.merchant.lowercased()
-                let newName = c.merchant.lowercased()
+            let cleanNewName = c.merchant.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-                // If one merchant name contains or extends the other, keep the more specific/longer one
-                if newName.contains(existingName) || (c.confidence > existing.confidence && c.merchant.count > existing.merchant.count) {
+            // If a candidate with almost identical amount and matching merchant/evidence already exists
+            if let existingIndex = valid.firstIndex(where: { existing in
+                guard abs(existing.amount - c.amount) < 0.01 else { return false }
+                let existingName = existing.merchant.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                return existingName == cleanNewName
+                    || existingName.contains(cleanNewName)
+                    || cleanNewName.contains(existingName)
+                    || (!c.rawEvidence.isEmpty && c.rawEvidence == existing.rawEvidence)
+            }) {
+                let existing = valid[existingIndex]
+                let existingName = existing.merchant.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+                // Keep the more specific / higher confidence candidate
+                if cleanNewName.contains(existingName) || (c.confidence > existing.confidence && c.merchant.count > existing.merchant.count) {
                     valid[existingIndex] = c
                 }
                 continue

@@ -63,10 +63,12 @@ struct BuildingPillItem: Identifiable {
 public struct MainCityView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @Query(sort: \CityEnrichment.unlockedDate, order: .reverse) private var allEnrichments: [CityEnrichment]
     
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
+    @AppStorage("userName") private var userName = ""
 
     @Query private var categoryBudgets: [CategoryBudget]
 
@@ -105,13 +107,51 @@ public struct MainCityView: View {
     
     @State private var currentDate: Date = Date()
     @State private var showQuickAdd = false
-    @State private var quickAddInitialScan = false
+    @State private var quickAddPreselectedCategory: SpendingCategory? = nil
+    @State private var showBudgetSheet = false
+    @State private var isQuickActionActive = false
+    @State private var quickActionBuilding: CityBuilding? = nil
+    @State private var quickActionAmountText: String = ""
     @State private var showFeed = false
     @State private var showProgressSheet = false
     @State private var showOnboarding = false
     @Environment(\.scenePhase) private var companionScenePhase
     @AppStorage("cityCompanionsStartedAt") private var companionsStartedAt: Double = 0
     @State private var companionNow = Date()
+
+    // ── Budget HUD Pace & Progress Metrics (Item 3B) ──
+    private var daysRemainingInMonth: Int {
+        let cal = Calendar.current
+        guard let range = cal.range(of: .day, in: .month, for: currentDate) else { return 1 }
+        let currentDay = cal.component(.day, from: currentDate)
+        return max(1, range.count - currentDay + 1)
+    }
+
+    private var totalDaysInMonth: Int {
+        Calendar.current.range(of: .day, in: .month, for: currentDate)?.count ?? 30
+    }
+
+    private var currentDayOfMonth: Int {
+        Calendar.current.component(.day, from: currentDate)
+    }
+
+    private var monthElapsedFraction: Double {
+        let total = Double(totalDaysInMonth)
+        guard total > 0 else { return 0 }
+        return min(1.0, max(0.0, Double(currentDayOfMonth) / total))
+    }
+
+    private var budgetSpentFraction: Double {
+        guard effectiveMonthlyBudget > 0 else { return 0 }
+        return min(2.0, max(0.0, currentCity.totalSpent / effectiveMonthlyBudget))
+    }
+
+    private var recommendedDailyPace: Double {
+        guard effectiveMonthlyBudget > 0 else { return 0 }
+        let remaining = effectiveMonthlyBudget - currentCity.totalSpent
+        guard remaining > 0 else { return 0 }
+        return remaining / Double(daysRemainingInMonth)
+    }
     @State private var pendingCompanionWelcome: String? = nil
     @State private var isZenMode = false
     /// The month being looked back at, when the user opened one from the profile chart.
@@ -137,11 +177,49 @@ public struct MainCityView: View {
     @ObservedObject private var confirmationCoordinator = ExpenseConfirmationCoordinator.shared
     @State private var animatedSpentValue: Double? = nil
     @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
+    @State private var showBrandSplash: Bool = true
+
+    // ── In-App Pending Wallet Ingests (Missing Amount Fallback) ──
+    @State private var pendingWalletItems: [PendingWalletIngest] = []
+    @State private var resolvingPendingItem: PendingWalletIngest? = nil
+
+    // ── Month Transition & City Affordance ──
+    @State private var pendingRecapForNewMonth: MonthlyRecap? = nil
+    @State private var activeNewMonthRecap: MonthlyRecap? = nil
+    @AppStorage("hasSeenCityTapHint") private var hasSeenCityTapHint: Bool = false
+    @State private var showCityTapHint: Bool = false
     
     public init() {}
     
     private var displayTransactions: [Transaction] {
         currentMonthTransactions
+    }
+
+    /// The lesson points at a place the user actually built, preferring the venue with the
+    /// largest amount so the highlighted object is visually easy to find.
+    private var cityTutorialBuildingId: String? {
+        guard canPresentCityLesson, showCityTapHint, !hasSeenCityTapHint, inspectedBuilding == nil,
+              selectedDistrict == nil, !displayTransactions.isEmpty else { return nil }
+        let supported = Set([
+            "food_bistro", "food_super", "food_coffee", "food_wolt",
+            "shop_boutique", "shop_tech", "shop_travel", "shop_arcade",
+            "house_tower", "house_util", "house_subs", "trans_station",
+            "health_pharmacy", "finance_bank", "museum_curiosities",
+            "city_sorting_hub"
+        ])
+        return currentCity.buildingTotals
+            .filter { supported.contains($0.key) && $0.value > 0 }
+            .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }.first?.key
+    }
+
+    private var canPresentCityLesson: Bool {
+        hasCompletedOnboarding && activeTab == "city" && !isChromeHidden
+            && companionScenePhase == .active && !showBrandSplash
+            && !showQuickAdd && !showOnboarding && !showFeed && !showProgressSheet
+            && !showSortingHubSheet && !showReserveSanctuarySheet
+            && resolvingPendingItem == nil && activeNewMonthRecap == nil
+            && pendingRecapForNewMonth == nil && pendingWalletItems.isEmpty
+            && visibleConfirmationBanner == nil
     }
     
     private var currentCity: MonthlyCity {
@@ -294,8 +372,11 @@ public struct MainCityView: View {
                     newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
                     slotPlacements: currentSlotPlacements,
                     selectedDistrict: selectedDistrict,
+                    tutorialBuildingId: cityTutorialBuildingId,
                     language: l10n.language == .hebrew ? "he" : "en",
-                    isPaused: (activeTab != "city"),
+                    isPaused: activeTab != "city" || companionScenePhase != .active
+                        || showQuickAdd || showFeed || showProgressSheet || showOnboarding
+                        || showSortingHubSheet || showReserveSanctuarySheet,
                     onSelectDistrict: handleSelectDistrict,
                     onBuildingSelected: handleSelectBuilding,
                     onSlotTapped: nil
@@ -320,165 +401,194 @@ public struct MainCityView: View {
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.98)), removal: .opacity))
             }
 
-            // Zen mode and Past Month indicators (city only)
+            // Zen mode, Past Month indicators, and Unresolved Pending Banners (city only)
             if activeTab == "city" {
-                HStack {
-                    if isSnapshotMode {
-                        Button(action: closeMonthSnapshot) {
-                            HStack(spacing: 8) {
-                                MoneyIcon(l10n.language == .hebrew ? .chevronRight : .chevronLeft, size: 14)
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text(monthYearString)
-                                        .font(.system(size: 13.5, weight: .black, design: .rounded))
-                                    Text(l10n.language == .hebrew
-                                         ? "\(l10n.format(amount: currentCity.totalSpent.rounded())) הוצאות"
-                                         : "\(l10n.format(amount: currentCity.totalSpent.rounded())) spent")
-                                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                                        .opacity(0.75)
+                VStack(spacing: 8) {
+                    HStack {
+                        if isSnapshotMode {
+                            Button(action: closeMonthSnapshot) {
+                                HStack(spacing: 8) {
+                                    MoneyIcon(l10n.language == .hebrew ? .chevronRight : .chevronLeft, size: 14)
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Text(monthYearString)
+                                            .font(.system(size: 13.5, weight: .black, design: .rounded))
+                                        Text(l10n.language == .hebrew
+                                             ? "\(l10n.format(amount: currentCity.totalSpent.rounded())) הוצאות"
+                                             : "\(l10n.format(amount: currentCity.totalSpent.rounded())) spent")
+                                            .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                                            .opacity(0.75)
+                                    }
                                 }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 8)
+                                .background(Color.deepNavy.opacity(0.92))
+                                .clipShape(Capsule())
+                                .shadow(color: Color.black.opacity(0.18), radius: 8, y: 3)
                             }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 13)
-                            .padding(.vertical, 8)
-                            .background(Color.deepNavy.opacity(0.92))
-                            .clipShape(Capsule())
-                            .shadow(color: Color.black.opacity(0.18), radius: 8, y: 3)
+                            .buttonStyle(.plain)
+                            .bouncyPress(scale: 0.95)
+                            .padding(.leading, 16)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        } else if isViewingPastMonth {
+                            // Deliberately not styled like the rest of the chrome: this is a state
+                            // the user did not choose to be in permanently, and it has to read as
+                            // temporary and reversible at a glance.
+                            Button(action: returnToCurrentMonth) {
+                                HStack(spacing: 7) {
+                                    MoneyIcon(.refresh, size: 14)
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Text(monthYearString)
+                                            .font(.system(size: 12.5, weight: .black, design: .rounded))
+                                        Text(l10n.language == .hebrew ? "חזרה לחודש הנוכחי" : "Back to this month")
+                                            .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                            .opacity(0.75)
+                                    }
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(Color.themeLavender)
+                                .clipShape(Capsule())
+                                .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
+                            }
+                            .buttonStyle(.plain)
+                            .bouncyPress(scale: 0.94)
+                            .padding(.leading, 16)
+                            .transition(.move(edge: .top).combined(with: .opacity))
                         }
-                        .buttonStyle(.plain)
-                        .bouncyPress(scale: 0.95)
-                        .padding(.leading, 16)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    } else if isViewingPastMonth {
-                        // Deliberately not styled like the rest of the chrome: this is a state
-                        // the user did not choose to be in permanently, and it has to read as
-                        // temporary and reversible at a glance.
-                        Button(action: returnToCurrentMonth) {
-                            HStack(spacing: 7) {
-                                MoneyIcon(.refresh, size: 14)
-                                VStack(alignment: .leading, spacing: 0) {
-                                    Text(monthYearString)
-                                        .font(.system(size: 12.5, weight: .black, design: .rounded))
-                                    Text(l10n.language == .hebrew ? "חזרה לחודש הנוכחי" : "Back to this month")
-                                        .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                        .opacity(0.75)
-                                }
+                        if isZenMode {
+                            HStack(spacing: 5) {
+                                Circle().fill(Color(red: 16/255, green: 185/255, blue: 129/255)).frame(width: 7, height: 7)
+                                Text(l10n.language == .hebrew ? "תצוגת מפה מלאה" : "Full Map View")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                             }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, 11)
                             .padding(.vertical, 7)
-                            .background(Color.themeLavender)
+                            .background(Color.white.opacity(0.92))
                             .clipShape(Capsule())
-                            .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
+                            .shadow(color: Color.black.opacity(0.10), radius: 6, y: 2)
+                            .padding(.leading, 16)
+                            .transition(.opacity)
+
+                            Spacer()
+
+                            // Clean exit button when in Zen mode
+                            Button(action: {
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                                    isZenMode = false
+                                }
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.white.opacity(0.94))
+                                        .frame(width: 38, height: 38)
+                                        .shadow(color: Color.black.opacity(0.12), radius: 6, y: 2)
+                                        .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                                    DioramaExpandVectorIcon(isExpanded: true, color: Color.deepNavy)
+                                        .frame(width: 15, height: 15)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.trailing, 16)
+                        } else {
+                            Spacer()
                         }
-                        .buttonStyle(.plain)
-                        .bouncyPress(scale: 0.94)
-                        .padding(.leading, 16)
-                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
-                    if isZenMode {
-                        HStack(spacing: 5) {
-                            Circle().fill(Color(red: 16/255, green: 185/255, blue: 129/255)).frame(width: 7, height: 7)
-                            Text(l10n.language == .hebrew ? "תצוגת מפה מלאה" : "Full Map View")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
-                        }
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 7)
-                        .background(Color.white.opacity(0.92))
-                        .clipShape(Capsule())
-                        .shadow(color: Color.black.opacity(0.10), radius: 6, y: 2)
-                        .padding(.leading, 16)
-                        .transition(.opacity)
 
-                        Spacer()
+                    // In-app fallback banner for Apple Pay transactions missing an amount
+                    if let pending = pendingWalletItems.first, !isZenMode {
+                        HStack(spacing: 9) {
+                            MoneyIcon(.creditCard, size: 16)
 
-                        // Clean exit button when in Zen mode
-                        Button(action: {
-                            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                                isZenMode = false
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(l10n.language == .hebrew ? "תשלום ב-\(pending.merchant)" : "Payment at \(pending.merchant)")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                                    .lineLimit(1)
+                                Text(l10n.language == .hebrew ? "הזן סכום לעדכון העיר" : "Enter amount to update city")
+                                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
                             }
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.white.opacity(0.94))
-                                    .frame(width: 38, height: 38)
-                                    .shadow(color: Color.black.opacity(0.12), radius: 6, y: 2)
-                                    .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
-                                DioramaExpandVectorIcon(isExpanded: true, color: Color.deepNavy)
-                                    .frame(width: 15, height: 15)
+
+                            Spacer(minLength: 4)
+
+                            Button(action: {
+                                resolvingPendingItem = pending
+                            }) {
+                                Text(l10n.language == .hebrew ? "הזן סכום ✎" : "Enter ✎")
+                                    .font(.system(size: 11, weight: .black, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .background(Color.spentGreen)
+                                    .clipShape(Capsule())
                             }
+                            .buttonStyle(.plain)
+
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    PendingWalletStore.shared.remove(id: pending.id)
+                                    pendingWalletItems.removeAll(where: { $0.id == pending.id })
+                                }
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                    .padding(4)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 16)
-                    } else {
-                        Spacer()
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.96))
+                                .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
+                        )
+                        .padding(.horizontal, 16)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                 }
                 .padding(.top, 56)
                 .frame(maxHeight: .infinity, alignment: .top)
             }
 
+            // Backdrop for quick action subcategory picker
+            if isQuickActionActive && quickActionBuilding == nil {
+                Color.black.opacity(0.18)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        closeQuickAction()
+                    }
+                    .transition(.opacity)
+                    .zIndex(75)
+            }
+
             // ── Unified Floating Bottom Cards & Navigation Bar (Zero Overlap & Zero Dead Space) ──
             if !isChromeHidden {
                 VStack(spacing: 8) {
                     Spacer()
-                    if activeTab == "city" {
-                        if let b = inspectedBuilding, b.id == "savings_sanctuary" {
-                            // The reserve is the one place in the city that measures what was
-                            // NOT spent, so the spend-shaped card — amount, item count, trend —
-                            // had nothing true to put in any of its three slots.
-                            ReserveModalView(snapshot: reserveSnapshot, onClose: {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    inspectedBuilding = nil
-                                }
-                            }, onShowFeed: { showReserveSanctuarySheet = true })
-                            .id(b.id)
-                            .transition(.asymmetric(
-                                insertion: .offset(y: 16).combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                        } else if let b = inspectedBuilding {
-                            InspectorModalView(info: b, onClose: {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    inspectedBuilding = nil
-                                    if selectedDistrict == "civic" {
-                                        selectedDistrict = nil
-                                    }
-                                }
-                            }, onShowFeed: {
-                                if b.id == "city_sorting_hub" {
-                                    showSortingHubSheet = true
-                                } else {
-                                    showFeed = true
-                                }
-                            })
-                            // Identity keyed on the building, so exchanging one card for
-                            // another is an insertion the transition can actually play.
-                            .id(b.id)
-                            .transition(.asymmetric(
-                                insertion: .offset(y: 16).combined(with: .opacity),
-                                removal: .opacity
-                            ))
-                        } else if let dist = selectedDistrict {
-                            DistrictDeepDiveCard(
-                                districtId: dist,
-                                onBack: {
-                                    withAnimation { selectedDistrict = nil; inspectedBuilding = nil }
-                                },
-                                onSelectBuilding: handleSelectBuilding,
-                                pills: districtBuildingPills(for: dist),
-                                total: districtTotal(for: dist)
-                            )
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        } else {
-                            spendingCard
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
+                    if activeTab == "city" && !isQuickActionActive {
+                        cityActiveCardView
+                    }
+
+                    // Quick Action: 3 Dynamic Subcategory Buildings floating above the plus button
+                    if isQuickActionActive && quickActionBuilding == nil {
+                        quickActionBuildingPickerBar
                     }
 
                     FloatingBottomBar(
                         activeTab: $activeTab,
-                        onQuickAdd: { showQuickAdd = true },
+                        onQuickAdd: {
+                            if isQuickActionActive {
+                                closeQuickAction()
+                            } else {
+                                quickAddPreselectedCategory = nil
+                                showQuickAdd = true
+                            }
+                        },
                         // The city tab is the way back to the whole city. Leaving the camera
                         // inside a district meant the button appeared to do nothing whenever
                         // you were already on the city tab, and the only way out was the
@@ -493,13 +603,33 @@ public struct MainCityView: View {
                             // district.
                             if isViewingPastMonth { currentDate = Date() }
                             cityViewResetToken &+= 1
+                        },
+                        onLongPressAdd: {
+                            handleLongPressAdd()
                         }
                     )
                 }
+                .zIndex(80)
                 .padding(.bottom, 6)
                 .ignoresSafeArea(.keyboard, edges: .bottom)
             }
-            
+
+            // Big Quick Expense Overlay (Bold, Fast & Prominent on Screen)
+            if isQuickActionActive, let building = quickActionBuilding {
+                bigQuickAmountOverlay(for: building)
+                    .zIndex(950)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.94).combined(with: .opacity),
+                        removal: .scale(scale: 0.94).combined(with: .opacity)
+                    ))
+            }
+
+            // ── Premium Brand Launch Splash Overlay ──
+            if showBrandSplash {
+                BrandSplashView(isPresented: $showBrandSplash, isHebrew: l10n.language == .hebrew)
+                    .zIndex(999)
+                    .transition(.opacity)
+            }
         }
 
         .onAppear {
@@ -513,22 +643,25 @@ public struct MainCityView: View {
             }
             syncWidgetData()
             checkWeeklyEnrichmentPrompt()
+            refreshPendingWalletItems()
+            checkNewMonthTransition()
+            checkCityTapHint()
             
             // Check if app was cold-launched or opened via payment notification tap
-            if let pending = confirmationCoordinator.activeConfirmation {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    triggerExpenseRollConfirmation(pending)
-                    confirmationCoordinator.activeConfirmation = nil
-                }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                consumeQueuedConfirmationsIfNeeded()
             }
         }
         .onChange(of: transactionsDigest) { _, _ in
             syncWidgetData()
+            checkCityTapHint()
+        }
+        .onChange(of: canPresentCityLesson) { _, canPresent in
+            if canPresent { checkCityTapHint() }
         }
         .onReceive(confirmationCoordinator.$activeConfirmation) { newConf in
-            if let newConf {
-                triggerExpenseRollConfirmation(newConf)
-                confirmationCoordinator.activeConfirmation = nil
+            if newConf != nil {
+                consumeQueuedConfirmationsIfNeeded()
             }
         }
         .onOpenURL { url in
@@ -537,19 +670,16 @@ public struct MainCityView: View {
             let path = url.path.lowercased()
             
             if scheme == "spentapp" || scheme == "moneycity" {
-                if host == "scan" || path.contains("scan") {
+                if host == "scan" || path.contains("scan" ) || host == "quick-add" || path.contains("quick-add") {
                     activeTab = "city"
-                    quickAddInitialScan = true
-                    showQuickAdd = true
-                } else if host == "quick-add" || path.contains("quick-add") {
-                    activeTab = "city"
-                    quickAddInitialScan = false
                     showQuickAdd = true
                 }
             }
         }
-        .sheet(isPresented: $showQuickAdd, onDismiss: { quickAddInitialScan = false }) {
-            QuickAddSheet(initialOpenScan: quickAddInitialScan) { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId in
+        .sheet(isPresented: $showQuickAdd, onDismiss: {
+            quickAddPreselectedCategory = nil
+        }) {
+            QuickAddSheet(initialCategory: quickAddPreselectedCategory) { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId in
                 let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
                 let tx = Transaction(
                     amount: amount,
@@ -567,7 +697,10 @@ public struct MainCityView: View {
                     exchangeRate: exchangeRate
                 )
                 modelContext.insert(tx)
-                try? modelContext.save()
+                guard DatabaseService.safeSave(modelContext) else {
+                    Haptics.notify(.error)
+                    return
+                }
 
                 let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
                 let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
@@ -578,6 +711,10 @@ public struct MainCityView: View {
                 )
             }
             .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showBudgetSheet) {
+            BudgetSheet()
+                .environmentObject(l10n)
         }
         .sheet(isPresented: $showFeed) {
             // The sheet used to take an onUpdateCategory closure it never called — tapping a
@@ -590,7 +727,19 @@ public struct MainCityView: View {
             .environmentObject(l10n)
         }
         .onChange(of: companionScenePhase) { _, phase in
-            if phase == .active { companionNow = Date(); checkWeeklyEnrichmentPrompt() }
+            if phase == .active {
+                companionNow = Date()
+                checkWeeklyEnrichmentPrompt()
+                refreshPendingWalletItems()
+                checkNewMonthTransition()
+                checkCityTapHint()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    consumeQueuedConfirmationsIfNeeded()
+                }
+                #if canImport(UserNotifications)
+                CityNarrativeEngine.shared.onAppForeground()
+                #endif
+            }
         }
         .sheet(isPresented: $showProgressSheet, onDismiss: {
             guard let id = pendingCompanionWelcome else { return }
@@ -654,6 +803,7 @@ public struct MainCityView: View {
                 }
             )
             .environmentObject(l10n)
+            .interactiveDismissDisabled(true)
         }
         .sheet(isPresented: $showSortingHubSheet) {
             CitySortingHubSheet(
@@ -671,6 +821,45 @@ public struct MainCityView: View {
             ReserveSanctuarySheet()
                 .environmentObject(l10n)
         }
+        .fullScreenCover(item: $activeNewMonthRecap) { recap in
+            MonthlyRecapSheet(recap: recap) { targetDate in
+                currentDate = targetDate
+                activeNewMonthRecap = nil
+            }
+            .environmentObject(l10n)
+        }
+        .sheet(item: $resolvingPendingItem) { pending in
+            ResolvePendingAmountSheet(
+                pending: pending,
+                onCommit: { amount in
+                    Task {
+                        _ = await WalletIngestCoordinator.run(
+                            amount: amount,
+                            amountText: nil,
+                            merchant: pending.merchant,
+                            currency: pending.currency,
+                            transactionDate: pending.timestamp,
+                            intentName: "InAppPendingResolution",
+                            pendingID: pending.id
+                        )
+                        await MainActor.run {
+                            PendingWalletStore.shared.remove(id: pending.id)
+                            pendingWalletItems.removeAll(where: { $0.id == pending.id })
+                            resolvingPendingItem = nil
+                        }
+                    }
+                },
+                onDismiss: {
+                    resolvingPendingItem = nil
+                }
+            )
+            .environmentObject(l10n)
+            .presentationDetents([.fraction(0.42), .medium])
+        }
+    }
+    
+    private func refreshPendingWalletItems() {
+        pendingWalletItems = PendingWalletStore.shared.getAll()
     }
     
     private func syncWidgetData() {
@@ -724,6 +913,24 @@ public struct MainCityView: View {
                     animatedSpentValue = nil
                 }
             }
+        }
+    }
+
+    /// Consumes all queued payment confirmations from disk and displays an aggregated roll animation.
+    private func consumeQueuedConfirmationsIfNeeded() {
+        let list = confirmationCoordinator.consumeAllPendingConfirmations()
+        guard !list.isEmpty else { return }
+
+        let totalAmount = list.reduce(0.0) { $0 + $1.amount }
+        if let last = list.last {
+            let aggregateConf = PendingExpenseConfirmation(
+                id: last.id,
+                amount: totalAmount,
+                merchant: list.count > 1 ? "\(last.merchant) ועוד \(list.count - 1)" : last.merchant,
+                timestamp: last.timestamp,
+                isRefund: last.isRefund
+            )
+            triggerExpenseRollConfirmation(aggregateConf)
         }
     }
     
@@ -789,6 +996,11 @@ public struct MainCityView: View {
         // and the tap felt like it had missed. The `.id` on the card below makes a swap a real
         // insertion so it animates, and the feedback here distinguishes the two cases —
         // opening a card from nothing, and exchanging one for another.
+        if !hasSeenCityTapHint {
+            hasSeenCityTapHint = true
+            withAnimation(.easeOut(duration: 0.2)) { showCityTapHint = false }
+        }
+
         let isSwap = inspectedBuilding != nil && inspectedBuilding?.id != real.id
         if isSwap {
             Haptics.selection()
@@ -799,13 +1011,129 @@ public struct MainCityView: View {
             inspectedBuilding = real
         }
     }
-    
+
+    private func dismissNewMonthBanner() {
+        let currentMonthStr = MonthlyRecapService.monthId(for: Date())
+        UserDefaults.standard.set(currentMonthStr, forKey: "last_acknowledged_month")
+        withAnimation(.easeOut(duration: 0.25)) {
+            pendingRecapForNewMonth = nil
+        }
+    }
+
+    private func checkNewMonthTransition() {
+        guard hasCompletedOnboarding, !isSnapshotMode else { return }
+        let cal = Calendar.current
+        let currentMonthStr = MonthlyRecapService.monthId(for: Date())
+        let lastAck = UserDefaults.standard.string(forKey: "last_acknowledged_month")
+        
+        if let lastAck = lastAck {
+            if lastAck != currentMonthStr {
+                if let prevMonthDate = cal.date(byAdding: .month, value: -1, to: Date()) {
+                    let prevRecap = MonthlyRecapService.generateRecap(
+                        for: prevMonthDate,
+                        allTransactions: allTransactions,
+                        monthlyBudget: effectiveMonthlyBudget
+                    )
+                    if prevRecap.transactionCount > 0 {
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                            pendingRecapForNewMonth = prevRecap
+                        }
+                    } else {
+                        UserDefaults.standard.set(currentMonthStr, forKey: "last_acknowledged_month")
+                    }
+                }
+            }
+        } else {
+            UserDefaults.standard.set(currentMonthStr, forKey: "last_acknowledged_month")
+        }
+    }
+
+    private func checkCityTapHint() {
+        guard canPresentCityLesson, !hasSeenCityTapHint, !isSnapshotMode,
+              !displayTransactions.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.35) {
+            guard canPresentCityLesson, !isSnapshotMode, !hasSeenCityTapHint, !displayTransactions.isEmpty,
+                  !showQuickAdd, !showOnboarding, activeTab == "city",
+                  inspectedBuilding == nil, selectedDistrict == nil else { return }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.8)) {
+                showCityTapHint = true
+            }
+        }
+    }
+
+    private var cityTapCoachmark: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                MoneyIcon(.home, size: 30)
+                    .padding(10)
+                    .background(Color.spentGreenSoft, in: RoundedRectangle(cornerRadius: 16))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(l10n.isHebrew ? "מכירים את העיר" : "Meet your city")
+                        .font(.caption.weight(.semibold)).foregroundStyle(Color.textSecondary)
+                    Text(l10n.isHebrew ? "לכל בניין יש סיפור" : "Every building has a story")
+                        .font(.headline).foregroundStyle(Color.deepNavy)
+                }
+                Spacer(minLength: 0)
+            }
+            Text(l10n.isHebrew
+                 ? "הקש על הבניין המסומן בעיר כדי לגלות אילו הוצאות בנו אותו."
+                 : "Tap the marked building to discover the expenses behind it.")
+                .font(.subheadline).foregroundStyle(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(l10n.isHebrew ? "אגלה בעצמי" : "I'll explore on my own") {
+                hasSeenCityTapHint = true
+                withAnimation(.easeOut(duration: 0.2)) { showCityTapHint = false }
+            }
+            .font(.subheadline.weight(.semibold)).foregroundStyle(Color.deepNavy)
+            .frame(minHeight: 44)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1))
+        .shadow(color: Color.deepNavy.opacity(0.07), radius: 16, y: 6)
+        .padding(.horizontal, 16)
+    }
+
+    private var firstTransactionCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                MoneyIcon(.citySkyline, size: 36).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isViewingPastMonth
+                         ? (l10n.isHebrew ? "אין הוצאות בחודש הזה" : "No expenses this month")
+                         : (l10n.isHebrew ? "העיר מחכה לסיפור שלך" : "Your city is ready for your story"))
+                        .font(.headline).foregroundStyle(Color.deepNavy)
+                    Text(isViewingPastMonth
+                         ? (l10n.isHebrew ? "אפשר לחזור לחודש הנוכחי ולהמשיך לבנות את העיר שלך." : "Return to this month to continue your city's story.")
+                         : (l10n.isHebrew ? "הוסף הוצאה שכבר ביצעת וראה איפה היא מופיעה בעיר."
+                         : "Add a purchase you've made and see where it appears in your city."))
+                        .font(.subheadline).foregroundStyle(Color.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Button {
+                if isViewingPastMonth { returnToCurrentMonth() } else { showQuickAdd = true }
+            } label: {
+                Text(isViewingPastMonth ? (l10n.isHebrew ? "חזרה לחודש הנוכחי" : "Back to this month")
+                     : (l10n.isHebrew ? "הוספת הוצאה" : "Add an expense"))
+                    .font(.headline).foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(Color.deepNavy, in: Capsule())
+            }.buttonStyle(.plain)
+        }
+        .padding(20)
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 24))
+        .padding(.horizontal, 16)
+    }
 
     @ViewBuilder
     private var topControlsHeader: some View {
         if !isChromeHidden {
             VStack(spacing: 10) {
                 topNavigationBar
+                newMonthRecapBanner
                 heroKpiRow
                 confirmationBannerView
                 districtSelectorRow
@@ -814,10 +1142,61 @@ public struct MainCityView: View {
         }
     }
 
+    @ViewBuilder
+    private var newMonthRecapBanner: some View {
+        if let recap = pendingRecapForNewMonth {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.spentGreenSoft)
+                        .frame(width: 32, height: 32)
+                    MoneyIcon(.trophy, size: 16, color: Color.spentGreen)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l10n.language == .hebrew ? "העיר של \(recap.monthNameHe) מוכנה לסיכום!" : "\(recap.monthNameEn) City is Ready!")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Text(l10n.language == .hebrew ? "הקש לצפייה בסיכום החודשי שלך" : "Tap to view your monthly recap")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                }
+                
+                Spacer()
+                
+                Button(action: {
+                    activeNewMonthRecap = recap
+                    dismissNewMonthBanner()
+                }) {
+                    Text(l10n.language == .hebrew ? "צפה" : "View")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.spentGreen)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                
+                Button(action: dismissNewMonthBanner) {
+                    MoneyIcon(.xmarkCircle, size: 16, color: Color.textMuted)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: Color.black.opacity(0.06), radius: 8, y: 2)
+            .padding(.horizontal, 20)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
     private var topNavigationBar: some View {
         HStack(alignment: .center) {
             Text("SPENT")
-                .font(.system(size: 22, weight: .black, design: .rounded))
+                .font(.system(size: 20, weight: .black, design: .rounded))
                 .foregroundColor(Color.deepNavy)
                 .tracking(0.5)
 
@@ -827,7 +1206,7 @@ public struct MainCityView: View {
                 companionNow = Date()
                 showProgressSheet = true
             } label: {
-                MoneyIcon(.gift, size: 22)
+                MoneyIcon(.gift, size: 24)
                     .frame(width: 44, height: 44)
                     .background(Color.white.opacity(0.94), in: Circle())
                     .overlay(alignment: .topTrailing) {
@@ -859,26 +1238,453 @@ public struct MainCityView: View {
     }
 
     private var heroKpiRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .center, spacing: 10) {
             RollingNumberText(
                 value: animatedSpentValue ?? currentCity.totalSpent,
                 format: { (amt: Double) -> String in l10n.format(amount: amt) }
             )
 
-            HStack(spacing: 3) {
-                MoneyIcon(.chevronDown, size: 11)
-                Text("12%")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-            }
-            .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Color(red: 220/255, green: 252/255, blue: 231/255))
-            .clipShape(Capsule())
-
             Spacer()
+
         }
         .padding(.horizontal, 20)
+    }
+
+    // MARK: - Dynamic Top Buildings (Subcategories) for Fast Action
+    private var dynamicTopBuildings: [CityBuilding] {
+        var counts: [String: Int] = [:]
+        for tx in allTransactions {
+            let m = "\(tx.merchant) \(tx.note ?? "")".lowercased()
+            let bId = tx.buildingId
+            
+            // Accurately resolve transaction to specific everyday subcategory
+            let resolvedId: String
+            if tx.category == .food || tx.category == .groceries || tx.category == .coffee {
+                if bId == "food_super" || m.contains("סופר") || m.contains("super") || m.contains("שופרסל") || m.contains("רמי לוי") || m.contains("מכולת") || m.contains("יוחננוף") || m.contains("ויקטורי") || m.contains("אושר עד") || m.contains("קרפור") || m.contains("am:pm") {
+                    resolvedId = "food_super"
+                } else if bId == "food_coffee" || m.contains("קפה") || m.contains("cafe") || m.contains("coffee") || m.contains("ארומה") || m.contains("aroma") || m.contains("גולדה") || m.contains("מאפיה") || m.contains("מאפיית") || m.contains("bakery") || m.contains("לנדוור") || m.contains("ארקפה") {
+                    resolvedId = "food_coffee"
+                } else if bId == "food_wolt" || m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") || m.contains("tabit") || m.contains("משלוח") {
+                    resolvedId = "food_wolt"
+                } else {
+                    resolvedId = "food_bistro"
+                }
+            } else if tx.category == .transport {
+                resolvedId = "trans_station"
+            } else if tx.category == .shopping {
+                if bId == "shop_tech" || m.contains("חשמל") || m.contains("ksp") || m.contains("ivory") || m.contains("מחשב") || m.contains("באג") {
+                    resolvedId = "shop_tech"
+                } else {
+                    resolvedId = "shop_boutique"
+                }
+            } else if tx.category == .health {
+                resolvedId = "health_pharmacy"
+            } else {
+                resolvedId = bId
+            }
+
+            if resolvedId != "city_sorting_hub" && CityBuilding.find(id: resolvedId) != nil {
+                counts[resolvedId, default: 0] += 1
+            }
+        }
+
+        // Ordered priority fallbacks when counts are equal or zero:
+        // 1. Supermarket, 2. Cafes, 3. Restaurants, 4. Food Delivery, 5. Transit, 6. Fashion
+        let fallbackOrder = [
+            "food_super",      // סופרמרקט
+            "food_coffee",     // בתי קפה
+            "food_bistro",     // מסעדות
+            "food_wolt",       // משלוחי אוכל
+            "trans_station",   // תחבורה ודלק
+            "shop_boutique",   // ביגוד ואופנה
+            "health_pharmacy", // פארם ובריאות
+            "shop_tech"        // טכנולוגיה
+        ]
+
+        var candidates = Array(counts.keys)
+        for fb in fallbackOrder {
+            if !candidates.contains(fb) {
+                candidates.append(fb)
+            }
+        }
+
+        let sortedIds = candidates.sorted { id1, id2 in
+            let c1 = counts[id1, default: 0]
+            let c2 = counts[id2, default: 0]
+            if c1 != c2 {
+                return c1 > c2
+            }
+            let idx1 = fallbackOrder.firstIndex(of: id1) ?? 999
+            let idx2 = fallbackOrder.firstIndex(of: id2) ?? 999
+            if idx1 != idx2 {
+                return idx1 < idx2
+            }
+            return id1 < id2
+        }
+
+        var result: [CityBuilding] = []
+        for bId in sortedIds {
+            if let b = CityBuilding.find(id: bId) {
+                result.append(b)
+                if result.count == 3 {
+                    break
+                }
+            }
+        }
+        return result
+    }
+
+    private func handleLongPressAdd() {
+        quickActionAmountText = ""
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
+            quickActionBuilding = nil
+            isQuickActionActive = true
+        }
+    }
+
+    private func closeQuickAction() {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
+            isQuickActionActive = false
+            quickActionBuilding = nil
+            quickActionAmountText = ""
+        }
+    }
+
+    private func handleQuickActionKeypad(_ key: String) {
+        if key == "⌫" {
+            Haptics.impact(.light)
+            if !quickActionAmountText.isEmpty {
+                quickActionAmountText.removeLast()
+            }
+        } else if key == "." {
+            Haptics.selection()
+            if !quickActionAmountText.contains(".") {
+                if quickActionAmountText.isEmpty {
+                    quickActionAmountText = "0."
+                } else {
+                    quickActionAmountText += "."
+                }
+            }
+        } else {
+            Haptics.impact(.light)
+            if quickActionAmountText == "0" {
+                quickActionAmountText = key
+            } else {
+                if let dot = quickActionAmountText.firstIndex(of: ".") {
+                    let decs = quickActionAmountText.distance(from: dot, to: quickActionAmountText.endIndex)
+                    if decs <= 2 {
+                        quickActionAmountText += key
+                    }
+                } else if quickActionAmountText.count < 7 {
+                    quickActionAmountText += key
+                }
+            }
+        }
+    }
+
+    private var displayQuickActionAmount: String {
+        if quickActionAmountText.isEmpty {
+            return "0"
+        }
+        let parts = quickActionAmountText.split(separator: ".", omittingEmptySubsequences: false)
+        let intPart = String(parts[0])
+        let formattedInt: String
+        if let val = Double(intPart) {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.groupingSeparator = ","
+            formatter.maximumFractionDigits = 0
+            formattedInt = formatter.string(from: NSNumber(value: val)) ?? intPart
+        } else {
+            formattedInt = intPart
+        }
+        if parts.count > 1 {
+            return "\(formattedInt).\(parts[1])"
+        } else if quickActionAmountText.hasSuffix(".") {
+            return "\(formattedInt)."
+        } else {
+            return formattedInt
+        }
+    }
+
+    private func submitQuickAction() {
+        guard let building = quickActionBuilding,
+              let amt = Double(quickActionAmountText.replacingOccurrences(of: ",", with: ".")),
+              amt > 0 else {
+            Haptics.notify(.warning)
+            return
+        }
+
+        let tx = Transaction(
+            amount: amt,
+            currency: l10n.baseCurrency.symbol,
+            merchant: building.displayName(for: l10n.language),
+            category: building.category,
+            timestamp: Date(),
+            confidenceScore: 1.0,
+            isManual: true,
+            isConfirmed: true,
+            note: nil,
+            buildingId: building.id,
+            originalAmount: nil,
+            originalCurrency: nil,
+            exchangeRate: nil
+        )
+        modelContext.insert(tx)
+        try? modelContext.save()
+
+        ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+            amount: amt,
+            merchant: building.displayName(for: l10n.language),
+            isRefund: false
+        )
+        Haptics.notify(.success)
+
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
+            isQuickActionActive = false
+            quickActionBuilding = nil
+            quickActionAmountText = ""
+        }
+    }
+
+    // MARK: - 3 Mini Subcategory Pills (Phase 1)
+    @ViewBuilder
+    private var quickActionBuildingPickerBar: some View {
+        HStack(spacing: 8) {
+            ForEach(dynamicTopBuildings) { building in
+                Button(action: {
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.78)) {
+                        quickActionBuilding = building
+                        quickActionAmountText = ""
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(building.category.softBackgroundColor)
+                            .frame(width: 28, height: 28)
+                            .overlay(
+                                MoneyIcon(building.iconType, size: 16)
+                            )
+
+                        Text(building.shortName(for: l10n.language))
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    }
+                    .padding(.leading, 6)
+                    .padding(.trailing, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.borderSubtle.opacity(0.8), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 3)
+                }
+                .bouncyPress(scale: 0.94)
+            }
+        }
+        .padding(.bottom, 6)
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.75, anchor: .bottom).combined(with: .opacity).combined(with: .move(edge: .bottom)),
+            removal: .scale(scale: 0.85, anchor: .bottom).combined(with: .opacity)
+        ))
+    }
+
+    // MARK: - Big Quick Amount Overlay (Phase 2 - Clean Editorial Fast Entry)
+    @ViewBuilder
+    private func bigQuickAmountOverlay(for building: CityBuilding) -> some View {
+        let keys: [[String]] = [
+            ["1", "2", "3"],
+            ["4", "5", "6"],
+            ["7", "8", "9"],
+            [".", "0", "⌫"]
+        ]
+        let canSubmit = (Double(quickActionAmountText.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0
+
+        ZStack {
+            // Soft dark backdrop over the 3D diorama
+            Color.black.opacity(0.28)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    closeQuickAction()
+                }
+
+            // Clean Centered Quick Entry Card
+            VStack(spacing: 16) {
+                // 1. Header: Subcategory Icon + Title + Close Button
+                HStack(spacing: 10) {
+                    Circle()
+                        .fill(building.category.softBackgroundColor)
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            MoneyIcon(building.iconType, size: 22)
+                        )
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(building.displayName(for: l10n.language))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+
+                        Text(building.category.displayName)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(building.category.themeColor)
+                    }
+
+                    Spacer()
+
+                    Button(action: closeQuickAction) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color.textMuted)
+                            .frame(width: 30, height: 30)
+                            .background(Color(red: 245/255, green: 246/255, blue: 248/255))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // 2. Large Amount Hero Display: ₪ [Amount]
+                HStack(alignment: .center, spacing: 6) {
+                    Text(l10n.baseCurrency.symbol)
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    Text(displayQuickActionAmount)
+                        .font(.system(size: 48, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.65)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+
+                // 3. Thumb-friendly Keypad (Flat style, no nested strokes)
+                VStack(spacing: 8) {
+                    ForEach(keys, id: \.self) { row in
+                        HStack(spacing: 8) {
+                            ForEach(row, id: \.self) { key in
+                                Button(action: {
+                                    handleQuickActionKeypad(key)
+                                }) {
+                                    ZStack {
+                                        if key == "⌫" {
+                                            MoneyIcon(.backspace, size: 20, color: Color.deepNavy)
+                                        } else if key == "." {
+                                            Text("•")
+                                                .font(.system(size: 22, weight: .black, design: .rounded))
+                                                .foregroundColor(Color.deepNavy)
+                                        } else {
+                                            Text(key)
+                                                .font(.system(size: 21, weight: .bold, design: .rounded))
+                                                .foregroundColor(Color.deepNavy)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 46)
+                                    .background(Color(red: 246/255, green: 247/255, blue: 249/255))
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
+                                .bouncyPress(scale: 0.94)
+                            }
+                        }
+                    }
+                }
+
+                // 4. Big Clean Confirm Button
+                Button(action: submitQuickAction) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 16, weight: .bold))
+                        Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Expense")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(canSubmit ? .white : Color.textMuted)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(canSubmit ? Color.spentGreen : Color.black.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .bouncyPress(scale: 0.94)
+                .disabled(!canSubmit)
+            }
+            .padding(20)
+            .frame(maxWidth: 320)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: 8)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.borderSubtle.opacity(0.6), lineWidth: 1)
+            )
+            .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Active City Card Modular View
+    @ViewBuilder
+    private var cityActiveCardView: some View {
+        if let b = inspectedBuilding, b.id == "savings_sanctuary" {
+            ReserveModalView(snapshot: reserveSnapshot, onClose: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    inspectedBuilding = nil
+                }
+            }, onShowFeed: { showReserveSanctuarySheet = true })
+            .id(b.id)
+            .transition(.asymmetric(
+                insertion: .offset(y: 16).combined(with: .opacity),
+                removal: .opacity
+            ))
+        } else if let b = inspectedBuilding {
+            InspectorModalView(info: b, onClose: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    inspectedBuilding = nil
+                    if selectedDistrict == "civic" {
+                        selectedDistrict = nil
+                    }
+                }
+            }, onShowFeed: {
+                if b.id == "city_sorting_hub" {
+                    showSortingHubSheet = true
+                } else {
+                    showFeed = true
+                }
+            })
+            .id(b.id)
+            .transition(.asymmetric(
+                insertion: .offset(y: 16).combined(with: .opacity),
+                removal: .opacity
+            ))
+        } else if let dist = selectedDistrict {
+            DistrictDeepDiveCard(
+                districtId: dist,
+                onBack: {
+                    withAnimation { selectedDistrict = nil; inspectedBuilding = nil }
+                },
+                onSelectBuilding: handleSelectBuilding,
+                pills: districtBuildingPills(for: dist),
+                total: districtTotal(for: dist)
+            )
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        } else {
+            if cityTutorialBuildingId != nil {
+                cityTapCoachmark
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+            } else if displayTransactions.isEmpty && !isSnapshotMode {
+                firstTransactionCard
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                spendingCard
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
     }
 
     @ViewBuilder
@@ -2094,6 +2900,100 @@ struct ReserveModalView: View {
             }
             .buttonStyle(.plain)
             .bouncyPress(scale: 0.94)
+        }
+    }
+}
+
+// MARK: - In-App Resolve Pending Amount Sheet
+
+struct ResolvePendingAmountSheet: View {
+    let pending: PendingWalletIngest
+    let onCommit: (Double) -> Void
+    let onDismiss: () -> Void
+
+    @EnvironmentObject private var l10n: LocalizationManager
+    @State private var amountText: String = ""
+    @State private var hasError = false
+    @FocusState private var isAmountFocused: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 18) {
+                VStack(spacing: 6) {
+                    MoneyIcon(.creditCard, size: 40)
+                        .padding(.top, 8)
+
+                    Text(l10n.language == .hebrew ? "הזנת סכום לתשלום" : "Enter Payment Amount")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+
+                    Text(pending.merchant)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(pending.currency)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 100/255, green: 116/255, blue: 139/255))
+
+                    TextField("0", text: $amountText)
+                        .font(.system(size: 34, weight: .black, design: .rounded))
+                        .keyboardType(.decimalPad)
+                        .focused($isAmountFocused)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 160)
+                }
+                .padding(.vertical, 8)
+                .background(Color(red: 248/255, green: 250/255, blue: 252/255))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                if hasError {
+                    Text(l10n.language == .hebrew ? "אנא הזן סכום תקין" : "Please enter a valid amount")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(.red)
+                }
+
+                Button(action: {
+                    if let parsed = AmountParser.parse(amountText) {
+                        let amount = NSDecimalNumber(decimal: parsed).doubleValue
+                        onCommit(amount)
+                    } else {
+                        hasError = true
+                        Haptics.notify(.warning)
+                    }
+                }) {
+                    Text(l10n.language == .hebrew ? "שמור בעיר" : "Save to City")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.spentGreen, Color(red: 22/255, green: 163/255, blue: 74/255)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+            }
+            .padding(.horizontal, 24)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l10n.language == .hebrew ? "ביטול" : "Cancel", action: onDismiss)
+                }
+            }
+            .onAppear {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    isAmountFocused = true
+                }
+            }
         }
     }
 }

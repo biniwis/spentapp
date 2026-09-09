@@ -23,34 +23,25 @@ public struct TransactionFeedSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 if transactions.isEmpty {
-                    VStack(spacing: 12) {
-                        DistrictSkylineVectorIcon(color: Color.primaryBlue)
-                            .frame(width: 44, height: 44)
-                            .scaleEffect(1.6)
-                        Text(title != nil
-                             ? (isHebrew ? "אין עסקאות עדיין ב-\(title!)" : "No transactions yet in \(title!)")
-                             : (isHebrew ? "אין עסקאות עדיין החודש" : "No transactions this month"))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        Text(isHebrew
-                             ? "כל הוצאה שתסווג לכאן תופיע כאן ותצמיח את המבנה בעיר."
-                             : "Any expense categorized here will grow this district's buildings.")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
+                    ScrollView {
+                        SpentEmptyState(icon: .receipt,
+                            title: isHebrew ? "כאן יופיע הסיפור שמאחורי המספרים" : "The story behind the numbers goes here",
+                            message: isHebrew ? "עדיין אין עסקאות בתצוגה הזו. הוצאות שישויכו לכאן יופיעו עם שם העסק, הסכום והתאריך."
+                                : "There are no transactions in this view yet. Matching expenses will appear with their merchant, amount and date.",
+                            actionTitle: isHebrew ? "חזרה" : "Go back",
+                            action: { dismiss() })
+                            .padding(.top, 40)
                     }
-                    .frame(maxHeight: .infinity)
                 } else {
                     List {
                         ForEach(transactions) { tx in
                             HStack(spacing: 14) {
-                                // Category Icon Badge
-                                CategoryBadge(category: tx.category, size: 44)
+                                // Subcategory Icon Badge
+                                CategoryBadge(transaction: tx, size: 44)
                                 
                                 // Merchant & Time Info
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(tx.merchant)
+                                    Text(displayMerchantTitle(for: tx))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.deepNavy)
                                     
@@ -112,5 +103,30 @@ public struct TransactionFeedSheet: View {
             }
         }
     }
-}
 
+    private func displayMerchantTitle(for tx: Transaction) -> String {
+        let rawMerchant = tx.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cat = tx.category
+
+        let isGeneric = rawMerchant.isEmpty
+            || rawMerchant == cat.displayName
+            || rawMerchant == cat.displayNameEn
+            || rawMerchant == cat.shortName
+            || rawMerchant == cat.rawValue
+            || rawMerchant == "ללא שם"
+            || rawMerchant.caseInsensitiveCompare("Unnamed") == .orderedSame
+
+        if isGeneric {
+            let subName = SubcategoryBreakdownService.shared.subcategoryName(for: tx, isHebrew: isHebrew)
+            if !subName.isEmpty && subName != cat.displayName {
+                return subName
+            }
+            if let note = tx.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty, !note.contains("זיכוי") {
+                return note
+            }
+            return subName.isEmpty ? cat.displayName : subName
+        }
+
+        return rawMerchant
+    }
+}

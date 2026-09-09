@@ -105,6 +105,29 @@ public final class SubcategoryBreakdownService: Sendable {
         }
     }
 
+    /// Returns the subcategory display name for a given transaction.
+    public func subcategoryName(for tx: Transaction, isHebrew: Bool) -> String {
+        subcategory(for: tx, isHebrew: isHebrew).name
+    }
+
+    /// Returns the MoneyCity signature icon type for a given transaction.
+    public func subcategoryIcon(for tx: Transaction) -> MoneyIconType {
+        subcategory(for: tx, isHebrew: true).icon
+    }
+
+    /// Returns the complete subcategory metadata (name, icon, thematic color) for a transaction.
+    public func subcategory(for tx: Transaction, isHebrew: Bool) -> (name: String, icon: MoneyIconType, color: Color) {
+        // 1. If explicit buildingIdRaw is set and matches CityBuilding, use its display name & icon
+        if let raw = tx.buildingIdRaw, !raw.isEmpty, let b = CityBuilding.find(id: raw) {
+            let info = subcategoryInfo(for: tx, category: tx.category.canonical, isHebrew: isHebrew)
+            return (name: b.displayName(for: isHebrew ? .hebrew : .english), icon: b.iconType, color: info.color)
+        }
+
+        // 2. Otherwise determine subcategory via taxonomy and merchant/notes
+        let info = subcategoryInfo(for: tx, category: tx.category.canonical, isHebrew: isHebrew)
+        return (name: info.name, icon: info.icon, color: info.color)
+    }
+
     // MARK: - Subcategory Classification Rules
 
     private func subcategoryInfo(
@@ -112,11 +135,12 @@ public final class SubcategoryBreakdownService: Sendable {
         category: SpendingCategory,
         isHebrew: Bool
     ) -> (id: String, name: String, icon: MoneyIconType, color: Color) {
-        let m = tx.merchant.lowercased()
+        let bId = (tx.buildingIdRaw ?? tx.buildingId).lowercased()
+        let m = "\(tx.merchant) \(tx.note ?? "")".lowercased()
 
         switch category {
         case .food, .groceries, .coffee:
-            if m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") || m.contains("tabit") || m.contains("משלוח") {
+            if bId == "food_wolt" || m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") || m.contains("tabit") || m.contains("משלוח") {
                 return (
                     "food_wolt",
                     isHebrew ? "משלוחי אוכל" : "Food Delivery",
@@ -124,7 +148,7 @@ public final class SubcategoryBreakdownService: Sendable {
                     Color(red: 249/255, green: 115/255, blue: 22/255) // Warm Orange
                 )
             }
-            if category == .coffee || m.contains("קפה") || m.contains("cafe") || m.contains("coffee") || m.contains("aroma") || m.contains("ארומה") || m.contains("גולדה") || m.contains("golda") || m.contains("arcaffe") || m.contains("ארקפה") || m.contains("landwer") || m.contains("לנדוור") || m.contains("מאפיה") || m.contains("מאפיית") || m.contains("bakery") {
+            if bId == "food_coffee" || category == .coffee || m.contains("קפה") || m.contains("cafe") || m.contains("coffee") || m.contains("aroma") || m.contains("ארומה") || m.contains("גולדה") || m.contains("golda") || m.contains("arcaffe") || m.contains("ארקפה") || m.contains("landwer") || m.contains("לנדוור") || m.contains("מאפיה") || m.contains("מאפיית") || m.contains("bakery") {
                 return (
                     "food_coffee",
                     isHebrew ? "בתי קפה" : "Cafes",
@@ -132,7 +156,7 @@ public final class SubcategoryBreakdownService: Sendable {
                     Color(red: 245/255, green: 158/255, blue: 11/255) // Warm Amber
                 )
             }
-            if category == .groceries || m.contains("סופר") || m.contains("super") || m.contains("שופרסל") || m.contains("shufersal") || m.contains("רמי לוי") || m.contains("rami levy") || m.contains("ויקטורי") || m.contains("victory") || m.contains("יוחננוף") || m.contains("טיב טעם") || m.contains("am:pm") || m.contains("מכולת") || m.contains("אושר עד") || m.contains("קרפור") || m.contains("carrefour") {
+            if bId == "food_super" || category == .groceries || m.contains("סופר") || m.contains("super") || m.contains("שופרסל") || m.contains("shufersal") || m.contains("רמי לוי") || m.contains("rami levy") || m.contains("ויקטורי") || m.contains("victory") || m.contains("יוחננוף") || m.contains("טיב טעם") || m.contains("am:pm") || m.contains("מכולת") || m.contains("אושר עד") || m.contains("קרפור") || m.contains("carrefour") {
                 return (
                     "food_super",
                     isHebrew ? "סופר ומכולת" : "Supermarket",
@@ -148,7 +172,7 @@ public final class SubcategoryBreakdownService: Sendable {
             )
 
         case .shopping:
-            if m.contains("ksp") || m.contains("ivory") || m.contains("אייבורי") || m.contains("חשמל") || m.contains("באג") || m.contains("bug") || m.contains("amazon") || m.contains("אמזון") || m.contains("aliexpress") || m.contains("עליאקספרס") || m.contains("idigital") || m.contains("istore") || m.contains("מחשב") {
+            if bId == "shop_tech" || m.contains("ksp") || m.contains("ivory") || m.contains("אייבורי") || m.contains("חשמל") || m.contains("באג") || m.contains("bug") || m.contains("amazon") || m.contains("אמזון") || m.contains("aliexpress") || m.contains("עליאקספרס") || m.contains("idigital") || m.contains("istore") || m.contains("מחשב") {
                 return (
                     "shop_tech",
                     isHebrew ? "טכנולוגיה וחשמל" : "Tech & Electronics",
@@ -156,7 +180,7 @@ public final class SubcategoryBreakdownService: Sendable {
                     Color(red: 219/255, green: 39/255, blue: 119/255) // Hot Pink
                 )
             }
-            if m.contains("flight") || m.contains("טיסה") || m.contains("טיסות") || m.contains("el al") || m.contains("אל על") || m.contains("airbnb") || m.contains("booking") || m.contains("hotel") || m.contains("מלון") || m.contains("איסתא") || m.contains("wizz") || m.contains("ryanair") || m.contains("arkia") || m.contains("ארקיע") {
+            if bId == "shop_travel" || m.contains("flight") || m.contains("טיסה") || m.contains("טיסות") || m.contains("el al") || m.contains("אל על") || m.contains("airbnb") || m.contains("booking") || m.contains("hotel") || m.contains("מלון") || m.contains("איסתא") || m.contains("wizz") || m.contains("ryanair") || m.contains("arkia") || m.contains("ארקיע") {
                 return (
                     "shop_travel",
                     isHebrew ? "חופשות וטיסות" : "Travel & Vacations",
@@ -172,7 +196,7 @@ public final class SubcategoryBreakdownService: Sendable {
             )
 
         case .housing:
-            if m.contains("חשמל") || m.contains("ארנונה") || m.contains("עיריית") || m.contains("עירייה") || m.contains("מים") || m.contains("מי אביבים") || m.contains("מי כרמל") || m.contains("גז") || m.contains("פזגז") || m.contains("gas") || m.contains("ועד בית") {
+            if bId == "house_util" || m.contains("חשמל") || m.contains("ארנונה") || m.contains("עיריית") || m.contains("עירייה") || m.contains("מים") || m.contains("מי אביבים") || m.contains("מי כרמל") || m.contains("גז") || m.contains("פזגז") || m.contains("gas") || m.contains("ועד בית") {
                 return (
                     "house_util",
                     isHebrew ? "חשבונות הבית" : "Utilities & Bills",
@@ -212,11 +236,19 @@ public final class SubcategoryBreakdownService: Sendable {
                     Color(red: 74/255, green: 222/255, blue: 128/255) // Light Green
                 )
             }
+            if bId == "trans_parking" || m.contains("חניה") || m.contains("חניון") || m.contains("פנגו") || m.contains("pango") || m.contains("סלופארק") || m.contains("כביש 6") {
+                return (
+                    "trans_parking",
+                    isHebrew ? "חניה ואגרות" : "Parking & Tolls",
+                    .ticket,
+                    Color(red: 16/255, green: 185/255, blue: 129/255) // Emerald
+                )
+            }
             return (
-                "trans_parking",
-                isHebrew ? "חניה ואגרות" : "Parking & Tolls",
-                .ticket,
-                Color(red: 16/255, green: 185/255, blue: 129/255) // Emerald
+                "trans_station",
+                isHebrew ? "תחבורה ורכב" : "Transport & Fuel",
+                .car,
+                Color(red: 22/255, green: 163/255, blue: 74/255)
             )
 
         case .subscriptions:

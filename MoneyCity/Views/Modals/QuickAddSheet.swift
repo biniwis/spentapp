@@ -1,23 +1,20 @@
 import SwiftUI
 import SwiftData
 import AppIntents
-#if canImport(PhotosUI)
-import PhotosUI
-#endif
 
 /// Fast-Add modal sheet matching the art-directed modern design system.
 @MainActor
 public struct QuickAddSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
-    public let initialOpenScan: Bool
+    public let initialCategory: SpendingCategory?
     public let onSave: (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     
     public init(
-        initialOpenScan: Bool = false,
+        initialCategory: SpendingCategory? = nil,
         onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
-        self.initialOpenScan = initialOpenScan
+        self.initialCategory = initialCategory
         self.onSave = onSave
     }
     
@@ -34,14 +31,8 @@ public struct QuickAddSheet: View {
     @State private var transactionDate = Date()
     @State private var showDatePicker = false
     @State private var showCategoryPickerSheet = false
-
-    #if canImport(PhotosUI)
-    @State private var selectedPhotoItem: PhotosPickerItem? = nil
-    @State private var showPhotoPicker = false
-    #endif
-    @State private var isScanningScreenshot = false
-    @State private var scannedMultiCandidates: [ParsedTransactionCandidate] = []
-    @State private var scanErrorMessage: String? = nil
+    @State private var categoryPickerSubcategoryCategory: SpendingCategory? = nil
+    @State private var amountPunchScale: CGFloat = 1.0
 
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isAmountFocused: Bool
@@ -65,20 +56,49 @@ public struct QuickAddSheet: View {
         SpendingCategory.primaryCategories
     }
     
+    /// Displays the entered amount with thousands separator commas (e.g. 20000 -> 20,000)
     private var displayAmountString: String {
         if amountText.isEmpty {
             return "0.00"
         }
-        return amountText
+        let parts = amountText.split(separator: ".", omittingEmptySubsequences: false)
+        let intPart = String(parts[0])
+
+        let formattedInt: String
+        if let val = Double(intPart) {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.groupingSeparator = ","
+            formatter.maximumFractionDigits = 0
+            formattedInt = formatter.string(from: NSNumber(value: val)) ?? intPart
+        } else {
+            formattedInt = intPart
+        }
+
+        if parts.count > 1 {
+            return "\(formattedInt).\(parts[1])"
+        } else if amountText.hasSuffix(".") {
+            return "\(formattedInt)."
+        } else {
+            return formattedInt
+        }
+    }
+
+    private var displayAmountFontSize: CGFloat {
+        let count = displayAmountString.count
+        if count <= 6 { return 44 }
+        if count <= 9 { return 38 }
+        return 32
     }
 
     private func handleKeypadPress(_ key: String) {
-        Haptics.selection()
         if key == "⌫" {
+            Haptics.impact(.medium)
             if !amountText.isEmpty {
                 amountText.removeLast()
             }
         } else if key == "." {
+            Haptics.selection()
             if !amountText.contains(".") {
                 if amountText.isEmpty {
                     amountText = "0."
@@ -87,6 +107,7 @@ public struct QuickAddSheet: View {
                 }
             }
         } else {
+            Haptics.impact(.light)
             // Digits 0-9
             if amountText == "0" {
                 amountText = key
@@ -102,6 +123,16 @@ public struct QuickAddSheet: View {
                 }
             }
         }
+
+        // Tactile punch micro-interaction on hero amount display
+        withAnimation(.spring(response: 0.12, dampingFraction: 0.48)) {
+            amountPunchScale = 1.09
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
+                amountPunchScale = 1.0
+            }
+        }
     }
     
     public var body: some View {
@@ -111,29 +142,56 @@ public struct QuickAddSheet: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 16) {
-                        if isScanningScreenshot {
-                            ReceiptScanningSkeletonView()
-                                .padding(.horizontal, 20)
-                                .padding(.top, 4)
-                        }
-
-                        // Multi-transaction review if screenshot contained multiple
-                        multiTransactionReviewSection
-
                         // ── 1. Hero Amount Display (Reference: ₪0.00 with cursor) ──
-                        HStack(alignment: .center, spacing: 4) {
-                            Text(selectedCurrency.symbol)
-                                .font(.system(size: 44, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
+                        HStack(alignment: .center, spacing: 6) {
+                            Menu {
+                                ForEach(CurrencyType.allCases) { curr in
+                                    Button {
+                                        Haptics.selection()
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                            selectedCurrency = curr
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(l10n.language == .hebrew ? curr.displayNameHebrew : curr.displayNameEnglish)
+                                            if selectedCurrency == curr {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Text(selectedCurrency.symbol)
+                                        .font(.system(size: displayAmountFontSize, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.primaryBlue)
+                                        .padding(4)
+                                        .background(Color.primaryBlue.opacity(0.10), in: Circle())
+                                        .offset(y: 2)
+                                }
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
+                            }
+                            .bouncyPress(scale: 0.94)
+                            .accessibilityLabel(l10n.language == .hebrew ? "החלף מטבע" : "Change currency")
 
                             Text(displayAmountString)
-                                .font(.system(size: 44, weight: .bold, design: .rounded))
+                                .font(.system(size: displayAmountFontSize, weight: .bold, design: .rounded))
                                 .foregroundColor(amountText.isEmpty ? Color.textMuted.opacity(0.6) : Color.deepNavy)
+                                .scaleEffect(amountPunchScale)
+                                .animation(.spring(response: 0.18, dampingFraction: 0.6), value: amountPunchScale)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
 
                             // Blinking cursor
                             Rectangle()
                                 .fill(Color.primaryBlue)
-                                .frame(width: 2.5, height: 40)
+                                .frame(width: 2.5, height: displayAmountFontSize * 0.9)
                                 .opacity(cursorVisible ? 1.0 : 0.0)
                         }
                         .frame(maxWidth: .infinity)
@@ -159,7 +217,7 @@ public struct QuickAddSheet: View {
                         VStack(spacing: 0) {
                             // Merchant Input Row
                             HStack(spacing: 12) {
-                                MoneyIcon(.user, size: 18)
+                                MoneyIcon(.pencil, size: 18)
                                     .frame(width: 24)
 
                                 TextField(l10n.language == .hebrew ? "בית עסק / תיאור" : "Merchant", text: $note)
@@ -175,25 +233,39 @@ public struct QuickAddSheet: View {
 
                             // Category Selector Row
                             Button(action: {
+                                categoryPickerSubcategoryCategory = nil
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                     showCategoryPickerSheet.toggle()
                                 }
                             }) {
                                 HStack(spacing: 12) {
                                     if let cat = selectedCategory {
-                                        CategoryBadge(category: cat, size: 28)
+                                        ZStack {
+                                            Circle()
+                                                .fill(cat.softBackgroundColor)
+                                                .frame(width: 32, height: 32)
+                                            CategoryVectorIcon(category: cat, size: 20)
+                                        }
                                     } else {
                                         Circle()
                                             .fill(Color(red: 255/255, green: 237/255, blue: 213/255))
-                                            .frame(width: 28, height: 28)
+                                            .frame(width: 32, height: 32)
                                             .overlay(
-                                                MoneyIcon(.bookmark, size: 14)
+                                                MoneyIcon(.bookmark, size: 16)
                                             )
                                     }
 
-                                    Text(l10n.language == .hebrew ? "קטגוריה" : "Category")
-                                        .font(.system(size: 15, weight: .medium, design: .default))
-                                        .foregroundColor(Color.deepNavy)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(l10n.language == .hebrew ? "קטגוריה" : "Category")
+                                            .font(.system(size: 15, weight: .medium, design: .default))
+                                            .foregroundColor(Color.deepNavy)
+
+                                        if let bId = selectedBuildingId, let b = CityBuilding.find(id: bId), selectedCategory != nil {
+                                            Text(b.displayName(for: l10n.language))
+                                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                                .foregroundColor(selectedCategory?.themeColor ?? Color.textMuted)
+                                        }
+                                    }
 
                                     Spacer()
 
@@ -209,7 +281,7 @@ public struct QuickAddSheet: View {
                                 .frame(height: 52)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .bouncyPress(scale: 0.98)
 
                             Divider()
                                 .padding(.horizontal, 16)
@@ -235,7 +307,7 @@ public struct QuickAddSheet: View {
                                 .frame(height: 52)
                                 .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
+                            .bouncyPress(scale: 0.98)
 
                             if showDatePicker {
                                 Divider()
@@ -303,21 +375,11 @@ public struct QuickAddSheet: View {
                     }
                 }
 
-                #if canImport(PhotosUI)
-                ToolbarItem(placement: .primaryAction) {
-                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        MoneyIcon(.camera, size: 22)
-                            .frame(width: 32, height: 32)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                            .shadow(color: Color.black.opacity(0.05), radius: 3, y: 1)
-                    }
-                }
-                #endif
             }
             .onAppear {
-                // Default to food category if none selected
-                if selectedCategory == nil {
+                if let initial = initialCategory {
+                    selectedCategory = initial
+                } else if selectedCategory == nil {
                     selectedCategory = .food
                 }
             }
@@ -330,7 +392,7 @@ public struct QuickAddSheet: View {
         }
     }
 
-    // MARK: - Numeric Keypad View (Reference Screen 5)
+    // MARK: - Numeric Keypad View (Tactile Micro-Interactions)
     @ViewBuilder @MainActor
     private var numericKeypadView: some View {
         let keys: [[String]] = [
@@ -347,27 +409,31 @@ public struct QuickAddSheet: View {
                         Button(action: {
                             handleKeypadPress(key)
                         }) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.white)
-                                    .shadow(color: Color.black.opacity(0.04), radius: 3.5, y: 1.5)
-
-                                if key == "⌫" {
-                                    MoneyIcon(.backspace, size: 22)
-                                } else {
-                                    Text(key)
-                                        .font(.system(size: 24, weight: .semibold, design: .rounded))
-                                        .foregroundColor(Color.deepNavy)
-                                }
-                            }
-                            .frame(height: 50)
+                            keypadCell(key: key)
                         }
-                        .buttonStyle(.plain)
-                        .bouncyPress(scale: 0.94)
+                        .buttonStyle(KeypadInteractiveButtonStyle(isDelete: key == "⌫"))
                     }
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func keypadCell(key: String) -> some View {
+        ZStack {
+            if key == "⌫" {
+                MoneyIcon(.backspace, size: 22)
+            } else if key == "." {
+                Text("•")
+                    .font(.system(size: 24, weight: .black, design: .rounded))
+            } else {
+                Text(key)
+                    .font(.system(size: 23, weight: .bold, design: .rounded))
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 50)
+        .contentShape(Rectangle())
     }
 
     private func formattedDateString(_ date: Date) -> String {
@@ -383,157 +449,227 @@ public struct QuickAddSheet: View {
         }
     }
 
-    // MARK: - Dynamic Building Chips
+    // MARK: - Dynamic Building Chips (Prominent & Clean, No Circle Stroke)
     @ViewBuilder @MainActor
     private func buildingChipsSection(cat: SpendingCategory, buildings: [CityBuilding]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(l10n.language == .hebrew ? "בניין בעיר:" : "3D Building:")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                Spacer()
-                if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
-                    Text(building.displayName(for: l10n.language))
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(cat.themeColor)
-                }
-            }
-            .padding(.horizontal, 4)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(buildings) { b in
-                        let isBSelected = (selectedBuildingId == b.id)
-                        Button(action: {
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.25)) {
-                                selectedBuildingId = b.id
-                            }
-                        }) {
-                            HStack(spacing: 5) {
-                                Text(b.emoji)
-                                    .font(.system(size: 13))
-                                Text(b.displayName(for: l10n.language))
-                                    .font(.system(size: 11, weight: isBSelected ? .bold : .medium, design: .rounded))
-                                    .foregroundColor(isBSelected ? cat.themeColor : Color.deepNavy)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(isBSelected ? cat.softBackgroundColor : Color.white)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(isBSelected ? cat.themeColor : Color.clear, lineWidth: isBSelected ? 1.5 : 0)
-                            )
-                            .shadow(color: Color.black.opacity(isBSelected ? 0 : 0.03), radius: 3, y: 1)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 9) {
+                ForEach(buildings) { b in
+                    let isBSelected = (selectedBuildingId == b.id)
+                    Button(action: {
+                        Haptics.selection()
+                        withAnimation(.spring(response: 0.25)) {
+                            selectedBuildingId = b.id
                         }
-                        .bouncyPress(scale: 0.95)
+                    }) {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(isBSelected ? cat.themeColor.opacity(0.18) : cat.softBackgroundColor)
+                                .frame(width: 30, height: 30)
+                                .overlay(
+                                    MoneyIcon(b.iconType, size: 18)
+                                )
+
+                            Text(b.displayName(for: l10n.language))
+                                .font(.system(size: 13, weight: isBSelected ? .bold : .semibold, design: .rounded))
+                                .foregroundColor(isBSelected ? cat.themeColor : Color.deepNavy)
+                        }
+                        .padding(.leading, 6)
+                        .padding(.trailing, 14)
+                        .padding(.vertical, 8)
+                        .background(isBSelected ? cat.softBackgroundColor.opacity(0.5) : Color.white)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(isBSelected ? cat.themeColor.opacity(0.40) : Color.borderSubtle, lineWidth: isBSelected ? 1.2 : 1)
+                        )
+                        .shadow(color: Color.black.opacity(isBSelected ? 0.08 : 0.04), radius: isBSelected ? 5 : 3, y: 1.5)
                     }
+                    .bouncyPress(scale: 0.95)
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 20)
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    // MARK: - Category Picker Popup Modal (Screen 6 Modal / Popup)
+    // MARK: - Category Picker Popup Modal (2-Step Flow, Clean Circles Without Strokes)
     @ViewBuilder @MainActor
     private var categoryPickerModalView: some View {
         VStack(spacing: 16) {
-            // Header: Title + Close Button
-            HStack {
-                Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
+            if let pendingCat = categoryPickerSubcategoryCategory {
+                // ── STEP 2: Choose Building / Subcategory ──
+                let buildings = CityBuilding.buildings(for: pendingCat)
 
-                Spacer()
-
-                Button(action: {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                        showCategoryPickerSheet = false
-                    }
-                }) {
-                    MoneyIcon(.xmarkCircle, size: 22)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 4)
-
-            if let scanError = scanErrorMessage {
+                // Header: Back Button + Category Title + Close
                 HStack(spacing: 8) {
-                    MoneyIcon(.warningCircle, size: 16)
-                    Text(scanError)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.orange)
-                        .lineLimit(2)
-                }
-                .padding(.horizontal, 4)
-            }
-
-            // 3x3 Category Grid
-            LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 10),
-                    GridItem(.flexible(), spacing: 10),
-                    GridItem(.flexible(), spacing: 10)
-                ],
-                spacing: 10
-            ) {
-                ForEach(allCategories) { cat in
-                    let isSelected = selectedCategory == cat
                     Button(action: {
-                        Haptics.selection()
-                        selectedCategory = cat
-                        showErrorHint = false
-                        let available = CityBuilding.buildings(for: cat)
-                        if !available.contains(where: { $0.id == selectedBuildingId }) {
-                            selectedBuildingId = CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
-                            if !available.contains(where: { $0.id == selectedBuildingId }), let first = available.first {
-                                selectedBuildingId = first.id
-                            }
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                            categoryPickerSubcategoryCategory = nil
                         }
-                        isAmountFocused = false
-                        withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                    }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: l10n.language == .hebrew ? "chevron.right" : "chevron.left")
+                                .font(.system(size: 12, weight: .bold))
+                            Text(l10n.language == .hebrew ? "קטגוריות" : "Categories")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(Color.deepNavy)
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
+
+                    Text(pendingCat.displayName(for: l10n.language))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    Spacer()
+
+                    Button(action: {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                            categoryPickerSubcategoryCategory = nil
                             showCategoryPickerSheet = false
                         }
                     }) {
-                        VStack(spacing: 8) {
-                            // Circular Pastel Container
-                            ZStack {
-                                Circle()
-                                    .fill(isSelected ? cat.themeColor : cat.softBackgroundColor)
-                                    .frame(width: 44, height: 44)
-                                    .overlay(
-                                        Circle()
-                                            .stroke(isSelected ? cat.themeColor : Color.black.opacity(0.04), lineWidth: 1)
-                                    )
-                                    .shadow(color: isSelected ? cat.themeColor.opacity(0.28) : Color.clear, radius: 4, y: 2)
-
-                                CategoryVectorIcon(
-                                    category: cat,
-                                    color: isSelected ? Color.white : cat.themeColor,
-                                    size: 22
-                                )
-                            }
-                            
-                            Text(cat.shortName)
-                                .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
-                                .foregroundColor(isSelected ? Color.deepNavy : Color.textSecondary)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(isSelected ? cat.softBackgroundColor.opacity(0.5) : Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(isSelected ? cat.themeColor : Color.clear, lineWidth: isSelected ? 1.6 : 0)
-                        )
-                        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+                        MoneyIcon(.xmarkCircle, size: 22, color: Color.deepNavy)
                     }
                     .buttonStyle(.plain)
-                    .bouncyPress(scale: 0.94)
+                }
+                .padding(.horizontal, 4)
+
+                // Buildings List
+                VStack(spacing: 8) {
+                    ForEach(buildings) { b in
+                        let isSelected = (selectedBuildingId == b.id && selectedCategory == pendingCat)
+                        Button(action: {
+                            Haptics.selection()
+                            selectedCategory = pendingCat
+                            selectedBuildingId = b.id
+                            showErrorHint = false
+                            isAmountFocused = false
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                                categoryPickerSubcategoryCategory = nil
+                                showCategoryPickerSheet = false
+                            }
+                        }) {
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(isSelected ? pendingCat.themeColor.opacity(0.18) : pendingCat.softBackgroundColor)
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        MoneyIcon(b.iconType, size: 22)
+                                    )
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(b.displayName(for: l10n.language))
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundColor(isSelected ? pendingCat.themeColor : Color.deepNavy)
+
+                                    Text(b.description(for: l10n.language))
+                                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color.textSecondary)
+                                        .lineLimit(1)
+                                }
+
+                                Spacer()
+
+                                if isSelected {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(pendingCat.themeColor)
+                                }
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(isSelected ? pendingCat.softBackgroundColor.opacity(0.4) : Color(red: 248/255, green: 249/255, blue: 251/255))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(isSelected ? pendingCat.themeColor.opacity(0.5) : Color.borderSubtle.opacity(0.6), lineWidth: 1)
+                            )
+                            .shadow(color: isSelected ? pendingCat.themeColor.opacity(0.12) : Color.clear, radius: 5, y: 2)
+                        }
+                        .bouncyPress(scale: 0.96)
+                    }
+                }
+            } else {
+                // ── STEP 1: Choose Category Grid ──
+                HStack {
+                    Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    Spacer()
+
+                    Button(action: {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                            showCategoryPickerSheet = false
+                        }
+                    }) {
+                        MoneyIcon(.xmarkCircle, size: 22, color: Color.deepNavy)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 4)
+
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10)
+                    ],
+                    spacing: 10
+                ) {
+                    ForEach(allCategories) { cat in
+                        let isSelected = selectedCategory == cat
+                        Button(action: {
+                            Haptics.selection()
+                            let available = CityBuilding.buildings(for: cat)
+                            if available.count > 1 {
+                                withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) {
+                                    categoryPickerSubcategoryCategory = cat
+                                }
+                            } else {
+                                selectedCategory = cat
+                                selectedBuildingId = available.first?.id
+                                showErrorHint = false
+                                isAmountFocused = false
+                                withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                                    showCategoryPickerSheet = false
+                                }
+                            }
+                        }) {
+                            VStack(spacing: 8) {
+                                Circle()
+                                    .fill(isSelected ? cat.themeColor.opacity(0.18) : cat.softBackgroundColor)
+                                    .frame(width: 48, height: 48)
+                                    .overlay(
+                                        CategoryVectorIcon(
+                                            category: cat,
+                                            size: 26
+                                        )
+                                    )
+                                
+                                Text(cat.shortName)
+                                    .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
+                                    .foregroundColor(isSelected ? cat.themeColor : Color.deepNavy)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(isSelected ? cat.softBackgroundColor.opacity(0.4) : Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(isSelected ? cat.themeColor.opacity(0.5) : Color.borderSubtle.opacity(0.8), lineWidth: 1)
+                            )
+                            .shadow(color: isSelected ? cat.themeColor.opacity(0.15) : Color.black.opacity(0.02), radius: 5, y: 2)
+                        }
+                        .bouncyPress(scale: 0.94)
+                    }
                 }
             }
         }
@@ -654,7 +790,7 @@ public struct QuickAddSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
         }
-        .bouncyPress(scale: 0.96)
+        .buttonStyle(SaveButtonInteractiveStyle())
         .padding(.horizontal, 20)
         .padding(.top, 4)
     }
@@ -672,7 +808,13 @@ public struct QuickAddSheet: View {
 
         let converted = selectedCurrency == .ils ? amount : (amount * selectedCurrency.rateToILS)
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        let merchant = typed.isEmpty ? category.displayName : typed
+        let fallbackMerchant: String = {
+            if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
+                return building.displayName(for: l10n.language)
+            }
+            return category.displayName
+        }()
+        let merchant = typed.isEmpty ? fallbackMerchant : typed
         let origAmt: Double? = selectedCurrency == .ils ? nil : amount
         let origCurr: String? = selectedCurrency == .ils ? nil : selectedCurrency.symbol
         let rate: Double? = selectedCurrency == .ils ? nil : selectedCurrency.rateToILS
@@ -691,9 +833,15 @@ public struct QuickAddSheet: View {
         let origCurr: String? = selectedCurrency == .ils ? nil : selectedCurrency.symbol
         let rate: Double? = selectedCurrency == .ils ? nil : selectedCurrency.rateToILS
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        let merchant = typed.isEmpty
-            ? (l10n.language == .hebrew ? "רכישה ב-\(paymentCount) תשלומים" : "\(paymentCount)-payment purchase")
-            : typed
+        let fallbackMerchant: String = {
+            if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
+                return l10n.language == .hebrew
+                    ? "\(building.displayName(for: l10n.language)) (\(paymentCount) תשלומים)"
+                    : "\(building.displayName(for: l10n.language)) (\(paymentCount) payments)"
+            }
+            return l10n.language == .hebrew ? "רכישה ב-\(paymentCount) תשלומים" : "\(paymentCount)-payment purchase"
+        }()
+        let merchant = typed.isEmpty ? fallbackMerchant : typed
 
         let plan = InstallmentPlan(
             merchant: merchant,
@@ -723,259 +871,65 @@ public struct QuickAddSheet: View {
             }
         }
 
-        DatabaseService.safeSave(modelContext)
-        Haptics.notify(.success)
-        dismiss()
-    }
-
-    // MARK: - Multi-Transaction Review Card
-
-    @ViewBuilder @MainActor
-    private var multiTransactionReviewSection: some View {
-        if !scannedMultiCandidates.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                multiHeaderView
-                multiCandidatesListView
-                multiSaveAllButton
-            }
-            .padding(14)
-            .background(Color.themeLavenderSoft.opacity(0.35))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(.horizontal, 16)
-        }
-    }
-
-    @ViewBuilder @MainActor
-    private var multiHeaderView: some View {
-        HStack {
-            MoneyIcon(.photo, size: 16)
-            let titleText = scannedMultiCandidates.count > 1
-                ? (l10n.language == .hebrew ? "זוהו \(scannedMultiCandidates.count) עסקאות בצילום המסך" : "Found \(scannedMultiCandidates.count) Purchases")
-                : (l10n.language == .hebrew ? "זוהתה עסקה 1 בצילום המסך" : "Found 1 Purchase")
-            Text(titleText)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-            Spacer()
-            Button(action: {
-                withAnimation(.spring(response: 0.25)) {
-                    scannedMultiCandidates = []
-                }
-            }) {
-                MoneyIcon(.xmarkCircle, size: 18)
-            }
-        }
-        .padding(.horizontal, 4)
-    }
-
-    @ViewBuilder @MainActor
-    private var multiCandidatesListView: some View {
-        VStack(spacing: 8) {
-            ForEach(scannedMultiCandidates) { candidate in
-                multiCandidateRow(for: candidate)
-            }
-        }
-    }
-
-    @ViewBuilder @MainActor
-    private func multiCandidateRow(for candidate: ParsedTransactionCandidate) -> some View {
-        let isInt = candidate.amount.truncatingRemainder(dividingBy: 1) == 0
-        let displayAmt = isInt ? String(format: "%.0f", candidate.amount) : String(format: "%.2f", candidate.amount)
-
-        HStack(spacing: 10) {
-            // Category Icon
-            CategoryBadge(category: candidate.category, size: 36)
-
-            // Info (Merchant + Category)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(candidate.merchant)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .lineLimit(1)
-                Text(candidate.category.displayName)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
-            }
-
-            Spacer()
-
-            // Amount
-            Text("₪\(displayAmt)")
-                .font(.system(size: 14, weight: .black, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-
-            // Delete single candidate button
-            Button(action: {
-                withAnimation(.spring(response: 0.25)) {
-                    Haptics.impact(.light)
-                    scannedMultiCandidates.removeAll(where: { $0.id == candidate.id })
-                }
-            }) {
-                MoneyIcon(.trash, size: 20)
-            }
-            .buttonStyle(.plain)
-            .padding(.leading, 4)
-        }
-        .padding(10)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.spring(response: 0.25)) {
-                amountText = displayAmt
-                note = candidate.merchant
-                selectedCategory = candidate.category
-                selectedBuildingId = candidate.buildingId
-                isAmountFocused = false
-                scannedMultiCandidates = []
-            }
-        }
-    }
-
-    @ViewBuilder @MainActor
-    private var multiSaveAllButton: some View {
-        let totalSum = scannedMultiCandidates.reduce(0.0) { $0 + $1.amount }
-        let isTotalInt = totalSum.truncatingRemainder(dividingBy: 1) == 0
-        let formattedTotal = "₪" + (isTotalInt ? String(format: "%.0f", totalSum) : String(format: "%.2f", totalSum))
-
-        let buttonText = scannedMultiCandidates.count > 1
-            ? (l10n.language == .hebrew ? "שמור את כל \(scannedMultiCandidates.count) העסקאות (\(formattedTotal))" : "Save All \(scannedMultiCandidates.count) Purchases (\(formattedTotal))")
-            : (l10n.language == .hebrew ? "שמור עסקה זו (\(formattedTotal))" : "Save Purchase (\(formattedTotal))")
-
-        Button(action: {
-            saveAllScannedMultiTransactions()
-        }) {
-            HStack(spacing: 6) {
-                MoneyIcon(.checkCircle, size: 16)
-                Text(buttonText)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-            }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(
-                LinearGradient(
-                    colors: [Color.primaryBlue, Color.primaryBlue.opacity(0.85)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .padding(.top, 2)
-    }
-
-    private func saveAllScannedMultiTransactions() {
-        for candidate in scannedMultiCandidates {
-            let tx = Transaction(
-                amount: candidate.amount,
-                merchant: candidate.merchant,
-                category: candidate.category,
-                timestamp: candidate.date ?? Date(),
-                confidenceScore: candidate.confidence,
-                isConfirmed: candidate.confidence >= 0.85,
-                buildingId: candidate.buildingId
-            )
-            modelContext.insert(tx)
-        }
-        DatabaseService.safeSave(modelContext)
-        Haptics.notify(.success)
-        dismiss()
-    }
-
-    #if canImport(PhotosUI)
-    private func processPickedPhoto(_ item: PhotosPickerItem) async {
-        await MainActor.run {
-            isScanningScreenshot = true
-            scanErrorMessage = nil
-        }
-        defer { Task { @MainActor in isScanningScreenshot = false } }
-        
-        guard let data = try? await item.loadTransferable(type: Data.self) else {
-            await MainActor.run {
-                scanErrorMessage = l10n.language == .hebrew ? "שגיאה בטעינת התמונה מהגלריה" : "Failed to load image from gallery"
-                Haptics.notify(.warning)
-            }
+        guard DatabaseService.safeSave(modelContext) else {
+            Haptics.notify(.error)
             return
         }
-        let rules = DatabaseService.shared.fetchMerchantRules()
-        
-        do {
-            let result = try await ExpenseExtractionService.shared.processImageData(data, rules: rules, allowFallback: true)
-            await MainActor.run {
-                scanErrorMessage = nil
-                showErrorHint = false
-                if result.candidates.count > 1 {
-                    scannedMultiCandidates = result.candidates
-                    Haptics.notify(.success)
-                } else if let single = result.candidates.first {
-                    // Logged on success as well as failure, so the success rate is something
-                    // that can be counted from the device rather than estimated from memory.
-                    ReceiptOCRService.recordScanAttempt(
-                        outcome: "success",
-                        failureReason: nil,
-                        trace: nil,
-                        resolvedAmount: single.amount,
-                        resolvedMerchant: single.merchant
-                    )
-                    scannedMultiCandidates = []
-                    amountText = (single.amount.truncatingRemainder(dividingBy: 1) == 0) ? String(format: "%.0f", single.amount) : String(format: "%.2f", single.amount)
-                    note = single.merchant
-                    selectedCategory = single.category
-                    selectedBuildingId = single.buildingId
-                    isAmountFocused = false
-                    Haptics.notify(.success)
-                } else {
-                    scanErrorMessage = l10n.language == .hebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות." : "No clear receipt detected. Try zooming in."
-                    ReceiptOCRService.recordScanAttempt(
-                        outcome: "no_candidates",
-                        failureReason: "OCR returned no usable candidate",
-                        trace: nil
-                    )
-                    Haptics.notify(.warning)
-                }
-            }
-        } catch {
-            MoneyCityLog.sensitive("[QuickAddSheet Scan Error] \(error.localizedDescription)")
-            await MainActor.run {
-                // Every failed scan now leaves a record. Debug-only logging compiles out of
-                // release, so before this a user could report "scanning does not work" and
-                // there was nothing on the device to look at.
-                let failure = error as? ReceiptOCRService.OCRFailure
-                ReceiptOCRService.recordScanAttempt(
-                    outcome: failure.map { "failed_\($0.reason)" } ?? "failed",
-                    failureReason: error.localizedDescription,
-                    trace: failure?.trace
-                )
-                Haptics.notify(.warning)
-                scanErrorMessage = scanFailureMessage(for: error)
-            }
-        }
+        Haptics.notify(.success)
+        dismiss()
     }
-    /// Different failures need different advice. One message for all of them told a user whose
-    /// device cannot read Hebrew to zoom in, which would never have helped.
-    private func scanFailureMessage(for error: Error) -> String {
-        let isHebrew = l10n.language == .hebrew
-        guard let failure = error as? ReceiptOCRService.OCRFailure else {
-            return isHebrew ? "לא זוהתה קבלה ברורה בתמונה. נסה לקרב או לצלם ישירות."
-                            : "No clear receipt detected. Try zooming in."
-        }
-        switch failure.reason {
-        case .noTextFound:
-            return isHebrew ? "לא נמצא טקסט קריא בתמונה. נסה תאורה טובה יותר או לקרב."
-                            : "No readable text in the image. Try better light or move closer."
-        case .parsingFailed:
-            if !ReceiptOCRService.canReadHebrew {
-                return isHebrew
-                    ? "המכשיר קרא טקסט אך אינו תומך בזיהוי עברית, אז שם בית העסק לא זוהה. הסכום עשוי עדיין לעבוד — נסה שוב או הזן ידנית."
-                    : "Text was read, but this device cannot recognise Hebrew, so the merchant was not identified."
-            }
-            return isHebrew ? "הטקסט נקרא אך לא נמצא בו סכום. ודא שהסכום הכולל מופיע בתמונה."
-                            : "Text was read but no total was found. Make sure the total is in the photo."
-        case .imageProcessingFailed:
-            return isHebrew ? "לא הצלחתי לעבד את התמונה. נסה תמונה אחרת."
-                            : "Could not process that image. Try another one."
-        }
+}
+
+// MARK: - Keypad Button Style with Tactile Compression & Tint Pulse
+private struct KeypadInteractiveButtonStyle: ButtonStyle {
+    let isDelete: Bool
+
+    init(isDelete: Bool = false) {
+        self.isDelete = isDelete
     }
-    #endif
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundColor(
+                configuration.isPressed
+                    ? (isDelete ? Color.deleteRed : Color.primaryBlue)
+                    : Color.deepNavy
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(
+                        configuration.isPressed
+                            ? (isDelete ? Color.deleteRed.opacity(0.18) : Color.primaryBlue.opacity(0.16))
+                            : Color.white
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(
+                                configuration.isPressed
+                                    ? (isDelete ? Color.deleteRed.opacity(0.85) : Color.primaryBlue.opacity(0.85))
+                                    : Color.borderSubtle.opacity(0.40),
+                                lineWidth: configuration.isPressed ? 2.0 : 1.0
+                            )
+                    )
+                    .shadow(
+                        color: configuration.isPressed
+                            ? (isDelete ? Color.deleteRed.opacity(0.25) : Color.primaryBlue.opacity(0.25))
+                            : Color.black.opacity(0.04),
+                        radius: configuration.isPressed ? 6 : 3.5,
+                        y: configuration.isPressed ? 0.5 : 1.5
+                    )
+            )
+            .scaleEffect(configuration.isPressed ? 0.86 : 1.0)
+            .animation(.spring(response: 0.14, dampingFraction: 0.58), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Save Button Interactive Style
+private struct SaveButtonInteractiveStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .opacity(configuration.isPressed ? 0.90 : 1.0)
+            .animation(.spring(response: 0.16, dampingFraction: 0.65), value: configuration.isPressed)
+    }
 }

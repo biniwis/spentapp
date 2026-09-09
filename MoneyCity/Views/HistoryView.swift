@@ -66,12 +66,18 @@ public struct HistoryView: View {
         displayTransactions.filter { tx in
             if showOnlyUnconfirmed && tx.isConfirmed { return false }
             let catMatch = selectedCategory == nil || tx.category == selectedCategory
+            let title = displayMerchantTitle(for: tx)
             let searchMatch = searchText.isEmpty
                 || tx.merchant.localizedCaseInsensitiveContains(searchText)
+                || title.localizedCaseInsensitiveContains(searchText)
                 || tx.category.displayName.localizedCaseInsensitiveContains(searchText)
                 || (tx.note ?? "").localizedCaseInsensitiveContains(searchText)
             return catMatch && searchMatch
         }
+    }
+
+    private var hasActiveFilters: Bool {
+        !searchText.isEmpty || selectedCategory != nil || showOnlyUnconfirmed
     }
 
     private var totalFiltered: Double {
@@ -131,17 +137,17 @@ public struct HistoryView: View {
                 // ── Transaction Ledger (Sitting directly on background, NO container cards) ──
                 if filtered.isEmpty {
                     Spacer()
-                    VStack(spacing: 12) {
-                        DistrictSkylineVectorIcon(color: Color.borderSubtle)
-                            .frame(width: 44, height: 44)
-                            .scaleEffect(1.6)
-                        Text(l10n.language == .hebrew ? "אין עסקאות להצגה" : "No Transactions Found")
-                            .font(.system(size: 16, weight: .bold, design: .default))
-                            .foregroundColor(Color.deepNavy)
-                        Text(l10n.language == .hebrew ? "נסה קטגוריה אחרת או מילת חיפוש שונה" : "Try another category or search keyword")
-                            .font(.system(size: 13, design: .default))
-                            .foregroundColor(Color.textMuted)
-                    }
+                    SpentEmptyState(
+                        icon: hasActiveFilters ? .search : .receipt,
+                        title: hasActiveFilters
+                            ? (l10n.isHebrew ? "לא נמצאו עסקאות מתאימות" : "No matching transactions")
+                            : (l10n.isHebrew ? "היומן שלך מתחיל כאן" : "Your spending story starts here"),
+                        message: hasActiveFilters
+                            ? (l10n.isHebrew ? "אפשר לנקות את הסינון ולראות את שאר העסקאות." : "Clear the filters to see your other transactions.")
+                            : (l10n.isHebrew ? "אין עסקאות בתקופה הזו. הוצאות שתוסיף דרך כפתור + יופיעו כאן, מסודרות לפי יום." : "There are no transactions in this period. Add an expense with + to see it here, organized by day."),
+                        actionTitle: hasActiveFilters ? (l10n.isHebrew ? "ניקוי הסינון" : "Clear filters") : nil,
+                        action: { searchText = ""; selectedCategory = nil; showOnlyUnconfirmed = false }
+                    )
                     Spacer()
                 } else {
                     ScrollView(showsIndicators: false) {
@@ -191,22 +197,15 @@ public struct HistoryView: View {
         return HStack(spacing: 8) {
             Button(action: {
                 Haptics.selection()
-                if l10n.isHebrew {
-                    shiftMonth(1)
-                } else {
-                    shiftMonth(-1)
-                }
+                shiftMonth(-1)
             }) {
                 MoneyIcon(
-                    .chevronLeft,
+                    l10n.isHebrew ? .chevronRight : .chevronLeft,
                     size: 11,
-                    color: l10n.isHebrew
-                        ? (isCurrentMonth ? Color.borderSubtle : Color.deepNavy)
-                        : Color.deepNavy
+                    color: Color.deepNavy
                 )
                 .frame(width: 20, height: 20)
             }
-            .disabled(l10n.isHebrew && isCurrentMonth)
 
             Button(action: {
                 Haptics.selection()
@@ -220,23 +219,19 @@ public struct HistoryView: View {
             .buttonStyle(.plain)
 
             Button(action: {
-                Haptics.selection()
-                if l10n.isHebrew {
-                    shiftMonth(-1)
-                } else {
+                if !isCurrentMonth {
+                    Haptics.selection()
                     shiftMonth(1)
                 }
             }) {
                 MoneyIcon(
-                    .chevronRight,
+                    l10n.isHebrew ? .chevronLeft : .chevronRight,
                     size: 11,
-                    color: !l10n.isHebrew
-                        ? (isCurrentMonth ? Color.borderSubtle : Color.deepNavy)
-                        : Color.deepNavy
+                    color: isCurrentMonth ? Color.borderSubtle : Color.deepNavy
                 )
                 .frame(width: 20, height: 20)
             }
-            .disabled(!l10n.isHebrew && isCurrentMonth)
+            .disabled(isCurrentMonth)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 7)
@@ -490,13 +485,15 @@ public struct HistoryView: View {
     }
 
     private func txRow(_ tx: Transaction) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Circular Pastel Category Badge (42pt)
-            CategoryBadge(category: tx.category, size: 42)
+        let displayTitle = displayMerchantTitle(for: tx)
 
-            // Merchant (Bold) + Category/Note (Muted Gray)
+        return HStack(alignment: .top, spacing: 12) {
+            // Circular Pastel Category Badge (42pt) showing subcategory icon
+            CategoryBadge(transaction: tx, size: 42)
+
+            // Merchant / Subcategory (Bold) + Category/Note (Muted Gray)
             VStack(alignment: .leading, spacing: 3) {
-                Text(tx.merchant)
+                Text(displayTitle)
                     .font(.system(size: 15.5, weight: .semibold, design: .default))
                     .foregroundColor(Color.deepNavy)
                     .lineLimit(1)
@@ -552,9 +549,9 @@ public struct HistoryView: View {
                 Text(l10n.language == .hebrew ? "ערוך עסקה" : "Edit Transaction")
             }
             Button {
-                selectedMerchantForDetails = tx.merchant
+                selectedMerchantForDetails = displayTitle
             } label: {
-                Text(l10n.language == .hebrew ? "פרטי בית עסק (\(tx.merchant))" : "Merchant Details (\(tx.merchant))")
+                Text(l10n.language == .hebrew ? "פרטי בית עסק (\(displayTitle))" : "Merchant Details (\(displayTitle))")
             }
             if !tx.isConfirmed {
                 Button {
@@ -578,6 +575,36 @@ public struct HistoryView: View {
                 Text(l10n.language == .hebrew ? "מחק עסקה" : "Delete Transaction")
             }
         }
+    }
+
+    /// Returns the primary title to display for a transaction in the history feed.
+    /// If no merchant was entered or if merchant equals category name, resolves to the subcategory name
+    /// (e.g. "סופר ומכולת", "בתי קפה", "מסעדות") so the user doesn't see duplicate category names.
+    private func displayMerchantTitle(for tx: Transaction) -> String {
+        let rawMerchant = tx.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cat = tx.category
+        let isHebrew = l10n.language == .hebrew
+
+        let isGeneric = rawMerchant.isEmpty
+            || rawMerchant == cat.displayName
+            || rawMerchant == cat.displayNameEn
+            || rawMerchant == cat.shortName
+            || rawMerchant == cat.rawValue
+            || rawMerchant == "ללא שם"
+            || rawMerchant.caseInsensitiveCompare("Unnamed") == .orderedSame
+
+        if isGeneric {
+            let subName = SubcategoryBreakdownService.shared.subcategoryName(for: tx, isHebrew: isHebrew)
+            if !subName.isEmpty && subName != cat.displayName {
+                return subName
+            }
+            if let note = tx.note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty, !note.contains("זיכוי") {
+                return note
+            }
+            return subName.isEmpty ? cat.displayName : subName
+        }
+
+        return rawMerchant
     }
 
     private var undoBanner: some View {

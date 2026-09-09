@@ -29,11 +29,18 @@ public struct MoneyCityTheme {
     public static let mint = Color(red: 16/255, green: 185/255, blue: 129/255)          // #10B981
     public static let mintSoft = Color(red: 221/255, green: 243/255, blue: 234/255)     // #DDF3EA
 
+    public static let spentGreen = Color(red: 34/255, green: 197/255, blue: 94/255)     // #22C55E Primary Brand Green
+    public static let spentGreenSoft = Color(red: 220/255, green: 252/255, blue: 231/255)// #DCFCE7 Soft Green
+
     public static let yellow = Color(red: 245/255, green: 158/255, blue: 11/255)        // #F59E0B
     public static let yellowSoft = Color(red: 255/255, green: 240/255, blue: 199/255)   // #FFF0C7
 
     public static let pink = Color(red: 236/255, green: 72/255, blue: 153/255)          // #EC4899
     public static let pinkSoft = Color(red: 249/255, green: 225/255, blue: 232/255)     // #F9E1E8
+
+    // ── Semantic Action Tokens ──
+    public static let deleteRed = Color(red: 239/255, green: 68/255, blue: 68/255)       // #EF4444 Crisp Destructive Red
+    public static let deleteSoft = Color(red: 254/255, green: 242/255, blue: 242/255)   // #FEF2F2 Soft Red Tint
 
     // Legacy aliases redirected to the clean new palette
     public static let cherryRed = Color(red: 37/255, green: 60/255, blue: 196/255)     // Redirected to primary blue
@@ -55,6 +62,10 @@ public extension Color {
     static let textMuted = MoneyCityTheme.textMuted
     static let textSecondary = MoneyCityTheme.textSecondary
 
+    // Semantic Action Tokens
+    static let deleteRed = MoneyCityTheme.deleteRed
+    static let deleteSoft = MoneyCityTheme.deleteSoft
+
     // Pastel Secondary Tokens
     static let themeTurquoise = MoneyCityTheme.turquoise
     static let themeTurquoiseSoft = MoneyCityTheme.turquoiseSoft
@@ -66,6 +77,10 @@ public extension Color {
     static let themeLavenderSoft = MoneyCityTheme.lavenderSoft
     static let themeMint = MoneyCityTheme.mint
     static let themeMintSoft = MoneyCityTheme.mintSoft
+    static let mint = MoneyCityTheme.mint
+    static let mintSoft = MoneyCityTheme.mintSoft
+    static let spentGreen = MoneyCityTheme.spentGreen
+    static let spentGreenSoft = MoneyCityTheme.spentGreenSoft
     static let themeYellow = MoneyCityTheme.yellow
     static let themeYellowSoft = MoneyCityTheme.yellowSoft
     static let themePink = MoneyCityTheme.pink

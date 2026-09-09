@@ -2,19 +2,31 @@ import Foundation
 #if canImport(UserNotifications)
 import UserNotifications
 #endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
-/// Weekly spending reminder. The "notifications_enabled" preference used to be stored
-/// and never acted on; this service is what actually schedules and cancels it.
+/// Weekly spending reminder and transactional notifications for Apple Pay ingests.
 public enum NotificationService {
 
     public static let weeklyIdentifier = "moneycity.weekly.summary"
+    public static let categoryMissingAmount = "moneycity.missing_amount"
+    public static let actionEnterAmount = "ACTION_ENTER_AMOUNT"
 
     public static var isEnabled: Bool {
-        UserDefaults.standard.object(forKey: "notifications_enabled") as? Bool ?? true
+        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+        return defaults.object(forKey: "notifications_enabled") as? Bool ?? true
+    }
+
+    public static var isCaptureNotificationEnabled: Bool {
+        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+        return defaults.object(forKey: "expense_capture_notifications_enabled") as? Bool ?? true
     }
 
     /// Call on launch and whenever the user flips the toggle.
     public static func sync(enabled: Bool, isHebrew: Bool) {
+        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+        defaults.set(enabled, forKey: "notifications_enabled")
         #if canImport(UserNotifications)
         let center = UNUserNotificationCenter.current()
         guard enabled else {
@@ -24,11 +36,13 @@ public enum NotificationService {
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
             guard granted else {
                 DispatchQueue.main.async {
-                    UserDefaults.standard.set(false, forKey: "notifications_enabled")
+                    defaults.set(false, forKey: "notifications_enabled")
                 }
                 return
             }
-            scheduleWeekly(isHebrew: isHebrew)
+            Task { @MainActor in
+                CityNarrativeEngine.shared.onAppForeground()
+            }
         }
         #endif
     }
@@ -37,22 +51,40 @@ public enum NotificationService {
     private static let delegate = NotificationDelegate()
 
     public static func setupDelegate() {
-        let center = UNUserNotificationCenter.current()
-        center.delegate = delegate
+        UNUserNotificationCenter.current().delegate = delegate
+        registerNotificationCategories()
     }
 
-    private static func scheduleWeekly(isHebrew: Bool) {
+    private static func registerNotificationCategories() {
+        let enterAmountAction = UNTextInputNotificationAction(
+            identifier: actionEnterAmount,
+            title: "הזן סכום",
+            options: [],
+            textInputButtonTitle: "שמור",
+            textInputPlaceholder: "למשל: 48.50"
+        )
+
+        let missingAmountCategory = UNNotificationCategory(
+            identifier: categoryMissingAmount,
+            actions: [enterAmountAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+
+        UNUserNotificationCenter.current().setNotificationCategories([missingAmountCategory])
+    }
+
+    public static func scheduleWeeklyNotification(isHebrew: Bool) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier])
 
         let content = UNMutableNotificationContent()
-        content.title = isHebrew ? "סיכום שבועי בעיר" : "Weekly City Summary"
+        content.title = isHebrew ? "העיר שלך מחכה לך 🏙️" : "Your City Awaits 🏙️"
         content.body = isHebrew
-            ? "בוא לראות איך העיר שלך השתנתה השבוע."
-            : "See how your city changed this week."
+            ? "עבר עוד שבוע — פתח את SPENT כדי לראות איך ההוצאות שלך עיצבו את קו הרקיע."
+            : "Another week has passed — open SPENT to see how your spending shaped the skyline."
         content.sound = .default
 
-        // Sunday 20:00 local time — start of the Israeli work week.
         var components = DateComponents()
         components.weekday = 1
         components.hour = 20
@@ -71,6 +103,7 @@ public enum NotificationService {
         merchant: String,
         isRefund: Bool = false
     ) {
+        guard isEnabled && isCaptureNotificationEnabled else { return }
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             if settings.authorizationStatus == .notDetermined {
@@ -94,21 +127,21 @@ public enum NotificationService {
     ) {
         let center = UNUserNotificationCenter.current()
         let content = UNMutableNotificationContent()
-        
+
         let amountFormatted = (amount.truncatingRemainder(dividingBy: 1) == 0)
             ? String(format: "%.0f", amount)
             : String(format: "%.2f", amount)
         let formattedAmount = "\(currency)\(amountFormatted)"
-        
+
         if isRefund {
             content.title = "זוהה זיכוי ע״ס \(formattedAmount) 💰"
             content.body = "\(merchant) • ממתין לבדיקתך ב-SPENT"
         } else {
-            content.title = "נוספו \(formattedAmount) ל\(categoryName) לתקציב 🏙️"
-            content.body = "עסקה ב-\(merchant) נקלטה בהצלחה"
+            content.title = "\(formattedAmount) · \(merchant) נוספו לעיר ✓"
+            content.body = "\(categoryName) התעדכן בתקציב"
         }
         content.sound = .default
-        
+
         let request = UNNotificationRequest(
             identifier: "moneycity.expense.\(UUID().uuidString)",
             content: content,
@@ -125,17 +158,57 @@ public enum NotificationService {
         center.add(request, withCompletionHandler: nil)
     }
 
+    /// Dispatches an interactive notification asking the user to enter the transaction amount.
+    public static func sendMissingAmountNotification(pending: PendingWalletIngest) {
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            if settings.authorizationStatus == .notDetermined {
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    if granted {
+                        dispatchMissingAmountNotification(pending: pending)
+                    }
+                }
+            } else if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+                dispatchMissingAmountNotification(pending: pending)
+            }
+        }
+    }
+
+    private static func dispatchMissingAmountNotification(pending: PendingWalletIngest) {
+        let center = UNUserNotificationCenter.current()
+        let content = UNMutableNotificationContent()
+
+        content.title = "💳 זוהה תשלום ב-Apple Pay"
+        content.body = "ב-\(pending.merchant). הקש להזנת סכום"
+        content.categoryIdentifier = categoryMissingAmount
+        content.sound = .default
+
+        // Single source of truth: only store identifier & schema version in userInfo
+        content.userInfo = [
+            "pendingId": pending.id,
+            "schemaVersion": 1
+        ]
+
+        let request = UNNotificationRequest(
+            identifier: "moneycity.missing_amount.\(pending.id)",
+            content: content,
+            trigger: nil
+        )
+        center.add(request, withCompletionHandler: nil)
+    }
+
     #endif
 }
 
 // MARK: - Expense Confirmation Coordinator
-public struct PendingExpenseConfirmation: Identifiable, Equatable, Sendable {
+
+public struct PendingExpenseConfirmation: Identifiable, Equatable, Sendable, Codable {
     public let id: String
     public let amount: Double
     public let merchant: String
     public let timestamp: Date
     public let isRefund: Bool
-    
+
     public init(
         id: String = UUID().uuidString,
         amount: Double,
@@ -154,30 +227,73 @@ public struct PendingExpenseConfirmation: Identifiable, Equatable, Sendable {
 @MainActor
 public final class ExpenseConfirmationCoordinator: ObservableObject {
     public static let shared = ExpenseConfirmationCoordinator()
-    
+
+    private let queueKey = "moneycity_pending_confirmations_queue"
+    private let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+
     @Published public var activeConfirmation: PendingExpenseConfirmation? = nil
-    
+
     private var lastConfirmedSignature: String? = nil
-    
-    private init() {}
-    
+
+    private init() {
+        let queue = loadQueueInternal()
+        if let first = queue.first {
+            self.activeConfirmation = first
+        }
+    }
+
     public func triggerConfirmation(amount: Double, merchant: String, isRefund: Bool = false) {
+        queuePendingConfirmation(amount: amount, merchant: merchant, isRefund: isRefund)
+    }
+
+    public func queuePendingConfirmation(amount: Double, merchant: String, isRefund: Bool = false) {
         guard amount > 0 else { return }
         let signature = "\(amount)_\(merchant)_\(Int(Date().timeIntervalSince1970 / 8))"
         guard signature != lastConfirmedSignature else { return }
         lastConfirmedSignature = signature
-        
+
         let item = PendingExpenseConfirmation(
             amount: amount,
             merchant: merchant,
             timestamp: Date(),
             isRefund: isRefund
         )
+
+        var queue = loadQueueInternal()
+        queue.append(item)
+        saveQueueInternal(queue)
+
         self.activeConfirmation = item
     }
-    
+
+    /// Consumes and clears all queued confirmations.
+    public func consumeAllPendingConfirmations() -> [PendingExpenseConfirmation] {
+        var queue = loadQueueInternal()
+        if queue.isEmpty, let active = activeConfirmation {
+            queue.append(active)
+        }
+        defaults.removeObject(forKey: queueKey)
+        self.activeConfirmation = nil
+        return queue
+    }
+
     public func clearActiveConfirmation() {
         self.activeConfirmation = nil
+        defaults.removeObject(forKey: queueKey)
+    }
+
+    private func loadQueueInternal() -> [PendingExpenseConfirmation] {
+        guard let data = defaults.data(forKey: queueKey),
+              let list = try? JSONDecoder().decode([PendingExpenseConfirmation].self, from: data) else {
+            return []
+        }
+        return list
+    }
+
+    private func saveQueueInternal(_ queue: [PendingExpenseConfirmation]) {
+        if let encoded = try? JSONEncoder().encode(queue) {
+            defaults.set(encoded, forKey: queueKey)
+        }
     }
 }
 
@@ -188,27 +304,70 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @u
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        // Show banner and play sound even if app is in the foreground
+        // Show banner and play sound even if app is in foreground
         completionHandler([.banner, .sound, .badge, .list])
     }
-    
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
+
+        // Handle inline text input from notification action
+        if let textResponse = response as? UNTextInputNotificationResponse,
+           textResponse.actionIdentifier == NotificationService.actionEnterAmount {
+            let userText = textResponse.userText
+            guard let parsedDecimal = AmountParser.parse(userText),
+                  let pendingId = userInfo["pendingId"] as? String,
+                  let pending = PendingWalletStore.shared.get(id: pendingId) else {
+                // Invalid input (empty, 0, abc, negative) or missing pending record.
+                // Do NOT delete pending record so the user can re-enter. Complete cleanly.
+                completionHandler()
+                return
+            }
+
+            let amount = NSDecimalNumber(decimal: parsedDecimal).doubleValue
+
+            // Save to durable queue in App Group container (safe even when device is locked)
+            // Note (F02): The pending record is preserved until WalletIngestCoordinator commits.
+            WalletIngestCoordinator.enqueueBackgroundCompletion(
+                amount: amount,
+                merchant: pending.merchant,
+                currency: pending.currency,
+                transactionDate: pending.timestamp,
+                pendingID: pending.id
+            )
+
+            // If device is unlocked and protected data is ready, drain to SwiftData immediately
+            #if canImport(UIKit)
+            if UIApplication.shared.isProtectedDataAvailable {
+                Task { @MainActor in
+                    defer { completionHandler() }
+                    await WalletIngestCoordinator.drainPendingBackgroundCompletions()
+                }
+                return
+            }
+            #endif
+
+            completionHandler()
+            return
+        }
+
+        // Handle default notification tap
         if let amount = userInfo["amount"] as? Double {
             let merchant = userInfo["merchant"] as? String ?? ""
             let isRefund = userInfo["isRefund"] as? Bool ?? false
-            DispatchQueue.main.async {
-                ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+            Task { @MainActor in
+                ExpenseConfirmationCoordinator.shared.queuePendingConfirmation(
                     amount: amount,
                     merchant: merchant,
                     isRefund: isRefund
                 )
             }
         }
+
         completionHandler()
     }
 }

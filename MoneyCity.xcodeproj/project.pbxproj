@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1B2C3D4E5F6030300000002 /* BrandSplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6030300000001 /* BrandSplashView.swift */; };
+		A1B2C3D4E5F6020200000002 /* CityNarrativeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6020200000001 /* CityNarrativeEngine.swift */; };
+		A1B2C3D4E5F6010100000002 /* PendingWalletIngest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010100000001 /* PendingWalletIngest.swift */; };
 		EACE09162026000000000001 /* CityLifeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = EACE09162026000000000002; };
 		B10A198D1CE24063B46E0C27 /* spent fastExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3BFC299C958D49CD864892D1 /* spent fastExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A561507A7EB34A6AA2F48637 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = D365BEA8DB374ADB8E728CA9; };
@@ -93,6 +96,27 @@
 		9BC2F4045E3E421193A09595 /* WidgetSources in spent fastExtension */ = {isa = PBXBuildFile; fileRef = A881C6E930C5463FAC030379; };
 		3B2C0C32894947BF9A4B00E0 /* WidgetSources in spent fastExtension */ = {isa = PBXBuildFile; fileRef = 236D991BED12425990A59452; };
 		3E8C361253554C2A8C0BF0CA /* WidgetResources in spent fastExtension */ = {isa = PBXBuildFile; fileRef = AFEE540196084B5FA9BB84AD; };
+		3E8C361253554C2A8C0BF0CB /* PrivacyInfo in spent fastExtension */ = {isa = PBXBuildFile; fileRef = F168858C77C947D89C8A4DA9; };
+		C1BBE086E50CAA810632A3C0 = {isa = PBXBuildFile; fileRef = A6D6DAC99E25F61D0EEBA899; };
+		B25AB9A470966166DBBEB816 = {isa = PBXBuildFile; fileRef = 812AA25EB770AA5A12EB0D90; };
+		D50289DCC48AF52C63E65356 = {isa = PBXBuildFile; fileRef = A3A0FBD724F1834D0AE1FF7E; };
+		A35A333E17ACFBFC8F2ECEF8 = {isa = PBXBuildFile; fileRef = AFD4AC61703C6708D133095B; };
+		289436770CEB5658078FEF9C = {isa = PBXBuildFile; fileRef = 3363D11BCF07C2282139328C; };
+		8A1874F4FE2263344A67090B = {isa = PBXBuildFile; fileRef = 54B813209ABA95695325783A; };
+		F26DA2FE95A3E00B13D6E01B = {isa = PBXBuildFile; fileRef = 0514DD20C153FC99C102AABA; };
+		6E9C726B4EEEECA7D3AC4E96 = {isa = PBXBuildFile; fileRef = 02F07D7A29E9726EA0F2788E; };
+		340BE1526620B9C4F2E72EA9 = {isa = PBXBuildFile; fileRef = 486270466A72197B7682EA85; };
+		242A3D9E3568703E41752317 = {isa = PBXBuildFile; fileRef = 0E5BB538AFB6F673B4BA24DD; };
+		810BA085A0205DE5871BC3A2 = {isa = PBXBuildFile; fileRef = C99C86634638301BC4E5E350; };
+		D67913940EF202311AA9536B = {isa = PBXBuildFile; fileRef = 085700DD5AA169854BC62CB4; };
+		BCEE548C914DE1EBF294536C = {isa = PBXBuildFile; fileRef = CE5AC91893AE5F5289557FD2; };
+		F083E1A409AA1CC0D0AACA30 = {isa = PBXBuildFile; fileRef = 2407CB5B9FBF38B4735DBF74; };
+		B1A15D8934E3F6E73FB3FED4 = {isa = PBXBuildFile; fileRef = 1F7AA212E6A4140DD7559B5F; };
+		12968A4927D731876AAE0FF9 = {isa = PBXBuildFile; fileRef = 1D158C97601388626E06600A; };
+		096EEF053248DEB1601AF50C = {isa = PBXBuildFile; fileRef = 5AA635C3BF7E81DED78952D0; };
+		7F020069E4680C1F9B1BD614 = {isa = PBXBuildFile; fileRef = 9C2E806A681D7E1D5F5C9539; };
+		3F53B25034B05E8BE10F8D75 = {isa = PBXBuildFile; fileRef = 91C4335FCD9490427BB05C91; };
+		ABB633D59B4EF1BF131CACB0 = {isa = PBXBuildFile; fileRef = 5AC141236FC48C41E5582044; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +127,7 @@
 			remoteGlobalIDString = C635B4E00F324C90AC185F37;
 			remoteInfo = "spent fastExtension";
 		};
+		922619B3D19A94B1C7F3CBF4 = {isa = PBXContainerItemProxy; containerPortal = F0DE7021EAF844E382FB6A81; proxyType = 1; remoteGlobalIDString = DBE25FB295264C54BE6AAE79; remoteInfo = MoneyCity; };
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -120,6 +145,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F6030300000001 /* BrandSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BrandSplashView.swift"; path = "MoneyCity/Views/Components/BrandSplashView.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F6020200000001 /* CityNarrativeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityNarrativeEngine.swift"; path = "MoneyCity/Services/CityNarrativeEngine.swift"; sourceTree = "<group>"; };
+		A1B2C3D4E5F6010100000001 /* PendingWalletIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PendingWalletIngest.swift"; path = "MoneyCity/Models/PendingWalletIngest.swift"; sourceTree = "<group>"; };
 		EACE09162026000000000002 /* CityLifeState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityLifeState.swift"; path = "MoneyCity/Models/CityLifeState.swift"; sourceTree = "<group>"; };
 		2CDB56F834774C2EA9D7D7C9 /* MoneyCity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoneyCity.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3BFC299C958D49CD864892D1 /* spent fastExtension.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = "spent fastExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -207,6 +235,29 @@
 		A881C6E930C5463FAC030379 /* spent_fast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "spent_fast.swift"; path = "spent fast/spent_fast.swift"; sourceTree = "<group>"; };
 		236D991BED12425990A59452 /* spent_fastBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "spent_fastBundle.swift"; path = "spent fast/spent_fastBundle.swift"; sourceTree = "<group>"; };
 		AFEE540196084B5FA9BB84AD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = wrapper.asset-catalog; name = "Assets.xcassets"; path = "spent fast/Assets.xcassets"; sourceTree = "<group>"; };
+		F168858C77C947D89C8A4DA9 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = "PrivacyInfo.xcprivacy"; path = "spent fast/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		F168858C77C947D89C8A4DB0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info.plist"; path = "MoneyCity/Info.plist"; sourceTree = "<group>"; };
+		A6D6DAC99E25F61D0EEBA899 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BackupTests.swift"; sourceTree = "<group>"; };
+		812AA25EB770AA5A12EB0D90 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BudgetServiceTests.swift"; sourceTree = "<group>"; };
+		A3A0FBD724F1834D0AE1FF7E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CategorizationEngineTests.swift"; sourceTree = "<group>"; };
+		AFD4AC61703C6708D133095B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CityDistrictStateTests.swift"; sourceTree = "<group>"; };
+		3363D11BCF07C2282139328C = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CityProgressEngineTests.swift"; sourceTree = "<group>"; };
+		54B813209ABA95695325783A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CitySortingHubTests.swift"; sourceTree = "<group>"; };
+		0514DD20C153FC99C102AABA = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IngestStateMachineTests.swift"; sourceTree = "<group>"; };
+		02F07D7A29E9726EA0F2788E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "InstallmentServiceTests.swift"; sourceTree = "<group>"; };
+		486270466A72197B7682EA85 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MerchantRuleTests.swift"; sourceTree = "<group>"; };
+		0E5BB538AFB6F673B4BA24DD = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MonthlyRecapTests.swift"; sourceTree = "<group>"; };
+		C99C86634638301BC4E5E350 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "P0StabilityTests.swift"; sourceTree = "<group>"; };
+		085700DD5AA169854BC62CB4 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RealNotificationTests.swift"; sourceTree = "<group>"; };
+		CE5AC91893AE5F5289557FD2 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReceiptOCRTests.swift"; sourceTree = "<group>"; };
+		2407CB5B9FBF38B4735DBF74 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecurringExpenseTests.swift"; sourceTree = "<group>"; };
+		1F7AA212E6A4140DD7559B5F = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SalvageTests.swift"; sourceTree = "<group>"; };
+		1D158C97601388626E06600A = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavingsAccrualTests.swift"; sourceTree = "<group>"; };
+		5AA635C3BF7E81DED78952D0 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SavingsGoalTests.swift"; sourceTree = "<group>"; };
+		9C2E806A681D7E1D5F5C9539 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageDiagnosticsTests.swift"; sourceTree = "<group>"; };
+		91C4335FCD9490427BB05C91 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TransactionIngestTests.swift"; sourceTree = "<group>"; };
+		5AC141236FC48C41E5582044 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VisionTransactionExtractorTests.swift"; sourceTree = "<group>"; };
+		C5EC5C01A8307CA97AB50E34 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MoneyCityTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -230,6 +281,7 @@
 		C490495732BA440B9F0EE242 = {
 			isa = PBXGroup;
 			children = (
+				54CA73502A42DDEADEAAE764,
 				D09158E45DD34A999CA4F3A5 /* Products */,
 				D365BEA8DB374ADB8E728CA9 /* MoneyCityApp.swift */,
 				101B208C1D364C13BD7F1552 /* MoneyCityWidgets.swift */,
@@ -240,6 +292,7 @@
 				366C44E769364C008E35F9F9 /* CitySlot.swift */,
 				156EA79E4A214B0AB4F6EB2A /* IncomeSource.swift */,
 				60040C905F9A4D1D8F621572 /* IngestLogEntry.swift */,
+				A1B2C3D4E5F6010100000001 /* PendingWalletIngest.swift */,
 				592898FFAC4A4D058ACEB499 /* InstallmentPlan.swift */,
 				4BDC54810B5949EDA3E73C3F /* LocalizationManager.swift */,
 				AF276E9278EE4E7881E67C25 /* MerchantRule.swift */,
@@ -316,18 +369,22 @@
 				A881C6E930C5463FAC030379 /* spent_fast.swift */,
 				236D991BED12425990A59452 /* spent_fastBundle.swift */,
 				AFEE540196084B5FA9BB84AD /* Assets.xcassets */,
+				F168858C77C947D89C8A4DA9 /* PrivacyInfo.xcprivacy */,
+				F168858C77C947D89C8A4DB0 /* Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
 		D09158E45DD34A999CA4F3A5 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				C5EC5C01A8307CA97AB50E34,
 				2CDB56F834774C2EA9D7D7C9 /* MoneyCity.app */,
 				3BFC299C958D49CD864892D1 /* spent fastExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+		54CA73502A42DDEADEAAE764 = {isa = PBXGroup; children = (A6D6DAC99E25F61D0EEBA899,812AA25EB770AA5A12EB0D90,A3A0FBD724F1834D0AE1FF7E,AFD4AC61703C6708D133095B,3363D11BCF07C2282139328C,54B813209ABA95695325783A,0514DD20C153FC99C102AABA,02F07D7A29E9726EA0F2788E,486270466A72197B7682EA85,0E5BB538AFB6F673B4BA24DD,C99C86634638301BC4E5E350,085700DD5AA169854BC62CB4,CE5AC91893AE5F5289557FD2,2407CB5B9FBF38B4735DBF74,1F7AA212E6A4140DD7559B5F,1D158C97601388626E06600A,5AA635C3BF7E81DED78952D0,9C2E806A681D7E1D5F5C9539,91C4335FCD9490427BB05C91,5AC141236FC48C41E5582044,); path = MoneyCityTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -367,6 +424,7 @@
 			productReference = 3BFC299C958D49CD864892D1 /* spent fastExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		525E5464D112BFD79F42D3F0 = {isa = PBXNativeTarget; buildConfigurationList = B82E6662EBC93692715AAA1F; buildPhases = (E8751535E2602D32F2EF8382,); buildRules = (); dependencies = (E6D5BCA722A878E022F90343,); name = MoneyCityTests; productName = MoneyCityTests; productReference = C5EC5C01A8307CA97AB50E34; productType = "com.apple.product-type.bundle.unit-test"; };
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -399,6 +457,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+				525E5464D112BFD79F42D3F0,
 				DBE25FB295264C54BE6AAE79 /* MoneyCity */,
 				C635B4E00F324C90AC185F37 /* spent fastExtension */,
 			);
@@ -421,6 +480,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3E8C361253554C2A8C0BF0CA /* WidgetResources */,
+				3E8C361253554C2A8C0BF0CB /* PrivacyInfo in spent fastExtension */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -441,6 +501,9 @@
 				D2F1C56E69C74CBAA584ABC2 /* Sources */,
 				87D45D8376344EC2836E497F /* Sources */,
 				FEE09E90998841A992B3B85B /* Sources */,
+				A1B2C3D4E5F6010100000002 /* PendingWalletIngest.swift in Sources */,
+				A1B2C3D4E5F6020200000002 /* CityNarrativeEngine.swift in Sources */,
+				A1B2C3D4E5F6030300000002 /* BrandSplashView.swift in Sources */,
 				E5CCABD2D8E043B9946C14A4 /* Sources */,
 				49661E0F2FA64DD1AC49DF76 /* Sources */,
 				73A837CCB6A940AC8BFC59A7 /* Sources */,
@@ -522,6 +585,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E8751535E2602D32F2EF8382 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1BBE086E50CAA810632A3C0,B25AB9A470966166DBBEB816,D50289DCC48AF52C63E65356,A35A333E17ACFBFC8F2ECEF8,289436770CEB5658078FEF9C,8A1874F4FE2263344A67090B,F26DA2FE95A3E00B13D6E01B,6E9C726B4EEEECA7D3AC4E96,340BE1526620B9C4F2E72EA9,242A3D9E3568703E41752317,810BA085A0205DE5871BC3A2,D67913940EF202311AA9536B,BCEE548C914DE1EBF294536C,F083E1A409AA1CC0D0AACA30,B1A15D8934E3F6E73FB3FED4,12968A4927D731876AAE0FF9,096EEF053248DEB1601AF50C,7F020069E4680C1F9B1BD614,3F53B25034B05E8BE10F8D75,ABB633D59B4EF1BF131CACB0,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -530,6 +594,7 @@
 			target = C635B4E00F324C90AC185F37 /* spent fastExtension */;
 			targetProxy = DEB18101EFEF47549D94E07C /* PBXContainerItemProxy */;
 		};
+		E6D5BCA722A878E022F90343 = {isa = PBXTargetDependency; target = DBE25FB295264C54BE6AAE79; targetProxy = 922619B3D19A94B1C7F3CBF4; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -604,17 +669,19 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = MoneyCity/MoneyCity.entitlements;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_DEBUG_DYLIB = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MoneyCity/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "SPENT";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -638,17 +705,19 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = MoneyCity/MoneyCity.entitlements;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
-				ENABLE_PREVIEWS = YES;
-				ENABLE_DEBUG_DYLIB = YES;
+				ENABLE_PREVIEWS = NO;
+				ENABLE_DEBUG_DYLIB = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "MoneyCity/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "SPENT";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleURLName = \"com.moneycity.app\";\n    CFBundleURLSchemes =     (\n        spentapp,\n        moneycity\n    );\n}";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -671,7 +740,8 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = "spent fast/spent fastExtension.entitlements";
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_DEBUG_DYLIB = YES;
@@ -701,10 +771,11 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CURRENT_PROJECT_VERSION = 1;
+				CODE_SIGN_ENTITLEMENTS = "spent fast/spent fastExtension.entitlements";
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
-				ENABLE_PREVIEWS = YES;
-				ENABLE_DEBUG_DYLIB = YES;
+				ENABLE_PREVIEWS = NO;
+				ENABLE_DEBUG_DYLIB = NO;
 				APPINTENTS_METADATAPROCESSOR_ENABLED = NO;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "spent fast/Info.plist";
@@ -723,6 +794,18 @@
 			};
 			name = Release;
 		};
+		BC3D00CEE39B76735AFF358E = {isa = XCBuildConfiguration; buildSettings = {
+ BUNDLE_LOADER = "$(TEST_HOST)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MoneyCity.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MoneyCity";
+ GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.moneycity.app.tests;
+ PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+ SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic;
+ }; name = Debug; };
+		F002ECD16E99B4D21C9B4D26 = {isa = XCBuildConfiguration; buildSettings = {
+ BUNDLE_LOADER = "$(TEST_HOST)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MoneyCity.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MoneyCity";
+ GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.moneycity.app.tests;
+ PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = iphoneos; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+ SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2"; CODE_SIGN_STYLE = Automatic;
+ }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -753,6 +836,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		B82E6662EBC93692715AAA1F = {isa = XCConfigurationList; buildConfigurations = (BC3D00CEE39B76735AFF358E,F002ECD16E99B4D21C9B4D26,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = F0DE7021EAF844E382FB6A81 /* Project object */;

@@ -3,7 +3,6 @@
 const venueStates = Object.create(null);
 const lifeInstances = new Map();
 const lifeAssignments = new Map();
-const lifeWalkers = [];
 const LIFE_FAMILIES = {
   food_coffee: { district: "food", label: "CAFE", color: 0xBC8055, kind: "cafe" },
   food_bistro: { district: "food", label: "BISTRO", color: 0xD9805A, kind: "cafe" },
@@ -118,31 +117,6 @@ function makeLifePlace(id, variant) {
   return { group: g, proxy: proxy };
 }
 
-function createLifeWalkers() {
-  [
-    ["food_coffee", 0xB78058, 7.0, -3.8, 7.0, 3.8],
-    ["food_bistro", 0xCF735A, 11.35, -3.5, 11.35, 3.3],
-    ["food_super", 0x638E59, 8.0, -7.15, 11.0, -7.15],
-    ["shop_boutique", 0xB16F85, -7.0, -3.9, -7.0, 3.9],
-    ["shop_tech", 0x558AAF, -11.3, -3.5, -11.3, 3.6],
-    ["shop_arcade", 0x907CAF, -10.5, 7.05, -7.5, 7.05],
-    ["house_tower", 0x698C9D, -3.8, -7.0, 3.8, -7.0],
-    ["health_pharmacy", 0x77A78B, -3.8, 11.15, 3.8, 11.15],
-    ["museum_curiosities", 0xB08A68, -3.5, 7.0, 3.5, 7.0]
-  ].forEach(function (def) {
-    for (let i = 0; i < 3; i++) {
-      const path = [{ x: def[2], z: def[3] }, { x: def[4], z: def[5] }];
-      if (i % 2) path.reverse();
-      const person = addCitizen(def[1], 0x45536A, null, path,
-        ["נעים להסתובב כאן"], ["A little moment in the neighbourhood"], false, 0.25 + i * 0.025);
-      const record = walkingCitizens[walkingCitizens.length - 1];
-      record.t = Math.hypot(def[4] - def[2], def[5] - def[3]) * i / 3;
-      bindVenueActor(person, def[0], 0.18 + i * 0.22);
-      lifeWalkers.push(person);
-    }
-  });
-}
-
 function applyCityLife(data) {
   syncVenueStates(data.venues);
   // Old callers still render safely, but no visits or new businesses are invented from ₪.
@@ -169,6 +143,7 @@ function applyCityLife(data) {
     lifeAssignments.set(assignment.key, plot.id);
   });
   venueActors.forEach(function (actor) { actor.obj.visible = venueActivity(actor.venue) >= actor.threshold; });
+  applyVenueCrowds();
   // Smoke belongs to the coffee anchor, not an arbitrary always-on point in space.
   coffeeSmoke.visible = venueActivity("food_coffee") > 0.12 && cityBuildings.food_coffee.tier > 1;
   coffeeSmoke.position.y = Y_WALK + FLOOR_H * Math.max(1, cityBuildings.food_coffee.tier - 1) + 0.72;
@@ -187,7 +162,6 @@ function applyHabitTraffic() {
   transportUnits.forEach(function (u, i) { u.visible = i === 0 || transport >= i * 0.22; });
 }
 
-createLifeWalkers();
 // Three extra couriers are a visible delivery rhythm, rather than a crowded dine-in patio.
 for (let i = 0; i < 3; i++) {
   const courier = makeCourier(0x45ADBD); courier.position.y = Y_WALK; courier.visible = false; root.add(courier);

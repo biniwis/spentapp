@@ -81,7 +81,7 @@ public struct MonthlyRecapArchiveView: View {
                     .foregroundColor(Color.primaryBlue)
                 }
             }
-            .sheet(item: $selectedRecap) { recap in
+            .fullScreenCover(item: $selectedRecap) { recap in
                 MonthlyRecapSheet(
                     recap: recap,
                     onNavigateToCity: { targetDate in

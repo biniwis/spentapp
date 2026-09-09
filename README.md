@@ -1,5 +1,7 @@
 # 🏙️ MoneyCity (iOS)
 
+> ארכיטקטורה, מסלול קליטת Wallet והוראות בדיקות עדכניות: [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md). בדיקות האפליקציה רצות ביעד MoneyCityTests בסימולטור iOS דרך Xcode.
+
 אפליקציית מעקב הוצאות אוטומטית המבוססת על Apple Pay ו-Shortcuts, שהופכת את ההתנהגות הפיננסית החודשית שלך לעיר חיה, יפה ואיזומטרית (Living Diorama).
 
 ---

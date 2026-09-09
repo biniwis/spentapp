@@ -43,20 +43,65 @@ public struct ScanReceiptIntent: AppIntent {
                 throw ReceiptOCRService.OCRError.parsingFailed
             }
 
+            let recentTxs = DatabaseService.shared.fetchRecentTransactions(within: 7 * 24 * 3600)
+            var newTransactions: [Transaction] = []
+
             for candidate in scanResult.candidates {
-                let transaction = Transaction(
+                let candDate = candidate.date ?? Date()
+
+                // Deduplicate against existing ledger and against other candidates in the same image
+                if TransactionIngest.isDuplicate(
+                    merchant: candidate.merchant,
                     amount: candidate.amount,
+                    currency: candidate.currency,
+                    date: candDate,
+                    in: recentTxs + newTransactions
+                ) {
+                    continue
+                }
+
+                var finalAmount = candidate.amount
+                var finalCurrency = "₪"
+                var origAmount: Double? = nil
+                var origCurrency: String? = nil
+                var exRate: Double? = nil
+
+                if let currType = CurrencyType(symbolOrCode: candidate.currency), currType != .ils {
+                    let converted = FXService.convert(amount: candidate.amount, from: currType, to: .ils)
+                    finalAmount = converted
+                    finalCurrency = CurrencyType.ils.symbol
+                    origAmount = candidate.amount
+                    origCurrency = currType.symbol
+                    exRate = candidate.amount > 0 ? converted / candidate.amount : nil
+                } else {
+                    finalCurrency = CurrencyType(symbolOrCode: candidate.currency)?.symbol ?? "₪"
+                }
+
+                let transaction = Transaction(
+                    amount: finalAmount,
+                    currency: finalCurrency,
                     merchant: candidate.merchant,
                     category: candidate.category,
-                    timestamp: candidate.date ?? Date(),
+                    timestamp: candDate,
                     confidenceScore: candidate.confidence,
                     isConfirmed: candidate.confidence >= 0.85,
-                    buildingId: candidate.buildingId
+                    buildingId: candidate.buildingId,
+                    originalAmount: origAmount,
+                    originalCurrency: origCurrency,
+                    exchangeRate: exRate
                 )
-                try await DatabaseService.shared.save(transaction: transaction)
+                newTransactions.append(transaction)
             }
 
-            if scanResult.candidates.count == 1, let primary = scanResult.primary {
+            guard !newTransactions.isEmpty else {
+                let msg = "כל העסקאות בצילום המסך כבר קיימות באפליקציה (זוהו ככפולות)"
+                return .result(value: msg, dialog: "\(msg)")
+            }
+
+            // Atomic batch save
+            try await DatabaseService.shared.save(transactions: newTransactions)
+
+            if newTransactions.count == 1, let primary = newTransactions.first {
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(
                     amount: primary.amount,
@@ -73,17 +118,17 @@ public struct ScanReceiptIntent: AppIntent {
                     dialog: "\(successMessage)"
                 )
             } else {
-                let count = scanResult.candidates.count
-                let totalSum = scanResult.candidates.reduce(0.0) { $0 + $1.amount }
+                let count = newTransactions.count
+                let totalSum = newTransactions.reduce(0.0) { $0 + $1.amount }
                 let formattedTotal = "₪" + (totalSum.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", totalSum) : String(format: "%.2f", totalSum))
-                let storesSummary = scanResult.candidates.map { "\($0.merchant) (₪\($0.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", $0.amount) : String(format: "%.2f", $0.amount)))" }.joined(separator: ", ")
+                let storesSummary = newTransactions.map { "\($0.merchant) (₪\($0.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", $0.amount) : String(format: "%.2f", $0.amount)))" }.joined(separator: ", ")
                 let successMessage = "נוספו \(count) עסקאות מתוך צילום המסך (סך הכל \(formattedTotal)): \(storesSummary)"
 
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(
                     amount: totalSum,
-                    categoryName: scanResult.candidates.first?.category.displayName ?? "קניות",
-                    merchant: "\(count) חנויות: \(scanResult.candidates.map(\.merchant).joined(separator: ", "))"
+                    categoryName: newTransactions.first?.category.displayName ?? "קניות",
+                    merchant: "\(count) חנויות: \(newTransactions.map(\.merchant).joined(separator: ", "))"
                 )
                 #endif
 

@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 /// Behavioral habits extracted from the transaction stream to drive the Living Map
-public struct BehavioralHabits: Sendable {
+public struct BehavioralHabits: Sendable, Equatable {
     public var woltDeliveryCount: Int
     public var coffeeCount: Int
     public var onlinePackagesCount: Int

@@ -1,5 +1,32 @@
 import SwiftUI
 
+/// Shared empty states using SPENT's illustrated icons and accessible text sizes.
+struct SpentEmptyState: View {
+    let icon: MoneyIconType
+    let title: String
+    let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(spacing: 16) {
+            MoneyIcon(icon, size: 48).padding(22)
+                .background(Color.spentGreenSoft.opacity(0.65), in: RoundedRectangle(cornerRadius: 30))
+                .accessibilityHidden(true)
+            Text(title).font(.title3.weight(.bold)).foregroundStyle(Color.deepNavy)
+            Text(message).font(.subheadline).foregroundStyle(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle).font(.headline).foregroundStyle(.white)
+                        .padding(.horizontal, 24).frame(minHeight: 48)
+                        .background(Color.deepNavy, in: Capsule())
+                }.buttonStyle(.plain)
+            }
+        }.multilineTextAlignment(.center).padding(24).frame(maxWidth: .infinity)
+    }
+}
+
 /// Universal Shimmer effect for skeleton loading screens
 public struct ShimmerModifier: ViewModifier {
     @State private var phase: CGFloat = -1.0

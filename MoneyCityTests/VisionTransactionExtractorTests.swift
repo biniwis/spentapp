@@ -1,5 +1,8 @@
 import XCTest
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 @testable import MoneyCity
 
 final class VisionTransactionExtractorTests: XCTestCase {
@@ -121,6 +124,11 @@ final class VisionTransactionExtractorTests: XCTestCase {
     func testOrchestratorCategorizationMapping() async throws {
         struct MockExtractor: VisionTransactionExtractor {
             var modelIdentifier: String = "mock-vision-model"
+            #if canImport(UIKit)
+            func extractTransactions(from image: UIImage) async throws -> VisionExtractionResult {
+                try await extractTransactions(from: Data(), mimeType: "image/png")
+            }
+            #endif
 
             func extractTransactions(from imageData: Data, mimeType: String) async throws -> VisionExtractionResult {
                 let txs = [

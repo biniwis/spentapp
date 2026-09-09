@@ -1,796 +1,951 @@
 import SwiftUI
-import SwiftData
+import UIKit
 
-/// State-of-the-art Spotify-Wrapped-inspired Monthly City Story for SPENT.
-/// Features vibrant dynamic gradients, cynical humor, multi-stage spring entrance animations,
-/// 3D directional slide transitions, and a grand finale shareable poster.
+// MARK: - Story model and authored timing
+
+enum RecapEditorialShot: Equatable, Identifiable {
+    case opening, total, activity, district, insight(MonthlyRecapDynamicInsight), portrait
+    var id: String {
+        switch self {
+        case .opening: "opening"
+        case .total: "total"
+        case .activity: "activity"
+        case .district: "district"
+        case .insight(let insight): insight.id
+        case .portrait: "portrait"
+        }
+    }
+    var duration: Double {
+        switch self {
+        case .opening: 4.4
+        case .total: 5.2
+        case .activity: 4.2
+        case .district: 5.0
+        case .insight: 5.4
+        case .portrait: 8.0
+        }
+    }
+    static func sequence(for recap: MonthlyRecap) -> [Self] {
+        [.opening, .total, .activity, .district] + recap.dynamicInsights.prefix(2).map { .insight($0) } + [.portrait]
+    }
+}
+
+/// Manual stories: the timeline directs a shot, never advances it or delays navigation.
 public struct MonthlyRecapSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicType
     @EnvironmentObject private var l10n: LocalizationManager
-    
     let recap: MonthlyRecap
-    var onNavigateToCity: ((Date) -> Void)? = nil
-    
-    @State private var currentStep: Int = 0
-    @State private var slideDirection: Int = 1 // 1 for forward, -1 for backward
-    @State private var animateBeat: Bool = false
-    
-    private let totalSteps: Int = 6
-    
+    var onNavigateToCity: ((Date) -> Void)?
+    @State private var index = 0
+    @State private var time = 0.0
+    @State private var outgoing: RecapEditorialShot?
+    @State private var outgoingTime = 0.0
+    @State private var sharedPortrait: RecapShareItem?
+    @State private var shareFailed = false
+    private var shots: [RecapEditorialShot] { RecapEditorialShot.sequence(for: recap) }
+    private var shot: RecapEditorialShot { shots[index] }
+    private var he: Bool { l10n.language == .hebrew }
+    private var still: Bool { reduceMotion || voiceOver }
+
     public init(recap: MonthlyRecap, onNavigateToCity: ((Date) -> Void)? = nil) {
         self.recap = recap
         self.onNavigateToCity = onNavigateToCity
     }
-    
-    private var isHebrew: Bool { l10n.language == .hebrew }
-    
+
     public var body: some View {
-        ZStack {
-            // Dynamic Gradient Background per Story Beat
-            beatBackgroundGradient
-                .ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.5), value: currentStep)
-            
-            VStack(spacing: 0) {
-                // Top Progress Indicators & Close Button
-                topStoryHeader
-                    .padding(.top, 16)
-                    .padding(.horizontal, 20)
-                
-                Spacer(minLength: 10)
-                
-                // Story Beat Content with 3D Slide & Scale Transition
-                ZStack {
-                    Group {
-                        switch currentStep {
-                        case 0:
-                            storyIntroSkyline
-                        case 1:
-                            storyBiggestDistrict
-                        case 2:
-                            storyTallestBuilding
-                        case 3:
-                            storyFavoriteHangout
-                        case 4:
-                            storyPeakDay
-                        default:
-                            storyGrandFinalePoster
-                        }
-                    }
-                    .id(currentStep)
-                    .transition(
-                        .asymmetric(
-                            insertion: .move(edge: slideDirection > 0 ? (isHebrew ? .leading : .trailing) : (isHebrew ? .trailing : .leading))
-                                .combined(with: .opacity)
-                                .combined(with: .scale(scale: 0.88)),
-                            removal: .move(edge: slideDirection > 0 ? (isHebrew ? .trailing : .leading) : (isHebrew ? .leading : .trailing))
-                                .combined(with: .opacity)
-                                .combined(with: .scale(scale: 0.88))
-                        )
-                    )
-                }
-                .padding(.horizontal, 20)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .onTapGesture { location in
-                    // Tap right to go next, tap left to go back
-                    if isHebrew {
-                        if location.x < 120 { nextStep() } else if location.x > 260 { prevStep() } else { nextStep() }
-                    } else {
-                        if location.x > 260 { nextStep() } else if location.x < 120 { prevStep() } else { nextStep() }
-                    }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 30)
-                        .onEnded { value in
-                            if value.translation.width < -40 {
-                                if isHebrew { prevStep() } else { nextStep() }
-                            } else if value.translation.width > 40 {
-                                if isHebrew { nextStep() } else { prevStep() }
-                            }
-                        }
-                )
-                
-                Spacer(minLength: 10)
-                
-                // Bottom Navigation Row
-                bottomNavigationRow
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 26)
-            }
-        }
-        .onAppear {
-            triggerBeatAnimation()
-        }
-    }
-    
-    // MARK: - Dynamic Gradient Background
-    private var beatBackgroundGradient: some View {
-        LinearGradient(
-            colors: gradientColorsForCurrentStep,
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-    
-    private var gradientColorsForCurrentStep: [Color] {
-        switch currentStep {
-        case 0:
-            // Skyline Archetype (Midnight Indigo to Soft Lavender)
-            return [Color(red: 238/255, green: 242/255, blue: 255/255), Color(red: 224/255, green: 231/255, blue: 255/255)]
-        case 1:
-            // Top District (Warm Sunset / Category Theme)
-            let c = recap.biggestDistrict?.category.themeColor ?? Color.themeOrange
-            return [c.opacity(0.22), Color(red: 254/255, green: 243/255, blue: 199/255)]
-        case 2:
-            // Tallest Skyscraper (Neon Sky Blue)
-            return [Color(red: 224/255, green: 242/255, blue: 254/255), Color(red: 219/255, green: 234/255, blue: 254/255)]
-        case 3:
-            // Regular Hangout (Warm Espresso / Peach)
-            return [Color(red: 254/255, green: 242/255, blue: 242/255), Color(red: 254/255, green: 237/255, blue: 213/255)]
-        case 4:
-            // Peak Day (Vibrant Amber / Coral)
-            return [Color(red: 254/255, green: 243/255, blue: 199/255), Color(red: 255/255, green: 237/255, blue: 213/255)]
-        default:
-            // Finale Poster (Deep Luxury Dark Canvas)
-            return [Color(red: 15/255, green: 23/255, blue: 42/255), Color(red: 30/255, green: 41/255, blue: 59/255)]
-        }
-    }
-    
-    // MARK: - Story Progress Header
-    private var topStoryHeader: some View {
-        VStack(spacing: 12) {
-            // 6 Segment Bars
-            HStack(spacing: 5) {
-                ForEach(0..<totalSteps, id: \.self) { idx in
-                    Capsule()
-                        .fill(idx <= currentStep ? (currentStep == 5 ? Color.white : Color.primaryBlue) : Color.borderSubtle)
-                        .frame(height: 4)
-                        .animation(.spring(response: 0.35), value: currentStep)
-                }
-            }
-            
-            HStack {
-                HStack(spacing: 6) {
-                    MoneyIcon(.home, size: 14)
-                    Text(isHebrew ? "סיכום חודש " + recap.monthNameHe : recap.monthNameEn + " City Story")
-                        .font(.system(size: 13, weight: .black, design: .rounded))
-                }
-                .foregroundColor(currentStep == 5 ? Color.white : Color.primaryBlue)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(currentStep == 5 ? Color.white.opacity(0.15) : Color.primaryBlue.opacity(0.10))
-                .clipShape(Capsule())
-                
-                Spacer()
-                
-                Button(action: { dismiss() }) {
-                    MoneyIcon(.xmarkCircle, size: 20)
-                        .padding(4)
-                        .background(currentStep == 5 ? Color.white.opacity(0.15) : Color.white)
-                        .clipShape(Circle())
-                        .shadow(color: Color.black.opacity(0.06), radius: 4, y: 1)
-                }
-            }
-        }
-    }
-    
-    // MARK: - Beat 0: City Archetype
-    private var storyIntroSkyline: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            
+        GeometryReader { proxy in
             ZStack {
-                Circle()
-                    .fill(vibeColor.opacity(0.15))
-                    .frame(width: 140, height: 140)
-                    .scaleEffect(animateBeat ? 1.0 : 0.6)
-                
-                Circle()
-                    .fill(vibeColor.opacity(0.28))
-                    .frame(width: 100, height: 100)
-                    .scaleEffect(animateBeat ? 1.0 : 0.7)
-                
-                MoneyIcon(recap.cityVibe.moneyIcon, size: 48)
-                    .scaleEffect(animateBeat ? 1.0 : 0.4)
-            }
-            .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
-            
-            VStack(spacing: 8) {
-                Text(isHebrew ? "טיפוס העיר שלך החודש" : "Your City Archetype")
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundColor(Color.primaryBlue)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(Color.primaryBlue.opacity(0.12))
-                    .clipShape(Capsule())
-                    .offset(y: animateBeat ? 0 : 15)
-                    .opacity(animateBeat ? 1 : 0)
-                
-                Text(isHebrew ? recap.cityVibe.titleHe : recap.cityVibe.titleEn)
-                    .font(.system(size: 30, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .multilineTextAlignment(.center)
-                    .offset(y: animateBeat ? 0 : 20)
-                    .opacity(animateBeat ? 1 : 0)
-                
-                Text(isHebrew ? recap.cityVibe.subtitleHe : recap.cityVibe.subtitleEn)
-                    .font(.system(size: 15, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(3)
-                    .padding(.horizontal, 16)
-                    .offset(y: animateBeat ? 0 : 25)
-                    .opacity(animateBeat ? 1 : 0)
-            }
-            .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
-            
-            // Spend pill
-            HStack(spacing: 8) {
-                Text(isHebrew ? "סך הכל נבנה בעיר:" : "Total Spent:")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                Text(l10n.baseCurrency.symbol + String(Int(recap.totalSpent)))
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 11)
-            .background(Color.white)
-            .clipShape(Capsule())
-            .shadow(color: Color.deepNavy.opacity(0.06), radius: 8, y: 2)
-            .scaleEffect(animateBeat ? 1.0 : 0.8)
-            .opacity(animateBeat ? 1 : 0)
-            .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.16), value: animateBeat)
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Beat 1: Dominant District
-    private var storyBiggestDistrict: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            
-            if let district = recap.biggestDistrict {
-                let pct = recap.totalSpent > 0 ? Int((district.amount / recap.totalSpent) * 100) : 0
-                
+                // ── Canvas — fills edge to edge ─────────────────────────
                 ZStack {
-                    Circle()
-                        .fill(district.category.themeColor.opacity(0.18))
-                        .frame(width: 130, height: 130)
-                        .scaleEffect(animateBeat ? 1.0 : 0.6)
-                    
-                    CategoryBadge(category: district.category, size: 78)
-                        .scaleEffect(animateBeat ? 1.0 : 0.4)
-                }
-                .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
-                
-                VStack(spacing: 8) {
-                    Text(isHebrew ? "הרובע ששלט בכיס" : "Dominant District")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundColor(district.category.themeColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(district.category.themeColor.opacity(0.14))
-                        .clipShape(Capsule())
-                        .offset(y: animateBeat ? 0 : 15)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(isHebrew ? district.category.displayName : district.category.displayNameEn)
-                        .font(.system(size: 32, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .offset(y: animateBeat ? 0 : 20)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(isHebrew
-                         ? "\(l10n.format(amount: district.amount)) (\(pct)% מכלל העיר)"
-                         : "\(l10n.format(amount: district.amount)) (\(pct)% of total)")
-                        .font(.system(size: 18, weight: .black, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                        .offset(y: animateBeat ? 0 : 25)
-                        .opacity(animateBeat ? 1 : 0)
-                }
-                .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
-                
-                Text(isHebrew ? "הבטן והחשקים שלך מימנו את רוב קו הרקיע החודש. הפועלים עבדו בעיקר בשבילם." : "Your appetites bankrolled most of this skyline.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 20)
-                    .offset(y: animateBeat ? 0 : 20)
-                    .opacity(animateBeat ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.16), value: animateBeat)
-            } else {
-                Text(isHebrew ? "חודש שקט — לא נרשמו הוצאות ברובעים." : "Quiet month — no district activity.")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-            }
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Beat 2: Tallest Skyscraper
-    private var storyTallestBuilding: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            
-            if let skyscraper = recap.tallestBuilding {
-                ZStack {
-                    Circle()
-                        .fill(Color.primaryBlue.opacity(0.15))
-                        .frame(width: 130, height: 130)
-                        .scaleEffect(animateBeat ? 1.0 : 0.6)
-                    
-                    DistrictSkylineVectorIcon(color: Color.primaryBlue)
-                        .scaleEffect(animateBeat ? 1.6 : 0.6)
-                }
-                .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
-                
-                VStack(spacing: 8) {
-                    Text(isHebrew ? "גורד השחקים של החודש" : "Tallest Skyscraper")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundColor(Color.primaryBlue)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(Color.primaryBlue.opacity(0.12))
-                        .clipShape(Capsule())
-                        .offset(y: animateBeat ? 0 : 15)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(skyscraper.merchantName)
-                        .font(.system(size: 28, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .offset(y: animateBeat ? 0 : 20)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(l10n.baseCurrency.symbol + String(Int(skyscraper.amount)))
-                        .font(.system(size: 36, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .scaleEffect(animateBeat ? 1.0 : 0.7)
-                        .opacity(animateBeat ? 1 : 0)
-                }
-                .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
-                
-                Text(isHebrew ? "ההוצאה הבודדת הכי גדולה שהטילה צל על כל שאר השכונה." : "The single largest charge towering over your neighborhood.")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .offset(y: animateBeat ? 0 : 20)
-                    .opacity(animateBeat ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.16), value: animateBeat)
-            } else {
-                Text(isHebrew ? "אין מבנה בולט בחודש זה." : "No standout building this month.")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-            }
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Beat 3: Favorite Hangout
-    private var storyFavoriteHangout: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            
-            if let hangout = recap.mostRepeatedStop {
-                ZStack {
-                    Circle()
-                        .fill(Color.themeOrange.opacity(0.15))
-                        .frame(width: 130, height: 130)
-                        .scaleEffect(animateBeat ? 1.0 : 0.6)
-                    
-                    MoneyIcon(.coffee, size: 52)
-                        .scaleEffect(animateBeat ? 1.0 : 0.4)
-                }
-                .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
-                
-                VStack(spacing: 8) {
-                    Text(isHebrew ? "תחנת הקבע של ראש העיר" : "Your Resident Hangout")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundColor(Color.themeOrange)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(Color.themeOrange.opacity(0.12))
-                        .clipShape(Capsule())
-                        .offset(y: animateBeat ? 0 : 15)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(hangout.merchantName)
-                        .font(.system(size: 30, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .multilineTextAlignment(.center)
-                        .offset(y: animateBeat ? 0 : 20)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(isHebrew 
-                         ? (hangout.visitCount > 1 ? String(hangout.visitCount) + " ביקורים החודש" : "ביקור ראשון שנרשם החודש")
-                         : (hangout.visitCount > 1 ? String(hangout.visitCount) + " visits this month" : "First visit this month"))
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                        .offset(y: animateBeat ? 0 : 25)
-                        .opacity(animateBeat ? 1 : 0)
-                }
-                .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
-                
-                Text(isHebrew
-                     ? (hangout.visitCount > 1
-                        ? "אם הייתה לך שם חניה שמורה עם השם שלך, אף אחד לא היה מופתע."
-                        : "התחנה הראשונה שנרשמה החודש בעיר — נראה אם היא תהפוך למקום הקבוע שלך.")
-                     : (hangout.visitCount > 1
-                        ? "You visited often enough that they probably know your order by heart."
-                        : "First recorded stop this month — let's see if it becomes a regular."))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .offset(y: animateBeat ? 0 : 20)
-                    .opacity(animateBeat ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.16), value: animateBeat)
-            } else {
-                Text(isHebrew ? "הפיזור היה אחיד — אין תחנת קבע בולטת." : "Evenly distributed visits.")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-            }
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Beat 4: Peak Spending Day
-    private var storyPeakDay: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            
-            if let peak = recap.biggestSpendingDay {
-                ZStack {
-                    Circle()
-                        .fill(Color.themeYellow.opacity(0.20))
-                        .frame(width: 130, height: 130)
-                        .scaleEffect(animateBeat ? 1.0 : 0.6)
-                    
-                    MoneyIcon(.calendar, size: 52)
-                        .scaleEffect(animateBeat ? 1.0 : 0.4)
-                }
-                .animation(.spring(response: 0.6, dampingFraction: 0.68), value: animateBeat)
-                
-                VStack(spacing: 8) {
-                    Text(isHebrew ? "היום הכי יקר בעיר" : "Peak Spending Day")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .foregroundColor(Color.themeOrange)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(Color.themeOrange.opacity(0.12))
-                        .clipShape(Capsule())
-                        .offset(y: animateBeat ? 0 : 15)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(isHebrew ? peak.formattedDateHe : peak.formattedDateEn)
-                        .font(.system(size: 26, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .multilineTextAlignment(.center)
-                        .offset(y: animateBeat ? 0 : 20)
-                        .opacity(animateBeat ? 1 : 0)
-                    
-                    Text(l10n.baseCurrency.symbol + String(Int(peak.amount)))
-                        .font(.system(size: 34, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .scaleEffect(animateBeat ? 1.0 : 0.7)
-                        .opacity(animateBeat ? 1 : 0)
-                }
-                .animation(.spring(response: 0.55, dampingFraction: 0.75).delay(0.08), value: animateBeat)
-                
-                Text(isHebrew
-                     ? (recap.transactionCount <= 1
-                        ? "העסקה שהניחה את אבן הפינה הראשונה לחודש זה בעיר."
-                        : "היום שבו כרטיס האשראי שלך עבד מסביב לשעון והקים שכונה שלמה.")
-                     : (recap.transactionCount <= 1
-                        ? "The first cornerstone laid for this month's city."
-                        : "The single day your wallet worked overtime."))
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                    .offset(y: animateBeat ? 0 : 20)
-                    .opacity(animateBeat ? 1 : 0)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.75).delay(0.16), value: animateBeat)
-            } else {
-                Text(isHebrew ? "אין יום בולט במיוחד." : "No peak day detected.")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-            }
-            
-            Spacer()
-        }
-    }
-    
-    // MARK: - Beat 5: Grand Spotify Wrapped Finale Poster
-    private var storyGrandFinalePoster: some View {
-        VStack(spacing: 16) {
-            Spacer()
-            
-            // Poster Glass Card
-            VStack(alignment: .leading, spacing: 14) {
-                // Poster Header Tag
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("SPENT // CITY WRAPPED")
-                            .font(.system(size: 11, weight: .black, design: .monospaced))
-                            .foregroundColor(Color.themeTurquoise)
-                        Text(isHebrew ? "סיכום חודש " + recap.monthNameHe : recap.monthNameEn + " Recap")
-                            .font(.system(size: 18, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
+                    if let outgoing, time < 0.55, !still {
+                        RecapSceneFrame(shot: outgoing, recap: recap, time: outgoingTime,
+                                        he: he, currency: l10n.baseCurrency.symbol)
+                            .accessibilityHidden(true)
                     }
-                    Spacer()
-                    
-                    // Vibe Pill
-                    HStack(spacing: 4) {
-                        MoneyIcon(recap.cityVibe.moneyIcon, size: 14)
-                        Text(isHebrew ? recap.cityVibe.titleHe : recap.cityVibe.titleEn)
-                            .font(.system(size: 11, weight: .black, design: .rounded))
-                    }
-                    .foregroundColor(vibeColor)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Color.white.opacity(0.12))
-                    .clipShape(Capsule())
+                    RecapSceneFrame(shot: shot, recap: recap, time: still ? shot.duration : time,
+                                    he: he, currency: l10n.baseCurrency.symbol)
+                        .clipShape(RecapSceneAperture(progress: outgoing == nil || still ? 1 : min(1, time / 0.55), shot: shot))
                 }
-                
-                Divider().background(Color.white.opacity(0.15))
-                
-                // Top Highlights Grid
-                VStack(spacing: 8) {
-                    if let district = recap.biggestDistrict {
-                        posterMetricRow(
-                            icon: .home,
-                            label: isHebrew ? "רובע מוביל" : "Top District",
-                            value: (isHebrew ? district.category.displayName : district.category.displayNameEn) + " (" + l10n.baseCurrency.symbol + String(Int(district.amount)) + ")"
-                        )
-                    }
-                    
-                    if let skyscraper = recap.tallestBuilding {
-                        posterMetricRow(
-                            icon: .trophy,
-                            label: isHebrew ? "גורד שחקים" : "Top Landmark",
-                            value: skyscraper.merchantName + " (" + l10n.baseCurrency.symbol + String(Int(skyscraper.amount)) + ")"
-                        )
-                    }
-                    
-                    if let hangout = recap.mostRepeatedStop {
-                        posterMetricRow(
-                            icon: .coffee,
-                            label: isHebrew ? "תחנת קבע" : "Regular Stop",
-                            value: hangout.merchantName + " (" + String(hangout.visitCount) + (isHebrew ? " פעמים)" : " visits)")
-                        )
-                    }
-                    
-                    if let peak = recap.biggestSpendingDay {
-                        posterMetricRow(
-                            icon: .calendar,
-                            label: isHebrew ? "יום שיא" : "Peak Day",
-                            value: (isHebrew ? peak.formattedDateHe : peak.formattedDateEn) + " (" + l10n.baseCurrency.symbol + String(Int(peak.amount)) + ")"
-                        )
-                    }
-                }
-                
-                Divider().background(Color.white.opacity(0.15))
-                
-                // Bottom 3 Core Numbers
-                HStack(spacing: 8) {
-                    posterStatBox(
-                        title: isHebrew ? "סך הכל הוצאות" : "Total Spent",
-                        value: l10n.baseCurrency.symbol + String(Int(recap.totalSpent)),
-                        color: Color.white
-                    )
-                    
-                    posterStatBox(
-                        title: isHebrew ? "מבנים שנבנו" : "Buildings",
-                        value: String(recap.transactionCount),
-                        color: Color.themeTurquoise
-                    )
-                    
-                    if let remaining = recap.remainingBudget {
-                        posterStatBox(
-                            title: isHebrew ? "נותר בתקציב" : "Remaining",
-                            value: l10n.baseCurrency.symbol + String(Int(remaining)),
-                            color: Color.themeMint
-                        )
-                    } else if let comp = recap.comparisonVsPrevMonth {
-                        posterStatBox(
-                            title: isHebrew ? "לעומת קודם" : "vs Prev",
-                            value: (comp.isDecrease ? "↓ " : "↑ ") + String(Int(comp.percentChange)) + "%",
-                            color: comp.isDecrease ? Color.themeMint : Color.themeOrange
-                        )
-                    }
-                }
-            }
-            .padding(18)
-            .background(
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(Color.white.opacity(0.08))
-                    .background(Color.black.opacity(0.35))
-                    .blur(radius: 0.5)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 24))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.35), Color.white.opacity(0.05)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
-                    )
-            )
-            .shadow(color: Color.black.opacity(0.3), radius: 16, y: 8)
-            .scaleEffect(animateBeat ? 1.0 : 0.88)
-            .opacity(animateBeat ? 1 : 0)
-            .animation(.spring(response: 0.6, dampingFraction: 0.72), value: animateBeat)
-            
-            Spacer()
-        }
-    }
-    
-    private func posterMetricRow(icon: MoneyIconName, label: String, value: String) -> some View {
-        HStack(spacing: 8) {
-            MoneyIcon(icon, size: 14)
-                .frame(width: 18)
-            Text(label + ":")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundColor(Color.white.opacity(0.6))
-            Spacer()
-            Text(value)
-                .font(.system(size: 12, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .lineLimit(1)
-        }
-    }
-    
-    private func posterStatBox(title: String, value: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.system(size: 16, weight: .black, design: .rounded))
-                .foregroundColor(color)
-                .lineLimit(1)
-            Text(title)
-                .font(.system(size: 9, weight: .bold, design: .rounded))
-                .foregroundColor(Color.white.opacity(0.6))
-                .lineLimit(1)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.07))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
-    
-    // MARK: - Navigation Controls
-    private var bottomNavigationRow: some View {
-        HStack(spacing: 12) {
-            if currentStep > 0 {
-                Button(action: prevStep) {
-                    MoneyIcon(isHebrew ? .chevronRight : .chevronLeft, size: 16)
-                        .frame(width: 48, height: 48)
-                        .background(currentStep == 5 ? Color.white.opacity(0.15) : Color.white)
-                        .clipShape(Circle())
-                        .shadow(color: Color.black.opacity(0.08), radius: 4, y: 1)
-                }
-            }
-            
-            if currentStep < totalSteps - 1 {
-                // Step 0: show a "Close" escape alongside the Next button
-                if currentStep == 0 {
-                    Button(action: { dismiss() }) {
-                        Text(isHebrew ? "סגור" : "Close")
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.7))
-                            .frame(height: 48)
-                            .padding(.horizontal, 20)
-                            .background(Color.white.opacity(0.15))
-                            .clipShape(Capsule())
+                .clipped()
+                .ignoresSafeArea()
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(RecapEditorialCopy(shot: shot, recap: recap, he: he, currency: l10n.baseCurrency.symbol).accessible)
+                .contentShape(Rectangle())
+                .onTapGesture { point in navigate(point.x >= proxy.size.width / 2 ? 1 : -1) }
+                .gesture(DragGesture(minimumDistance: 35).onEnded { value in
+                    guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                    navigate(value.translation.width < 0 ? 1 : -1)
+                })
+
+                // ── Accessibility large-type caption ────────────────────
+                if dynamicType.isAccessibilitySize {
+                    VStack {
+                        Spacer()
+                        ScrollView {
+                            Text(RecapEditorialCopy(shot: shot, recap: recap, he: he, currency: l10n.baseCurrency.symbol).accessible)
+                                .font(.body).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24)
+                        }.frame(maxHeight: 150).background(.ultraThinMaterial)
                     }
                 }
 
-                Button(action: nextStep) {
-                    HStack(spacing: 6) {
-                        Text(isHebrew ? "המשך" : "Next")
-                            .font(.system(size: 15, weight: .black, design: .rounded))
-                        MoneyIcon(isHebrew ? .chevronLeft : .chevronRight, size: 14)
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color.primaryBlue)
-                    .clipShape(Capsule())
+                // ── Header overlay ──────────────────────────────────────
+                VStack {
+                    header(topInset: proxy.safeAreaInsets.top)
+                    Spacer()
                 }
+
+                // ── Footer overlay ──────────────────────────────────────
+                VStack {
+                    Spacer()
+                    footer(bottomInset: proxy.safeAreaInsets.bottom)
+                }
+            }
+        }
+        .ignoresSafeArea()
+        .statusBarHidden(true)
+        .environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
+        .task(id: index) {
+            time = still ? shot.duration : 0
+            let clock = ContinuousClock()
+            var previous = clock.now
+            while time < shot.duration, !Task.isCancelled {
+                do { try await Task.sleep(for: .milliseconds(33)) } catch { return }
+                let now = clock.now
+                let delta = previous.duration(to: now)
+                previous = now
+                guard scenePhase == .active else { continue }
+                time = min(shot.duration, time + Double(delta.components.seconds) + Double(delta.components.attoseconds) / 1e18)
+            }
+            outgoing = nil
+        }
+        .onChange(of: still) { _, enabled in if enabled { time = shot.duration; outgoing = nil } }
+        .accessibilityAction(named: Text(he ? "הבא" : "Next")) { navigate(1) }
+        .accessibilityAction(named: Text(he ? "הקודם" : "Previous")) { navigate(-1) }
+        .sheet(item: $sharedPortrait) { item in RecapActivitySheet(image: item.image) }
+        .alert(he ? "התמונה לא נוצרה" : "Couldn't create the portrait", isPresented: $shareFailed) {
+            Button(he ? "אישור" : "OK", role: .cancel) { }
+        } message: { Text(he ? "אפשר לנסות לשתף שוב." : "Please try sharing again.") }
+    }
+
+    private var windowTopInset: CGFloat {
+        if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+           let window = scene.windows.first(where: { $0.isKeyWindow }) {
+            return window.safeAreaInsets.top
+        }
+        return 54
+    }
+
+    private var windowBottomInset: CGFloat {
+        if let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+           let window = scene.windows.first(where: { $0.isKeyWindow }) {
+            return window.safeAreaInsets.bottom
+        }
+        return 34
+    }
+
+    private func header(topInset: CGFloat) -> some View {
+        let effectiveTop = max(topInset, windowTopInset, 54)
+        return VStack(spacing: 8) {
+            HStack(spacing: 5) {
+                ForEach(shots.indices, id: \.self) { step in
+                    Capsule().fill(step <= index ? Color.deepNavy.opacity(0.85) : Color.deepNavy.opacity(0.18)).frame(height: 2.5)
+                }
+            }
+            HStack {
+                Text("SPENT").font(.appFont(14, weight: .black)).tracking(2)
+                Spacer()
+                Text(String(format: "%02d / %02d", index + 1, shots.count))
+                    .font(.appFont(13, weight: .medium)).monospacedDigit()
+                    .accessibilityLabel(he ? "שוט \(index + 1) מתוך \(shots.count)" : "Scene \(index + 1) of \(shots.count)")
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .frame(width: 36, height: 36)
+                        .background(Color.deepNavy.opacity(0.08), in: Circle())
+                }.accessibilityLabel(he ? "סגירה" : "Close")
+            }
+        }
+        .foregroundStyle(Color.deepNavy)
+        .padding(.horizontal, 20)
+        .padding(.top, effectiveTop + 8)
+        .environment(\.layoutDirection, .leftToRight)
+    }
+
+    private func footer(bottomInset: CGFloat) -> some View {
+        let effectiveBottom = max(bottomInset, windowBottomInset, 34)
+        return HStack(spacing: 12) {
+            Button { navigate(-1) } label: {
+                Image(systemName: "arrow.left")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.deepNavy)
+                    .frame(width: 44, height: 44)
+                    .background(Color.white.opacity(0.92), in: Circle())
+                    .shadow(color: Color.deepNavy.opacity(0.08), radius: 4, y: 2)
+            }
+            .disabled(index == 0).opacity(index == 0 ? 0.25 : 1)
+            .accessibilityLabel(he ? "הקודם" : "Previous")
+
+            Spacer(minLength: 8)
+
+            if shot == .portrait {
+                Button { share() } label: {
+                    Label(he ? "שיתוף" : "Share", systemImage: "square.and.arrow.up")
+                        .font(.appFont(15, weight: .semibold))
+                        .foregroundStyle(Color.deepNavy)
+                        .padding(.horizontal, 18)
+                        .frame(height: 46)
+                        .background(Color.white.opacity(0.92), in: Capsule())
+                        .shadow(color: Color.deepNavy.opacity(0.08), radius: 4, y: 2)
+                }
+                .opacity(time >= 6.5 || still ? 1 : 0)
+                .disabled(time < 6.5 && !still)
             } else {
-                #if os(iOS)
-                ShareLink(item: shareableRecapText) {
-                    HStack(spacing: 6) {
-                        MoneyIcon(.upload, size: 16)
-                        Text(isHebrew ? "שתף סיכום" : "Share")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
-                    }
-                    .foregroundColor(Color.deepNavy)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color.themeTurquoise)
-                    .clipShape(Capsule())
+                Text(he ? "הקשה להמשך" : "Tap to continue")
+                    .font(.appFont(12, weight: .semibold))
+                    .foregroundStyle(Color.deepNavy.opacity(0.7))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(Color.white.opacity(0.88), in: Capsule())
+                    .shadow(color: Color.deepNavy.opacity(0.06), radius: 4, y: 1)
+            }
+
+            Button {
+                if shot == .portrait { dismiss() } else { navigate(1) }
+            } label: {
+                Text(shot == .portrait ? (he ? "סיום" : "Done") : (he ? "הבא" : "Next"))
+                    .font(.appFont(15, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 22)
+                    .frame(height: 46)
+                    .background(Color.deepNavy, in: Capsule())
+                    .shadow(color: Color.deepNavy.opacity(0.18), radius: 6, y: 3)
+            }
+        }
+        .buttonStyle(.plain)
+        .environment(\.layoutDirection, .leftToRight)
+        .padding(.horizontal, 20)
+        .padding(.bottom, effectiveBottom + 8)
+    }
+
+    private func navigate(_ offset: Int) {
+        let next = index + offset
+        guard shots.indices.contains(next) else { return }
+        outgoing = shot
+        outgoingTime = still ? shot.duration : time
+        time = 0
+        index = next
+        Haptics.impact(.light)
+    }
+
+    @MainActor private func share() {
+        let frame = RecapSceneFrame(shot: .portrait, recap: recap, time: 8.0, he: he, currency: l10n.baseCurrency.symbol, export: true)
+            .frame(width: 390, height: 844).environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
+        let renderer = ImageRenderer(content: frame)
+        renderer.scale = 3
+        renderer.isOpaque = true
+        if let image = renderer.uiImage { sharedPortrait = RecapShareItem(image: image) } else { shareFailed = true }
+    }
+}
+
+private struct RecapShareItem: Identifiable { let id = UUID(); let image: UIImage }
+private struct RecapActivitySheet: UIViewControllerRepresentable {
+    let image: UIImage
+    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [image], applicationActivities: nil) }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) { }
+}
+
+// MARK: - Pure timeline (also used for the exact exported final frame)
+
+struct RecapBeat {
+    let time: Double
+    func progress(_ start: Double, _ duration: Double = 0.5) -> CGFloat {
+        CGFloat(min(1, max(0, (time - start) / duration)))
+    }
+    func ease(_ start: Double, _ duration: Double = 0.5) -> CGFloat {
+        let x = progress(start, duration); return 1 - pow(1 - x, 3)
+    }
+}
+
+private struct RecapSceneAperture: Shape {
+    var progress: Double
+    let shot: RecapEditorialShot
+    func path(in rect: CGRect) -> Path {
+        let p = CGFloat(progress)
+        switch shot {
+        case .district:
+            let side = max(rect.width, rect.height) * 2 * p
+            return Path(ellipseIn: CGRect(x: rect.midX - side / 2, y: rect.height * 0.64 - side / 2, width: side, height: side))
+        case .activity:
+            return Path(CGRect(x: rect.midX * (1-p), y: 0, width: rect.width * p, height: rect.height))
+        default:
+            return Path(CGRect(x: 0, y: rect.height * (1-p), width: rect.width, height: rect.height * p))
+        }
+    }
+}
+
+struct RecapEditorialCopy {
+    let shot: RecapEditorialShot
+    let recap: MonthlyRecap
+    let he: Bool
+    let currency: String
+    func money(_ value: Double) -> String { currency + value.formatted(.number.precision(.fractionLength(0))) }
+    var month: String {
+        let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: he ? "he_IL" : "en_US"); f.dateFormat = "MMMM"
+        return f.string(from: recap.date)
+    }
+    var year: String { String(Calendar(identifier: .gregorian).component(.year, from: recap.date)) }
+    var hero: String {
+        switch shot {
+        case .opening: return he ? month : month.uppercased()
+        case .total: return money(recap.totalSpent)
+        case .activity: return String(recap.transactionCount)
+        case .district: return recap.biggestDistrict.map { he ? $0.category.shortName(for: .hebrew) : $0.category.shortNameEn } ?? (he ? "מקום\nלהתחלות" : "Room to\nbegin")
+        case .portrait: return he ? "זה היה\n\(month) שלך." : "That was\nyour \(month)."
+        case .insight(let insight):
+            switch insight.type {
+            case .merchantRepeat: return insight.merchant ?? ""
+            case .biggestPurchase: return money(insight.primaryValue)
+            case .biggestDay:
+                let f = DateFormatter(); f.locale = Locale(identifier: he ? "he_IL" : "en_US"); f.dateFormat = "d MMM"
+                return f.string(from: insight.date ?? recap.date)
+            case .monthChange, .categoryChange: return (insight.primaryValue < 0 ? "−" : "+") + String(Int(abs(insight.primaryValue).rounded())) + "%"
+            case .weekendRhythm: return he ? "סוף\nהשבוע." : "The\nweekend."
+            }
+        }
+    }
+    var statement: String {
+        switch shot {
+        case .opening: return he ? "החודש שלך ב־SPENT" : "YOUR MONTH IN SPENT"
+        case .total: return he ? "זה הסכום שעבר בעיר החודש." : "What passed through your city this month."
+        case .activity: return he ? (recap.transactionCount == 1 ? "רכישה אחת החודש" : "רכישות החודש") : (recap.transactionCount == 1 ? "purchase this month" : "purchases this month")
+        case .district: return recap.biggestDistrict == nil ? (he ? "העיר הייתה שקטה החודש." : "A quiet month in your city.") : (he ? "הרובע הכי גדול שלך" : "YOUR BIGGEST DISTRICT")
+        case .portrait: return money(recap.totalSpent) + " · " + String(recap.transactionCount) + (he ? (recap.transactionCount == 1 ? " רכישה" : " רכישות") : (recap.transactionCount == 1 ? " purchase" : " purchases"))
+        case .insight(let i):
+            switch i.type {
+            case .merchantRepeat: return he ? "יש מקום שחזרת אליו\nשוב ושוב." : "One place kept\ncalling you back."
+            case .biggestPurchase: return he ? "רכישה אחת בלטה\nמעל כולן." : "One purchase stood\nabove the rest."
+            case .biggestDay: return he ? "יום אחד שינה\nאת הקצב." : "One day picked\nup the pace."
+            case .monthChange: return he ? (i.primaryValue < 0 ? "החודש עבר בעיר\nפחות כסף." : "החודש עבר בעיר\nיותר כסף.") : (i.primaryValue < 0 ? "Less spending.\nA little more space." : "More spending.\nA fuller skyline.")
+            case .categoryChange: return (he ? i.category?.shortName(for: .hebrew) : i.category?.shortNameEn).map { name in he ? "\(name).\n\(i.primaryValue < 0 ? "פחות" : "יותר") מקום החודש." : "\(name) took up\n\(i.primaryValue < 0 ? "less" : "more") space." } ?? ""
+            case .weekendRhythm: return he ? "העיר התעוררה בעיקר ב…" : "The city came alive on…"
+            }
+        }
+    }
+    var detail: String {
+        switch shot {
+        case .opening: return year
+        case .activity: return he ? "כל רכישה הוסיפה אור." : "Every purchase added a little light."
+        case .district:
+            guard let d = recap.biggestDistrict, recap.totalSpent > 0 else { return "" }
+            return money(d.amount) + " · " + String(Int((d.amount / recap.totalSpent * 100).rounded())) + (he ? "% מהחודש" : "% of the month")
+        case .portrait:
+            let districtText: String = recap.biggestDistrict.map { d in
+                he ? "הרובע המוביל: \(d.category.shortName(for: .hebrew))" : "Top: \(d.category.shortNameEn)"
+            } ?? ""
+            let compText: String = recap.comparisonVsPrevMonth.map { comp in
+                let pct = Int(comp.percentChange.rounded())
+                let dir = comp.isDecrease ? (he ? "פחות" : "less") : (he ? "יותר" : "more")
+                let name = he ? comp.prevMonthNameHe : comp.prevMonthNameEn
+                return he ? "\(pct)% \(dir) מ\(name)" : "\(pct)% \(dir) than \(name)"
+            } ?? ""
+            let merchantText: String = recap.mostRepeatedStop.map { m in
+                he ? "\(m.merchantName) \(m.visitCount) פעמים" : "\(m.merchantName) \(m.visitCount) visits"
+            } ?? ""
+            let parts = [districtText, compText, merchantText].filter { !$0.isEmpty }
+            return parts.isEmpty
+                ? (he ? "גם לשקט יש מקום בעיר." : "There is room for quiet, too.")
+                : parts.joined(separator: ". ")
+        case .total: return ""
+        case .insight(let i):
+            switch i.type {
+            case .merchantRepeat: return "\(i.count) " + (he ? "פעמים החודש." : "visits this month.")
+            case .biggestPurchase: return i.merchant?.isEmpty == false ? i.merchant! : ((he ? i.category?.shortName(for: .hebrew) : i.category?.shortNameEn) ?? "")
+            case .biggestDay: return money(i.primaryValue) + " · \(i.count) " + (he ? "רכישות לא קבועות" : "non-recurring purchases")
+            case .monthChange, .categoryChange:
+                let f = DateFormatter(); f.locale = Locale(identifier: he ? "he_IL" : "en_US"); f.dateFormat = "MMMM"
+                return (he ? "לעומת " : "Compared with ") + f.string(from: i.date ?? recap.date)
+            case .weekendRhythm: return "\(Int(i.primaryValue.rounded()))% " + (he ? "מהרכישות היו בשישי ובשבת." : "of purchases fell on Friday and Saturday.")
+            }
+        }
+    }
+    var accessible: String { [hero, statement, detail].filter { !$0.isEmpty }.joined(separator: ". ") }
+}
+
+// MARK: - Poster compositions, deliberately distinct from one another
+
+struct RecapSceneFrame: View {
+    let shot: RecapEditorialShot
+    let recap: MonthlyRecap
+    let time: Double
+    let he: Bool
+    let currency: String
+    var export = false
+    private var beat: RecapBeat { .init(time: time) }
+    private var copy: RecapEditorialCopy { .init(shot: shot, recap: recap, he: he, currency: currency) }
+    private var accent: Color {
+        switch shot {
+        case .activity: IconPalette.blue
+        case .district: recap.biggestDistrict?.category.themeColor ?? IconPalette.green
+        case .insight(let i): i.category?.themeColor ?? IconPalette.blue
+        default: IconPalette.green
+        }
+    }
+    private let W: CGFloat = 390
+    private let H: CGFloat = 844
+
+    var body: some View {
+        GeometryReader { proxy in
+            let scale = max(proxy.size.width / W, proxy.size.height / H)
+            canvas.frame(width: W, height: H)
+                .scaleEffect(scale)
+                .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+        }
+        .background(background)
+        .background(Color.appBackground)
+    }
+    private var background: Color {
+        switch shot {
+        case .district: accent.opacity(0.18)
+        case .activity: IconPalette.blue.opacity(0.10)
+        default: .appBackground
+        }
+    }
+    private var canvas: some View {
+        ZStack(alignment: .topLeading) {
+            background
+            switch shot {
+            case .opening: opening
+            case .total: total
+            case .activity: activity
+            case .district: district
+            case .insight(let insight): dynamic(insight)
+            case .portrait: portrait
+            }
+            if export {
+                Text("SPENT  /  \(copy.year)").font(.appFont(13, weight: .black)).tracking(2)
+                    .position(x: 98, y: 38)
+            }
+        }
+        .foregroundStyle(Color.deepNavy)
+        .frame(width: W, height: H)
+        .environment(\.layoutDirection, .leftToRight)
+    }
+    private var textAlignment: TextAlignment { .leading }
+    private var alignment: Alignment { .leading }
+    private func text(_ value: String, size: CGFloat, at start: Double, width: CGFloat = 338, hero: Bool = false) -> some View {
+        Text(value).font(.appFont(size, weight: hero ? .black : .medium))
+            .tracking(hero && !he ? -2 : 0)
+            .multilineTextAlignment(textAlignment)
+            .lineLimit(hero && (shot == .total || shot == .activity) ? 1 : (hero ? 2 : 3)).minimumScaleFactor(hero ? 0.48 : 0.75)
+            .frame(width: width, alignment: alignment)
+            .offset(y: (1 - beat.ease(start, 0.55)) * (hero ? 25 : 14))
+            .mask(Rectangle().scaleEffect(y: hero ? beat.ease(start, 0.55) : 1, anchor: .bottom))
+            .opacity(hero ? 1 : Double(beat.ease(start, 0.4)))
+            .clipped()
+            .environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
+    }
+    private var opening: some View {
+        ZStack(alignment: .topLeading) {
+            Circle().fill(accent.opacity(0.3)).frame(width: 320, height: 320)
+                .offset(x: 230 - 45 * beat.ease(0.5, 1.8), y: -70)
+                .opacity(Double(beat.progress(0.5, 0.3)))
+            text(copy.hero, size: 100, at: 1.0, width: 358, hero: true).offset(x: 20, y: 190)
+            text(copy.year + " · " + copy.statement, size: 14, at: 1.8).offset(x: 26, y: 340)
+            RecapSkyline(beat: beat, start: 2.3, lights: 3.2, accent: accent, quiet: recap.transactionCount == 0)
+                .frame(width: 280, height: 160).offset(x: 84, y: 510)
+            RecapRoad(progress: beat.ease(2.3, 0.6), color: .deepNavy).frame(width: W, height: 3).offset(y: 672)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+    private var total: some View {
+        ZStack(alignment: .topLeading) {
+            RecapSkyline(beat: beat, start: 0.6, lights: 3.5, accent: accent, quiet: recap.transactionCount == 0)
+                .frame(width: 390, height: 220).offset(x: 0, y: 450)
+            text(copy.hero, size: 100, at: 1.9, hero: true)
+                .scaleEffect(0.96 + 0.04 * beat.ease(1.9)).offset(x: 26, y: 180)
+            text(copy.statement, size: 23, at: 3.0).offset(x: 26, y: 340)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+    private var activity: some View {
+        ZStack(alignment: .topLeading) {
+            // Skyscraper bleeding off the right and bottom edges
+            RoundedRectangle(cornerRadius: 12)
+                .fill(IconPalette.blue)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.deepNavy, lineWidth: 3))
+                .frame(width: 350, height: 620)
+                .offset(x: 88, y: 310)
+
+            RecapWindowGrid(rows: 8, columns: 5, lit: min(40, recap.transactionCount), beat: beat, start: 1.4, wave: 0.1, light: .white)
+                .frame(width: 260, height: 440)
+                .offset(x: 120, y: 375)
+
+            text(copy.hero, size: 84, at: 0.5, width: 338, hero: true).offset(x: 26, y: 105)
+            text(copy.statement, size: 28, at: 2.1, width: 338).offset(x: 26, y: 195)
+            text(recap.transactionCount == 0 ? (he ? "החלונות מחכים לרגע הבא." : "Windows waiting for the next moment.") : copy.detail,
+                 size: 16, at: 2.7, width: 338).offset(x: 26, y: 240)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+    private var district: some View {
+        ZStack(alignment: .topLeading) {
+            // District storefront/building enters dynamically from the side
+            RecapDistrictBuilding(category: recap.biggestDistrict?.category, accent: accent, beat: beat, start: 0.7)
+                .frame(width: 320, height: 380)
+                .offset(x: -30, y: 440)
+
+            text(copy.statement, size: 15, at: 2.3).offset(x: 26, y: 115)
+            text(copy.hero, size: 85, at: 2.8, hero: true).offset(x: 26, y: 155)
+            text(copy.detail, size: 21, at: 3.5).offset(x: 26, y: 290)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+    @ViewBuilder private func dynamic(_ insight: MonthlyRecapDynamicInsight) -> some View {
+        Group {
+        switch insight.type {
+        case .merchantRepeat:
+            ZStack(alignment: .topLeading) {
+                RecapRoad(progress: beat.ease(0.1), color: .deepNavy).frame(width: 450, height: 3).offset(x: -20, y: 652)
+                ForEach(0..<4) { item in
+                    RecapStorefront(accent: accent, sign: "", beat: beat, start: 0.6 + [0, 0.5, 0.8, 1.0][item])
+                        .frame(width: 125, height: 140)
+                        .offset(x: CGFloat(item) * 115 - 40 + (1 - beat.ease(0.6 + [0, 0.5, 0.8, 1.0][item])) * 200, y: 510)
                 }
-                #endif
-                
-                Button(action: {
-                    dismiss()
-                    // Navigate to the CURRENT month's city, not the recap's past month
-                    onNavigateToCity?(Date())
-                }) {
-                    HStack(spacing: 6) {
-                        Text(isHebrew ? "חזרה לעיר" : "Back to City")
-                            .font(.system(size: 14, weight: .black, design: .rounded))
+                text(copy.statement, size: 27, at: 2.0).offset(x: 26, y: 110)
+                text(copy.hero, size: 79, at: 2.5, hero: true).offset(x: 26, y: 230)
+                text(copy.detail, size: 20, at: 3.2).offset(x: 26, y: 370)
+            }
+        case .biggestPurchase:
+            ZStack(alignment: .topLeading) {
+                RecapSkyline(beat: beat, start: 0.2, lights: 4.5, accent: accent, quiet: false)
+                    .frame(width: 260, height: 120).offset(x: -8, y: 540)
+                RecapBuilding(accent: accent, rows: 9, beat: beat, lights: 4.5)
+                    .frame(width: 96, height: 320 * beat.ease(1.0, 1.5))
+                    .position(x: 320, y: 670 - 320 * beat.ease(1, 1.5) / 2)
+                text(copy.statement, size: 26, at: 2.5).offset(x: 26, y: 110)
+                text(copy.hero, size: 88, at: 3.0, hero: true).offset(x: 26, y: 230)
+                text(copy.detail, size: 18, at: 3.6, width: 248).offset(x: 26, y: 370)
+            }
+        case .biggestDay:
+            ZStack(alignment: .topLeading) {
+                RecapStreet(beat: beat, accent: accent).frame(width: W, height: 180).offset(y: 490)
+                text(copy.statement, size: 28, at: 2.2).offset(x: 26, y: 110)
+                text(copy.hero, size: 85, at: 2.6, hero: true).offset(x: 26, y: 230)
+                text(copy.detail, size: 19, at: 3.3).offset(x: 26, y: 370)
+            }
+        case .monthChange:
+            ZStack(alignment: .topLeading) {
+                RecapSkyline(beat: beat, start: 0.1, lights: 20, accent: accent.opacity(0.45), quiet: false)
+                    .frame(width: 330, height: 150).offset(x: 34 - 400 * beat.ease(1.1, 0.7), y: 520)
+                RecapSkyline(beat: beat, start: 1.3, lights: 4.5, accent: accent, quiet: insight.primaryValue < 0)
+                    .frame(width: 350, height: 180).offset(x: 26 + 390 * (1 - beat.ease(1.3, 0.7)), y: 490)
+                text(copy.statement, size: 28, at: 2.0).offset(x: 26, y: 110)
+                text(copy.hero, size: 106, at: 2.6, hero: true).offset(x: 26, y: 230)
+                text(copy.detail, size: 19, at: 3.3).offset(x: 26, y: 370)
+            }
+        case .categoryChange:
+            ZStack(alignment: .topLeading) {
+                RecapRoad(progress: beat.ease(0.3, 1.5), color: accent)
+                    .frame(width: 480, height: insight.primaryValue > 0 ? 22 + 70 * beat.ease(1.0, 0.8) : 92 - 70 * beat.ease(1.0, 0.8))
+                    .rotationEffect(.degrees(-24)).offset(x: -40, y: 550)
+                RecapTree(accent: accent).frame(width: 80, height: 120).offset(x: 250, y: 430)
+                    .opacity(Double(beat.ease(0.4)))
+                text(copy.statement, size: 28, at: 2.0).offset(x: 26, y: 110)
+                text(copy.hero, size: 104, at: 2.6, hero: true).offset(x: 26, y: 230)
+                text(copy.detail, size: 19, at: 3.3).offset(x: 26, y: 370)
+            }
+        case .weekendRhythm:
+            ZStack(alignment: .topLeading) {
+                RecapPark(beat: beat, start: 0.5).frame(width: 330, height: 200).offset(x: 44, y: 470)
+                text(copy.statement, size: 23, at: 1.6).offset(x: 26, y: 110)
+                text(copy.hero, size: 84, at: 2.2, hero: true).offset(x: 26, y: 190)
+                text(copy.detail, size: 18, at: 3.2).offset(x: 26, y: 370)
+            }
+        }
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+    private var portrait: some View {
+        ZStack(alignment: .topLeading) {
+            // Decorative yellow circle — smooth top right accent, not sliced off
+            Circle().fill(IconPalette.yellow.opacity(0.40)).frame(width: 220, height: 220)
+                .offset(x: 260, y: -20).opacity(Double(beat.ease(2.1)))
+
+            // City illustration (anchored in lower section, ends cleanly above footer)
+            ZStack(alignment: .bottom) {
+                RecapSkyline(beat: beat, start: 1.2, lights: 5.2, accent: accent, quiet: recap.transactionCount == 0)
+                    .frame(width: 300, height: 200).offset(x: 14, y: -38)
+                RecapStorefront(accent: recap.biggestDistrict?.category.themeColor ?? accent, sign: "SPENT", beat: beat, start: -0.7)
+                    .frame(width: 125, height: 130).offset(x: -64, y: -20)
+                RecapPark(beat: beat, start: 2.1).frame(width: 175, height: 115).offset(x: 100, y: 22)
+            }
+            .frame(width: 340, height: 250)
+            .scaleEffect(1.65 - 0.65 * beat.ease(0, 2.7), anchor: .bottom)
+            .offset(x: 24, y: 430)
+
+            // ── Hero title ──
+            text(copy.hero, size: 46, at: 3.2, hero: true).offset(x: 26, y: 135)
+
+            // ── Row 1: total spend · transaction count ──
+            text(
+                currency + recap.totalSpent.formatted(.number.precision(.fractionLength(0))) +
+                " · " + String(recap.transactionCount) +
+                (he
+                    ? (recap.transactionCount == 1 ? " רכישה" : " רכישות")
+                    : (recap.transactionCount == 1 ? " purchase" : " purchases")),
+                size: 18, at: 3.7, width: 270
+            ).offset(x: 26, y: 240)
+
+            // ── Row 2: budget remaining OR biggest spending day ──
+            Group {
+                if let remaining = recap.remainingBudget, remaining > 0 {
+                    let line = he
+                        ? "נותרו \(currency)\(Int(remaining.rounded())) מהתקציב החודשי"
+                        : "\(currency)\(Int(remaining.rounded())) left of monthly budget"
+                    text(line, size: 14, at: 4.1, width: 270).offset(x: 26, y: 272)
+                } else if let day = recap.biggestSpendingDay {
+                    let line = he
+                        ? "יום שיא: \(day.formattedDateHe) · \(currency)\(Int(day.amount.rounded()))"
+                        : "Peak day: \(day.formattedDateEn) · \(currency)\(Int(day.amount.rounded()))"
+                    text(line, size: 14, at: 4.1, width: 270).offset(x: 26, y: 272)
+                }
+            }
+
+            // ── Row 3: biggest district + share-of-total ──
+            if let d = recap.biggestDistrict, recap.totalSpent > 0 {
+                let pct = Int((d.amount / recap.totalSpent * 100).rounded())
+                let line = he
+                    ? "רובע מוביל: \(d.nameHe) · \(pct)% · \(currency)\(Int(d.amount.rounded()))"
+                    : "Top district: \(d.nameEn) · \(pct)% · \(currency)\(Int(d.amount.rounded()))"
+                text(line, size: 14, at: 4.5, width: 270).offset(x: 26, y: 300)
+            }
+
+            // ── Row 4: month-over-month comparison ──
+            if let comp = recap.comparisonVsPrevMonth {
+                let sign = comp.isDecrease ? "↓" : "↑"
+                let dir = comp.isDecrease ? (he ? "פחות" : "less") : (he ? "יותר" : "more")
+                let pct = Int(comp.percentChange.rounded())
+                let name = he ? comp.prevMonthNameHe : comp.prevMonthNameEn
+                let line = he
+                    ? "\(sign) \(pct)% \(dir) מ\(name)"
+                    : "\(sign) \(pct)% \(dir) than \(name)"
+                text(line, size: 14, at: 5.0, width: 270).offset(x: 26, y: 328)
+            }
+
+            // ── Row 5: top repeated merchant OR busiest district fallback ──
+            Group {
+                if let m = recap.mostRepeatedStop {
+                    let line = he
+                        ? "\(m.merchantName) — \(m.visitCount) ביקורים החודש"
+                        : "\(m.merchantName) — \(m.visitCount) visits this month"
+                    text(line, size: 14, at: 5.5, width: 270).offset(x: 26, y: 356)
+                } else if let b = recap.busiestDistrict, b.category != recap.biggestDistrict?.category {
+                    let line = he
+                        ? "הכי פעיל: \(b.nameHe) · \(b.transactionCount) עסקאות"
+                        : "Most active: \(b.nameEn) · \(b.transactionCount) transactions"
+                    text(line, size: 14, at: 5.5, width: 270).offset(x: 26, y: 356)
+                }
+            }
+
+            // Car animation sweeps across bottom safely above footer
+            RecapCar(accent: accent).frame(width: 44, height: 26)
+                .offset(x: -60 + 530 * beat.progress(7.2, 0.8), y: 690)
+                .opacity(time >= 7.2 && time < 8.0 ? 1 : 0)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+}
+
+// MARK: - Shared graphic city vocabulary
+
+private struct RecapWindowGrid: View {
+    let rows: Int
+    let columns: Int
+    let lit: Int
+    let beat: RecapBeat
+    let start: Double
+    var wave: Double = 0.09
+    var light: Color = .white
+    var body: some View {
+        VStack(spacing: 9) {
+            ForEach(0..<rows, id: \.self) { row in
+                HStack(spacing: 10) {
+                    ForEach(0..<columns, id: \.self) { column in
+                        let on = row * columns + column < lit
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(on ? light.opacity(0.16 + 0.84 * Double(beat.ease(start + Double(row + column) * wave, 0.2))) : Color.deepNavy.opacity(0.13))
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color.primaryBlue)
-                    .clipShape(Capsule())
                 }
             }
         }
     }
-    
-    private var shareableRecapText: String {
-        let title = isHebrew ? "סיכום עיר SPENT לחודש " + recap.monthNameHe : "SPENT City Recap: " + recap.monthNameEn
-        let spend = isHebrew ? "סך הכל: " + l10n.baseCurrency.symbol + String(Int(recap.totalSpent)) : "Total: " + l10n.baseCurrency.symbol + String(Int(recap.totalSpent))
-        let txs = isHebrew ? String(recap.transactionCount) + " מבנים נבנו" : String(recap.transactionCount) + " buildings built"
-        let vibe = isHebrew ? "מצב עיר: " + recap.cityVibe.titleHe : "City Vibe: " + recap.cityVibe.titleEn
-        return title + "\n• " + spend + "\n• " + txs + "\n• " + vibe + "\n#SPENT"
-    }
-    
-    private func nextStep() {
-        if currentStep < totalSteps - 1 {
-            slideDirection = 1
-            animateBeat = false
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                currentStep += 1
-            }
-            Haptics.impact(.light)
-            triggerBeatAnimation()
-        }
-    }
-    
-    private func prevStep() {
-        if currentStep > 0 {
-            slideDirection = -1
-            animateBeat = false
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                currentStep -= 1
-            }
-            Haptics.impact(.light)
-            triggerBeatAnimation()
-        }
-    }
-    
-    private func triggerBeatAnimation() {
-        animateBeat = false
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.72)) {
-                animateBeat = true
+}
+private struct RecapBuilding: View {
+    let accent: Color
+    var rows = 4
+    let beat: RecapBeat
+    var lights = 3.2
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment: .top) {
+                // Main facade
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(accent)
+                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.deepNavy, lineWidth: 2.5))
+                    .padding(.top, g.size.height * 0.07)
+                // Roofline ledge
+                Rectangle()
+                    .fill(accent)
+                    .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
+                    .frame(height: g.size.height * 0.07)
+                // Windows
+                RecapWindowGrid(rows: rows, columns: 2, lit: rows + 1, beat: beat, start: lights)
+                    .padding(.horizontal, g.size.width * 0.14)
+                    .padding(.top, g.size.height * 0.11)
+                    .padding(.bottom, g.size.height * 0.05)
             }
         }
     }
-    
-    private var vibeColor: Color {
-        switch recap.cityVibe.type {
-        case .recordMetropolis: return Color.themeOrange
-        case .greenMonth:        return Color.themeMint
-        case .busy:              return Color.primaryBlue
-        case .quiet:             return Color.textMuted
-        case .growing:           return Color.themeMint
+}
+private struct RecapSkyline: View {
+    let beat: RecapBeat
+    let start: Double
+    let lights: Double
+    let accent: Color
+    let quiet: Bool
+    var body: some View {
+        GeometryReader { geo in
+            HStack(alignment: .bottom, spacing: quiet ? 24 : 8) {
+                ForEach(0..<(quiet ? 3 : 5), id: \.self) { item in
+                    let fraction: CGFloat = quiet ? [0.3, 0.5, 0.35][item] : [0.35, 0.52, 0.69, 1, 0.6][item]
+                    RecapBuilding(accent: item % 2 == 0 ? accent : accent.opacity(0.5), rows: item == 3 ? 5 : (item == 0 || quiet ? 2 : 3), beat: beat, lights: lights + Double(item) * 0.08)
+                        .frame(height: geo.size.height * fraction)
+                        .scaleEffect(y: beat.ease(start + Double(item) * 0.13, 0.65), anchor: .bottom)
+                }
+            }.frame(height: geo.size.height, alignment: .bottom)
+        }
+    }
+}
+private struct RecapStorefront: View {
+    let accent: Color
+    let sign: String
+    let beat: RecapBeat
+    let start: Double
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack(alignment: .bottom) {
+                // Facade wall
+                Rectangle()
+                    .fill(Color.appBackground)
+                    .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
+                    .padding(.top, h * 0.28)
+                // Awning stripes
+                HStack(spacing: 0) {
+                    ForEach(0..<9) { i in
+                        Rectangle().fill(i.isMultiple(of: 2) ? accent : accent.opacity(0.32))
+                    }
+                }
+                .frame(height: h * 0.13)
+                .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
+                .offset(y: -(h * 0.57))
+                // Sign panel
+                Text(sign).font(.appFont(w * 0.10, weight: .black)).lineLimit(1).minimumScaleFactor(0.4)
+                    .frame(width: w * 0.82, height: h * 0.16)
+                    .background(accent).overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
+                    .offset(y: -(h * 0.70))
+                // Display window + arched door
+                HStack(spacing: 5) {
+                    // Large window
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(accent.opacity(0.18))
+                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.deepNavy, lineWidth: 2))
+                        .frame(width: w * 0.50, height: h * 0.27)
+                    // Door (arch top + rectangular body)
+                    VStack(spacing: 0) {
+                        UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 0,
+                                              bottomTrailingRadius: 0, topTrailingRadius: 5)
+                            .fill(accent.opacity(0.25))
+                            .overlay(UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 0,
+                                                            bottomTrailingRadius: 0, topTrailingRadius: 5)
+                                        .stroke(Color.deepNavy, lineWidth: 2))
+                            .frame(width: w * 0.22, height: h * 0.09)
+                        Rectangle()
+                            .fill(accent.opacity(0.25))
+                            .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2))
+                            .frame(width: w * 0.22, height: h * 0.18)
+                    }
+                }
+                .padding(.horizontal, 7)
+                .offset(y: -(h * 0.03))
+            }
+            .scaleEffect(y: beat.ease(start, 0.6), anchor: .bottom)
+            .frame(width: w, height: h)
+        }
+    }
+}
+private struct RecapDistrictBuilding: View {
+    let category: SpendingCategory?
+    let accent: Color
+    let beat: RecapBeat
+    let start: Double
+    var body: some View {
+        ZStack {
+            if category == .housing || category == .subscriptions || category == .finance {
+                RecapBuilding(accent: accent, rows: 5, beat: beat, lights: 4.1).padding(.horizontal, 42)
+                    .scaleEffect(y: beat.ease(start, 0.8), anchor: .bottom)
+            } else if category == .transport {
+                VStack(spacing: 0) {
+                    RoundedRectangle(cornerRadius: 4).fill(accent).frame(height: 22)
+                    HStack { Rectangle().frame(width: 5); Spacer(); Rectangle().frame(width: 5) }.frame(height: 120)
+                    RecapCar(accent: accent).frame(width: 125, height: 64).offset(x: 22)
+                    RecapRoad(progress: 1, color: .deepNavy).frame(height: 4)
+                }.padding(.top, 34).scaleEffect(y: beat.ease(start, 0.8), anchor: .bottom)
+            } else if category == nil {
+                RecapPark(beat: beat, start: start)
+            } else {
+                RecapStorefront(accent: accent, sign: category == .entertainment ? "CINEMA" : "", beat: beat, start: start)
+                    .padding(.top, 40)
+                if let category {
+                    MoneyIcon(category.iconType, size: 55, color: accent)
+                        .offset(x: -45, y: 62).opacity(Double(beat.ease(1.5)))
+                }
+            }
+        }
+    }
+}
+private struct RecapTree: View {
+    let accent: Color
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack(alignment: .bottom) {
+                // Trunk — thicker, brown
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 101/255, green: 67/255, blue: 33/255))
+                    .frame(width: max(4, w * 0.18), height: h * 0.40)
+                // Back canopy (larger, slightly darker)
+                Circle().fill(accent.opacity(0.58))
+                    .overlay(Circle().stroke(Color.deepNavy, lineWidth: 2))
+                    .frame(width: w * 0.76, height: w * 0.76).offset(y: -(h * 0.44))
+                // Mid canopy
+                Circle().fill(accent.opacity(0.84))
+                    .overlay(Circle().stroke(Color.deepNavy, lineWidth: 2))
+                    .frame(width: w * 0.64, height: w * 0.64).offset(x: -w * 0.06, y: -(h * 0.52))
+                // Front highlight
+                Circle().fill(accent)
+                    .overlay(Circle().stroke(Color.deepNavy, lineWidth: 1.5))
+                    .frame(width: w * 0.44, height: w * 0.44).offset(x: w * 0.08, y: -(h * 0.58))
+            }.frame(width: w, height: h)
+        }
+    }
+}
+private struct RecapPark: View {
+    let beat: RecapBeat
+    let start: Double
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack {
+                // Ground grass ellipse
+                Ellipse().fill(IconPalette.green.opacity(0.14))
+                    .frame(width: w * 0.88, height: h * 0.26).offset(y: h * 0.36)
+                // Path stripe
+                RoundedRectangle(cornerRadius: 2).fill(Color.deepNavy.opacity(0.07))
+                    .frame(width: w * 0.10, height: h * 0.24).offset(x: w * 0.04, y: h * 0.30)
+                // Bench
+                ZStack(alignment: .bottom) {
+                    Rectangle().fill(Color.deepNavy.opacity(0.40)).frame(width: w * 0.16, height: 2)
+                    HStack(spacing: w * 0.08) {
+                        Rectangle().fill(Color.deepNavy.opacity(0.40)).frame(width: 2, height: h * 0.055)
+                        Rectangle().fill(Color.deepNavy.opacity(0.40)).frame(width: 2, height: h * 0.055)
+                    }
+                }.offset(x: w * 0.10, y: h * 0.24)
+                // Small left tree
+                RecapTree(accent: IconPalette.green.opacity(0.60))
+                    .frame(width: w * 0.20, height: h * 0.50).offset(x: -w * 0.28, y: h * 0.16)
+                // Tall centre tree
+                RecapTree(accent: IconPalette.green)
+                    .frame(width: w * 0.30, height: h * 0.80).offset(x: w * 0.08)
+                // Medium right tree
+                RecapTree(accent: IconPalette.green.opacity(0.74))
+                    .frame(width: w * 0.22, height: h * 0.58).offset(x: w * 0.29, y: h * 0.10)
+            }
+            .frame(width: w, height: h)
+            .scaleEffect(0.92 + 0.08 * beat.ease(start))
+            .opacity(Double(beat.ease(start)))
+        }
+    }
+}
+private struct RecapRoad: View {
+    let progress: CGFloat
+    let color: Color
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Rectangle().fill(color).scaleEffect(x: progress, anchor: .leading)
+                if progress > 0.3 {
+                    HStack(spacing: 8) {
+                        ForEach(0..<22) { _ in
+                            Rectangle().fill(Color.white.opacity(0.30))
+                                .frame(width: 14, height: max(1, g.size.height * 0.24))
+                        }
+                    }.opacity(Double(min(1, (progress - 0.3) / 0.3)))
+                }
+            }
+        }
+    }
+}
+private struct RecapCar: View {
+    let accent: Color
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack(alignment: .bottom) {
+                // Lower body
+                RoundedRectangle(cornerRadius: h * 0.18)
+                    .fill(accent)
+                    .overlay(RoundedRectangle(cornerRadius: h * 0.18).stroke(Color.deepNavy, lineWidth: 2))
+                    .frame(width: w, height: h * 0.52)
+                // Cabin roof
+                UnevenRoundedRectangle(topLeadingRadius: h * 0.22, bottomLeadingRadius: 0,
+                                       bottomTrailingRadius: 0, topTrailingRadius: h * 0.22)
+                    .fill(accent.opacity(0.84))
+                    .overlay(UnevenRoundedRectangle(topLeadingRadius: h * 0.22, bottomLeadingRadius: 0,
+                                                   bottomTrailingRadius: 0, topTrailingRadius: h * 0.22)
+                                .stroke(Color.deepNavy, lineWidth: 2))
+                    .frame(width: w * 0.55, height: h * 0.36).offset(y: -(h * 0.50))
+                // Windshield
+                UnevenRoundedRectangle(topLeadingRadius: h * 0.12, bottomLeadingRadius: 0,
+                                       bottomTrailingRadius: 0, topTrailingRadius: h * 0.12)
+                    .fill(IconPalette.blue.opacity(0.28))
+                    .frame(width: w * 0.42, height: h * 0.26).offset(y: -(h * 0.53))
+                // Wheels — solid discs with hub dots
+                HStack(spacing: w * 0.34) {
+                    ForEach(0..<2) { _ in
+                        ZStack {
+                            Circle().fill(Color.deepNavy).frame(width: h * 0.38, height: h * 0.38)
+                            Circle().fill(Color.white.opacity(0.38)).frame(width: h * 0.14, height: h * 0.14)
+                        }
+                    }
+                }.padding(.horizontal, w * 0.08).offset(y: h * 0.24)
+            }.frame(width: w, height: h)
+        }
+    }
+}
+private struct RecapStreet: View {
+    let beat: RecapBeat
+    let accent: Color
+    var body: some View {
+        GeometryReader { g in
+            ZStack {
+                RecapRoad(progress: beat.ease(0.0), color: accent.opacity(0.18)).frame(height: 64).offset(y: 38)
+                ForEach(0..<3) { item in
+                    RecapCar(accent: accent).frame(width: 66, height: 36)
+                        .offset(x: -240 + 510 * beat.progress(0.8 + Double(item) * 0.25, 0.7), y: 30 + CGFloat(item % 2) * 19)
+                        .opacity(beat.time < 2.2 ? 1 : 0)
+                }
+                RecapStorefront(accent: accent, sign: "", beat: beat, start: 1.3).frame(width: 92, height: 104).offset(x: 100, y: -47)
+            }.frame(width: g.size.width, height: g.size.height)
         }
     }
 }

@@ -1,7 +1,8 @@
+// Behavioral simulation only: does not execute Swift, SwiftData or App Intents.
 // ============================================================
 // MARK: - מערכת בדיקות מקיפה לסנכרון Apple Pay ← Money City
 // ============================================================
-// כיצד להריץ: node test_apple_pay_sync.js
+// כיצד להריץ: node behavioral_simulation.js
 // ============================================================
 
 let passed = 0

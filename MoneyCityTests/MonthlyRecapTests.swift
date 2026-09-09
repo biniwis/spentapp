@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import MoneyCity
 
 final class MonthlyRecapTests: XCTestCase {
@@ -50,8 +51,8 @@ final class MonthlyRecapTests: XCTestCase {
         XCTAssertEqual(recap.biggestDistrict?.amount, 3200)
         
         XCTAssertNotNil(recap.tallestBuilding)
-        XCTAssertEqual(recap.tallestBuilding?.merchantName, "Rent Landlord")
-        XCTAssertEqual(recap.tallestBuilding?.amount, 3200)
+        XCTAssertEqual(recap.tallestBuilding?.merchantName, "IKEA")
+        XCTAssertEqual(recap.tallestBuilding?.amount, 1850)
         
         XCTAssertNotNil(recap.busiestDistrict)
         XCTAssertEqual(recap.busiestDistrict?.category, .food)
@@ -99,8 +100,7 @@ final class MonthlyRecapTests: XCTestCase {
         XCTAssertEqual(recap.tallestBuilding?.merchantName, "Coffee Shop")
         XCTAssertEqual(recap.tallestBuilding?.amount, 42.5)
         XCTAssertEqual(recap.busiestDistrict?.transactionCount, 1)
-        XCTAssertEqual(recap.mostRepeatedStop?.merchantName, "Coffee Shop")
-        XCTAssertEqual(recap.mostRepeatedStop?.visitCount, 1)
+        XCTAssertNil(recap.mostRepeatedStop)
         XCTAssertEqual(recap.biggestSpendingDay?.amount, 42.5)
     }
     
@@ -197,7 +197,7 @@ final class MonthlyRecapTests: XCTestCase {
     
     // MARK: - 11. "Recap Never Lies" Invariant Property Tests (Fuzz Test with 100 Transactions)
     func testRecapInvariantsNeverLie() {
-        var txs: [Transaction] = []
+        var txs: [MoneyCity.Transaction] = []
         var expectedTotal: Double = 0.0
         
         let categories: [SpendingCategory] = [.food, .housing, .transport, .shopping, .entertainment, .health, .subscriptions, .finance, .other]
@@ -234,5 +234,131 @@ final class MonthlyRecapTests: XCTestCase {
         // Invariant 5: Most repeated stop count <= total transaction count
         XCTAssertNotNil(recap.mostRepeatedStop)
         XCTAssertLessThanOrEqual(recap.mostRepeatedStop!.visitCount, recap.transactionCount)
+    }
+
+    func testFixedOnlyMonthDoesNotInventStandoutPurchase() {
+        let fixed = [
+            Transaction(amount: 4200, merchant: "בעל הדירה", category: .housing,
+                        timestamp: date(year: 2026, month: 8, day: 1), note: "הוצאה קבועה"),
+            Transaction(amount: 59.9, merchant: "Netflix", category: .subscriptions,
+                        timestamp: date(year: 2026, month: 8, day: 2), note: "הוצאה קבועה")
+        ]
+        let recap = MonthlyRecapService.generateRecap(
+            for: date(year: 2026, month: 8, day: 1), allTransactions: fixed)
+        XCTAssertNil(recap.tallestBuilding)
+    }
+
+    func testRepeatedMerchantNormalizesCaseAndWhitespace() {
+        let txs = [
+            Transaction(amount: 18, merchant: " Aroma ", category: .food, timestamp: date(year: 2026, month: 8, day: 2)),
+            Transaction(amount: 22, merchant: "aroma", category: .food, timestamp: date(year: 2026, month: 8, day: 4)),
+            Transaction(amount: 20, merchant: "AROMA", category: .food, timestamp: date(year: 2026, month: 8, day: 8))
+        ]
+        let recap = MonthlyRecapService.generateRecap(
+            for: date(year: 2026, month: 8, day: 1), allTransactions: txs)
+        XCTAssertEqual(recap.mostRepeatedStop?.visitCount, 3)
+        XCTAssertEqual(recap.mostRepeatedStop?.totalAmount, 60)
+    }
+
+    func testPeakDayIncludesTransactionCount() {
+        let txs = [
+            Transaction(amount: 60, merchant: "A", category: .food, timestamp: date(year: 2026, month: 8, day: 5)),
+            Transaction(amount: 50, merchant: "B", category: .shopping, timestamp: date(year: 2026, month: 8, day: 5)),
+            Transaction(amount: 80, merchant: "C", category: .transport, timestamp: date(year: 2026, month: 8, day: 8))
+        ]
+        let recap = MonthlyRecapService.generateRecap(
+            for: date(year: 2026, month: 8, day: 1), allTransactions: txs)
+        XCTAssertEqual(recap.biggestSpendingDay?.amount, 110)
+        XCTAssertEqual(recap.biggestSpendingDay?.transactionCount, 2)
+    }
+
+    func testCitySnapshotUsesTheRecapMonthOnly() {
+        let july = Transaction(amount: 900, merchant: "Old", category: .shopping,
+                               timestamp: date(year: 2026, month: 7, day: 2))
+        let august = Transaction(amount: 75, merchant: "Wolt", category: .food,
+                                 timestamp: date(year: 2026, month: 8, day: 2), buildingId: "food_wolt")
+        let recap = MonthlyRecapService.generateRecap(
+            for: date(year: 2026, month: 8, day: 1), allTransactions: [july, august])
+        XCTAssertEqual(recap.city.buildingTotals["food_wolt"], 75)
+        XCTAssertEqual(recap.city.categoryTotals[.shopping], 0)
+        XCTAssertEqual(recap.city.venueStates.first { $0.id == "food_wolt" }?.purchaseCount, 1)
+    }
+}
+
+final class MonthlyRecapEditorialTests: XCTestCase {
+    private let calendar = Calendar(identifier: .gregorian)
+    private func day(_ d: Int, month: Int = 8) -> Date {
+        calendar.date(from: DateComponents(year: 2026, month: month, day: d, hour: 12))!
+    }
+    private func tx(_ amount: Double, _ merchant: String, _ category: SpendingCategory = .food, _ d: Int = 1, month: Int = 8) -> MoneyCity.Transaction {
+        Transaction(amount: amount, merchant: merchant, category: category, timestamp: day(d, month: month))
+    }
+    func testEditorialAnchorsAndSparseMonthDoNotInventStories() {
+        for input in [[], [tx(20, "Coffee")]] {
+            let recap = MonthlyRecapService.generateRecap(for: day(1), allTransactions: input)
+            XCTAssertTrue(recap.dynamicInsights.isEmpty)
+            XCTAssertEqual(RecapEditorialShot.sequence(for: recap), [.opening, .total, .activity, .district, .portrait])
+        }
+    }
+    func testSelectsDominantMerchantAndDistinctMonthChange() {
+        let data = (1...7).map { tx(20, $0.isMultiple(of: 2) ? " AROMA " : "Aroma", .food, $0) }
+            + [tx(40, "Bus", .transport, 9), tx(30, "Book", .shopping, 10), tx(60, "Cinema", .entertainment, 12), tx(500, "Old", .food, 10, month: 7)]
+        let result = MonthlyRecapInsightSelector.select(for: day(1), transactions: data, now: day(1, month: 9))
+        XCTAssertEqual(result.count, 2)
+        XCTAssertEqual(Set(result.map(\.type)), Set([.merchantRepeat, .monthChange]))
+        XCTAssertEqual(result.first(where: { $0.type == .merchantRepeat })?.count, 7)
+        XCTAssertEqual(Set(result.map(\.visualTheme)).count, 2)
+        XCTAssertEqual(result, MonthlyRecapInsightSelector.select(for: day(1), transactions: data.reversed(), now: day(1, month: 9)))
+    }
+    func testNoMonthComparisonForPartialMonthOrSmallChange() {
+        let current = (1...10).map { tx(10, "Shop\($0)", .food, $0) }
+        let previous = [tx(200, "Old", .food, 10, month: 7)]
+        let partial = MonthlyRecapInsightSelector.select(for: day(1), transactions: current + previous, now: day(15))
+        XCTAssertFalse(partial.contains { $0.type == .monthChange || $0.type == .categoryChange })
+        let stable = MonthlyRecapInsightSelector.select(for: day(1), transactions: current + [tx(103, "Old", .food, 10, month: 7)], now: day(1, month: 9))
+        XCTAssertFalse(stable.contains { $0.type == .monthChange })
+    }
+    func testLargeFixedBillsAndSavingsAreNeverPurchaseStories() {
+        let regular = (1...8).map { tx(20, "Cafe\($0)", .food, $0) }
+        let data = regular + [tx(5000, "Landlord", .housing), tx(7000, "Savings", .savings), tx(1000, "Insurance", .finance)]
+        let selected = MonthlyRecapInsightSelector.select(for: day(1), transactions: data, now: day(1, month: 9))
+        XCTAssertFalse(selected.contains { $0.type == .biggestPurchase || $0.type == .merchantRepeat })
+    }
+    func testOneBigPurchaseIsNotRetoldAsItsDay() {
+        let data = (1...12).map { tx(20, "Cafe\($0)", .food, $0) } + [tx(900, "IKEA", .shopping, 5), tx(50, "Taxi", .transport, 5)]
+        let selected = MonthlyRecapInsightSelector.select(for: day(1), transactions: data, now: day(1, month: 9))
+        XCTAssertTrue(selected.contains { $0.type == .biggestPurchase })
+        XCTAssertFalse(selected.contains { $0.type == .biggestDay })
+    }
+    func testCategoryChangeDoesNotRepeatTopDistrict() {
+        let data = (1...8).map { tx(100, "Meal\($0)", .food, $0) } + [tx(20, "Bus", .transport, 13), tx(800, "OldFood", .food, 10, month: 7), tx(250, "OldBus", .transport, 10, month: 7)]
+        let selected = MonthlyRecapInsightSelector.select(for: day(1), transactions: data, now: day(1, month: 9))
+        XCTAssertFalse(selected.contains { $0.type == .categoryChange && $0.category == .food })
+        XCTAssertLessThanOrEqual(selected.filter { $0.type == .categoryChange || $0.type == .monthChange }.count, 1)
+    }
+    func testExactNextMonthBoundaryIsExcluded() {
+        let recap = MonthlyRecapService.generateRecap(for: day(1), allTransactions: [tx(20, "Coffee"), Transaction(amount: 800, merchant: "Next", category: .food, timestamp: calendar.date(from: DateComponents(year: 2026, month: 9, day: 1))!)])
+        XCTAssertEqual(recap.totalSpent, 20)
+        XCTAssertEqual(recap.transactionCount, 1)
+    }
+}
+
+
+final class MonthlyRecapPortraitTests: XCTestCase {
+    @MainActor func testPortraitExportsAtShareResolutionForBothLanguages() throws {
+        let date = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2026, month: 8, day: 1))!
+        let recap = MonthlyRecapService.generateRecap(for: date, allTransactions: [])
+        for he in [true, false] {
+            let content = RecapSceneFrame(shot: .portrait, recap: recap, time: 6.2, he: he, currency: "₪", export: true)
+                .frame(width: 390, height: 650)
+            let renderer = ImageRenderer(content: content)
+            renderer.scale = 3
+            renderer.isOpaque = true
+            let image = try XCTUnwrap(renderer.uiImage)
+            let cgImage = try XCTUnwrap(image.cgImage)
+            XCTAssertEqual(cgImage.width, 1170)
+            XCTAssertEqual(cgImage.height, 1950)
+            XCTAssertNotNil(image.pngData())
+        }
     }
 }

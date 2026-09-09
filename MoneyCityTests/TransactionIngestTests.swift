@@ -208,7 +208,7 @@ final class TransactionIngestTests: XCTestCase {
         XCTAssertThrowsError(
             try TransactionIngest.makeTransaction(
                 amount: 85, amountText: nil, merchant: "Wolt משלוחים",
-                currency: "₪", date: now.addingTimeInterval(20), existing: [first]
+                currency: "₪", date: now.addingTimeInterval(5), existing: [first]
             )
         ) { error in
             XCTAssertEqual(error as? TransactionIngestError, .duplicate)
@@ -344,7 +344,7 @@ final class TransactionIngestTests: XCTestCase {
         XCTAssertEqual(tx.buildingId, "shop_boutique")
     }
 
-    func testStructuredTransactionDeduplicationWithin90Seconds() throws {
+    func testStructuredTransactionDeduplicationWithin15Seconds() throws {
         let date = Date()
         let tx1 = try TransactionIngest.makeTransaction(
             amount: 47.0,
@@ -356,7 +356,7 @@ final class TransactionIngestTests: XCTestCase {
         )
         XCTAssertEqual(tx1.amount, 47.0)
 
-        // Second identical purchase 10 seconds later -> Throws duplicate error
+        // Second identical purchase 10 seconds later -> Throws duplicate error (within 15s window)
         let date2 = date.addingTimeInterval(10)
         XCTAssertThrowsError(
             try TransactionIngest.makeTransaction(
@@ -370,5 +370,50 @@ final class TransactionIngestTests: XCTestCase {
         ) { error in
             XCTAssertEqual(error as? TransactionIngestError, .duplicate)
         }
+
+        // Third identical purchase 20 seconds later -> Allowed! Rapid purchase permitted
+        let date3 = date.addingTimeInterval(20)
+        let tx3 = try TransactionIngest.makeTransaction(
+            amount: 47.0,
+            amountText: nil,
+            merchant: "Wolt",
+            currency: "ILS",
+            date: date3,
+            existing: [tx1]
+        )
+        XCTAssertEqual(tx3.amount, 47.0)
+    }
+
+    // MARK: - AmountParser Comprehensive Tests
+
+    func testAmountParserHandlesThousandsAndDecimals() {
+        // Critical: Comma followed by 3 digits is thousands separator, NOT a decimal!
+        XCTAssertEqual(AmountParser.parse("1,200"), Decimal(1200))
+        XCTAssertEqual(AmountParser.parse("12,000"), Decimal(12000))
+        XCTAssertEqual(AmountParser.parse("1,200,000"), Decimal(1200000))
+
+        // Thousands with decimals
+        XCTAssertEqual(AmountParser.parse("1,200.50"), Decimal(1200.50))
+        XCTAssertEqual(AmountParser.parse("1.200,50"), Decimal(1200.50))
+
+        // Decimal comma and period
+        XCTAssertEqual(AmountParser.parse("48,50"), Decimal(48.50))
+        XCTAssertEqual(AmountParser.parse("48.50"), Decimal(48.50))
+        XCTAssertEqual(AmountParser.parse("0,75"), Decimal(0.75))
+        XCTAssertEqual(AmountParser.parse("0.75"), Decimal(0.75))
+
+        // Currency decorated and spaces
+        XCTAssertEqual(AmountParser.parse("₪1,249.90"), Decimal(1249.90))
+        XCTAssertEqual(AmountParser.parse(" 320 ש״ח "), Decimal(320))
+        XCTAssertEqual(AmountParser.parse("1 200,50"), Decimal(1200.50))
+        XCTAssertEqual(AmountParser.parse("1 200"), Decimal(1200))
+
+        // Rejections
+        XCTAssertNil(AmountParser.parse("-45.90"))
+        XCTAssertNil(AmountParser.parse("0"))
+        XCTAssertNil(AmountParser.parse("0.00"))
+        XCTAssertNil(AmountParser.parse(""))
+        XCTAssertNil(AmountParser.parse("   "))
+        XCTAssertNil(AmountParser.parse("abc"))
     }
 }

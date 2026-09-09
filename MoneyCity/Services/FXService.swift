@@ -60,6 +60,13 @@ public final class FXService: ObservableObject {
     }
 
     /// Refresh rates from free public exchange rate API
+    /// Startup uses a six-hour cache. Explicit user refreshes still fetch immediately.
+    public func fetchLatestRatesIfNeeded(now: Date = Date()) async {
+        let age = now.timeIntervalSince1970 - lastUpdatedTimestamp
+        guard lastUpdatedTimestamp <= 0 || age < 0 || age >= 6 * 3600 else { return }
+        await fetchLatestRates()
+    }
+
     public func fetchLatestRates() async {
         guard !isUpdating else { return }
         isUpdating = true

@@ -1,3 +1,6 @@
+# ARCHIVED: MoneyCity.xcodeproj is the source of truth. See CURRENT_ARCHITECTURE.md.
+raise SystemExit("Project generation is frozen. Edit the checked-in MoneyCity.xcodeproj in Xcode.")
+
 import os
 import uuid
 

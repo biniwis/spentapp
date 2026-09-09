@@ -159,4 +159,59 @@ final class BackupEnvelopeTests: XCTestCase {
         XCTAssertTrue(name.hasPrefix("MoneyCity-2026-09-01-"))
         XCTAssertTrue(name.hasSuffix(".json"))
     }
+
+    func testPruningExcludesSnapshotBeingRestored() {
+        let names = [
+            "2026-09-01-100000-build1",
+            "2026-09-02-100000-build2",
+            "2026-09-03-100000-build3",
+            "2026-09-04-100000-build4",
+            "2026-09-05-100000-build5"
+        ]
+        // build1 is oldest, but if it is being restored, it must never be pruned!
+        let pruned = StoreSnapshotService.foldersToPrune(names, keep: 3, excluding: "2026-09-01-100000-build1")
+        XCTAssertFalse(pruned.contains("2026-09-01-100000-build1"))
+        XCTAssertEqual(pruned.sorted(), ["2026-09-02-100000-build2"])
+    }
+
+    func testInstallmentPlanDTOAndTransactionLinkRoundTrip() throws {
+        let planId = UUID()
+        let tx = DataPortabilityService.TransactionDTO(
+            id: UUID(),
+            amount: 250.0,
+            currency: "₪",
+            merchant: "KSP",
+            category: "electronics",
+            timestamp: Date(timeIntervalSince1970: 1_788_000_000),
+            confidenceScore: 1.0,
+            isManual: true,
+            isConfirmed: true,
+            buildingId: "shop_tech",
+            installmentPlanId: planId,
+            installmentIndex: 1
+        )
+        let plan = DataPortabilityService.InstallmentDTO(
+            id: planId,
+            merchant: "KSP",
+            totalAmount: 3000.0,
+            currency: "₪",
+            numberOfPayments: 12,
+            firstChargeDate: Date(timeIntervalSince1970: 1_788_000_000),
+            category: "electronics",
+            createdAt: Date(timeIntervalSince1970: 1_788_000_000),
+            lastMaterializedIndex: 1,
+            buildingId: "shop_tech"
+        )
+
+        var e = envelope(transactions: [tx])
+        e.installments = [plan]
+
+        let data = try DataPortabilityService.makeEncoder().encode(e)
+        let decoded = try DataPortabilityService.makeDecoder().decode(DataPortabilityService.Envelope.self, from: data)
+
+        XCTAssertEqual(decoded.transactions[0].installmentPlanId, planId)
+        XCTAssertEqual(decoded.transactions[0].installmentIndex, 1)
+        XCTAssertEqual(decoded.installments[0].lastMaterializedIndex, 1)
+        XCTAssertEqual(decoded.installments[0].buildingId, "shop_tech")
+    }
 }

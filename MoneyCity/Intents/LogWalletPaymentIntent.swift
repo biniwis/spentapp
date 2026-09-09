@@ -14,7 +14,7 @@ public struct LogWalletPaymentIntent: AppIntent {
     )
 
     public static var openAppWhenRun: Bool = false
-    public static var isDiscoverable: Bool = true
+    public static var isDiscoverable: Bool = false
 
     /// A single parameter, so Shortcuts has one obvious thing to connect the automation's
     /// input to instead of five it can silently leave blank.
@@ -37,20 +37,7 @@ public struct LogWalletPaymentIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        var effectivePayload = payload
-        let hasAmount = TransactionIngest.amountLikeValue(in: effectivePayload) != nil
-            || TransactionIngest.normalizedAmount(nil, effectivePayload) != nil
-
-        if !hasAmount {
-            do {
-                let requested = try await $payload.requestValue(IntentDialog("💳 זוהה תשלום ב-Apple Pay. מה הסכום ששילמת?"))
-                if !requested.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    effectivePayload = requested
-                }
-            } catch {
-                // If user dismissed or cancelled, proceed
-            }
-        }
+        let effectivePayload = payload
 
         let debugRaw = """
         [SPENT Simple Ingest Debug]
@@ -66,6 +53,9 @@ public struct LogWalletPaymentIntent: AppIntent {
             transactionDate: nil,
             intentName: "LogWalletPaymentIntent"
         )
+        guard result.succeeded else {
+            throw IngestIntentError.executionFailed(result.message)
+        }
         let dialogMessage = MoneyCityLog.isDebugBuild
             ? "\(debugRaw)\n\n\(result.message)"
             : result.message

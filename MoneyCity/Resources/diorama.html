@@ -65,6 +65,64 @@
       transform: translate3d(-50%, -130%, 0) scale(0.8);
       opacity: 0;
     }
+
+    /* First-use coach mark. Its position is projected from the actual Three.js building,
+       so it remains attached while the user rotates the city or the camera eases. */
+    .diorama-tutorial-target {
+      display: none;
+      padding: 0;
+      background: transparent;
+      position: absolute;
+      top: 0; left: 0;
+      width: 68px; height: 68px;
+      border: 2px solid rgba(34, 197, 94, 0.96);
+      border-radius: 50%;
+      box-shadow: 0 0 0 7px rgba(255,255,255,0.86), 0 10px 28px rgba(15,23,42,0.22);
+      transform: translate3d(-50%, -50%, 0) scale(0.72);
+      opacity: 0;
+      transition: opacity 0.22s ease, transform 0.32s cubic-bezier(0.2, 0.9, 0.2, 1.15);
+      will-change: left, top, transform;
+      pointer-events: auto;
+    }
+    .diorama-tutorial-target::before {
+      content: "";
+      position: absolute;
+      inset: -12px;
+      border: 2px solid rgba(34, 197, 94, 0.62);
+      border-radius: 50%;
+      animation: tutorialRipple 1.65s ease-out infinite;
+    }
+    .diorama-tutorial-target::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 16px; height: 16px;
+      margin: -8px 0 0 -8px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid #22C55E;
+      box-shadow: 0 3px 10px rgba(15,23,42,0.22);
+      animation: tutorialTap 1.65s ease-in-out infinite;
+    }
+    .diorama-tutorial-target.active {
+      display: block;
+      opacity: 1;
+      transform: translate3d(-50%, -50%, 0) scale(1);
+    }
+    @keyframes tutorialRipple {
+      0%, 24% { transform: scale(0.78); opacity: 0; }
+      38% { opacity: 0.78; }
+      82%, 100% { transform: scale(1.32); opacity: 0; }
+    }
+    @keyframes tutorialTap {
+      0%, 22%, 100% { transform: scale(1); }
+      34%, 45% { transform: scale(0.68); }
+      62% { transform: scale(1.08); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .diorama-tutorial-target::before,
+      .diorama-tutorial-target::after { animation: none; }
+    }
   </style>
   <script>
 /**
@@ -89,11 +147,11 @@
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
-      powerPreference: "high-performance",
+      powerPreference: "default",
       precision: "highp"
     });
     renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(2.0, window.devicePixelRatio || 1.5));
+    renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -116,6 +174,7 @@
       shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
       housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 0,    lookY: 0.6, lookZ: -9.2 },
       savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 9.4,  lookY: 0.4, lookZ: -9.4 },
+      transport:{ az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 9.2, lookY: 0.6, lookZ: 9.2 },
       civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: -0.4 }
     };
 
@@ -136,11 +195,13 @@
     // Fit the frustum to the NARROW axis of the viewport. Fitting to the tall axis on a
     // portrait phone squeezes the horizontal half-width down to FR*aspect (~8.9 units on a
     // 420x720 screen), which cuts the shops and the reserve clean off the sides.
+    let viewportWidth = 1, viewportHeight = 1, previousFrustumKey = "";
     function applyFrustum() {
-      const w = stage.clientWidth || window.innerWidth;
-      const h = stage.clientHeight || window.innerHeight;
-      const a = w / h;
+      const a = viewportWidth / viewportHeight;
       const z = (currentCam && currentCam.zoom) ? currentCam.zoom : 1.0;
+      const key = a + ":" + z;
+      if (key === previousFrustumKey) return;
+      previousFrustumKey = key;
       const halfW = (a >= 1 ? FR * a : FR) / z;
       const halfH = (a >= 1 ? FR : FR / a) / z;
       camera.left   = -halfW;
@@ -155,6 +216,7 @@
     function resize() {
       const w = stage.clientWidth || window.innerWidth;
       const h = stage.clientHeight || window.innerHeight;
+      viewportWidth = w; viewportHeight = h;
       renderer.setSize(w, h);
       applyFrustum();
       placeCam();
@@ -1455,11 +1517,11 @@
         [0.39, 0.48].forEach(function (y) {
           chair.add(mesh(new THREE.BoxGeometry(0.25, 0.06, 0.03), M_WOOD, 0, y, -0.11, false, false));
         });
-        if (opts.occupied && i === 0) {
-          const guest = makeFigure({ seated: true, shirt: opts.shirt || 0xE49B4D, dark: !!opts.dark });
+        if (opts.occupied) {
+          const guest = makeFigure({ seated: true, shirt: i ? 0x527FA7 : (opts.shirt || 0xE49B4D), dark: i ? !opts.dark : !!opts.dark });
           guest.position.z = 0.015; chair.add(guest);
           packRigidModel(guest);
-          if (opts.venue) bindVenueActor(guest, opts.venue, opts.threshold || 0.18);
+          if (opts.venue) bindVenueActor(guest, opts.venue, (opts.threshold || 0.18) + i * 0.28);
         }
         g.add(mesh(new THREE.CylinderGeometry(0.063, 0.063, 0.010, 12), M_WHITE, 0.035, 0.44, side * 0.145, false, false));
         g.add(mesh(new THREE.CylinderGeometry(0.040, 0.030, 0.067, 12), M_WHITE, 0.035, 0.475, side * 0.145, false, false));
@@ -1491,8 +1553,8 @@
       },
       food_bistro: function (g, w, d) {
         aFrameBoard(g, -w * 0.38, d / 2 + 0.46, 0.5);
-        cafeTableSet(g, -w * 0.18, d / 2 + 0.86, { occupied: true, venue: "food_bistro", threshold: 0.18, shirt: 0x417BA9 });
-        cafeTableSet(g, w * 0.30, d / 2 + 0.86, { occupied: true, venue: "food_bistro", threshold: 0.45, dark: true, umbrella: 0xDD7352 });
+        cafeTableSet(g, -0.48, d / 2 + 0.48, { occupied: true, venue: "food_bistro", threshold: 0.18, shirt: 0x417BA9 });
+        cafeTableSet(g, 0.48, d / 2 + 0.48, { occupied: true, venue: "food_bistro", threshold: 0.45, dark: true, umbrella: 0xDD7352 });
       },
       food_coffee: function (g, w, d) {
         // Oversized cup sign on a bracket
@@ -2291,8 +2353,10 @@
     // 🍜 7. EAST — FOOD. Four separate places, because groceries, a restaurant, coffee
     // and delivery are four different habits and the app already tracks them apart.
     // ────────────────────────────────────────────────────────────────
-    addSidewalkBlock(9.2, 0, 4.8, 8.8);
-    addKerb(9.2, 0, 4.8, 8.8);
+    // A wider outer pavement separates cafe seating from the busier walking lane.
+    // The inner kerb stays at x=6.8; no road or building moves.
+    addSidewalkBlock(9.8, 0, 6.0, 8.8);
+    addKerb(9.8, 0, 6.0, 8.8);
 
     makeBuilding({
       id: "food_super", minTier: 1, district: "food", name: "סופרמרקט", trend: "קניות שבועיות במכולת",
@@ -2429,6 +2493,13 @@
     })();
     transportYard.add(mesh(new THREE.BoxGeometry(0.7, 0.34, 0.06), new THREE.MeshStandardMaterial({ map: signTex("RIDE", "#0F766E", "#FFFFFF", 26) }), 0.55, 0.95, 2.55, false, false));
     transportYard.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.95, 6), M_DARKFRAME, 0.55, 0.47, 2.55, false, false));
+
+    const transportHit = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.8, 5.2), new THREE.MeshBasicMaterial({ visible: false }));
+    transportHit.position.set(0, 1.4, 0);
+    transportHit.userData = { id: "trans_station", district: "transport", name: "מתחם תחבורה", amount: 0, trend: "התניידות ונסיעות" };
+    transportYard.add(transportHit);
+    interactiveBuildings.push(transportHit);
+    buildingRoots["trans_station"] = transportYard;
 
     // ────────────────────────────────────────────────────────────────
     // 🏀 10. SOUTH-WEST — THE FREE PARK
@@ -2736,8 +2807,10 @@ function normalizedSlotPlacements(input) {
     });
     [-3.2, 0, 3.2].forEach(function (v) {
       addLamp(v, -7.2); addLamp(v, 7.2);
-      addLamp(-7.2, v); addLamp(7.2, v);
+      addLamp(7.2, v);
     });
+    // Keep west-side poles between the local crowd routes, not in the walking lane.
+    [-2.15, 2.15].forEach(function (v) { addLamp(-7.2, v); });
 
     // ────────────────────────────────────────────────────────────────
     // 🎪 10c. MICRO-DETAILS, STREET ACCESSORIES & VIBRANT WILDLIFE
@@ -3051,6 +3124,10 @@ function normalizedSlotPlacements(input) {
         if (!p.obj.visible) continue;
         const target = p.wanted ? 1 : 0;
         const cur = p.obj.scale.y;
+        if (p.wanted && Math.abs(cur - target) < 0.001) {
+          if (cur !== target) p.obj.scale.setScalar(target);
+          continue;
+        }
         const next = cur + (target - cur) * Math.min(1, dt * 4.5);
         if (!p.wanted && next < 0.02) { p.obj.visible = false; p.obj.scale.setScalar(0.01); continue; }
         p.obj.scale.setScalar(Math.max(0.01, next));
@@ -3206,16 +3283,6 @@ function normalizedSlotPlacements(input) {
       {x: -3.2, z: -7.4}, {x: 3.2, z: -7.4}, {x: 3.2, z: -11.0}, {x: -3.2, z: -11.0}
     ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34);
 
-    // 6. Cafe Patio Customer
-    addCitizen(0xEC4899, 0x1E293B, 0xF59E0B, [
-      {x: 7.6, z: -2.0}, {x: 8.8, z: -1.0}, {x: 8.8, z: 0.5}, {x: 7.6, z: -2.0}
-    ], ["הפוך לקחת מבית הקפה ☕", "המאפים כאן חמים מהתנור 🥐"], ["Latte to go from the cafe ☕", "Fresh croissants 🥐"], false, 0.32);
-
-    // 7. Shopping Avenue Shopper
-    addCitizen(0xF59E0B, 0x1E3A5F, null, [
-      {x: -7.4, z: 3.6}, {x: -7.4, z: -3.6}, {x: -10.5, z: -3.6}, {x: -10.5, z: 3.6}
-    ], ["מסתכל על חלונות ראווה 🛍️", "שומר על יעדי החיסכון 🎯"], ["Window shopping 🛍️", "Sticking to savings goals 🎯"], false, 0.35);
-
     // ────────────────────────────────────────────────────────────────
     // Derived frontages are not rewards or a second financial ledger.
     // Inlined into the scene closure by build_diorama.js. No extra network or bundle resource.
@@ -3223,7 +3290,6 @@ function normalizedSlotPlacements(input) {
 const venueStates = Object.create(null);
 const lifeInstances = new Map();
 const lifeAssignments = new Map();
-const lifeWalkers = [];
 const LIFE_FAMILIES = {
   food_coffee: { district: "food", label: "CAFE", color: 0xBC8055, kind: "cafe" },
   food_bistro: { district: "food", label: "BISTRO", color: 0xD9805A, kind: "cafe" },
@@ -3338,31 +3404,6 @@ function makeLifePlace(id, variant) {
   return { group: g, proxy: proxy };
 }
 
-function createLifeWalkers() {
-  [
-    ["food_coffee", 0xB78058, 7.0, -3.8, 7.0, 3.8],
-    ["food_bistro", 0xCF735A, 11.35, -3.5, 11.35, 3.3],
-    ["food_super", 0x638E59, 8.0, -7.15, 11.0, -7.15],
-    ["shop_boutique", 0xB16F85, -7.0, -3.9, -7.0, 3.9],
-    ["shop_tech", 0x558AAF, -11.3, -3.5, -11.3, 3.6],
-    ["shop_arcade", 0x907CAF, -10.5, 7.05, -7.5, 7.05],
-    ["house_tower", 0x698C9D, -3.8, -7.0, 3.8, -7.0],
-    ["health_pharmacy", 0x77A78B, -3.8, 11.15, 3.8, 11.15],
-    ["museum_curiosities", 0xB08A68, -3.5, 7.0, 3.5, 7.0]
-  ].forEach(function (def) {
-    for (let i = 0; i < 3; i++) {
-      const path = [{ x: def[2], z: def[3] }, { x: def[4], z: def[5] }];
-      if (i % 2) path.reverse();
-      const person = addCitizen(def[1], 0x45536A, null, path,
-        ["נעים להסתובב כאן"], ["A little moment in the neighbourhood"], false, 0.25 + i * 0.025);
-      const record = walkingCitizens[walkingCitizens.length - 1];
-      record.t = Math.hypot(def[4] - def[2], def[5] - def[3]) * i / 3;
-      bindVenueActor(person, def[0], 0.18 + i * 0.22);
-      lifeWalkers.push(person);
-    }
-  });
-}
-
 function applyCityLife(data) {
   syncVenueStates(data.venues);
   // Old callers still render safely, but no visits or new businesses are invented from ₪.
@@ -3389,6 +3430,7 @@ function applyCityLife(data) {
     lifeAssignments.set(assignment.key, plot.id);
   });
   venueActors.forEach(function (actor) { actor.obj.visible = venueActivity(actor.venue) >= actor.threshold; });
+  applyVenueCrowds();
   // Smoke belongs to the coffee anchor, not an arbitrary always-on point in space.
   coffeeSmoke.visible = venueActivity("food_coffee") > 0.12 && cityBuildings.food_coffee.tier > 1;
   coffeeSmoke.position.y = Y_WALK + FLOOR_H * Math.max(1, cityBuildings.food_coffee.tier - 1) + 0.72;
@@ -3407,12 +3449,180 @@ function applyHabitTraffic() {
   transportUnits.forEach(function (u, i) { u.visible = i === 0 || transport >= i * 0.22; });
 }
 
-createLifeWalkers();
 // Three extra couriers are a visible delivery rhythm, rather than a crowded dine-in patio.
 for (let i = 0; i < 3; i++) {
   const courier = makeCourier(0x45ADBD); courier.position.y = Y_WALK; courier.visible = false; root.add(courier);
   vehicleState.push({ obj: courier, path: i % 2 ? roadClockwise : roadCounterClockwise,
     progress: 0.13 + i * 0.29, speed: 0.020, baseY: Y_WALK, purpose: "delivery", threshold: 0.30 + i * 0.22 });
+}
+
+    // Local footfall is derived from visits, not money. Fixed territories and bounded pools
+// preserve geography and energy limits; seated/waiting people need no animation loop.
+const CROWD_LIMITS = { walkers: 24, waiting: 48 };
+const crowdWalkers = [];
+const crowdBatches = [];
+let crowdSnapshot = [];
+
+// Each route is an authored, unobstructed frontage strip, separate from the door/table
+// zone. u runs along the pavement; v points towards its outer edge.
+const CROWD_FRONTAGES = {
+  food_super:    { x: 10.88, z: -3.25, rot: Math.PI / 2, width: 1.85, routeOffset: 1.66, laneWidth: 0.10 },
+  food_bistro:   { x: 10.98, z: -1.05, rot: Math.PI / 2, width: 1.70, routeOffset: 1.56, laneWidth: 0.10,
+    maxWait: 3, waitSlots: [[0, -0.20], [0, 0.12], [0, 0.43]] },
+  food_coffee:   { x: 10.88, z: 1.15, rot: Math.PI / 2, width: 1.70, cafe: true, routeOffset: 1.66, laneWidth: 0.10 },
+  food_wolt:     { x: 10.88, z: 3.30, rot: Math.PI / 2, width: 1.80, routeOffset: 1.66, laneWidth: 0.10, maxWalk: 3, maxWait: 3 },
+  shop_boutique: { x: -7.40, z: -3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.20, waitOffset: -0.30 },
+  shop_tech:     { x: -7.40, z: -1.10, rot: Math.PI / 2, width: 1.30, routeOffset: 0.20, waitOffset: -0.30 },
+  shop_travel:   { x: -7.40, z: 1.15, rot: Math.PI / 2, width: 1.30, routeOffset: 0.20, waitOffset: -0.30, maxWalk: 3, maxWait: 3 },
+  shop_arcade:   { x: -7.40, z: 3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.20, waitOffset: -0.30 },
+  house_tower:   { x: -2.85, z: -7.60, rot: 0, width: 2.10, maxWalk: 2, maxWait: 2, routeOffset: 0.58, laneWidth: 0.10 },
+  health_pharmacy: { x: -2.85, z: 10.85, rot: 0, width: 1.90, maxWalk: 4, maxWait: 4 },
+  museum_curiosities: { x: 0, z: 10.95, rot: 0, width: 1.80, maxWalk: 4, maxWait: 4 },
+  trans_station: { x: 8.85, z: 7.85, rot: 0, width: 1.90, maxWalk: 4, maxWait: 4, routeOffset: -0.9 }
+};
+
+function crowdDemand(state, frontage) {
+  if (!state || !(state.amount > 0) || !(state.purchaseCount > 0)) return { walkers: 0, waiting: 0 };
+  const a = finiteUnit(state.activity);
+  if (a === 0) return { walkers: 0, waiting: 0 };
+  return {
+    walkers: Math.min(frontage.maxWalk || 6, Math.max(1, Math.round(Math.pow(a, 1.3) * 7))),
+    waiting: a < 0.22 ? 0 : Math.min(frontage.maxWait || 6, Math.round(Math.pow(a, 1.5) * 7))
+  };
+}
+
+function allocateCrowds(states) {
+  const entries = Object.keys(CROWD_FRONTAGES).map(function (id) {
+    const demand = crowdDemand(states[id], CROWD_FRONTAGES[id]);
+    return { id: id, activity: states[id] ? finiteUnit(states[id].activity) : 0,
+      walkers: demand.walkers, waiting: demand.waiting };
+  });
+  // Proportional allocation with deterministic largest remainders. Never fill spare
+  // capacity with invented customers in unused venues, or assign everybody equally.
+  ["walkers", "waiting"].forEach(function (kind) {
+    const total = entries.reduce(function (sum, e) { return sum + e[kind]; }, 0);
+    if (total <= CROWD_LIMITS[kind]) return;
+    const ranked = entries.map(function (e) {
+      const exact = e[kind] * CROWD_LIMITS[kind] / total;
+      e[kind] = Math.floor(exact);
+      return { entry: e, remainder: exact - e[kind] };
+    }).sort(function (a, b) { return b.remainder - a.remainder || b.entry.activity - a.entry.activity || a.entry.id.localeCompare(b.entry.id); });
+    let spare = CROWD_LIMITS[kind] - entries.reduce(function (sum, e) { return sum + e[kind]; }, 0);
+    ranked.forEach(function (r) { if (spare > 0 && r.remainder > 0) { r.entry[kind]++; spare--; } });
+  });
+  return entries;
+}
+
+function frontagePoint(front, u, v) {
+  const s = Math.sin(front.rot), c = Math.cos(front.rot);
+  return { x: front.x + u * c + v * s, z: front.z - u * s + v * c };
+}
+
+function crowdRoute(front) {
+  const near = front.routeOffset === undefined ? 0.46 : front.routeOffset;
+  const lane = front.laneWidth === undefined ? 0.22 : front.laneWidth;
+  return [[-front.width / 2, near], [front.width / 2, near],
+    [front.width / 2, near + lane], [-front.width / 2, near + lane]].map(function (p) {
+    return frontagePoint(front, p[0], p[1]);
+  });
+}
+
+function waitingPose(front, index) {
+  // Cafe queues stay beside, not inside, the authored tables and seated guests.
+  const u = front.waitSlots ? front.waitSlots[index][0] : front.cafe ? (index < 3 ? -0.73 : 0.73) : [-0.66, -0.30, 0.06, 0.48, 0.72, 0.42][index];
+  const v = front.waitSlots ? front.waitSlots[index][1] : front.cafe ? [-0.27, 0.02, 0.28][index % 3] : [-0.06, -0.06, -0.06, -0.11, 0.17, 0.21][index];
+  const point = frontagePoint(front, u, v + (front.waitOffset || 0));
+  return { x: point.x, z: point.z, yaw: front.rot + (index < 3 ? Math.PI : (index % 2 ? -0.8 : 2.3)),
+    role: index < 3 ? "waiting" : "chatting" };
+}
+
+function ensureCrowdBatches() {
+  if (crowdBatches.length) return;
+  [0xBD795D, 0x527DA3, 0x709068, 0xAD6D8A].forEach(function (shirt, variant) {
+    const figure = makeFigure({ shirt: shirt, dark: variant % 2 === 1, pants: 0x45536A });
+    if (variant % 2) { figure.userData.armR.rotation.x = -0.65; figure.userData.armL.rotation.z = -0.14; }
+    packRigidModel(figure); figure.updateMatrixWorld(true);
+    const parts = [];
+    figure.traverse(function (part) {
+      if (!part.isMesh) return;
+      // Bake each prototype part once; all waiting people share its geometry/material.
+      const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld);
+      const batch = new THREE.InstancedMesh(geometry, part.material, CROWD_LIMITS.waiting);
+      batch.name = "venue-crowd:" + variant;
+      batch.count = 0; batch.visible = false; batch.frustumCulled = false;
+      batch.castShadow = false; batch.receiveShadow = true;
+      batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      root.add(batch); parts.push(batch);
+      part.geometry.dispose();
+    });
+    crowdBatches.push(parts);
+  });
+}
+
+function placeCrowdWalker(record, route, phase) {
+  record.path = route; record.phase = phase * Math.PI * 2;
+  const lengths = route.map(function (p, i) {
+    const q = route[(i + 1) % route.length]; return Math.hypot(q.x - p.x, q.z - p.z);
+  });
+  let distance = lengths.reduce(function (a, b) { return a + b; }, 0) * phase;
+  let index = 0;
+  while (index < lengths.length - 1 && distance >= lengths[index]) { distance -= lengths[index]; index++; }
+  record.pIdx = index; record.t = distance;
+  const p = route[index], q = route[(index + 1) % route.length], t = distance / lengths[index];
+  record.obj.position.set(p.x + (q.x - p.x) * t, Y_WALK, p.z + (q.z - p.z) * t);
+  record.obj.rotation.y = Math.atan2(q.x - p.x, q.z - p.z);
+}
+
+function applyVenueCrowds() {
+  crowdSnapshot = allocateCrowds(venueStates);
+  const previous = new Map(crowdWalkers.filter(function (c) { return c.obj.visible; }).map(function (c) { return [c.crowdKey, c]; }));
+  const used = new Set(), pending = [];
+  crowdSnapshot.forEach(function (entry) {
+    for (let i = 0; i < entry.walkers; i++) {
+      const key = entry.id + ":" + i, existing = previous.get(key);
+      if (existing) used.add(existing);
+      else pending.push({ key: key, entry: entry, index: i });
+    }
+  });
+  pending.forEach(function (request) {
+    let record = crowdWalkers.find(function (c) { return !used.has(c); });
+    if (!record) {
+      const palette = [0xBC8055, 0x527FA7, 0x6E9868, 0xBC6C87];
+      addCitizen(palette[crowdWalkers.length % palette.length], 0x45536A, null,
+        crowdRoute(CROWD_FRONTAGES[request.entry.id]), ["נעים להסתובב כאן"], ["A little moment in the neighbourhood"], false,
+        0.27 + (crowdWalkers.length % 4) * 0.025);
+      record = walkingCitizens[walkingCitizens.length - 1]; crowdWalkers.push(record);
+    }
+    record.crowdKey = request.key; record.crowdCount = null;
+    used.add(record);
+  });
+  crowdWalkers.forEach(function (c) { c.obj.visible = used.has(c); });
+  const byKey = new Map(Array.from(used, function (c) { return [c.crowdKey, c]; }));
+  crowdSnapshot.forEach(function (entry) {
+    for (let i = 0; i < entry.walkers; i++) {
+      const c = byKey.get(entry.id + ":" + i);
+      if (c.crowdCount !== entry.walkers || c.crowdVenue !== entry.id) {
+        placeCrowdWalker(c, crowdRoute(CROWD_FRONTAGES[entry.id]), (i + 0.35) / entry.walkers);
+        c.crowdCount = entry.walkers; c.crowdVenue = entry.id;
+      }
+    }
+  });
+  const waiting = [];
+  crowdSnapshot.forEach(function (entry) {
+    for (let i = 0; i < entry.waiting; i++) waiting.push(waitingPose(CROWD_FRONTAGES[entry.id], i));
+  });
+  if (waiting.length) ensureCrowdBatches();
+  const counts = [0, 0, 0, 0], transform = new THREE.Object3D();
+  waiting.forEach(function (pose, index) {
+    const variant = index % 4;
+    transform.position.set(pose.x, Y_WALK, pose.z); transform.rotation.y = pose.yaw;
+    transform.scale.setScalar(0.96 + (index % 3) * 0.035); transform.updateMatrix();
+    crowdBatches[variant].forEach(function (batch) { batch.setMatrixAt(counts[variant], transform.matrix); });
+    counts[variant]++;
+  });
+  crowdBatches.forEach(function (parts, variant) {
+    parts.forEach(function (batch) { batch.count = counts[variant]; batch.visible = batch.count > 0; batch.instanceMatrix.needsUpdate = true; });
+  });
 }
 
 
@@ -3870,6 +4080,7 @@ function animateCompanions(now, dt) {
     }
 
     function onDown(id, x, y) {
+      noteEnergyInteraction();
       pointers.set(id, { x: x, y: y });
       if (pointers.size === 1) {
         isDragging = false; downX = x; downY = y; downTime = performance.now();
@@ -3882,6 +4093,7 @@ function animateCompanions(now, dt) {
     }
 
     function onMove(id, x, y) {
+      noteEnergyInteraction();
       const p = pointers.get(id);
       if (!p) return;
       p.x = x; p.y = y;
@@ -3949,13 +4161,17 @@ function animateCompanions(now, dt) {
           // there's nothing to choose between, so go straight to the building card.
           const SINGLE_BUILDING_DISTRICTS = { savings: true, transport: true };
           const isSingleDistrict = SINGLE_BUILDING_DISTRICTS[bData.district];
-          if (currentMode === "city" && CAM_MODES[bData.district] && !isSingleDistrict) {
+          // During the hands-on lesson, one tap must fulfil the promise in the copy and open
+          // the inspector. Requiring an unexplained second tap made the map feel broken.
+          const tutorialIsActive = !!currentTutorialBuilding;
+          if (currentMode === "city" && CAM_MODES[bData.district] && !isSingleDistrict && !tutorialIsActive) {
             // ── First tap from city overview: enter the district, show district card ──
             setSelectedBuilding(null);
             setDistrict(bData.district);
             post("districtSelected", bData.district);
           } else {
             // ── Direct to building card: already in district, OR single-building district ──
+            if (tutorialIsActive) setTutorialBuilding(null);
             if (CAM_MODES[bData.district]) setDistrict(bData.district);
             setSelectedBuilding(obj);
             post("buildingTapped", {
@@ -3984,6 +4200,7 @@ function animateCompanions(now, dt) {
     });
     stage.addEventListener("pointercancel", function (e) { pointers.delete(e.pointerId); gesture = null; isDragging = true; spinVel = 0; tiltVel = 0; });
     stage.addEventListener("wheel", function (e) {
+      noteEnergyInteraction();
       targetCam.zoom = clamp((targetCam.zoom || 1.0) - e.deltaY * 0.0015, ZOOM_MIN, ZOOM_MAX);
     }, { passive: true });
     // iOS fires gesturestart/change for pinch on some WebKit paths; swallow them so the
@@ -4037,28 +4254,108 @@ function animateCompanions(now, dt) {
     // The map keeps rendering at full rate behind other tabs otherwise, which is battery
     // spent on pixels nobody is looking at.
     // ────────────────────────────────────────────────────────────────
-    let renderPaused = false;
-    let rafId = null;
+    // One scheduler, independent pause reasons. Page visibility must never undo a native
+// pause for another tab, a sheet, an inactive app, or a disposed WebView.
+const ENERGY_PROFILES = {
+  normal:   { idleFPS: 30, activeFPS: 60, pixelRatio: 1.75, shadowSize: 2048, shadowFPS: 15 },
+  economy:  { idleFPS: 20, activeFPS: 30, pixelRatio: 1.25, shadowSize: 1024, shadowFPS: 8 },
+  critical: { idleFPS: 10, activeFPS: 15, pixelRatio: 1.0, shadowSize: 0, shadowFPS: 0 }
+};
+let energyMode = ENERGY_PROFILES[window._initialPowerMode] ? window._initialPowerMode : "normal";
+let nativeRenderPaused = !!window._initialRenderPaused;
+let pageRenderHidden = false;
+let energyDisposed = false;
+let renderPaused = nativeRenderPaused || document.hidden;
+let rafId = null, lastEnergyFrame = null, appliedEnergyMode = null;
+let energyBoostUntil = 0, lastShadowFrame = -Infinity, shadowDirty = true;
+const energyStats = { rendered: 0, skipped: 0, shadowUpdates: 0 };
 
-    function startLoop() {
-      if (rafId !== null) return;
-      lastTime = performance.now();
-      rafId = requestAnimationFrame(loop);
-    }
+function startLoop() {
+  if (renderPaused || energyDisposed || rafId !== null) return;
+  lastTime = performance.now(); lastEnergyFrame = null; shadowDirty = true;
+  rafId = requestAnimationFrame(loop);
+}
+function syncRenderPause() {
+  const next = nativeRenderPaused || document.hidden || pageRenderHidden || energyDisposed;
+  if (next === renderPaused) return;
+  renderPaused = next;
+  if (renderPaused) {
+    if (rafId !== null) cancelAnimationFrame(rafId);
+    rafId = null; lastEnergyFrame = null;
+    pointers.clear(); gesture = null; spinVel = 0; tiltVel = 0; isDragging = false;
+  } else startLoop();
+}
+window.pauseDioramaRendering = function (on) { nativeRenderPaused = !!on; syncRenderPause(); };
+function energyVisibilityChanged() { syncRenderPause(); }
+function energyPageHide() { pageRenderHidden = true; syncRenderPause(); }
+function energyPageShow() { pageRenderHidden = false; syncRenderPause(); }
+document.addEventListener("visibilitychange", energyVisibilityChanged);
+window.addEventListener("pagehide", energyPageHide);
+window.addEventListener("pageshow", energyPageShow);
 
-    window.pauseDioramaRendering = function (on) {
-      const want = !!on;
-      if (want === renderPaused) return;
-      renderPaused = want;
-      if (renderPaused) {
-        if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
-      } else {
-        startLoop();
-      }
-    };
-    document.addEventListener("visibilitychange", function () {
-      window.pauseDioramaRendering(document.hidden);
-    });
+function noteEnergyInteraction() { energyBoostUntil = performance.now() + 1200; }
+function energyCameraMoving() {
+  return ["az", "el", "zoom", "lookX", "lookY", "lookZ"].some(function (key) {
+    return Math.abs((targetCam[key] || 0) - (currentCam[key] || 0)) > 0.001;
+  }) || Math.abs(spinVel) > 0.0001 || Math.abs(tiltVel) > 0.0001;
+}
+function energyTargetFPS(now) {
+  const profile = ENERGY_PROFILES[energyMode];
+  return pointers.size > 0 || now < energyBoostUntil || energyCameraMoving() ? profile.activeFPS : profile.idleFPS;
+}
+function energyFrameDue(now) {
+  if (renderPaused || energyDisposed) return false;
+  if (lastEnergyFrame === null) { lastEnergyFrame = now; return true; }
+  const interval = 1000 / energyTargetFPS(now), elapsed = now - lastEnergyFrame;
+  if (elapsed + 0.1 < interval) { energyStats.skipped++; return false; }
+  lastEnergyFrame += Math.max(1, Math.floor((elapsed + 0.1) / interval)) * interval;
+  return true;
+}
+window.setDioramaPowerMode = function (mode) {
+  const next = ENERGY_PROFILES[mode] ? mode : "normal";
+  if (next === energyMode) return;
+  energyMode = next; lastEnergyFrame = null; shadowDirty = true;
+};
+function applyEnergyQuality() {
+  if (appliedEnergyMode === energyMode) return;
+  const profile = ENERGY_PROFILES[energyMode];
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.pixelRatio));
+  const shadowsChanged = renderer.shadowMap.enabled !== (profile.shadowSize > 0);
+  renderer.shadowMap.enabled = profile.shadowSize > 0;
+  renderer.shadowMap.autoUpdate = false;
+  if (shadowsChanged) scene.traverse(function (o) {
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) { m.needsUpdate = true; });
+  });
+  if (profile.shadowSize === 0 && sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; }
+  if (sunLight.shadow.mapSize.width !== profile.shadowSize && profile.shadowSize > 0) {
+    if (sunLight.shadow.map) { sunLight.shadow.map.dispose(); sunLight.shadow.map = null; }
+    sunLight.shadow.mapSize.set(profile.shadowSize, profile.shadowSize);
+  }
+  appliedEnergyMode = energyMode; shadowDirty = true;
+}
+function prepareEnergyRender(now) {
+  applyEnergyQuality();
+  const profile = ENERGY_PROFILES[energyMode];
+  const update = profile.shadowFPS > 0 && (shadowDirty || now - lastShadowFrame >= 1000 / profile.shadowFPS - 0.1);
+  renderer.shadowMap.needsUpdate = update;
+  if (update) { lastShadowFrame = now; shadowDirty = false; energyStats.shadowUpdates++; }
+  energyStats.rendered++;
+}
+window.disposeDioramaRendering = function () {
+  if (energyDisposed) return;
+  energyDisposed = true; syncRenderPause();
+  document.removeEventListener("visibilitychange", energyVisibilityChanged);
+  window.removeEventListener("pagehide", energyPageHide);
+  window.removeEventListener("pageshow", energyPageShow);
+  renderer.dispose();
+  if (renderer.forceContextLoss) renderer.forceContextLoss();
+};
+window.dioramaEnergyState = function () {
+  return { mode: energyMode, paused: renderPaused, nativePaused: nativeRenderPaused,
+    pageHidden: !!document.hidden || pageRenderHidden, scheduled: rafId !== null,
+    fps: renderPaused ? 0 : energyTargetFPS(performance.now()), stats: Object.assign({}, energyStats) };
+};
+
 
     // ────────────────────────────────────────────────────────────────
     // 🔤 LANGUAGE
@@ -4208,6 +4505,58 @@ function animateCompanions(now, dt) {
       return null;
     }
 
+    window.pulseHintBuilding = function () {
+      const b = bodyOf("food_bistro") || bodyOf("food_coffee") || bodyOf("trans_station");
+      if (b) pulseBuilding(b);
+    };
+
+    const tutorialMarker = document.createElement("button");
+    tutorialMarker.type = "button";
+    tutorialMarker.className = "diorama-tutorial-target";
+    overlaysContainer.appendChild(tutorialMarker);
+    const tutorialWorldPoint = new THREE.Vector3();
+    const tutorialScreenPoint = new THREE.Vector3();
+    let currentTutorialBuilding = null;
+    ["pointerdown", "pointerup", "pointermove"].forEach(function (event) {
+      tutorialMarker.addEventListener(event, function (e) { e.stopPropagation(); });
+    });
+    tutorialMarker.addEventListener("click", function (e) {
+      e.stopPropagation();
+      const obj = currentTutorialBuilding;
+      if (!obj) return;
+      const data = obj.userData;
+      setTutorialBuilding(null);
+      if (CAM_MODES[data.district]) setDistrict(data.district);
+      setSelectedBuilding(obj);
+      pulseBuilding(obj);
+      post("buildingTapped", { id: data.id, district: data.district, name: data.name });
+    });
+
+    function setTutorialBuilding(id) {
+      const next = id ? bodyOf(id) : null;
+      tutorialMarker.setAttribute("aria-label", currentLang === "he" ? "פתיחת פרטי הבניין המסומן" : "Open highlighted building details");
+      if (next === currentTutorialBuilding) return;
+      currentTutorialBuilding = next;
+      tutorialMarker.classList.toggle("active", !!next);
+      if (next && !companionMotionPreference.matches) pulseBuilding(next);
+    }
+
+    function updateTutorialMarker() {
+      if (!currentTutorialBuilding || !visibleInScene(currentTutorialBuilding)) {
+        tutorialMarker.classList.remove("active");
+        return;
+      }
+      // The proxy is a stable, cheap anchor; hidden upper floors must not push the marker
+      // above the visible building. The marker itself is also a 68px accessible tap target.
+      currentTutorialBuilding.getWorldPosition(tutorialWorldPoint);
+      tutorialScreenPoint.copy(tutorialWorldPoint).project(camera);
+      const inFront = tutorialScreenPoint.z >= -1 && tutorialScreenPoint.z <= 1;
+      tutorialMarker.classList.toggle("active", inFront);
+      if (!inFront) return;
+      tutorialMarker.style.left = ((tutorialScreenPoint.x * 0.5 + 0.5) * viewportWidth) + "px";
+      tutorialMarker.style.top = ((-tutorialScreenPoint.y * 0.5 + 0.5) * viewportHeight) + "px";
+    }
+
     function tierForBuilding(amount, totalShare, state) {
       // A busy neighbourhood may add people, lights and detail around this plot, but it may
       // never turn a place the user did not spend at into a large building.
@@ -4275,11 +4624,51 @@ function animateCompanions(now, dt) {
     // ────────────────────────────────────────────────────────────────
     // 🔄 14. DATA BRIDGE: window.updateDioramaData (Swift Inbound Contract)
     // ────────────────────────────────────────────────────────────────
+    // Validate the entire envelope before mutating the live scene.
+    function validateDioramaPayload(data) {
+      const fail = field => { throw new Error("DioramaPayloadV1: invalid " + field); };
+      if (!data || data.schemaVersion !== 1) fail("schemaVersion");
+      const number = (value, field) => { if (typeof value !== "number" || !Number.isFinite(value)) fail(field); };
+      ["food", "shopping", "housing", "transport", "savings", "savingsTarget", "parkHealth"].forEach(k => number(data[k], k));
+      for (const [group, fields] of Object.entries({foodSub:["restaurant","groceries","coffee","delivery"], shoppingSub:["fashion","tech","travel","entertainment"], housingSub:["rent","utilities","subs"]})) {
+        if (!data[group]) fail(group);
+        fields.forEach(k => number(data[group][k], group + "." + k));
+      }
+      const districtIDs = new Set(Object.values(buildingDistrictKeys).concat(["savings"]));
+      for (const [key, ids] of [["districts", districtIDs], ["venues", new Set(Object.keys(buildingDistrictKeys).concat(["savings_sanctuary"]))]]) {
+        if (!Array.isArray(data[key])) fail(key);
+        const seen = new Set();
+        data[key].forEach(state => {
+          if (!state || !ids.has(state.id) || seen.has(state.id)) fail(key + ".id");
+          seen.add(state.id);
+          ["amount", "share", "activity"].forEach(k => number(state[k], key + "." + k));
+          if (key === "districts" && !["quiet","active","developed","dominant"].includes(state.prominence)) fail("prominence");
+          if (key === "venues") ["purchaseCount","activeDays","merchantCount","presence","additionalPlaces"].forEach(k => number(state[k], "venues." + k));
+        });
+      }
+      if (!data.habits || typeof data.habits.hasTravelOrFlight !== "boolean") fail("habits");
+      ["woltCount","coffeeCount","onlinePackagesCount","activeSubscriptionsCount"].forEach(k => number(data.habits[k], "habits." + k));
+      ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
+      if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
+      if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");
+      if (!data.slotPlacements || typeof data.slotPlacements !== "object" || Array.isArray(data.slotPlacements)) fail("slotPlacements");
+      return data;
+    }
+    function reportDioramaError(error) {
+      const message = error instanceof Error ? error.message : "Diorama update failed";
+      console.error(message);
+      if (window.webkit && window.webkit.messageHandlers.dioramaError) {
+        window.webkit.messageHandlers.dioramaError.postMessage(message);
+      }
+      return false;
+    }
     window.updateDioramaData = function (data) {
-      if (!data) return;
+      try { validateDioramaPayload(data); } catch (error) { return reportDioramaError(error); }
+      shadowDirty = true;
       try {
         if (data.language) setDioramaLanguage(data.language);
         if (data.targetDistrict) setDistrict(data.targetDistrict);
+        setTutorialBuilding(data.tutorialBuildingId || null);
         syncDistrictStates(data.districts);
 
         function syncBuilding(id, amount) {
@@ -4356,7 +4745,7 @@ function animateCompanions(now, dt) {
 
         if (data.newlyUnlockedId) window.celebrateNewEnrichment(data.newlyUnlockedId);
       } catch (err) {
-        console.warn("updateDioramaData caught error:", err);
+        return reportDioramaError(err);
       }
     };
 
@@ -4397,7 +4786,10 @@ function animateCompanions(now, dt) {
     let lastTime = performance.now();
 
     function loop(now) {
+      rafId = null;
+      if (renderPaused || energyDisposed) return;
       rafId = requestAnimationFrame(loop);
+      if (!energyFrameDue(now)) return;
       // The first rAF timestamp can predate the performance.now() taken while this script
       // was still parsing, so dt must never go negative — a negative dt drove vehicle
       // progress below zero and JS's negative modulo then indexed path[-1].
@@ -4405,24 +4797,33 @@ function animateCompanions(now, dt) {
       lastTime = now;
 
       // Camera smoothing lerp
-      currentCam.az += (targetCam.az - currentCam.az) * 0.12;
-      currentCam.el += (targetCam.el - currentCam.el) * 0.12;
-      currentCam.zoom += ((targetCam.zoom || 1.0) - currentCam.zoom) * 0.10;
-      currentCam.lookX += (targetCam.lookX - currentCam.lookX) * 0.12;
-      currentCam.lookY += (targetCam.lookY - currentCam.lookY) * 0.12;
-      currentCam.lookZ += (targetCam.lookZ - currentCam.lookZ) * 0.12;
+      const smoothing = 1 - Math.pow(0.88, dt * 60);
+      const zoomSmoothing = 1 - Math.pow(0.90, dt * 60);
+      ["az", "el", "lookX", "lookY", "lookZ"].forEach(function (key) {
+        const delta = targetCam[key] - currentCam[key];
+        currentCam[key] = Math.abs(delta) < 0.0001 ? targetCam[key] : currentCam[key] + delta * smoothing;
+      });
+      const zoomDelta = (targetCam.zoom || 1) - currentCam.zoom;
+      currentCam.zoom = Math.abs(zoomDelta) < 0.0001 ? (targetCam.zoom || 1) : currentCam.zoom + zoomDelta * zoomSmoothing;
 
       if (pointers.size === 0) {
-        targetCam.az += spinVel; spinVel *= 0.92;
-        targetCam.el = clamp(targetCam.el + tiltVel, 0.25, 1.25); tiltVel *= 0.92;
+        const decay = Math.pow(0.92, dt * 60), travel = (1 - decay) / (1 - 0.92);
+        targetCam.az += spinVel * travel; spinVel *= decay;
+        targetCam.el = clamp(targetCam.el + tiltVel * travel, 0.25, 1.25); tiltVel *= decay;
+        if (Math.abs(spinVel) < 0.00001) spinVel = 0;
+        if (Math.abs(tiltVel) < 0.00001) tiltVel = 0;
       }
 
       placeCam();
       applyFrustum();
+      updateTutorialMarker();
 
       // Window glow follows how busy the city is
-      cityGlow += (cityGlowTarget - cityGlow) * Math.min(1, dt * 1.6);
-      for (let i = 0; i < litGlass.length; i++) litGlass[i].emissiveIntensity = cityGlow;
+      if (cityGlow !== cityGlowTarget) {
+        cityGlow += (cityGlowTarget - cityGlow) * Math.min(1, dt * 1.6);
+        if (Math.abs(cityGlow - cityGlowTarget) < 0.0001) cityGlow = cityGlowTarget;
+        for (let i = 0; i < litGlass.length; i++) litGlass[i].emissiveIntensity = cityGlow;
+      }
 
       // Tap pulse. The tap target is an invisible proxy box, so the squash has to be applied
       // to the shell it stands for — scaling the proxy would move the hit area, not the building.
@@ -4507,7 +4908,7 @@ function animateCompanions(now, dt) {
           c.obj.position.z = p1.z + (p2.z - p1.z) * frac;
           c.obj.rotation.y = Math.atan2(p2.x - p1.x, p2.z - p1.z);
         }
-        const walkCycle = now * 0.0055 * Math.max(0.6, (c.speed || 0.35) / 0.35);
+        const walkCycle = now * 0.0055 * Math.max(0.6, (c.speed || 0.35) / 0.35) + (c.phase || 0);
         const legSwing = Math.sin(walkCycle) * 0.38;
         if (c.legL) c.legL.rotation.x = legSwing;
         if (c.legR) c.legR.rotation.x = -legSwing;
@@ -4662,6 +5063,7 @@ function animateCompanions(now, dt) {
         }
       }
 
+      prepareEnergyRender(now);
       renderer.render(scene, camera);
     }
 
@@ -4698,7 +5100,8 @@ function animateCompanions(now, dt) {
       plantings: parkPlantings,
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
-        plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces },
+        plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,
+        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, crowdBatches: crowdBatches },
       slots: slotItems,
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },

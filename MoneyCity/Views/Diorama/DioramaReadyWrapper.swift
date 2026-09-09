@@ -21,6 +21,8 @@ public struct DioramaReadyWrapper: View {
     public let newlyUnlockedEnrichmentId: String?
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
+    /// Optional first-use focus rendered on top of the real 3D building.
+    public let tutorialBuildingId: String?
     public let language: String
     public let isPaused: Bool
     public let onSelectDistrict: (String?) -> Void
@@ -28,6 +30,7 @@ public struct DioramaReadyWrapper: View {
     public let onSlotTapped: ((String, String?) -> Void)?
 
     @State private var isLoaded = false
+    @State private var hasStarted = false
 
     public init(
         totalSpent: Double,
@@ -45,6 +48,7 @@ public struct DioramaReadyWrapper: View {
         newlyUnlockedEnrichmentId: String?,
         slotPlacements: [String: String],
         selectedDistrict: String?,
+        tutorialBuildingId: String? = nil,
         language: String = "he",
         isPaused: Bool,
         onSelectDistrict: @escaping (String?) -> Void,
@@ -66,6 +70,7 @@ public struct DioramaReadyWrapper: View {
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
+        self.tutorialBuildingId = tutorialBuildingId
         self.language = language
         self.isPaused = isPaused
         self.onSelectDistrict = onSelectDistrict
@@ -75,6 +80,9 @@ public struct DioramaReadyWrapper: View {
 
     public var body: some View {
         ZStack {
+            // Do not construct WebGL behind onboarding or an initially inactive scene.
+            // Once started, keep the same WebView and only pause its renderer.
+            if hasStarted || !isPaused {
             ThreeDioramaView(
                 totalSpent: totalSpent,
                 totalSavings: totalSavings,
@@ -91,6 +99,7 @@ public struct DioramaReadyWrapper: View {
                 newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
                 slotPlacements: slotPlacements,
                 selectedDistrict: selectedDistrict,
+                tutorialBuildingId: tutorialBuildingId,
                 language: language,
                 isPaused: isPaused,
                 onSelectDistrict: onSelectDistrict,
@@ -98,8 +107,18 @@ public struct DioramaReadyWrapper: View {
                 onSlotTapped: onSlotTapped
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear {
+                guard !hasStarted else { return }
+                hasStarted = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    if !isLoaded {
+                        withAnimation(.easeOut(duration: 0.4)) { isLoaded = true }
+                    }
+                }
+            }
+            }
 
-            if !isLoaded {
+            if !isLoaded && !isPaused {
                 DioramaSkeletonView(onReady: {
                     withAnimation(.easeOut(duration: 0.5)) { isLoaded = true }
                 })
@@ -110,14 +129,6 @@ public struct DioramaReadyWrapper: View {
         // Listen for the notification ThreeDioramaView posts when dioramaReady fires
         .onReceive(NotificationCenter.default.publisher(for: .dioramaReady)) { _ in
             withAnimation(.easeOut(duration: 0.4)) { isLoaded = true }
-        }
-        .onAppear {
-            // Safety timeout: Never stay stuck on skeleton
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                if !isLoaded {
-                    withAnimation(.easeOut(duration: 0.4)) { isLoaded = true }
-                }
-            }
         }
     }
 }

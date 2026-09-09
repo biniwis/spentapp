@@ -17,8 +17,8 @@ public enum TransactionIngestError: Error, Equatable {
 public enum TransactionIngest {
 
     /// Two identical payments inside this window are treated as one.
-    /// The automation is known to retry, and nobody buys the same thing twice in 90 seconds.
-    public static let duplicateWindow: TimeInterval = 90
+    /// A 15-second window prevents duplicate Shortcut automation fires without blocking rapid legitimate purchases.
+    public static let duplicateWindow: TimeInterval = 15
 
     // MARK: - Amount parsing
 
@@ -404,15 +404,24 @@ public enum TransactionIngest {
     public static func isDuplicate(
         merchant: String,
         amount: Double,
+        currency: String = "₪",
         date: Date,
         in existing: [Transaction]
     ) -> Bool {
-        let key = merchant.lowercased()
+        let key = normalizedMerchant(merchant)?.lowercased() ?? ""
         return existing.contains { tx in
-            tx.merchant.lowercased() == key
-                && abs(tx.amount - amount) < 0.01
-                && abs(tx.timestamp.timeIntervalSince(date)) < duplicateWindow
+            let storedAmount = tx.originalAmount.map { tx.amount < 0 ? -abs($0) : abs($0) } ?? tx.amount
+            let storedCurrency = tx.originalCurrency ?? tx.currency
+            return (normalizedMerchant(tx.merchant)?.lowercased() ?? "") == key
+                && currencyKey(storedCurrency) == currencyKey(currency)
+                && abs(storedAmount - amount) < 0.005
+                && abs(tx.timestamp.timeIntervalSince(date)) <= duplicateWindow
         }
+    }
+
+    public static func currencyKey(_ value: String) -> String {
+        CurrencyType(symbolOrCode: value)?.rawValue
+            ?? value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 
     // MARK: - Entry point
@@ -458,7 +467,7 @@ public enum TransactionIngest {
         let cleanMerchant = normalizedMerchant(merchant) ?? "לא זוהה"
 
         if finalParsedAmount > 0 {
-            guard !isDuplicate(merchant: cleanMerchant, amount: finalParsedAmount, date: date, in: existing) else {
+            guard !isDuplicate(merchant: cleanMerchant, amount: isRefund ? -finalParsedAmount : finalParsedAmount, currency: currency, date: date, in: existing) else {
                 throw TransactionIngestError.duplicate
             }
         }

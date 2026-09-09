@@ -59,6 +59,46 @@ public enum DataPortabilityService {
         public var originalCurrency: String?
         public var exchangeRate: Double?
         public var savingsGoalId: UUID?
+        public var installmentPlanId: UUID?
+        public var installmentIndex: Int?
+
+        public init(
+            id: UUID,
+            amount: Double,
+            currency: String,
+            merchant: String,
+            category: String,
+            timestamp: Date,
+            confidenceScore: Double,
+            isManual: Bool,
+            isConfirmed: Bool,
+            note: String? = nil,
+            buildingId: String? = nil,
+            originalAmount: Double? = nil,
+            originalCurrency: String? = nil,
+            exchangeRate: Double? = nil,
+            savingsGoalId: UUID? = nil,
+            installmentPlanId: UUID? = nil,
+            installmentIndex: Int? = nil
+        ) {
+            self.id = id
+            self.amount = amount
+            self.currency = currency
+            self.merchant = merchant
+            self.category = category
+            self.timestamp = timestamp
+            self.confidenceScore = confidenceScore
+            self.isManual = isManual
+            self.isConfirmed = isConfirmed
+            self.note = note
+            self.buildingId = buildingId
+            self.originalAmount = originalAmount
+            self.originalCurrency = originalCurrency
+            self.exchangeRate = exchangeRate
+            self.savingsGoalId = savingsGoalId
+            self.installmentPlanId = installmentPlanId
+            self.installmentIndex = installmentIndex
+        }
     }
 
     public struct RecurringDTO: Codable {
@@ -109,6 +149,32 @@ public enum DataPortabilityService {
         public var firstChargeDate: Date
         public var category: String
         public var createdAt: Date
+        public var lastMaterializedIndex: Int?
+        public var buildingId: String?
+
+        public init(
+            id: UUID,
+            merchant: String,
+            totalAmount: Double,
+            currency: String,
+            numberOfPayments: Int,
+            firstChargeDate: Date,
+            category: String,
+            createdAt: Date,
+            lastMaterializedIndex: Int? = nil,
+            buildingId: String? = nil
+        ) {
+            self.id = id
+            self.merchant = merchant
+            self.totalAmount = totalAmount
+            self.currency = currency
+            self.numberOfPayments = numberOfPayments
+            self.firstChargeDate = firstChargeDate
+            self.category = category
+            self.createdAt = createdAt
+            self.lastMaterializedIndex = lastMaterializedIndex
+            self.buildingId = buildingId
+        }
     }
 
     public struct SavingsGoalDTO: Codable {
@@ -160,9 +226,9 @@ public enum DataPortabilityService {
     // MARK: - Export
 
     @MainActor
-    public static func buildEnvelope(context: ModelContext, now: Date = Date()) -> Envelope {
-        func all<T: PersistentModel>(_ type: T.Type) -> [T] {
-            (try? context.fetch(FetchDescriptor<T>())) ?? []
+    public static func buildEnvelope(context: ModelContext, now: Date = Date()) throws -> Envelope {
+        func all<T: PersistentModel>(_ type: T.Type) throws -> [T] {
+            try context.fetch(FetchDescriptor<T>())
         }
 
         return Envelope(
@@ -171,17 +237,19 @@ public enum DataPortabilityService {
             appVersion: StoreSnapshotService.currentVersion(),
             appBuild: StoreSnapshotService.currentBuild(),
             exportedAt: now,
-            transactions: all(Transaction.self).map {
+            transactions: try all(Transaction.self).map {
                 TransactionDTO(
                     id: $0.id, amount: $0.amount, currency: $0.currency, merchant: $0.merchant,
                     category: $0.categoryRawValue, timestamp: $0.timestamp,
                     confidenceScore: $0.confidenceScore, isManual: $0.isManual,
                     isConfirmed: $0.isConfirmed, note: $0.note, buildingId: $0.buildingIdRaw,
                     originalAmount: $0.originalAmount, originalCurrency: $0.originalCurrency,
-                    exchangeRate: $0.exchangeRate, savingsGoalId: $0.savingsGoalId
+                    exchangeRate: $0.exchangeRate, savingsGoalId: $0.savingsGoalId,
+                    installmentPlanId: $0.installmentPlanId,
+                    installmentIndex: $0.installmentIndex
                 )
             },
-            recurring: all(RecurringExpense.self).map {
+            recurring: try all(RecurringExpense.self).map {
                 RecurringDTO(
                     id: $0.id, merchant: $0.merchant, amount: $0.amount, currency: $0.currency,
                     category: $0.categoryRawValue, dayOfMonth: $0.dayOfMonth,
@@ -189,34 +257,36 @@ public enum DataPortabilityService {
                     createdAt: $0.createdAt
                 )
             },
-            income: all(IncomeSource.self).map {
+            income: try all(IncomeSource.self).map {
                 IncomeDTO(
                     id: $0.id, name: $0.name, amount: $0.amount, currency: $0.currency,
                     dayOfMonth: $0.dayOfMonth, isActive: $0.isActive, createdAt: $0.createdAt
                 )
             },
-            budgets: all(CategoryBudget.self).map {
+            budgets: try all(CategoryBudget.self).map {
                 BudgetDTO(
                     id: $0.id, category: $0.categoryRawValue,
                     monthlyLimit: $0.monthlyLimit, createdAt: $0.createdAt
                 )
             },
-            merchantRules: all(MerchantRule.self).map {
+            merchantRules: try all(MerchantRule.self).map {
                 MerchantRuleDTO(
                     id: $0.id, merchantKey: $0.merchantKey, displayName: $0.displayName,
                     category: $0.categoryRawValue, buildingId: $0.buildingIdRaw,
                     hitCount: $0.hitCount, createdAt: $0.createdAt
                 )
             },
-            installments: all(InstallmentPlan.self).map {
+            installments: try all(InstallmentPlan.self).map {
                 InstallmentDTO(
                     id: $0.id, merchant: $0.merchant, totalAmount: $0.totalAmount,
                     currency: $0.currency, numberOfPayments: $0.numberOfPayments,
                     firstChargeDate: $0.firstChargeDate, category: $0.categoryRawValue,
-                    createdAt: $0.createdAt
+                    createdAt: $0.createdAt,
+                    lastMaterializedIndex: $0.lastMaterializedIndex,
+                    buildingId: $0.buildingIdRaw
                 )
             },
-            savingsGoals: all(SavingsGoal.self).map {
+            savingsGoals: try all(SavingsGoal.self).map {
                 SavingsGoalDTO(
                     id: $0.id, name: $0.name, icon: $0.icon, targetAmount: $0.targetAmount,
                     savedAmount: $0.savedAmount, currency: $0.currency, targetDate: $0.targetDate,
@@ -224,7 +294,7 @@ public enum DataPortabilityService {
                     unlinkedBaseline: $0.unlinkedBaseline, baselineCaptured: $0.baselineCaptured
                 )
             },
-            enrichments: all(CityEnrichment.self).map {
+            enrichments: try all(CityEnrichment.self).map {
                 EnrichmentDTO(
                     id: $0.id, itemId: $0.itemId, name: $0.name, subtitle: $0.subtitle,
                     icon: $0.icon, type: $0.typeRawValue, tier: $0.tierRawValue,
@@ -238,7 +308,7 @@ public enum DataPortabilityService {
 
     @MainActor
     public static func exportData(context: ModelContext, now: Date = Date()) throws -> Data {
-        try makeEncoder().encode(buildEnvelope(context: context, now: now))
+        try makeEncoder().encode(try buildEnvelope(context: context, now: now))
     }
 
     /// `MoneyCity-2026-09-01-1432.json` — sorts chronologically in Files, and says what it is
@@ -294,22 +364,22 @@ public enum DataPortabilityService {
         var summary = ImportSummary()
         summary.exportedAt = envelope.exportedAt
 
-        func existingIds<T: PersistentModel>(_ type: T.Type, _ id: (T) -> UUID) -> Set<UUID> {
-            Set(((try? context.fetch(FetchDescriptor<T>())) ?? []).map(id))
+        func existingIds<T: PersistentModel>(_ type: T.Type, _ id: (T) -> UUID) throws -> Set<UUID> {
+            Set((try context.fetch(FetchDescriptor<T>())).map(id))
         }
-        func wipe<T: PersistentModel>(_ type: T.Type) {
-            for object in ((try? context.fetch(FetchDescriptor<T>())) ?? []) {
+        func wipe<T: PersistentModel>(_ type: T.Type) throws {
+            for object in try context.fetch(FetchDescriptor<T>()) {
                 context.delete(object)
             }
         }
 
         if mode == .replace {
-            wipe(Transaction.self); wipe(RecurringExpense.self); wipe(IncomeSource.self)
-            wipe(CategoryBudget.self); wipe(MerchantRule.self); wipe(InstallmentPlan.self)
-            wipe(SavingsGoal.self); wipe(CityEnrichment.self)
+            try wipe(Transaction.self); try wipe(RecurringExpense.self); try wipe(IncomeSource.self)
+            try wipe(CategoryBudget.self); try wipe(MerchantRule.self); try wipe(InstallmentPlan.self)
+            try wipe(SavingsGoal.self); try wipe(CityEnrichment.self)
         }
 
-        let txIds = mode == .replace ? Set<UUID>() : existingIds(Transaction.self) { $0.id }
+        var txIds = mode == .replace ? Set<UUID>() : (try existingIds(Transaction.self) { $0.id })
         for dto in envelope.transactions {
             guard !txIds.contains(dto.id) else { summary.skipped += 1; continue }
             let t = Transaction(
@@ -330,11 +400,14 @@ public enum DataPortabilityService {
             t.originalCurrency = dto.originalCurrency
             t.exchangeRate = dto.exchangeRate
             t.savingsGoalId = dto.savingsGoalId
+            t.installmentPlanId = dto.installmentPlanId
+            t.installmentIndex = dto.installmentIndex
             context.insert(t)
+            txIds.insert(dto.id)
             summary.added += 1
         }
 
-        let recIds = mode == .replace ? Set<UUID>() : existingIds(RecurringExpense.self) { $0.id }
+        var recIds = mode == .replace ? Set<UUID>() : (try existingIds(RecurringExpense.self) { $0.id })
         for dto in envelope.recurring {
             guard !recIds.contains(dto.id) else { summary.skipped += 1; continue }
             let r = RecurringExpense(
@@ -349,10 +422,11 @@ public enum DataPortabilityService {
             r.lastGeneratedPeriod = dto.lastGeneratedPeriod
             r.createdAt = dto.createdAt
             context.insert(r)
+            recIds.insert(dto.id)
             summary.added += 1
         }
 
-        let incIds = mode == .replace ? Set<UUID>() : existingIds(IncomeSource.self) { $0.id }
+        var incIds = mode == .replace ? Set<UUID>() : (try existingIds(IncomeSource.self) { $0.id })
         for dto in envelope.income {
             guard !incIds.contains(dto.id) else { summary.skipped += 1; continue }
             let i = IncomeSource(name: dto.name, amount: MoneyAmount.sanitized(dto.amount) ?? 0, dayOfMonth: dto.dayOfMonth)
@@ -361,10 +435,11 @@ public enum DataPortabilityService {
             i.isActive = dto.isActive
             i.createdAt = dto.createdAt
             context.insert(i)
+            incIds.insert(dto.id)
             summary.added += 1
         }
 
-        let budIds = mode == .replace ? Set<UUID>() : existingIds(CategoryBudget.self) { $0.id }
+        var budIds = mode == .replace ? Set<UUID>() : (try existingIds(CategoryBudget.self) { $0.id })
         for dto in envelope.budgets {
             guard !budIds.contains(dto.id) else { summary.skipped += 1; continue }
             let b = CategoryBudget(
@@ -375,10 +450,11 @@ public enum DataPortabilityService {
             b.categoryRawValue = dto.category
             b.createdAt = dto.createdAt
             context.insert(b)
+            budIds.insert(dto.id)
             summary.added += 1
         }
 
-        let ruleIds = mode == .replace ? Set<UUID>() : existingIds(MerchantRule.self) { $0.id }
+        var ruleIds = mode == .replace ? Set<UUID>() : (try existingIds(MerchantRule.self) { $0.id })
         for dto in envelope.merchantRules {
             guard !ruleIds.contains(dto.id) else { summary.skipped += 1; continue }
             let r = MerchantRule(
@@ -392,28 +468,33 @@ public enum DataPortabilityService {
             r.hitCount = dto.hitCount
             r.createdAt = dto.createdAt
             context.insert(r)
+            ruleIds.insert(dto.id)
             summary.added += 1
         }
 
-        let planIds = mode == .replace ? Set<UUID>() : existingIds(InstallmentPlan.self) { $0.id }
+        var planIds = mode == .replace ? Set<UUID>() : (try existingIds(InstallmentPlan.self) { $0.id })
         for dto in envelope.installments {
             guard !planIds.contains(dto.id) else { summary.skipped += 1; continue }
+            let payments = min(36, max(1, dto.numberOfPayments))
             let p = InstallmentPlan(
                 merchant: dto.merchant,
                 totalAmount: MoneyAmount.sanitized(dto.totalAmount) ?? 0,
-                numberOfPayments: dto.numberOfPayments,
+                numberOfPayments: payments,
                 firstChargeDate: dto.firstChargeDate,
-                category: SpendingCategory(rawValue: dto.category) ?? .other
+                category: SpendingCategory(rawValue: dto.category) ?? .other,
+                createdAt: dto.createdAt,
+                lastMaterializedIndex: dto.lastMaterializedIndex ?? 0,
+                buildingIdRaw: dto.buildingId
             )
             p.id = dto.id
             p.currency = dto.currency
             p.categoryRawValue = dto.category
-            p.createdAt = dto.createdAt
             context.insert(p)
+            planIds.insert(dto.id)
             summary.added += 1
         }
 
-        let goalIds = mode == .replace ? Set<UUID>() : existingIds(SavingsGoal.self) { $0.id }
+        var goalIds = mode == .replace ? Set<UUID>() : (try existingIds(SavingsGoal.self) { $0.id })
         for dto in envelope.savingsGoals {
             guard !goalIds.contains(dto.id) else { summary.skipped += 1; continue }
             let g = SavingsGoal(name: dto.name, targetAmount: dto.targetAmount)
@@ -427,10 +508,11 @@ public enum DataPortabilityService {
             g.unlinkedBaseline = dto.unlinkedBaseline
             g.baselineCaptured = dto.baselineCaptured
             context.insert(g)
+            goalIds.insert(dto.id)
             summary.added += 1
         }
 
-        let enrIds = mode == .replace ? Set<UUID>() : existingIds(CityEnrichment.self) { $0.id }
+        var enrIds = mode == .replace ? Set<UUID>() : (try existingIds(CityEnrichment.self) { $0.id })
         for dto in envelope.enrichments {
             guard !enrIds.contains(dto.id) else { summary.skipped += 1; continue }
             let e = CityEnrichment(
@@ -449,6 +531,7 @@ public enum DataPortabilityService {
             e.isApplied = dto.isApplied
             e.placedSlotId = dto.placedSlotId
             context.insert(e)
+            enrIds.insert(dto.id)
             summary.added += 1
         }
 

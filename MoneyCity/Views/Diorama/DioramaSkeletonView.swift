@@ -56,15 +56,7 @@ public struct DioramaSkeletonView: View {
                 .offset(x: shimmerOffset * w)
                 .allowsHitTesting(false)
 
-                VStack(spacing: 10) {
-                    DistrictSkylineVectorIcon(color: Color.primaryBlue)
-                        .scaleEffect(pulse ? 1.35 : 1.15)
-                        .animation(Animation.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
-                    Text("בונה את עיר הכסף שלך...")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                }
-                .padding(.bottom, h * 0.22)
+
             }
         }
         .onAppear {

@@ -19,6 +19,52 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         language == .english ? descriptionEn : descriptionHe
     }
 
+    public func shortName(for language: AppLanguage) -> String {
+        let isHebrew = language == .hebrew
+        switch id {
+        case "food_super": return isHebrew ? "סופרמרקט" : "Supermarket"
+        case "food_coffee": return isHebrew ? "בתי קפה" : "Cafes"
+        case "food_wolt": return isHebrew ? "משלוחי אוכל" : "Delivery"
+        case "food_bistro": return isHebrew ? "מסעדות" : "Restaurants"
+        case "shop_boutique": return isHebrew ? "ביגוד" : "Fashion"
+        case "shop_tech": return isHebrew ? "טכנולוגיה" : "Tech"
+        case "shop_travel": return isHebrew ? "חופשות" : "Travel"
+        case "shop_arcade": return isHebrew ? "בילויים" : "Arcade"
+        case "trans_station": return isHebrew ? "תחבורה" : "Transit"
+        case "health_pharmacy": return isHebrew ? "פארם" : "Pharmacy"
+        case "house_tower": return isHebrew ? "דיור" : "Housing"
+        case "house_util": return isHebrew ? "חשבונות" : "Bills"
+        case "house_subs": return isHebrew ? "מנויים" : "Subs"
+        case "finance_bank": return isHebrew ? "עמלות" : "Fees"
+        case "savings_sanctuary": return isHebrew ? "חיסכון" : "Savings"
+        default: return displayName(for: language)
+        }
+    }
+
+    /// MoneyCity signature icon type matching this architectural building
+    public var iconType: MoneyIconType {
+        switch id {
+        case "food_super": return .cart
+        case "food_coffee": return .coffee
+        case "food_wolt": return .paperPlane
+        case "food_bistro": return .cutlery
+        case "shop_boutique": return .tshirt
+        case "shop_tech": return .lightning
+        case "shop_travel": return .airplane
+        case "shop_arcade": return .gamepad
+        case "house_tower": return .home
+        case "house_util": return .lightning
+        case "house_subs": return .refresh
+        case "trans_station": return .car
+        case "health_pharmacy": return .medicalCross
+        case "savings_sanctuary": return .leaf
+        case "finance_bank": return .creditCard
+        case "museum_curiosities": return .gift
+        case "city_sorting_hub": return .mail
+        default: return .home
+        }
+    }
+
     /// All buildings available for a given spending category
     public static func buildings(for category: SpendingCategory) -> [CityBuilding] {
         switch category.canonical {

@@ -77,31 +77,15 @@ public struct RecurringExpensesSheet: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            MoneyIcon(.refresh, size: 44)
-            Text(isHebrew ? "אין עדיין הוצאות קבועות" : "No fixed expenses yet")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-            Text(isHebrew
-                 ? "שכר דירה, ארנונה, מנויים — הגדר פעם אחת והם ייווצרו לבד כל חודש."
-                 : "Rent, bills, subscriptions — set them up once and they post themselves each month.")
-                .font(.system(size: 13, design: .rounded))
-                .foregroundColor(Color.textMuted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-
-            Button {
-                isAdding = true
-            } label: {
-                Text(isHebrew ? "הוספת הוצאה קבועה" : "Add fixed expense")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 12)
-                    .background(Capsule().fill(Color.primaryBlue))
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 6)
+        ScrollView {
+            SpentEmptyState(
+                icon: .calendar,
+                title: isHebrew ? "יש הוצאות שחוזרות כל חודש" : "Some expenses come around every month",
+                message: isHebrew ? "שכירות, חשבונות ומנויים — הגדר אותם פעם אחת, והם יירשמו אוטומטית ביומן בכל חודש. אפשר לערוך או להשהות בכל רגע."
+                    : "Set up rent, bills and subscriptions once. They will be recorded each month, and you can edit or pause them anytime.",
+                actionTitle: isHebrew ? "הוספת הוצאה קבועה" : "Add fixed expense",
+                action: { isAdding = true }
+            ).padding(.top, 40)
         }
     }
 

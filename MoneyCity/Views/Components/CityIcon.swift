@@ -197,14 +197,23 @@ public struct CategoryVectorIcon: View {
     }
 }
 
-/// Unified Soft Pastel Circular Badge with Category Vector Icon (Matches Reference Design)
+/// Unified Soft Pastel Circular Badge with Category / Subcategory Vector Icon (Matches Reference Design)
 public struct CategoryBadge: View {
     public let category: SpendingCategory
+    public let iconOverride: MoneyIconType?
     public let size: CGFloat
     public let isSelected: Bool
     
-    public init(category: SpendingCategory, size: CGFloat = 40, isSelected: Bool = false) {
+    public init(category: SpendingCategory, size: CGFloat = 40, isSelected: Bool = false, iconOverride: MoneyIconType? = nil) {
         self.category = category.canonical
+        self.iconOverride = iconOverride
+        self.size = size
+        self.isSelected = isSelected
+    }
+
+    public init(transaction: Transaction, size: CGFloat = 40, isSelected: Bool = false) {
+        self.category = transaction.category.canonical
+        self.iconOverride = SubcategoryBreakdownService.shared.subcategoryIcon(for: transaction)
         self.size = size
         self.isSelected = isSelected
     }
@@ -219,10 +228,14 @@ public struct CategoryBadge: View {
                         .stroke(category.themeColor.opacity(isSelected ? 0.9 : 0.18), lineWidth: isSelected ? 2 : 1)
                 )
             
-            CategoryVectorIcon(
-                category: category,
-                size: size * 0.58
-            )
+            if let icon = iconOverride {
+                MoneyIcon(icon, size: size * 0.58)
+            } else {
+                CategoryVectorIcon(
+                    category: category,
+                    size: size * 0.58
+                )
+            }
         }
     }
 }

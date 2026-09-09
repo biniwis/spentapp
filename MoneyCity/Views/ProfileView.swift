@@ -19,6 +19,7 @@ public struct ProfileView: View {
     @AppStorage("userName") private var userName = ""
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
     @State private var showSettings = false
+    @State private var showPrivacySheet = false
     @State private var showBudgetsSheet = false
     @State private var showRecurringSheet = false
     @State private var showGoalsSheet = false
@@ -26,6 +27,10 @@ public struct ProfileView: View {
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
     @State private var selectedMonth: String? = nil
+    @State private var showDetailedYear = false
+    @State private var showDetailedTransactions = false
+    @State private var showDetailedStreak = false
+    @State private var showDetailedBudget = false
 
     private var thisMonthTransactions: [Transaction] {
         let cal = Calendar.current
@@ -200,11 +205,6 @@ public struct ProfileView: View {
                     // ── Management Navigation Menu Cards (Inset Grouped) ──
                     managementMenuCard
 
-                    // ── Unlocked Enrichments ──
-                    if !allEnrichments.isEmpty {
-                        enrichmentsCard
-                    }
-
                     Spacer(minLength: 120)
                 }
             }
@@ -250,14 +250,10 @@ public struct ProfileView: View {
                 MoneyIcon(.user, size: 36)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(displayName.isEmpty ? (l10n.language == .hebrew ? "היי, ראש העיר" : "Hey, Mayor") : (l10n.language == .hebrew ? "שלום, \(displayName)" : "Hey, \(displayName)"))
+            VStack(alignment: .leading, spacing: 6) {
+                Text(displayName.isEmpty ? (l10n.language == .hebrew ? "היי, ברוך הבא" : "Welcome") : (l10n.language == .hebrew ? "שלום, \(displayName)" : "Hey, \(displayName)"))
                     .font(.system(size: 19, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
-
-                Text(l10n.language == .hebrew ? "בונים עתיד פיננסי טוב יותר 🌱" : "Building a better financial future 🌱")
-                    .font(.system(size: 12, weight: .medium, design: .default))
-                    .foregroundColor(Color.textSecondary)
 
                 HStack(spacing: 6) {
                     HStack(spacing: 4) {
@@ -272,16 +268,15 @@ public struct ProfileView: View {
                     .clipShape(Capsule())
 
                     if activeStreakDays > 0 {
-                        HStack(spacing: 3) {
-                            Text("⚡️")
-                                .font(.system(size: 10))
+                        HStack(spacing: 4) {
+                            MoneyIcon(.lightning, size: 10, color: Color.spentGreen)
                             Text("\(activeStreakDays)d")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                         }
-                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                        .foregroundColor(Color.spentGreen)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color(red: 209/255, green: 250/255, blue: 229/255))
+                        .background(Color.spentGreenSoft)
                         .clipShape(Capsule())
                     }
                 }
@@ -297,127 +292,268 @@ public struct ProfileView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 4 Bento Metric Tiles (Clean Modern Surfaces)
+    // MARK: - 4 Bento Metric Tiles (Tactile with live micro-interactions)
 
     private var statsGridCard: some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-            // 1. Total This Year
+            // 1. Total This Year (Tap toggles between compact ₪1.3K and exact amount + monthly avg)
+            yearMetricTile
+
+            // 2. This Month Transactions (Tap toggles between count and average per transaction)
+            monthTransactionsMetricTile
+
+            // 3. Active Streak 🔥 (Tap triggers flame pulse and streak status)
+            streakMetricTile
+
+            // 4. Budget Goal 🎯 (Tap toggles percentage vs remaining amount; edit pill opens BudgetSheet)
+            budgetMetricTile
+        }
+        .padding(.horizontal, 16)
+    }
+
+    private var yearMetricTile: some View {
+        Button(action: {
+            Haptics.selection()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                showDetailedYear.toggle()
+            }
+        }) {
             VStack(alignment: .leading, spacing: 10) {
-                ZStack {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(Color.spentGreenSoft)
+                            .frame(width: 36, height: 36)
+                        AnnualVaultVectorIcon(color: Color.spentGreen)
+                            .scaleEffect(0.85)
+                    }
+                    Spacer()
                     Circle()
-                        .fill(Color(red: 243/255, green: 232/255, blue: 255/255))
-                        .frame(width: 36, height: 36)
-                    AnnualVaultVectorIcon(color: Color(red: 168/255, green: 85/255, blue: 247/255))
-                        .scaleEffect(0.85)
+                        .fill(Color.spentGreen.opacity(showDetailedYear ? 0.85 : 0.18))
+                        .frame(width: 6, height: 6)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(l10n.baseCurrency.symbol)\(shortAmt(totalThisYear))")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "סך הכל השנה" : "Total This Year")
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
+                    if showDetailedYear {
+                        Text(l10n.format(amount: totalThisYear, showDecimals: false))
+                            .font(.system(size: 18.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        let currentMonthIdx = max(1, Calendar.current.component(.month, from: Date()))
+                        let monthlyAvg = totalThisYear / Double(currentMonthIdx)
+                        Text(l10n.language == .hebrew ? "ממוצע: \(l10n.format(amount: monthlyAvg, showDecimals: false))/חודש" : "Avg: \(l10n.format(amount: monthlyAvg, showDecimals: false))/mo")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.spentGreen)
+                            .lineLimit(1)
+                    } else {
+                        Text("\(l10n.baseCurrency.symbol)\(shortAmt(totalThisYear))")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Text(l10n.language == .hebrew ? "סך הכל השנה" : "Total This Year")
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                    }
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+        }
+        .bouncyPress(scale: 0.96)
+    }
 
-            // 2. This Month Transactions
+    private var monthTransactionsMetricTile: some View {
+        Button(action: {
+            Haptics.selection()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                showDetailedTransactions.toggle()
+            }
+        }) {
             VStack(alignment: .leading, spacing: 10) {
-                ZStack {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(Color.themeTurquoiseSoft)
+                            .frame(width: 36, height: 36)
+                        BarMetricVectorIcon(color: Color.themeTurquoise)
+                            .scaleEffect(0.85)
+                    }
+                    Spacer()
                     Circle()
-                        .fill(Color.themeTurquoiseSoft)
-                        .frame(width: 36, height: 36)
-                    BarMetricVectorIcon(color: Color.themeTurquoise)
-                        .scaleEffect(0.85)
+                        .fill(Color.themeTurquoise.opacity(showDetailedTransactions ? 0.85 : 0.18))
+                        .frame(width: 6, height: 6)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(thisMonthTransactions.count)")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "עסקאות החודש" : "Transactions")
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
+                    if showDetailedTransactions {
+                        let avgTx = thisMonthTransactions.isEmpty ? 0 : (totalThisMonth / Double(thisMonthTransactions.count))
+                        Text(l10n.format(amount: avgTx, showDecimals: false))
+                            .font(.system(size: 18.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        Text(l10n.language == .hebrew ? "ממוצע לעסקה" : "Avg per transaction")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.themeTurquoise)
+                            .lineLimit(1)
+                    } else {
+                        Text("\(thisMonthTransactions.count)")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Text(l10n.language == .hebrew ? "עסקאות החודש" : "Transactions")
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                    }
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+        }
+        .bouncyPress(scale: 0.96)
+    }
 
-            // 3. Active Streak 🔥
+    private var streakMetricTile: some View {
+        Button(action: {
+            Haptics.impact(.medium)
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                showDetailedStreak.toggle()
+            }
+        }) {
             VStack(alignment: .leading, spacing: 10) {
-                ZStack {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(Color.themeOrangeSoft)
+                            .frame(width: 36, height: 36)
+                        StreakFlameVectorIcon(color: Color.themeOrange)
+                            .scaleEffect(showDetailedStreak ? 1.0 : 0.85)
+                    }
+                    Spacer()
                     Circle()
-                        .fill(Color.themeOrangeSoft)
-                        .frame(width: 36, height: 36)
-                    StreakFlameVectorIcon(color: Color.themeOrange)
-                        .scaleEffect(0.85)
+                        .fill(Color.themeOrange.opacity(showDetailedStreak ? 0.85 : 0.18))
+                        .frame(width: 6, height: 6)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(activeStreakDays) " + (l10n.language == .hebrew ? "ימים" : "days"))
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "רצף ימים פעיל" : "Active Streak")
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
+                    if showDetailedStreak {
+                        Text(activeStreakDays > 0 ? (l10n.language == .hebrew ? "פעיל היום! 🔥" : "Active Today! 🔥") : (l10n.language == .hebrew ? "התחל היום! ✨" : "Start Today! ✨"))
+                            .font(.system(size: 16.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                        Text(l10n.language == .hebrew ? "שמור על הרצף מחר" : "Keep streak tomorrow")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.themeOrange)
+                            .lineLimit(1)
+                    } else {
+                        Text("\(activeStreakDays) " + (l10n.language == .hebrew ? "ימים" : "days"))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Text(l10n.language == .hebrew ? "רצף ימים פעיל" : "Active Streak")
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                    }
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+        }
+        .bouncyPress(scale: 0.96)
+    }
 
-            // 4. Budget Goal 🎯 (with Live Micro Progress Bar)
-            VStack(alignment: .leading, spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.themeMintSoft)
-                        .frame(width: 36, height: 36)
-                    TargetReticleVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
-                        .scaleEffect(0.85)
+    private var budgetMetricTile: some View {
+        Button(action: {
+            Haptics.selection()
+            if effectiveBudgetLimit <= 0 {
+                showBudgetsSheet = true
+            } else {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                    showDetailedBudget.toggle()
                 }
+            }
+        }) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(Color.themeMintSoft)
+                            .frame(width: 36, height: 36)
+                        TargetReticleVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
+                            .scaleEffect(0.85)
+                    }
+                    Spacer()
+                    Circle()
+                        .fill(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(showDetailedBudget ? 0.85 : 0.18))
+                        .frame(width: 6, height: 6)
+                }
+
+                let limit = effectiveBudgetLimit
+                let remaining = max(0, limit - totalThisMonth)
+                let fraction = limit > 0 ? min(totalThisMonth / limit, 1.0) : 0.0
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(budgetGoalText)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
+                    if limit <= 0 {
+                        Text(l10n.language == .hebrew ? "הגדר יעד" : "Set Goal")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    } else if showDetailedBudget {
+                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "חריגה" : "Over") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.format(amount: remaining, showDecimals: false))")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(totalThisMonth > limit ? Color.deleteRed : Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    } else {
+                        Text(budgetGoalText)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    }
 
-                    let limit = effectiveBudgetLimit
-                    let fraction = limit > 0 ? min(totalThisMonth / limit, 1.0) : 0.0
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
-                            Capsule().fill(Color(red: 16/255, green: 185/255, blue: 129/255))
+                            Capsule().fill(totalThisMonth > limit && limit > 0 ? Color.deleteRed : Color(red: 16/255, green: 185/255, blue: 129/255))
                                 .frame(width: geo.size.width * CGFloat(fraction))
                         }
                     }
                     .frame(height: 4)
                     .padding(.top, 2)
 
-                    Text(l10n.language == .hebrew ? "יעד תקציב חודשי" : "Monthly Budget")
-                        .font(.system(size: 11, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
+                    if showDetailedBudget && limit > 0 {
+                        Text(l10n.language == .hebrew ? "מתוך \(l10n.format(amount: limit, showDecimals: false)) תקציב" : "of \(l10n.format(amount: limit, showDecimals: false)) budget")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .lineLimit(1)
+                    } else {
+                        Text(l10n.language == .hebrew ? "יעד תקציב חודשי" : "Monthly Budget")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .lineLimit(1)
+                    }
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
         }
-        .padding(.horizontal, 16)
+        .bouncyPress(scale: 0.96)
     }
 
-    // MARK: - 12-Month Spending Bar Chart (Lilac / Purple Architectural Styling)
+    // MARK: - 12-Month Spending Bar Chart (SPENT Green Architectural Styling)
 
     private var yearChartCard: some View {
         let maxAmt = max(monthlyTotals.map(\.amount).max() ?? 1, 100)
@@ -430,7 +566,7 @@ public struct ProfileView: View {
                     Spacer()
                     Text(l10n.format(amount: m.amount.rounded()))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 168/255, green: 85/255, blue: 247/255))
+                        .foregroundColor(Color.spentGreen)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
@@ -447,7 +583,7 @@ public struct ProfileView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Color(red: 168/255, green: 85/255, blue: 247/255))
+                        .background(Color.spentGreen)
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -459,7 +595,7 @@ public struct ProfileView: View {
                     Spacer()
                     Text("\(l10n.baseCurrency.symbol)\(shortAmt(total12Months))")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 168/255, green: 85/255, blue: 247/255))
+                        .foregroundColor(Color.spentGreen)
                 }
             }
             .frame(minHeight: 28)
@@ -489,8 +625,8 @@ public struct ProfileView: View {
                                     RoundedRectangle(cornerRadius: 6, style: .continuous)
                                         .fill(
                                             (isSelected || isCurrentMonth)
-                                                ? Color(red: 168/255, green: 85/255, blue: 247/255)
-                                                : Color(red: 221/255, green: 214/255, blue: 254/255)
+                                                ? Color.spentGreen
+                                                : Color.spentGreenSoft
                                         )
                                         .frame(height: max(frac * 72, 8))
                                         .scaleEffect(isSelected ? 1.06 : 1.0)
@@ -638,76 +774,6 @@ public struct ProfileView: View {
         .bouncyPress(scale: 0.98)
     }
 
-    // MARK: - Enrichments Card
-
-    private var enrichmentsCard: some View {
-        let activeEnrichments = allEnrichments.filter { $0.isApplied }
-        return VStack(alignment: .leading, spacing: 14) {
-            Text(l10n.language == .hebrew ? "שדרוגי עיר שנפתחו" : "City Upgrades Unlocked")
-                .font(.system(size: 16, weight: .bold, design: .default))
-                .foregroundColor(Color.deepNavy)
-
-            if activeEnrichments.isEmpty {
-                VStack(spacing: 8) {
-                    DistrictSkylineVectorIcon(color: Color.primaryBlue)
-                        .frame(width: 32, height: 32)
-                        .scaleEffect(1.2)
-                    Text(l10n.language == .hebrew ? "שמור כסף בפארק החודש כדי לפתוח שדרוגים מיוחדים!" : "Save money in your park this month to unlock special monuments!")
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity)
-            } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(activeEnrichments) { e in
-                        VStack(spacing: 8) {
-                            ZStack {
-                                Circle()
-                                    .fill(enrichmentSoftBg(for: e.type))
-                                    .frame(width: 48, height: 48)
-                                enrichmentBadgeIcon(for: e)
-                            }
-                            Text(e.name)
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(2)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color(red: 248/255, green: 250/255, blue: 252/255))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
-                    }
-                }
-            }
-        }
-        .padding(18)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
-        .padding(.horizontal, 16)
-    }
-
-    @ViewBuilder
-    private func enrichmentBadgeIcon(for e: CityEnrichment) -> some View {
-        EnrichmentVectorBadge(enrichment: e)
-    }
-
-
-    private func enrichmentSoftBg(for type: EnrichmentType) -> Color {
-        switch type {
-        case .nature: return Color.themeMintSoft
-        case .resident: return Color.themeTurquoiseSoft
-        case .pet: return Color.themeOrangeSoft
-        case .decoration: return Color.themeLavenderSoft
-        case .repair: return Color(red: 238/255, green: 242/255, blue: 255/255)
-        case .landmark: return Color.themeYellowSoft
-        }
-    }
-
     private func shortAmt(_ v: Double) -> String {
         v >= 1000 ? String(format: "%.1fK", v/1000) : "\(Int(v))"
     }
@@ -722,10 +788,12 @@ public struct SettingsSheet: View {
     @Query private var allTransactions: [Transaction]
 
     @AppStorage("userName") private var userName = ""
-    @AppStorage("notifications_enabled") private var notificationsEnabled = true
+    @AppStorage("notifications_enabled", store: UserDefaults(suiteName: "group.com.moneycity.app")) private var notificationsEnabled = true
+    @AppStorage("expense_capture_notifications_enabled", store: UserDefaults(suiteName: "group.com.moneycity.app")) private var captureNotificationsEnabled = true
     @AppStorage("haptics_enabled") private var hapticsEnabled = true
     
     @State private var showResetConfirmation = false
+    @State private var showPrivacySheet = false
 
     public var body: some View {
         NavigationStack {
@@ -795,7 +863,7 @@ public struct SettingsSheet: View {
                         // 2. User & Monthly Budget
                         settingsGroup(title: l10n.language == .hebrew ? "פרופיל ותקציב" : "User & Budget") {
                             HStack(spacing: 12) {
-                                Text(l10n.language == .hebrew ? "שם המשתמש" : "User Name")
+                                Text(l10n.language == .hebrew ? "שם ראש העיר" : "Mayor Name")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
@@ -826,16 +894,11 @@ public struct SettingsSheet: View {
                         // 3. Notifications & Haptics
                         settingsGroup(title: l10n.language == .hebrew ? "העדפות ממשק" : "Preferences") {
                             Toggle(isOn: $notificationsEnabled) {
-                                Text(l10n.language == .hebrew ? "התראות על הוצאות חדשות" : "Expense Notifications")
+                                Text(l10n.language == .hebrew ? "התראות מערכת" : "System Notifications")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                             }
                             .tint(Color.primaryBlue)
-                            // NotificationService.sync was only ever called at launch, so the
-                            // switch did nothing until the app was next opened cold: turning it
-                            // off left the weekly reminder scheduled, and turning it on never
-                            // raised the permission prompt — a first-time user flipped it, saw
-                            // nothing happen, and got no notifications.
                             .onChange(of: notificationsEnabled) { _, isOn in
                                 NotificationService.sync(
                                     enabled: isOn,
@@ -843,6 +906,23 @@ public struct SettingsSheet: View {
                                 )
                             }
                             .padding(.vertical, 4)
+
+                            if notificationsEnabled {
+                                Divider().background(Color.borderSubtle).padding(.vertical, 4)
+
+                                Toggle(isOn: $captureNotificationsEnabled) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(l10n.language == .hebrew ? "אישור מיידי על כל רכישה" : "Instant Purchase Alerts")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                        Text(l10n.language == .hebrew ? "קבלת פוש מיידי כשרכישה נקלטת בהצלחה בעיר" : "Immediate push alert when a purchase is logged")
+                                            .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                                            .foregroundColor(Color.textMuted)
+                                    }
+                                }
+                                .tint(Color.primaryBlue)
+                                .padding(.vertical, 4)
+                            }
 
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
 
@@ -855,16 +935,37 @@ public struct SettingsSheet: View {
                             .padding(.vertical, 4)
                         }
 
-                        // 4. Danger Zone
+                        // 4. Privacy & Transparency
+                        settingsGroup(title: l10n.language == .hebrew ? "פרטיות ושקיפות" : "Privacy & Transparency") {
+                            Button(action: { showPrivacySheet = true }) {
+                                HStack(spacing: 10) {
+                                    MoneyIcon(.lock, size: 18, color: Color.themeMint)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(l10n.language == .hebrew ? "מדיניות פרטיות" : "Privacy Policy")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                        Text(l10n.language == .hebrew ? "100% מקומי על המכשיר שלך · ללא שרתים" : "100% On-Device · Zero Remote Servers")
+                                            .font(.system(size: 11, design: .rounded))
+                                            .foregroundColor(Color.textMuted)
+                                    }
+                                    Spacer()
+                                    MoneyIcon(.chevronRight, size: 12, color: Color.textMuted)
+                                }
+                                .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        // 5. Danger Zone
                         settingsGroup(title: l10n.language == .hebrew ? "אזור איפוס נתונים" : "Data Management") {
                             Button(role: .destructive, action: { showResetConfirmation = true }) {
                                 HStack(spacing: 8) {
                                     TrashVectorIcon(color: Color.red)
                                     Text(l10n.language == .hebrew ? "איפוס כל העסקאות והנתונים" : "Reset All Transactions & Data")
                                         .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.red)
                                     Spacer()
                                 }
-                                .foregroundColor(Color.red)
                                 .padding(.vertical, 4)
                             }
                             .buttonStyle(.plain)
@@ -887,6 +988,10 @@ public struct SettingsSheet: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(Color.primaryBlue)
                 }
+            }
+            .sheet(isPresented: $showPrivacySheet) {
+                PrivacyPolicySheet()
+                    .environmentObject(l10n)
             }
             .confirmationDialog(
                 l10n.language == .hebrew ? "האם אתה בטוח שברצונך לאפס את כל הנתונים?" : "Are you sure you want to reset all data?",
@@ -1302,4 +1407,122 @@ public struct ApplePayGuideSheet: View {
         }
     }
     
+}
+
+// MARK: - Privacy Policy Sheet (Apple App Store Guideline 5.1.1)
+
+public struct PrivacyPolicySheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    private var isHebrew: Bool { l10n.language == .hebrew }
+
+    public init() {}
+
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    // Header Card
+                    VStack(alignment: .center, spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.themeMint.opacity(0.12))
+                                .frame(width: 60, height: 60)
+                            MoneyIcon(.lock, size: 28, color: Color.themeMint)
+                        }
+
+                        Text(isHebrew ? "פרטיות פיננסית ב-SPENT" : "Financial Privacy at SPENT")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .multilineTextAlignment(.center)
+
+                        Text(isHebrew ? "ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד."
+                                      : "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device.")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.textMuted)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 8)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(20)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+
+                    // Policy Sections
+                    policyCard(
+                        icon: .lock,
+                        title: isHebrew ? "עיבוד ושמירה מקומיים" : "Local Storage & Processing",
+                        body: isHebrew ? "פרטי העסקאות, התקציבים ונתוני העיר נשמרים מקומית במכשיר באמצעות SwiftData. SPENT אינה מפעילה חשבון משתמש או בסיס נתונים בענן עבור המידע הפיננסי שלך."
+                                       : "Your transaction history, budgets, and city data are stored locally on your device using SwiftData. SPENT does not operate user accounts or cloud databases for your financial data."
+                    )
+
+                    policyCard(
+                        icon: .checkCircle,
+                        title: isHebrew ? "ללא מעקב וללא פרסום" : "No Tracking & No Advertising",
+                        body: isHebrew ? "SPENT אינה משתמשת במידע הפיננסי שלך לצורכי מעקב, פרסום או פרופיל משתמש, ואינה שולחת את פרטי העסקאות לשירותי אנליטיקה של צד שלישי."
+                                       : "SPENT does not use your financial data for tracking, advertising, or user profiling, and does not send transaction details to third-party analytics services."
+                    )
+
+                    policyCard(
+                        icon: .creditCard,
+                        title: isHebrew ? "קליטת עסקאות באמצעות Shortcuts" : "Transaction Ingest via Shortcuts",
+                        body: isHebrew ? "SPENT אינה ניגשת ל-Apple Pay או ל-Wallet ישירות. אם בחרת להגדיר אוטומציה אישית ב-Shortcuts, iOS מעביר ל-SPENT את פרטי העסקה שהוגדרו באוטומציה. SPENT אינה שולחת את פרטי העסקה לשרת שלה או לשירות צד שלישי."
+                                       : "SPENT does not directly access Apple Pay or Apple Wallet. If you choose to set up a personal automation in Shortcuts, iOS passes the transaction details configured in the automation to SPENT. SPENT does not send transaction details to its own server or any third-party service."
+                    )
+
+                    policyCard(
+                        icon: .refresh,
+                        title: isHebrew ? "שערי מטבע" : "Foreign Exchange Rates",
+                        body: isHebrew ? "לצורך המרת מט\"ח, SPENT מבקשת משירות שערי חליפין את המטבעות הדרושים לחישוב. הבקשה אינה כוללת שמות בתי עסק, סכומי עסקאות או היסטוריית הוצאות. כמו בכל בקשת אינטרנט, ספק השירות עשוי לקבל מידע טכני של החיבור בהתאם למדיניות שלו."
+                                       : "For foreign exchange conversion, SPENT requests the necessary currencies for calculation from an exchange rate service. The request does not include merchant names, transaction amounts, or spending history. As with any internet request, the service provider may receive technical connection information according to its policy."
+                    )
+
+                    policyCard(
+                        icon: .trash,
+                        title: isHebrew ? "שליטה, ייצוא ומחיקה" : "Control, Export & Deletion",
+                        body: isHebrew ? "אפשר לייצא גיבוי מקומי ולמחוק את נתוני SPENT מהמכשיר דרך ההגדרות. קבצי גיבוי שייצאת בעצמך נשארים בשליטתך ויש למחוק אותם בנפרד."
+                                       : "You can export a local backup and delete SPENT data from your device through Settings. Backup files you exported yourself remain under your control and must be deleted separately."
+                    )
+
+                    Spacer(minLength: 24)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+            }
+            .background(Color.appBackground.ignoresSafeArea())
+            .navigationTitle(isHebrew ? "מדיניות פרטיות" : "Privacy Policy")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l10n.text(for: "close")) { dismiss() }
+                        .foregroundColor(Color.primaryBlue)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                }
+            }
+        }
+    }
+
+    private func policyCard(icon: MoneyIconType, title: String, body: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                MoneyIcon(icon, size: 18, color: Color.primaryBlue)
+                Text(title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
+
+            Text(body)
+                .font(.system(size: 12.5, weight: .regular, design: .rounded))
+                .foregroundColor(Color.textMuted)
+                .lineSpacing(3)
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.025), radius: 6, y: 2)
+    }
 }

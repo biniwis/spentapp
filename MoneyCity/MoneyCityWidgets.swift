@@ -25,6 +25,17 @@ public enum MoneyCityWidgets {
             return
         }
 
+        let language = isHebrew ? "he" : "en"
+        // A parent view can appear again without any visible widget data changing.
+        // Avoid waking WidgetKit and rewriting the same App Group snapshot in that case.
+        if defaults.object(forKey: "widget_monthly_spent") != nil,
+           defaults.double(forKey: "widget_monthly_spent") == spent,
+           defaults.double(forKey: "widget_monthly_budget") == budget,
+           defaults.double(forKey: "widget_monthly_savings") == savings,
+           defaults.string(forKey: "widget_recent_merchant") == recentMerchant,
+           defaults.string(forKey: "app_language_pref") == language,
+           defaults.string(forKey: "app_language") == language { return }
+
         defaults.set(spent, forKey: "widget_monthly_spent")
         defaults.set(budget, forKey: "widget_monthly_budget")
         defaults.set(savings, forKey: "widget_monthly_savings")

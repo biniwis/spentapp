@@ -173,7 +173,10 @@ public enum InstallmentService {
         }
 
         if materializedCount > 0 {
-            DatabaseService.safeSave(context)
+            if !DatabaseService.safeSave(context) {
+                context.rollback()
+                return 0
+            }
         }
         return materializedCount
     }

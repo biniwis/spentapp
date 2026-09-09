@@ -28,12 +28,7 @@ public enum StoreSnapshotService {
     public static let storeFileNames = ["default.store", "default.store-wal", "default.store-shm"]
 
     public static func applicationSupportDirectory() -> URL? {
-        try? FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
+        DatabaseService.authoritativeStoreDirectoryURL()
     }
 
     public static func snapshotsDirectory() -> URL? {
@@ -81,9 +76,10 @@ public enum StoreSnapshotService {
     ///
     /// Pure so the retention rule can be tested without touching a disk: sort by name, keep
     /// the newest `keepCount`, drop the rest.
-    public static func foldersToPrune(_ names: [String], keep: Int = keepCount) -> [String] {
-        guard names.count > keep else { return [] }
-        return Array(names.sorted(by: >).dropFirst(keep))
+    public static func foldersToPrune(_ names: [String], keep: Int = keepCount, excluding: String? = nil) -> [String] {
+        let eligible = names.filter { $0 != excluding }
+        guard eligible.count > keep else { return [] }
+        return Array(eligible.sorted(by: >).dropFirst(keep))
     }
 
     // MARK: - Taking one
@@ -112,7 +108,8 @@ public enum StoreSnapshotService {
     public static func takeSnapshot(
         build: String = currentBuild(),
         defaults: UserDefaults = .standard,
-        now: Date = Date()
+        now: Date = Date(),
+        excludingFromPrune: String? = nil
     ) -> URL? {
         let fm = FileManager.default
         guard let support = applicationSupportDirectory(),
@@ -147,7 +144,7 @@ public enum StoreSnapshotService {
             return nil
         }
 
-        prune()
+        prune(excluding: excludingFromPrune)
         return folder
     }
 
@@ -158,12 +155,12 @@ public enum StoreSnapshotService {
         defaults.set(count, forKey: knownCountKey)
     }
 
-    public static func prune() {
+    public static func prune(excluding: String? = nil) {
         let fm = FileManager.default
         guard let snapshots = snapshotsDirectory(),
               let names = try? fm.contentsOfDirectory(atPath: snapshots.path) else { return }
         let folders = names.filter { !$0.hasPrefix(".") }
-        for name in foldersToPrune(folders) {
+        for name in foldersToPrune(folders, excluding: excluding) {
             try? fm.removeItem(at: snapshots.appendingPathComponent(name))
         }
     }
@@ -244,23 +241,79 @@ public enum StoreSnapshotService {
             return false
         }
 
-        // The file being replaced is itself snapshotted first. A restore is a decision made
-        // in a hurry, and the state being discarded may be the only copy of today's work.
-        takeSnapshot(build: currentBuild() + "-prerestore", defaults: defaults)
-
+        // 1. Stage the snapshot files first to verify integrity
+        let stagingFolder = support.appendingPathComponent("RestoreStaging-\(UUID().uuidString)", isDirectory: true)
         do {
+            try fm.createDirectory(at: stagingFolder, withIntermediateDirectories: true)
             for name in storeFileNames {
-                let live = support.appendingPathComponent(name)
-                if fm.fileExists(atPath: live.path) { try fm.removeItem(at: live) }
-                let source = folder.appendingPathComponent(name)
-                if fm.fileExists(atPath: source.path) {
-                    try fm.copyItem(at: source, to: live)
+                let src = folder.appendingPathComponent(name)
+                if fm.fileExists(atPath: src.path) {
+                    try fm.copyItem(at: src, to: stagingFolder.appendingPathComponent(name))
                 }
             }
+            let stagedStore = stagingFolder.appendingPathComponent("default.store")
+            let attrs = try fm.attributesOfItem(atPath: stagedStore.path)
+            let size = (attrs[.size] as? Int64) ?? 0
+            guard size > 0 else {
+                MoneyCityLog.error("restore staged default.store is 0 bytes; aborting")
+                try? fm.removeItem(at: stagingFolder)
+                return false
+            }
+        } catch {
+            MoneyCityLog.error("failed staging restore source files: \(error)")
+            try? fm.removeItem(at: stagingFolder)
+            return false
+        }
+
+        // 2. The file being replaced is itself snapshotted first, protecting `id` from being pruned!
+        takeSnapshot(build: currentBuild() + "-prerestore", defaults: defaults, excludingFromPrune: id)
+
+        // 3. Rollback safety: move live files to a rollback folder before replacing
+        let rollbackFolder = support.appendingPathComponent("RestoreRollback-\(UUID().uuidString)", isDirectory: true)
+        var movedLiveFiles: [String] = []
+        do {
+            try fm.createDirectory(at: rollbackFolder, withIntermediateDirectories: true)
+            for name in storeFileNames {
+                let live = support.appendingPathComponent(name)
+                if fm.fileExists(atPath: live.path) {
+                    let dest = rollbackFolder.appendingPathComponent(name)
+                    try fm.moveItem(at: live, to: dest)
+                    movedLiveFiles.append(name)
+                }
+            }
+
+            // 4. Move staged files into live position
+            for name in storeFileNames {
+                let staged = stagingFolder.appendingPathComponent(name)
+                if fm.fileExists(atPath: staged.path) {
+                    let live = support.appendingPathComponent(name)
+                    try fm.moveItem(at: staged, to: live)
+                }
+            }
+
+            // Verify live store exists and is non-empty
+            let liveStore = support.appendingPathComponent("default.store")
+            guard fm.fileExists(atPath: liveStore.path) else {
+                throw NSError(domain: "StoreSnapshotService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Live store missing after swap"])
+            }
+
+            // Cleanup staging & rollback on success
+            try? fm.removeItem(at: stagingFolder)
+            try? fm.removeItem(at: rollbackFolder)
             MoneyCityLog.debug("restored store from snapshot \(id)")
             return true
         } catch {
-            MoneyCityLog.error("restore failed: \(error)")
+            MoneyCityLog.error("restore failed: \(error). Rolling back.")
+            // Rollback
+            for name in movedLiveFiles {
+                let dest = support.appendingPathComponent(name)
+                let src = rollbackFolder.appendingPathComponent(name)
+                if !fm.fileExists(atPath: dest.path) && fm.fileExists(atPath: src.path) {
+                    try? fm.moveItem(at: src, to: dest)
+                }
+            }
+            try? fm.removeItem(at: stagingFolder)
+            try? fm.removeItem(at: rollbackFolder)
             return false
         }
     }

@@ -51,6 +51,8 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let newlyUnlockedEnrichmentId: String?
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
+    /// A building highlighted during the contextual first-use lesson.
+    public let tutorialBuildingId: String?
     public let language: String
     public let isPaused: Bool
     public let onSelectDistrict: (String?) -> Void
@@ -73,6 +75,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         newlyUnlockedEnrichmentId: String? = nil,
         slotPlacements: [String: String] = [:],
         selectedDistrict: String?,
+        tutorialBuildingId: String? = nil,
         language: String = "he",
         isPaused: Bool = false,
         onSelectDistrict: @escaping (String?) -> Void,
@@ -94,6 +97,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
+        self.tutorialBuildingId = tutorialBuildingId
         self.language = language
         self.isPaused = isPaused
         self.onSelectDistrict = onSelectDistrict
@@ -106,14 +110,22 @@ public struct ThreeDioramaView: ViewRepresentable {
         createWebView(context: context)
     }
     public func updateUIView(_ webView: WKWebView, context: Context) {
+        context.coordinator.parent = self
         updateData(in: webView, coordinator: context.coordinator)
+    }
+    public static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.tearDown(webView)
     }
     #elseif canImport(AppKit)
     public func makeNSView(context: Context) -> WKWebView {
         createWebView(context: context)
     }
     public func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.parent = self
         updateData(in: webView, coordinator: context.coordinator)
+    }
+    public static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.tearDown(webView)
     }
     #endif
     
@@ -122,6 +134,7 @@ public struct ThreeDioramaView: ViewRepresentable {
     }
     
     public struct DioramaDataPayload: Codable, Sendable {
+        public var schemaVersion: Int = 1
         public struct DistrictStatePayload: Codable, Sendable {
             public let id: String
             public let amount: Double
@@ -176,6 +189,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let venues: [CityVenueState]
         public let pendingSortingCount: Int?
         public let targetDistrict: String?
+        public var tutorialBuildingId: String? = nil
         public let language: String
         public let enrichments: [String]
         public let newlyUnlockedId: String?
@@ -236,6 +250,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             pendingSortingCount: venueStates.first(where: { $0.id == "city_sorting_hub" })?.purchaseCount
                 ?? ((categoryTotals[.other] ?? 0) > 0 ? 1 : 0),
             targetDistrict: selectedDistrict,
+            tutorialBuildingId: tutorialBuildingId,
             language: language,
             enrichments: enrichmentIds,
             newlyUnlockedId: newlyUnlockedEnrichmentId,
@@ -250,11 +265,14 @@ public struct ThreeDioramaView: ViewRepresentable {
         )
         
         let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
         if let data = try? encoder.encode(payload),
            let jsonStr = String(data: data, encoding: .utf8) {
             return jsonStr
         }
-        return "{}"
+        assertionFailure("Diorama payload could not be encoded")
+        MoneyCityLog.error("Diorama payload could not be encoded")
+        return "null"
     }
     
     /// Explicit district JS that always fires — bypasses optional-nil omission in JSONEncoder
@@ -266,35 +284,26 @@ public struct ThreeDioramaView: ViewRepresentable {
         }
     }
     
-    /// Pre-warms WebKit IPC and WebGL subsystem on app launch for zero-latency presentation
-    @MainActor
-    public static func warmUp() {
-        let config = WKWebViewConfiguration()
-        let webView = WKWebView(frame: .zero, configuration: config)
-        if let htmlURL = Bundle.main.url(forResource: "diorama", withExtension: "html"),
-           let htmlData = try? Data(contentsOf: htmlURL) {
-            webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: htmlURL.deletingLastPathComponent())
-        }
-    }
-    
     private func createWebView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "buildingTapped")
         config.userContentController.add(context.coordinator, name: "districtSelected")
         config.userContentController.add(context.coordinator, name: "zoomReset")
         config.userContentController.add(context.coordinator, name: "dioramaReady")
+        config.userContentController.add(context.coordinator, name: "dioramaError")
         config.userContentController.add(context.coordinator, name: "citizenTapped")
         config.userContentController.add(context.coordinator, name: "slotTapped")
         
         // Inject current city data payload at document start
         let initScript = WKUserScript(
-            source: "window._initialDataPayload = \(dataPayloadJSON);",
+            source: "window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = '\(context.coordinator.powerMode)';",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )
         config.userContentController.addUserScript(initScript)
         
         let webView = WKWebView(frame: .zero, configuration: config)
+        context.coordinator.observeLifecycle(of: webView)
         webView.navigationDelegate = context.coordinator
         #if canImport(UIKit)
         webView.isOpaque = false
@@ -326,38 +335,98 @@ public struct ThreeDioramaView: ViewRepresentable {
     }
     
     private func updateData(in webView: WKWebView, coordinator: Coordinator) {
-        let pauseStr = isPaused ? "true" : "false"
-        let js = """
-        if(window.pauseDioramaRendering){
-          window.pauseDioramaRendering(\(pauseStr));
-        }
-        if(!\(pauseStr)){
-          if(window.setDioramaLanguage){
-            window.setDioramaLanguage('\(language)');
-          }
-          if(window.updateDioramaData){
-            window.updateDioramaData(\(dataPayloadJSON));
-          } else {
-            window._initialDataPayload = \(dataPayloadJSON);
-          }
-          // Always explicitly set district so zoom-out to city (null) never gets silently dropped
-          \(districtJS)
-          if(window.setCityOverview){ window.setCityOverview(\(isOverview ? "true" : "false")); }
-          if(window.resetCityView){ window.resetCityView(\(viewResetToken)); }
-        }
+        guard !coordinator.isDisposed else { return }
+        let paused = isPaused || !coordinator.appIsActive
+        let controls = """
+        window._initialRenderPaused = \(paused ? "true" : "false");
+        window._initialPowerMode = '\(coordinator.powerMode)';
+        if(window.pauseDioramaRendering){window.pauseDioramaRendering(window._initialRenderPaused);}
+        if(window.setDioramaPowerMode){window.setDioramaPowerMode(window._initialPowerMode);}
         """
-        // SwiftUI re-runs updateUIView on every parent body evaluation. Pushing an
-        // identical payload into the WebGL scene each time is pure waste, so skip it.
+        // Do not even serialize the city while hidden. The latest model is sent on resume.
+        let js: String
+        if paused {
+            js = controls
+        } else {
+            let payload = dataPayloadJSON
+            js = controls + """
+            if(window.updateDioramaData){window.updateDioramaData(\(payload));}
+            else {window._initialDataPayload = \(payload);}
+            \(districtJS)
+            if(window.setCityOverview){window.setCityOverview(\(isOverview ? "true" : "false"));}
+            if(window.resetCityView){window.resetCityView(\(viewResetToken));}
+            """
+        }
         guard coordinator.lastSentPayload != js else { return }
         coordinator.lastSentPayload = js
-
-        webView.evaluateJavaScript(js, completionHandler: nil)
+        webView.evaluateJavaScript(js) { [weak coordinator] _, error in
+            if let error {
+                if coordinator?.lastSentPayload == js { coordinator?.lastSentPayload = nil }
+                MoneyCityLog.error("Diorama delivery failed: \(error.localizedDescription)")
+            }
+        }
     }
     
     public class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var parent: ThreeDioramaView
         /// Last JS payload actually delivered to the scene, used to skip redundant updates.
         var lastSentPayload: String?
+        private weak var observedWebView: WKWebView?
+        private(set) var isDisposed = false
+        private(set) var appIsActive: Bool = {
+            #if canImport(UIKit)
+            return UIApplication.shared.applicationState == .active
+            #else
+            return NSApplication.shared.isActive
+            #endif
+        }()
+        var powerMode: String {
+            let process = ProcessInfo.processInfo
+            if process.thermalState == .critical { return "critical" }
+            return process.isLowPowerModeEnabled || process.thermalState == .serious ? "economy" : "normal"
+        }
+
+        func observeLifecycle(of webView: WKWebView) {
+            observedWebView = webView
+            let center = NotificationCenter.default
+            center.addObserver(self, selector: #selector(powerChanged), name: .NSProcessInfoPowerStateDidChange, object: nil)
+            center.addObserver(self, selector: #selector(powerChanged), name: ProcessInfo.thermalStateDidChangeNotification, object: nil)
+            #if canImport(UIKit)
+            center.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.willResignActiveNotification, object: nil)
+            center.addObserver(self, selector: #selector(appWillResignActive), name: UIApplication.didEnterBackgroundNotification, object: nil)
+            center.addObserver(self, selector: #selector(appDidBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
+            #else
+            center.addObserver(self, selector: #selector(appWillResignActive), name: NSApplication.willResignActiveNotification, object: nil)
+            center.addObserver(self, selector: #selector(appDidBecomeActive), name: NSApplication.didBecomeActiveNotification, object: nil)
+            #endif
+        }
+        @objc private func appWillResignActive() {
+            appIsActive = false
+            refreshLifecycle()
+        }
+        @objc private func appDidBecomeActive() {
+            appIsActive = true
+            refreshLifecycle()
+        }
+        @objc private func powerChanged() {
+            // ProcessInfo notifications need not arrive on the UI thread.
+            DispatchQueue.main.async { [weak self] in self?.refreshLifecycle() }
+        }
+        private func refreshLifecycle() {
+            guard !isDisposed, let webView = observedWebView else { return }
+            parent.updateData(in: webView, coordinator: self)
+        }
+        func tearDown(_ webView: WKWebView) {
+            isDisposed = true
+            NotificationCenter.default.removeObserver(self)
+            webView.evaluateJavaScript("if(window.disposeDioramaRendering){window.disposeDioramaRendering();}", completionHandler: nil)
+            webView.stopLoading()
+            webView.navigationDelegate = nil
+            webView.configuration.userContentController.removeAllScriptMessageHandlers()
+            webView.configuration.userContentController.removeAllUserScripts()
+            observedWebView = nil
+        }
+        deinit { NotificationCenter.default.removeObserver(self) }
 
         init(_ parent: ThreeDioramaView) {
             self.parent = parent
@@ -370,7 +439,11 @@ public struct ThreeDioramaView: ViewRepresentable {
         }
         
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            if message.name == "dioramaReady" {
+            if message.name == "dioramaError" {
+                lastSentPayload = nil
+                MoneyCityLog.error("Diorama contract/rendering failure: \(message.body)")
+                assertionFailure("Diorama contract/rendering failure: \(message.body)")
+            } else if message.name == "dioramaReady" {
                 if let wv = message.webView {
                     lastSentPayload = nil
                     parent.updateData(in: wv, coordinator: self)

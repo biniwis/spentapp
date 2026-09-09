@@ -514,4 +514,36 @@ final class SpatialReceiptTests: XCTestCase {
         let resPaybox = ReceiptOCRService.parseReceipt(from: payboxLines)
         XCTAssertEqual(resPaybox?.amount, 300.00)
     }
+
+    func testValidateCandidatesPreservesDistinctMerchantsWithIdenticalAmounts() {
+        let c1 = ParsedTransactionCandidate(
+            merchant: "Zara",
+            amount: 100.0,
+            currency: "ILS",
+            confidence: 0.9,
+            rawEvidence: "Zara 100 ILS"
+        )
+        let c2 = ParsedTransactionCandidate(
+            merchant: "Super-Pharm",
+            amount: 100.0,
+            currency: "ILS",
+            confidence: 0.9,
+            rawEvidence: "Super-Pharm 100 ILS"
+        )
+        let c3 = ParsedTransactionCandidate(
+            merchant: "Zara Tel Aviv",
+            amount: 100.0,
+            currency: "ILS",
+            confidence: 0.95,
+            rawEvidence: "Zara Tel Aviv 100 ILS"
+        )
+
+        let validated = ReceiptOCRService.validateCandidates([c1, c2, c3])
+        // Should keep 2: Super-Pharm (100) and the more specific Zara Tel Aviv (100)
+        XCTAssertEqual(validated.count, 2)
+        let merchants = validated.map(\.merchant)
+        XCTAssertTrue(merchants.contains("Super-Pharm"))
+        XCTAssertTrue(merchants.contains("Zara Tel Aviv"))
+        XCTAssertFalse(merchants.contains("Zara"))
+    }
 }

@@ -270,37 +270,65 @@ private struct MoneyIconRenderer: View {
     }
 
     private var barChartIcon: some View {
-        HStack(alignment: .bottom, spacing: 2.2) {
-            RoundedRectangle(cornerRadius: 2)
+        ZStack(alignment: .bottom) {
+            // Ground baseline shelf
+            Capsule()
+                .fill(black)
+                .frame(width: 19, height: 1.8)
+                .offset(y: 1.0)
+
+            // Bar 1 (Left: Blue)
+            RoundedRectangle(cornerRadius: 1.5)
                 .fill(overrideColor ?? IconPalette.blue)
-                .frame(width: 4.6, height: 8)
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(black, lineWidth: strokeWidth))
+                .frame(width: 4.5, height: 7.5)
+                .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
+                .offset(x: -6.0, y: 0)
 
-            RoundedRectangle(cornerRadius: 2)
+            // Bar 2 (Middle: Green)
+            RoundedRectangle(cornerRadius: 1.5)
                 .fill(overrideColor ?? IconPalette.green)
-                .frame(width: 4.6, height: 13)
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(black, lineWidth: strokeWidth))
+                .frame(width: 4.5, height: 12.0)
+                .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
+                .offset(x: 0, y: 0)
 
-            RoundedRectangle(cornerRadius: 2)
+            // Bar 3 (Right: Yellow)
+            RoundedRectangle(cornerRadius: 1.5)
                 .fill(overrideColor ?? IconPalette.yellow)
-                .frame(width: 4.6, height: 18)
-                .overlay(RoundedRectangle(cornerRadius: 2).stroke(black, lineWidth: strokeWidth))
+                .frame(width: 4.5, height: 16.5)
+                .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
+                .offset(x: 6.0, y: 0)
         }
         .frame(width: 20, height: 18)
     }
 
     private var creditCardIcon: some View {
         ZStack {
+            // Card Body
             RoundedRectangle(cornerRadius: 3.5)
                 .fill(overrideColor ?? IconPalette.blue)
                 .frame(width: 19, height: 13.5)
                 .overlay(RoundedRectangle(cornerRadius: 3.5).stroke(black, lineWidth: strokeWidth))
 
-            // White chip pill
+            // Dark magnetic stripe across the top
+            Rectangle()
+                .fill(black)
+                .frame(width: 19, height: 2.8)
+                .offset(y: -2.8)
+
+            // Smart Chip (Gold/Yellow with outline)
             RoundedRectangle(cornerRadius: 1)
-                .fill(IconPalette.white)
-                .frame(width: 4.5, height: 3.2)
-                .offset(x: 4.5, y: 2.5)
+                .fill(IconPalette.yellow)
+                .frame(width: 4.2, height: 3)
+                .overlay(RoundedRectangle(cornerRadius: 1).stroke(black, lineWidth: 1.0))
+                .offset(x: -4.2, y: 2.2)
+
+            // Card embossed dots/lines
+            HStack(spacing: 1.5) {
+                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.white).frame(width: 2.5, height: 1.5)
+                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.white).frame(width: 2.5, height: 1.5)
+                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.white).frame(width: 2.5, height: 1.5)
+            }
+            .offset(x: 2.8, y: 2.2)
         }
     }
 
@@ -337,19 +365,57 @@ private struct MoneyIconRenderer: View {
 
     private var coinsIcon: some View {
         ZStack {
-            // Back Coin
-            Ellipse()
-                .fill(overrideColor ?? IconPalette.yellow)
-                .frame(width: 12.5, height: 7.5)
-                .overlay(Ellipse().stroke(black, lineWidth: strokeWidth))
-                .offset(x: 2.5, y: -2.5)
+            // Rear Coin (Sitting slightly higher to the right)
+            ZStack {
+                // Lower 3D rim cylinder
+                CoinCylinderShape(depth: 3.2)
+                    .fill(Color(red: 217/255, green: 140/255, blue: 18/255))
+                    .frame(width: 12.5, height: 6.8)
+                    .overlay(CoinCylinderShape(depth: 3.2).stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
 
-            // Front Coin
-            Ellipse()
-                .fill(overrideColor ?? IconPalette.yellow)
-                .frame(width: 13, height: 8)
-                .overlay(Ellipse().stroke(black, lineWidth: strokeWidth))
-                .offset(x: -2.5, y: 3)
+                // Top face
+                Ellipse()
+                    .fill(overrideColor ?? IconPalette.yellow)
+                    .frame(width: 12.5, height: 6.8)
+                    .overlay(Ellipse().stroke(black, lineWidth: strokeWidth))
+                    .offset(y: -1.6)
+
+                // Embossed rim ring
+                Ellipse()
+                    .stroke(black.opacity(0.32), lineWidth: 0.8)
+                    .frame(width: 9.0, height: 4.5)
+                    .offset(y: -1.6)
+            }
+            .offset(x: 3.2, y: -2.6)
+
+            // Front Coin (Overlapping prominently in front)
+            ZStack {
+                // Lower 3D rim cylinder
+                CoinCylinderShape(depth: 3.6)
+                    .fill(Color(red: 217/255, green: 140/255, blue: 18/255))
+                    .frame(width: 13.5, height: 7.2)
+                    .overlay(CoinCylinderShape(depth: 3.6).stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
+
+                // Top face
+                Ellipse()
+                    .fill(overrideColor ?? IconPalette.yellow)
+                    .frame(width: 13.5, height: 7.2)
+                    .overlay(Ellipse().stroke(black, lineWidth: strokeWidth))
+                    .offset(y: -1.8)
+
+                // Embossed inner ring
+                Ellipse()
+                    .stroke(black.opacity(0.35), lineWidth: 0.8)
+                    .frame(width: 9.6, height: 4.8)
+                    .offset(y: -1.8)
+
+                // Currency insignia (crisp bold '$' in black)
+                Text("$")
+                    .font(.system(size: 6.2, weight: .black, design: .rounded))
+                    .foregroundColor(black)
+                    .offset(y: -1.9)
+            }
+            .offset(x: -2.8, y: 2.4)
         }
     }
 
@@ -484,17 +550,17 @@ private struct MoneyIconRenderer: View {
         ZStack {
             Circle()
                 .fill(overrideColor ?? IconPalette.green)
-                .frame(width: 18.5, height: 18.5)
+                .frame(width: 19, height: 19)
                 .overlay(Circle().stroke(black, lineWidth: strokeWidth))
 
             // Black plus
             ZStack {
-                RoundedRectangle(cornerRadius: 1)
+                RoundedRectangle(cornerRadius: 1.0)
                     .fill(black)
-                    .frame(width: 9, height: 2.4)
-                RoundedRectangle(cornerRadius: 1)
+                    .frame(width: 10.0, height: 2.4)
+                RoundedRectangle(cornerRadius: 1.0)
                     .fill(black)
-                    .frame(width: 2.4, height: 9)
+                    .frame(width: 2.4, height: 10.0)
             }
         }
     }
@@ -503,12 +569,12 @@ private struct MoneyIconRenderer: View {
         ZStack {
             Circle()
                 .fill(overrideColor ?? IconPalette.red)
-                .frame(width: 18.5, height: 18.5)
+                .frame(width: 19, height: 19)
                 .overlay(Circle().stroke(black, lineWidth: strokeWidth))
 
-            RoundedRectangle(cornerRadius: 1)
+            RoundedRectangle(cornerRadius: 1.0)
                 .fill(black)
-                .frame(width: 9, height: 2.4)
+                .frame(width: 10.0, height: 2.4)
         }
     }
 
@@ -675,16 +741,17 @@ private struct MoneyIconRenderer: View {
 
     private var chatDotsIcon: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 4.5)
-                .fill(IconPalette.white)
-                .frame(width: 18, height: 14)
-                .overlay(RoundedRectangle(cornerRadius: 4.5).stroke(black, lineWidth: strokeWidth))
+            ChatBubbleShape()
+                .fill(overrideColor ?? IconPalette.white)
+                .frame(width: 17.5, height: 15.5)
+                .overlay(ChatBubbleShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
 
-            HStack(spacing: 2.5) {
+            HStack(spacing: 2.2) {
                 Circle().fill(black).frame(width: 2.2, height: 2.2)
                 Circle().fill(black).frame(width: 2.2, height: 2.2)
                 Circle().fill(black).frame(width: 2.2, height: 2.2)
             }
+            .offset(y: -1)
         }
     }
 
@@ -692,18 +759,39 @@ private struct MoneyIconRenderer: View {
 
     private var cartIcon: some View {
         ZStack {
+            // Cart Basket Body
             CartBasketShape()
                 .fill(overrideColor ?? IconPalette.yellow)
-                .frame(width: 16, height: 11)
+                .frame(width: 14.5, height: 10)
                 .overlay(CartBasketShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
-                .offset(x: 1, y: -2)
+                .offset(x: 2, y: -2.5)
+
+            // Basket vertical wire grill
+            HStack(spacing: 2.8) {
+                Rectangle().fill(black).frame(width: 1.2, height: 6.5)
+                Rectangle().fill(black).frame(width: 1.2, height: 6.5)
+                Rectangle().fill(black).frame(width: 1.2, height: 6.5)
+            }
+            .offset(x: 2, y: -2.5)
+
+            // Push handle & chassis support
+            Path { p in
+                // Handle bar
+                p.move(to: CGPoint(x: 5.5, y: 6))
+                p.addLine(to: CGPoint(x: 2.5, y: 3))
+                // Bottom chassis rail
+                p.move(to: CGPoint(x: 7.5, y: 14))
+                p.addLine(to: CGPoint(x: 8.5, y: 18))
+                p.addLine(to: CGPoint(x: 18.5, y: 18))
+            }
+            .stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round))
 
             // Wheels
-            HStack(spacing: 7.5) {
+            HStack(spacing: 7) {
                 Circle().fill(black).frame(width: 3.5, height: 3.5)
                 Circle().fill(black).frame(width: 3.5, height: 3.5)
             }
-            .offset(x: 1, y: 7)
+            .offset(x: 2.5, y: 6.5)
         }
     }
 
@@ -727,7 +815,7 @@ private struct MoneyIconRenderer: View {
                     .frame(width: 3.5, height: 8)
                     .overlay(KnifeBladeShape().stroke(black, lineWidth: 1.6))
                 RoundedRectangle(cornerRadius: 1)
-                    .fill(overrideColor ?? IconPalette.red)
+                    .fill(overrideColor ?? IconPalette.orange)
                     .frame(width: 2.6, height: 9)
                     .overlay(RoundedRectangle(cornerRadius: 1).stroke(black, lineWidth: 1.4))
             }
@@ -736,26 +824,48 @@ private struct MoneyIconRenderer: View {
 
     private var coffeeIcon: some View {
         ZStack {
-            // Steam
+            // Saucer plate
+            Capsule()
+                .fill(black)
+                .frame(width: 17, height: 2.2)
+                .offset(y: 8.5)
+
+            // Mug Handle (smooth D-loop on right side)
+            MugHandleShape()
+                .stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round))
+                .frame(width: 5.5, height: 7.5)
+                .offset(x: 7.2, y: 1.5)
+
+            // Ceramic Mug Body
+            CeramicMugShape()
+                .fill(overrideColor ?? IconPalette.orange)
+                .frame(width: 13.5, height: 11)
+                .overlay(CeramicMugShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
+                .offset(x: -0.5, y: 2)
+
+            // Hot Coffee surface inside cup
+            Ellipse()
+                .fill(Color(red: 78/255, green: 42/255, blue: 24/255))
+                .frame(width: 11.5, height: 3.2)
+                .offset(x: -0.5, y: -3.2)
+
+            // Delicate rising steam lines
             HStack(spacing: 3) {
-                RoundedRectangle(cornerRadius: 1).fill(black).frame(width: 1.2, height: 3.5)
-                RoundedRectangle(cornerRadius: 1).fill(black).frame(width: 1.2, height: 4.5)
-                RoundedRectangle(cornerRadius: 1).fill(black).frame(width: 1.2, height: 3.5)
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: 5.5))
+                    p.addQuadCurve(to: CGPoint(x: 1, y: 0), control: CGPoint(x: -1.5, y: 2.8))
+                }
+                .stroke(black, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                .frame(width: 2, height: 5.5)
+
+                Path { p in
+                    p.move(to: CGPoint(x: 0, y: 6.5))
+                    p.addQuadCurve(to: CGPoint(x: -1, y: 0), control: CGPoint(x: 1.5, y: 3.2))
+                }
+                .stroke(black, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                .frame(width: 2, height: 6.5)
             }
-            .offset(x: -2, y: -7)
-
-            // Cup Body
-            CoffeeCupShape()
-                .fill(overrideColor ?? IconPalette.green)
-                .frame(width: 14, height: 11)
-                .overlay(CoffeeCupShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
-                .offset(x: -2, y: 2)
-
-            // Handle
-            Circle()
-                .stroke(black, lineWidth: strokeWidth)
-                .frame(width: 6, height: 6)
-                .offset(x: 6.5, y: 1)
+            .offset(x: -0.5, y: -7.5)
         }
     }
 
@@ -763,7 +873,7 @@ private struct MoneyIconRenderer: View {
         ZStack {
             // Car Body
             CarBodyShape()
-                .fill(overrideColor ?? IconPalette.red)
+                .fill(overrideColor ?? IconPalette.blue)
                 .frame(width: 18.5, height: 10)
                 .overlay(CarBodyShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
                 .offset(y: -0.5)
@@ -774,6 +884,12 @@ private struct MoneyIconRenderer: View {
                 RoundedRectangle(cornerRadius: 0.8).fill(IconPalette.white).frame(width: 4.5, height: 2.8)
             }
             .offset(y: -2.2)
+
+            // Headlight
+            Circle()
+                .fill(IconPalette.yellow)
+                .frame(width: 2, height: 2)
+                .offset(x: 8, y: -0.5)
 
             // Wheels
             HStack(spacing: 9.5) {
@@ -837,11 +953,29 @@ private struct MoneyIconRenderer: View {
     }
 
     private var airplaneIcon: some View {
-        AirplaneShape()
-            .fill(overrideColor ?? IconPalette.blue)
-            .frame(width: 18, height: 18)
-            .overlay(AirplaneShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
-            .rotationEffect(.degrees(-35))
+        ZStack {
+            // Main airliner body and wings
+            AirlinerShape()
+                .fill(overrideColor ?? IconPalette.blue)
+                .frame(width: 19, height: 19)
+                .overlay(AirlinerShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
+
+            // Cockpit windshield (Cyan/White capsule at nose)
+            Capsule()
+                .fill(IconPalette.white)
+                .frame(width: 3.2, height: 1.8)
+                .overlay(Capsule().stroke(black, lineWidth: 0.8))
+                .offset(y: -6.0)
+
+            // Passenger window dots along the fuselage
+            VStack(spacing: 1.6) {
+                Circle().fill(IconPalette.white).frame(width: 1.3, height: 1.3)
+                Circle().fill(IconPalette.white).frame(width: 1.3, height: 1.3)
+                Circle().fill(IconPalette.white).frame(width: 1.3, height: 1.3)
+            }
+            .offset(y: 0.5)
+        }
+        .rotationEffect(.degrees(-35))
     }
 
     private var dumbbellIcon: some View {
@@ -880,15 +1014,15 @@ private struct MoneyIconRenderer: View {
 
             // D-Pad Cross
             ZStack {
-                Rectangle().fill(black).frame(width: 4.5, height: 1.6)
-                Rectangle().fill(black).frame(width: 1.6, height: 4.5)
+                RoundedRectangle(cornerRadius: 0.6).fill(black).frame(width: 4.8, height: 1.8)
+                RoundedRectangle(cornerRadius: 0.6).fill(black).frame(width: 1.8, height: 4.8)
             }
             .offset(x: -4.5)
 
-            // Buttons
+            // Colorful retro action buttons (Red & Blue with crisp outlines)
             HStack(spacing: 2) {
-                Circle().fill(black).frame(width: 1.8, height: 1.8)
-                Circle().fill(black).frame(width: 1.8, height: 1.8)
+                Circle().fill(IconPalette.red).frame(width: 2.4, height: 2.4).overlay(Circle().stroke(black, lineWidth: 0.8))
+                Circle().fill(IconPalette.blue).frame(width: 2.4, height: 2.4).overlay(Circle().stroke(black, lineWidth: 0.8))
             }
             .offset(x: 4.5)
         }
@@ -947,18 +1081,24 @@ private struct MoneyIconRenderer: View {
 
     private var shoppingBagIcon: some View {
         ZStack {
-            // Handles
-            BagHandleArcShape()
-                .stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round))
-                .frame(width: 8, height: 5.5)
-                .offset(y: -6)
+            // Prominent U-shaped handle arched above the bag
+            BagHandleUshape()
+                .stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round))
+                .frame(width: 8.0, height: 7.0)
+                .offset(y: -5.5)
 
-            // Bag Body
-            RoundedRectangle(cornerRadius: 3)
+            // Bag Body (Warm yellow boutique shopping bag)
+            RoundedRectangle(cornerRadius: 2.5)
                 .fill(overrideColor ?? IconPalette.yellow)
-                .frame(width: 15.5, height: 14)
-                .overlay(RoundedRectangle(cornerRadius: 3).stroke(black, lineWidth: strokeWidth))
-                .offset(y: 2)
+                .frame(width: 15.5, height: 13.0)
+                .overlay(RoundedRectangle(cornerRadius: 2.5).stroke(black, lineWidth: strokeWidth))
+                .offset(y: 2.5)
+
+            // Center boutique fold crease
+            Rectangle()
+                .fill(black.opacity(0.18))
+                .frame(width: 1.2, height: 7.5)
+                .offset(y: 2.5)
         }
     }
 
@@ -974,29 +1114,45 @@ private struct MoneyIconRenderer: View {
             // Box
             RoundedRectangle(cornerRadius: 2)
                 .fill(overrideColor ?? IconPalette.green)
-                .frame(width: 14.5, height: 13)
+                .frame(width: 14.5, height: 12)
                 .overlay(RoundedRectangle(cornerRadius: 2).stroke(black, lineWidth: strokeWidth))
-                .offset(y: 2)
+                .offset(y: 2.5)
+
+            // Vertical ribbon band
+            RoundedRectangle(cornerRadius: 0.8)
+                .fill(IconPalette.red)
+                .frame(width: 3.2, height: 12)
+                .overlay(RoundedRectangle(cornerRadius: 0.8).stroke(black, lineWidth: 1.2))
+                .offset(y: 2.5)
 
             // Lid
-            RoundedRectangle(cornerRadius: 1.5)
+            RoundedRectangle(cornerRadius: 1.8)
                 .fill(overrideColor ?? IconPalette.green)
-                .frame(width: 16.5, height: 3.5)
-                .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
-                .offset(y: -4.5)
+                .frame(width: 16.5, height: 4)
+                .overlay(RoundedRectangle(cornerRadius: 1.8).stroke(black, lineWidth: strokeWidth))
+                .offset(y: -4.2)
 
-            // Red vertical ribbon
-            Rectangle()
+            // Lid horizontal ribbon band
+            RoundedRectangle(cornerRadius: 0.8)
                 .fill(IconPalette.red)
-                .frame(width: 2.6, height: 16.5)
-                .offset(y: 0.25)
+                .frame(width: 3.2, height: 4)
+                .overlay(RoundedRectangle(cornerRadius: 0.8).stroke(black, lineWidth: 1.2))
+                .offset(y: -4.2)
 
-            // Red bow loop
-            HStack(spacing: 1.5) {
-                Circle().stroke(IconPalette.red, lineWidth: 1.8).frame(width: 4, height: 4)
-                Circle().stroke(IconPalette.red, lineWidth: 1.8).frame(width: 4, height: 4)
+            // Ribbon Bow loops
+            HStack(spacing: 1) {
+                Ellipse()
+                    .fill(IconPalette.red)
+                    .frame(width: 4.5, height: 3.5)
+                    .overlay(Ellipse().stroke(black, lineWidth: 1.4))
+                    .rotationEffect(.degrees(-25))
+                Ellipse()
+                    .fill(IconPalette.red)
+                    .frame(width: 4.5, height: 3.5)
+                    .overlay(Ellipse().stroke(black, lineWidth: 1.4))
+                    .rotationEffect(.degrees(25))
             }
-            .offset(y: -7.5)
+            .offset(y: -7.2)
         }
     }
 
@@ -1042,23 +1198,25 @@ private struct MoneyIconRenderer: View {
 
     private var suitcaseIcon: some View {
         ZStack {
+            // Prominent suitcase handle
+            RoundedRectangle(cornerRadius: 1.5)
+                .stroke(black, lineWidth: strokeWidth)
+                .frame(width: 7, height: 5)
+                .offset(y: -7.5)
+
             // Case body
             RoundedRectangle(cornerRadius: 3.5)
                 .fill(overrideColor ?? IconPalette.blue)
-                .frame(width: 15, height: 15)
+                .frame(width: 16, height: 13.5)
                 .overlay(RoundedRectangle(cornerRadius: 3.5).stroke(black, lineWidth: strokeWidth))
-
-            // Handle
-            RoundedRectangle(cornerRadius: 1.5)
-                .stroke(black, lineWidth: strokeWidth)
-                .frame(width: 6.5, height: 4)
-                .offset(y: -9)
+                .offset(y: 1.5)
 
             // Rib stripes
             VStack(spacing: 2.5) {
-                Rectangle().fill(black).frame(width: 9, height: 1)
-                Rectangle().fill(black).frame(width: 9, height: 1)
+                Rectangle().fill(black).frame(width: 10, height: 1.2)
+                Rectangle().fill(black).frame(width: 10, height: 1.2)
             }
+            .offset(y: 1.5)
         }
     }
 
@@ -1212,6 +1370,11 @@ private struct MoneyIconRenderer: View {
                 p.addLine(to: CGPoint(x: 16, y: 12))
             }
             .stroke(black, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+
+            // Center pivot dot
+            Circle()
+                .fill(black)
+                .frame(width: 2.8, height: 2.8)
         }
     }
 
@@ -1267,12 +1430,10 @@ private struct MoneyIconRenderer: View {
                 .frame(width: 15, height: 16.5)
                 .overlay(LeafShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
 
-            // Center vein
-            Path { p in
-                p.move(to: CGPoint(x: 6, y: 18))
-                p.addQuadCurve(to: CGPoint(x: 18, y: 6), control: CGPoint(x: 10, y: 13))
-            }
-            .stroke(black, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+            // Delicate branched vein lines
+            LeafVeinShape()
+                .stroke(black, style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+                .frame(width: 15, height: 16.5)
         }
     }
 
@@ -1810,15 +1971,26 @@ private struct KnifeBladeShape: Shape {
     }
 }
 
-private struct CoffeeCupShape: Shape {
+private struct CeramicMugShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let r: CGFloat = 3.5
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX - r, y: rect.maxY), control: CGPoint(x: rect.maxX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
+        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY - r), control: CGPoint(x: rect.minX, y: rect.maxY))
+        p.closeSubpath()
+        return p
+    }
+}
+
+private struct MugHandleShape: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
         p.move(to: CGPoint(x: rect.minX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-        p.addQuadCurve(to: CGPoint(x: rect.maxX - 2, y: rect.maxY), control: CGPoint(x: rect.maxX, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.minX + 2, y: rect.maxY))
-        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.minY), control: CGPoint(x: rect.minX, y: rect.maxY))
-        p.closeSubpath()
+        p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY), control: CGPoint(x: rect.maxX + 1.5, y: rect.midY))
         return p
     }
 }
@@ -1847,19 +2019,45 @@ private struct HoseShape: Shape {
     }
 }
 
-private struct AirplaneShape: Shape {
+private struct AirlinerShape: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        p.addLine(to: CGPoint(x: rect.midX + 2, y: rect.maxY * 0.35))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY * 0.55))
-        p.addLine(to: CGPoint(x: rect.midX + 2, y: rect.maxY * 0.65))
-        p.addLine(to: CGPoint(x: rect.midX + 3, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.midX, y: rect.maxY * 0.9))
-        p.addLine(to: CGPoint(x: rect.midX - 3, y: rect.maxY))
-        p.addLine(to: CGPoint(x: rect.midX - 2, y: rect.maxY * 0.65))
-        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY * 0.55))
-        p.addLine(to: CGPoint(x: rect.midX - 2, y: rect.maxY * 0.35))
+        let midX = rect.midX
+        let h = rect.height
+
+        // 1. Nose (Curved aerodynamic nose dome)
+        p.move(to: CGPoint(x: midX - 2.2, y: h * 0.08))
+        p.addQuadCurve(to: CGPoint(x: midX + 2.2, y: h * 0.08), control: CGPoint(x: midX, y: 0))
+
+        // 2. Right fuselage down to wing root
+        p.addLine(to: CGPoint(x: midX + 2.2, y: h * 0.32))
+
+        // 3. Right Swept Wing (Authentic airliner wing with rounded flat tip)
+        p.addLine(to: CGPoint(x: rect.maxX - 0.5, y: h * 0.50))
+        p.addLine(to: CGPoint(x: rect.maxX - 0.5, y: h * 0.60))
+        p.addLine(to: CGPoint(x: midX + 2.2, y: h * 0.60))
+
+        // 4. Right fuselage to tail root
+        p.addLine(to: CGPoint(x: midX + 1.8, y: h * 0.82))
+
+        // 5. Right Tail Stabilizer (Small stabilizer wing at tail)
+        p.addLine(to: CGPoint(x: midX + 6.0, y: h * 0.94))
+        p.addLine(to: CGPoint(x: midX + 5.5, y: rect.maxY))
+        p.addLine(to: CGPoint(x: midX, y: h * 0.96))
+
+        // 6. Left Tail Stabilizer
+        p.addLine(to: CGPoint(x: midX - 5.5, y: rect.maxY))
+        p.addLine(to: CGPoint(x: midX - 6.0, y: h * 0.94))
+        p.addLine(to: CGPoint(x: midX - 1.8, y: h * 0.82))
+
+        // 7. Left fuselage from tail to wing
+        p.addLine(to: CGPoint(x: midX - 2.2, y: h * 0.60))
+
+        // 8. Left Swept Wing
+        p.addLine(to: CGPoint(x: rect.minX + 0.5, y: h * 0.60))
+        p.addLine(to: CGPoint(x: rect.minX + 0.5, y: h * 0.50))
+        p.addLine(to: CGPoint(x: midX - 2.2, y: h * 0.32))
+
         p.closeSubpath()
         return p
     }
@@ -1903,6 +2101,25 @@ private struct MedicalCrossShape: Shape {
     }
 }
 
+private struct CoinCylinderShape: Shape {
+    let depth: CGFloat
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let ry = rect.height / 2
+        let midX = rect.midX
+        let topMidY = rect.minY + ry
+        let botMidY = topMidY + depth
+
+        p.move(to: CGPoint(x: rect.minX, y: topMidY))
+        p.addLine(to: CGPoint(x: rect.minX, y: botMidY))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: botMidY), control: CGPoint(x: midX, y: botMidY + ry))
+        p.addLine(to: CGPoint(x: rect.maxX, y: topMidY))
+        p.addQuadCurve(to: CGPoint(x: rect.minX, y: topMidY), control: CGPoint(x: midX, y: rect.minY))
+        p.closeSubpath()
+        return p
+    }
+}
+
 private struct DiamondShape: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
@@ -1924,10 +2141,13 @@ private struct HalfEllipseShape: Shape {
     }
 }
 
-private struct BagHandleArcShape: Shape {
+private struct BagHandleUshape: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        p.addArc(center: CGPoint(x: rect.midX, y: rect.maxY), radius: rect.width / 2, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+        p.move(to: CGPoint(x: rect.minX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.minY + 3.0))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY + 3.0), control: CGPoint(x: rect.midX, y: rect.minY - 1.0))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
         return p
     }
 }
@@ -2225,6 +2445,20 @@ private struct LeafShape: Shape {
         p.addQuadCurve(to: CGPoint(x: rect.maxX, y: rect.minY), control: CGPoint(x: rect.minX + 1, y: rect.minY))
         p.addQuadCurve(to: CGPoint(x: rect.minX, y: rect.maxY), control: CGPoint(x: rect.maxX - 1, y: rect.maxY))
         p.closeSubpath()
+        return p
+    }
+}
+
+private struct LeafVeinShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX + 1.5, y: rect.maxY - 1.5))
+        p.addQuadCurve(to: CGPoint(x: rect.maxX - 2, y: rect.minY + 2), control: CGPoint(x: rect.midX * 0.9, y: rect.midY * 1.1))
+        // Branch veins
+        p.move(to: CGPoint(x: rect.width * 0.38, y: rect.height * 0.65))
+        p.addLine(to: CGPoint(x: rect.width * 0.22, y: rect.height * 0.50))
+        p.move(to: CGPoint(x: rect.width * 0.60, y: rect.height * 0.40))
+        p.addLine(to: CGPoint(x: rect.width * 0.74, y: rect.height * 0.54))
         return p
     }
 }

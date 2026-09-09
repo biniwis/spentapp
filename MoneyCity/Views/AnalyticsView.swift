@@ -64,13 +64,11 @@ public struct AnalyticsView: View {
     // Housing filter: variable spending vs fixed housing
     @AppStorage("stats_exclude_housing") private var excludeHousing: Bool = false
 
-    private let storyVibrantPurple = Color(red: 147/255, green: 51/255, blue: 234/255)
-    private let storySoftLilac = Color(red: 221/255, green: 214/255, blue: 254/255)
+    private let storyVibrantPurple = Color.spentGreen
+    private let storySoftLilac = Color.spentGreenSoft
 
     @State private var selectedTab: String = "spending"
     @State private var selectedSlice: SpendingCategory? = nil
-    @State private var drilledCategory: SpendingCategory? = nil
-    @State private var selectedSubcategoryId: String? = nil
     @State private var selectedMonthOffset: Int = 0
     @State private var activeRecap: MonthlyRecap? = nil
     @State private var animateChart = false
@@ -78,6 +76,7 @@ public struct AnalyticsView: View {
     @State private var categoryForFeed: SpendingCategory? = nil
     /// The bar that is currently highlighted in the chart — nil means "follow selectedMonthOffset"
     @State private var selectedBarOffset: Int? = nil
+    @State private var isScrubbingChart: Bool = false
 
     /// The month range the chart is anchored to — follows arrow navigation only, never bar taps.
     private var chartAnchorDate: Date {
@@ -323,7 +322,7 @@ public struct AnalyticsView: View {
                 }
             }
         }
-        .sheet(item: $activeRecap) { recap in
+        .fullScreenCover(item: $activeRecap) { recap in
             MonthlyRecapSheet(recap: recap, onNavigateToCity: onNavigateToCity)
         }
         .sheet(item: $categoryForFeed) { cat in
@@ -474,95 +473,29 @@ public struct AnalyticsView: View {
 
     private var donutCardHeader: some View {
         HStack {
-            if let drilled = drilledCategory {
-                // In Drilled Mode: Back Button on leading side
+            HStack(spacing: 6) {
+                MoneyIcon(.pieChart, size: 16, color: Color.deepNavy)
+                Text(l10n.language == .hebrew ? "התפלגות הוצאות" : "Spending Breakdown")
+                    .font(.system(size: 16, weight: .bold, design: .default))
+                    .foregroundColor(Color.deepNavy)
+            }
+
+            Spacer()
+
+            if selectedSlice != nil {
                 Button(action: {
                     Haptics.selection()
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        drilledCategory = nil
-                        selectedSubcategoryId = nil
+                        selectedSlice = nil
                     }
                 }) {
-                    HStack(spacing: 5) {
-                        Image(systemName: l10n.language == .hebrew ? "chevron.right" : "chevron.left")
-                            .font(.system(size: 11, weight: .bold))
-                        Text(l10n.language == .hebrew ? "חזרה לכללי" : "Back to Overview")
-                            .font(.system(size: 13, weight: .semibold, design: .default))
-                    }
-                    .foregroundColor(Color.primaryBlue)
-                    .padding(.vertical, 5)
-                    .padding(.horizontal, 10)
-                    .background(Color.primaryBlue.opacity(0.08))
-                    .clipShape(Capsule())
-                }
-
-                Spacer()
-
-                // Current Drilled Category Name & Badge
-                HStack(spacing: 6) {
-                    Text(drilled.displayName)
-                        .font(.system(size: 15, weight: .bold, design: .default))
-                        .foregroundColor(Color.deepNavy)
-                    CategoryBadge(category: drilled, size: 22)
-                }
-
-                if selectedSubcategoryId != nil {
-                    Button(action: {
-                        Haptics.selection()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            selectedSubcategoryId = nil
-                        }
-                    }) {
-                        Text(l10n.language == .hebrew ? "הצג הכל" : "Show All")
-                            .font(.system(size: 12, weight: .semibold, design: .default))
-                            .foregroundColor(Color.primaryBlue)
-                    }
-                }
-            } else {
-                // In Top-Level Mode
-                HStack(spacing: 6) {
-                    MoneyIcon(.pieChart, size: 16, color: Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "התפלגות הוצאות" : "Spending Breakdown")
-                        .font(.system(size: 16, weight: .bold, design: .default))
-                        .foregroundColor(Color.deepNavy)
-                }
-
-                Spacer()
-
-                if let sel = selectedSlice {
-                    HStack(spacing: 8) {
-                        Button(action: {
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                drilledCategory = sel
-                                selectedSlice = nil
-                                selectedSubcategoryId = nil
-                            }
-                        }) {
-                            HStack(spacing: 3) {
-                                Text(l10n.language == .hebrew ? "פירוט תתי-סוגים" : "Breakdown")
-                                    .font(.system(size: 12, weight: .bold, design: .default))
-                                Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
-                                    .font(.system(size: 9, weight: .bold))
-                            }
-                            .foregroundColor(sel.themeColor)
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 8)
-                            .background(sel.themeColor.opacity(0.12))
-                            .clipShape(Capsule())
-                        }
-
-                        Button(action: {
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                selectedSlice = nil
-                            }
-                        }) {
-                            Text(l10n.language == .hebrew ? "איפוס" : "Reset")
-                                .font(.system(size: 12, weight: .medium, design: .default))
-                                .foregroundColor(Color.textSecondary)
-                        }
-                    }
+                    Text(l10n.language == .hebrew ? "איפוס" : "Reset")
+                        .font(.system(size: 12, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 10)
+                        .background(Color(uiColor: .systemGray6))
+                        .clipShape(Capsule())
                 }
             }
         }
@@ -571,82 +504,41 @@ public struct AnalyticsView: View {
     // MARK: - Donut Chart Ring & Calculations
 
     private var donutSlices: [DonutSliceData] {
-        if let drilled = drilledCategory {
-            let activeTxs = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == drilled.canonical }
-            let items: [SubcategoryBreakdownItem] = SubcategoryBreakdownService.shared.breakdown(
-                for: drilled,
-                transactions: activeTxs,
-                isHebrew: l10n.language == .hebrew
-            )
-            guard !items.isEmpty else { return [] }
-            let totalAmt = max(items.reduce(0.0) { $0 + $1.amount }, 1.0)
-            let gap: Double = items.count > 1 ? 2.5 : 0.0
-            var currentAngle: Double = -90.0
+        let totals = categoryTotals
+        guard !totals.isEmpty else { return [] }
+        let totalAmt = max(totals.reduce(0.0) { $0 + $1.amount }, 1.0)
+        let gap: Double = totals.count > 1 ? 2.5 : 0.0
+        var currentAngle: Double = -90.0
 
-            var slices: [DonutSliceData] = []
-            for item in items {
-                let sweep = (item.amount / totalAmt) * 360.0
-                let rawStart = currentAngle
-                let rawEnd = currentAngle + sweep
+        var slices: [DonutSliceData] = []
+        for item in totals {
+            let sweep = (item.amount / totalAmt) * 360.0
+            let rawStart = currentAngle
+            let rawEnd = currentAngle + sweep
 
-                let sAngle = rawStart + (gap / 2.0)
-                let eAngle = rawEnd - (gap / 2.0)
-                let validEnd = max(sAngle, eAngle)
+            let sAngle = rawStart + (gap / 2.0)
+            let eAngle = rawEnd - (gap / 2.0)
+            let validEnd = max(sAngle, eAngle)
 
-                slices.append(DonutSliceData(
-                    id: item.id,
-                    category: drilled,
-                    name: item.name,
-                    icon: item.icon,
-                    color: item.color,
-                    amount: item.amount,
-                    fraction: item.fraction,
-                    count: item.count,
-                    startAngle: sAngle,
-                    endAngle: validEnd,
-                    rawStartAngle: rawStart,
-                    rawEndAngle: rawEnd
-                ))
-                currentAngle += sweep
-            }
-            return slices
-        } else {
-            let totals = categoryTotals
-            guard !totals.isEmpty else { return [] }
-            let totalAmt = max(totals.reduce(0.0) { $0 + $1.amount }, 1.0)
-            let gap: Double = totals.count > 1 ? 2.5 : 0.0
-            var currentAngle: Double = -90.0
+            let txCount = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == item.category.canonical }.count
 
-            var slices: [DonutSliceData] = []
-            for item in totals {
-                let sweep = (item.amount / totalAmt) * 360.0
-                let rawStart = currentAngle
-                let rawEnd = currentAngle + sweep
-
-                let sAngle = rawStart + (gap / 2.0)
-                let eAngle = rawEnd - (gap / 2.0)
-                let validEnd = max(sAngle, eAngle)
-
-                let txCount = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == item.category.canonical }.count
-
-                slices.append(DonutSliceData(
-                    id: item.category.rawValue,
-                    category: item.category,
-                    name: item.category.displayName,
-                    icon: nil,
-                    color: item.category.themeColor,
-                    amount: item.amount,
-                    fraction: item.fraction,
-                    count: txCount,
-                    startAngle: sAngle,
-                    endAngle: validEnd,
-                    rawStartAngle: rawStart,
-                    rawEndAngle: rawEnd
-                ))
-                currentAngle += sweep
-            }
-            return slices
+            slices.append(DonutSliceData(
+                id: item.category.rawValue,
+                category: item.category,
+                name: item.category.displayName,
+                icon: nil,
+                color: item.category.themeColor,
+                amount: item.amount,
+                fraction: item.fraction,
+                count: txCount,
+                startAngle: sAngle,
+                endAngle: validEnd,
+                rawStartAngle: rawStart,
+                rawEndAngle: rawEnd
+            ))
+            currentAngle += sweep
         }
+        return slices
     }
 
     private var donutView: some View {
@@ -660,21 +552,8 @@ public struct AnalyticsView: View {
 
             // Dynamic Slices
             ForEach(donutSlices) { slice in
-                let isSelected: Bool = {
-                    if drilledCategory != nil {
-                        return selectedSubcategoryId == slice.id
-                    } else {
-                        return selectedSlice == slice.category
-                    }
-                }()
-                let hasSelection: Bool = {
-                    if drilledCategory != nil {
-                        return selectedSubcategoryId != nil
-                    } else {
-                        return selectedSlice != nil
-                    }
-                }()
-                let isDimmed = hasSelection && !isSelected
+                let isSelected = selectedSlice == slice.category
+                let isDimmed = selectedSlice != nil && !isSelected
 
                 DonutArcShape(startAngle: slice.startAngle, endAngle: slice.endAngle)
                     .stroke(
@@ -695,6 +574,7 @@ public struct AnalyticsView: View {
         .onTapGesture(coordinateSpace: .local) { location in
             handleDonutTap(at: location, diameter: diameter)
         }
+        .environment(\.layoutDirection, .leftToRight)
         .frame(maxWidth: .infinity, alignment: .center)
     }
 
@@ -704,126 +584,79 @@ public struct AnalyticsView: View {
         let dy = location.y - center.y
         let dist = sqrt(dx * dx + dy * dy)
 
-        // Center hub tap (radius ~52pt)
-        if dist <= 52 {
+        // Center hub tap (radius ~52pt) or tap outside ring -> reset selection
+        if dist <= 52 || dist > (diameter / 2 + 18) {
             Haptics.selection()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                if drilledCategory != nil {
-                    if selectedSubcategoryId != nil {
-                        selectedSubcategoryId = nil
-                    } else {
-                        drilledCategory = nil
-                    }
-                } else {
-                    selectedSlice = nil
-                }
+                selectedSlice = nil
             }
             return
         }
 
-        // Ignore taps outside the donut ring
-        guard dist <= (diameter / 2 + 15) else { return }
+        let slices = donutSlices
+        guard !slices.isEmpty else { return }
 
-        // Polar angle in screen coordinates (Y pointing down):
-        // 12 o'clock is -90°, 3 o'clock is 0°, 6 o'clock is +90°, 9 o'clock is 180°
-        var angleDeg = atan2(dy, dx) * 180.0 / .pi
-        if angleDeg < -90.0 {
-            angleDeg += 360.0
+        // Method 1: Geometric Path hit-test using stroked arc (lineWidth 36 for easy, forgiving finger touch)
+        let radius = max((diameter - 30) / 2, 10)
+        var hitSlice: DonutSliceData? = nil
+        for slice in slices {
+            var path = Path()
+            path.addArc(
+                center: center,
+                radius: radius,
+                startAngle: .degrees(slice.startAngle),
+                endAngle: .degrees(slice.endAngle),
+                clockwise: false
+            )
+            let strokePath = path.strokedPath(StrokeStyle(lineWidth: 36, lineCap: .butt))
+            if strokePath.contains(location) {
+                hitSlice = slice
+                break
+            }
         }
 
-        // Find matching slice
-        let slices = donutSlices
-        for (index, slice) in slices.enumerated() {
-            let isLast = (index == slices.count - 1)
-            let matches = isLast
-                ? (angleDeg >= slice.rawStartAngle && angleDeg <= slice.rawEndAngle + 0.5)
-                : (angleDeg >= slice.rawStartAngle && angleDeg < slice.rawEndAngle)
-
-            if matches {
-                Haptics.selection()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    if drilledCategory != nil {
-                        if selectedSubcategoryId == slice.id {
-                            selectedSubcategoryId = nil
-                        } else {
-                            selectedSubcategoryId = slice.id
-                        }
-                    } else {
-                        if selectedSlice == slice.category {
-                            // Tapping already-selected category enters drill-down!
-                            drilledCategory = slice.category
-                            selectedSlice = nil
-                            selectedSubcategoryId = nil
-                        } else {
-                            selectedSlice = slice.category
-                        }
-                    }
+        // Method 2: Polar angle fallback (if tap landed precisely in the gap between slices)
+        if hitSlice == nil {
+            var angleDeg = atan2(dy, dx) * 180.0 / .pi
+            if angleDeg < -90.0 {
+                angleDeg += 360.0
+            }
+            for (index, slice) in slices.enumerated() {
+                let isLast = (index == slices.count - 1)
+                let matches = isLast
+                    ? (angleDeg >= slice.rawStartAngle && angleDeg <= slice.rawEndAngle + 0.5)
+                    : (angleDeg >= slice.rawStartAngle && angleDeg < slice.rawEndAngle)
+                if matches {
+                    hitSlice = slice
+                    break
                 }
-                return
+            }
+        }
+
+        if let hit = hitSlice {
+            Haptics.selection()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                if selectedSlice == hit.category {
+                    // Tapping already-selected category toggles it off!
+                    selectedSlice = nil
+                } else {
+                    selectedSlice = hit.category
+                }
             }
         }
     }
 
     private var donutCenterHub: some View {
         VStack(spacing: 2) {
-            if let drilled = drilledCategory {
-                // Drilled Mode
-                if let subId = selectedSubcategoryId, let match = donutSlices.first(where: { $0.id == subId }) {
-                    ZStack {
-                        Circle()
-                            .fill(match.color.opacity(0.16))
-                            .frame(width: 24, height: 24)
-                        if let icon = match.icon {
-                            MoneyIcon(icon, size: 13, color: match.color)
-                        }
-                    }
-
-                    Text(match.name)
-                        .font(.system(size: 11, weight: .bold, design: .default))
-                        .foregroundColor(Color.deepNavy)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-
-                    Text(l10n.format(amount: match.amount.rounded()))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(match.color)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-
-                    Text("\(Int(round(match.fraction * 100)))% • \(match.count) \(l10n.language == .hebrew ? "עסקאות" : "txs")")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                } else {
-                    let totalCatAmt = donutSlices.reduce(0.0) { $0 + $1.amount }
-                    CategoryBadge(category: drilled, size: 22)
-
-                    Text(drilled.displayName)
-                        .font(.system(size: 11, weight: .bold, design: .default))
-                        .foregroundColor(Color.deepNavy)
-                        .lineLimit(1)
-
-                    Text(l10n.format(amount: totalCatAmt.rounded()))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(drilled.themeColor)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-
-                    Text(l10n.language == .hebrew ? "\(donutSlices.count) תתי-סוגים" : "\(donutSlices.count) sub-types")
-                        .font(.system(size: 9, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
-
-                    Text(l10n.language == .hebrew ? "הקש לחזרה" : "Tap to exit")
-                        .font(.system(size: 8, weight: .bold, design: .default))
-                        .foregroundColor(Color.primaryBlue.opacity(0.8))
-                }
-            } else if let sel = selectedSlice, let match = categoryTotals.first(where: { $0.category == sel }) {
-                // Top-Level Mode with selected category
+            if let sel = selectedSlice, let match = categoryTotals.first(where: { $0.category == sel }) {
+                // Category Selected
                 CategoryBadge(category: sel, size: 22)
 
                 Text(sel.displayName)
                     .font(.system(size: 11, weight: .bold, design: .default))
                     .foregroundColor(Color.deepNavy)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Text(l10n.format(amount: match.amount.rounded()))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -835,43 +668,28 @@ public struct AnalyticsView: View {
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
 
-                // Drill-down button
-                Button(action: {
-                    Haptics.selection()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        drilledCategory = sel
-                        selectedSlice = nil
-                        selectedSubcategoryId = nil
-                    }
-                }) {
-                    HStack(spacing: 2) {
-                        Text(l10n.language == .hebrew ? "פירוט" : "Details")
-                            .font(.system(size: 9, weight: .bold, design: .default))
-                        Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
-                            .font(.system(size: 7, weight: .bold))
-                    }
-                    .foregroundColor(sel.themeColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(sel.themeColor.opacity(0.12))
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+                let count = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == sel.canonical }.count
+                Text("\(count) \(l10n.language == .hebrew ? "עסקאות" : "txs")")
+                    .font(.system(size: 8, weight: .medium, design: .default))
+                    .foregroundColor(Color.textSecondary)
             } else {
-                // Top-Level Mode general overview
-                Text(l10n.language == .hebrew ? "סך הוצאות" : "Total Spent")
-                    .font(.system(size: 10, weight: .bold, design: .default))
-                    .foregroundColor(Color.textMuted)
+                // Default: Month Total Spending
+                Text(l10n.language == .hebrew ? "סה״כ החודש" : "Total Spent")
+                    .font(.system(size: 10, weight: .medium, design: .default))
+                    .foregroundColor(Color.textSecondary)
 
                 Text(l10n.format(amount: totalSpent.rounded()))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.65)
+                    .minimumScaleFactor(0.7)
 
-                Text(l10n.language == .hebrew ? "\(categoryTotals.count) קטגוריות" : "\(categoryTotals.count) Categories")
-                    .font(.system(size: 10, weight: .medium, design: .default))
-                    .foregroundColor(Color.textSecondary)
+                let count = displayTransactions.filter(countsTowardStats).count
+                if count > 0 {
+                    Text("\(count) \(l10n.language == .hebrew ? "עסקאות" : "txs")")
+                        .font(.system(size: 9, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                }
             }
         }
         .frame(width: 104, height: 104)
@@ -887,117 +705,104 @@ public struct AnalyticsView: View {
             GridItem(.flexible(), spacing: 8)
         ]
 
-        return Group {
-            if drilledCategory != nil {
-                // Drilled Mode: subcategories
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(donutSlices) { item in
-                        let isSelected = selectedSubcategoryId == item.id
-                        let isDimmed = selectedSubcategoryId != nil && !isSelected
+        return VStack(spacing: 12) {
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(categoryTotals, id: \.category) { item in
+                    let isSelected = selectedSlice == item.category
+                    let isDimmed = selectedSlice != nil && !isSelected
 
-                        Button(action: {
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                if selectedSubcategoryId == item.id {
-                                    selectedSubcategoryId = nil
-                                } else {
-                                    selectedSubcategoryId = item.id
-                                }
+                    Button(action: {
+                        Haptics.selection()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            if selectedSlice == item.category {
+                                selectedSlice = nil
+                            } else {
+                                selectedSlice = item.category
                             }
-                        }) {
-                            HStack(spacing: 7) {
-                                if let icon = item.icon {
-                                    MoneyIcon(icon, size: 12, color: item.color)
-                                } else {
-                                    Circle()
-                                        .fill(item.color)
-                                        .frame(width: 8, height: 8)
-                                }
-
-                                Text(item.name)
-                                    .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .default))
-                                    .foregroundColor(Color.deepNavy)
-                                    .lineLimit(1)
-
-                                Spacer(minLength: 4)
-
-                                Text("\(Int(round(item.fraction * 100)))%")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(isSelected ? item.color : Color.textSecondary)
-                            }
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 7)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(isSelected ? item.color.opacity(0.12) : Color(uiColor: .systemGray6).opacity(0.65))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(isSelected ? item.color.opacity(0.6) : Color.clear, lineWidth: 1)
-                            )
-                            .opacity(isDimmed ? 0.45 : 1.0)
                         }
-                        .buttonStyle(.plain)
+                    }) {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(item.category.themeColor)
+                                .frame(width: 8, height: 8)
+
+                            Text(item.category.displayName)
+                                .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .default))
+                                .foregroundColor(Color.deepNavy)
+                                .lineLimit(1)
+
+                            Spacer(minLength: 4)
+
+                            Text("\(Int(round(item.fraction * 100)))%")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(isSelected ? item.category.themeColor : Color.textSecondary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(isSelected ? item.category.themeColor.opacity(0.12) : Color(uiColor: .systemGray6).opacity(0.65))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(isSelected ? item.category.themeColor.opacity(0.6) : Color.clear, lineWidth: 1)
+                        )
+                        .opacity(isDimmed ? 0.45 : 1.0)
                     }
+                    .buttonStyle(.plain)
                 }
-            } else {
-                // Top-Level Mode: categories
-                LazyVGrid(columns: columns, spacing: 8) {
-                    ForEach(categoryTotals, id: \.category) { item in
-                        let isSelected = selectedSlice == item.category
-                        let isDimmed = selectedSlice != nil && !isSelected
+            }
 
-                        Button(action: {
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                if selectedSlice == item.category {
-                                    // Tapping selected category chip enters drill-down!
-                                    drilledCategory = item.category
-                                    selectedSlice = nil
-                                    selectedSubcategoryId = nil
-                                } else {
-                                    selectedSlice = item.category
-                                }
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(item.category.themeColor)
-                                    .frame(width: 8, height: 8)
+            // Subcategory / Merchant Breakdown when a category is selected
+            if let sel = selectedSlice {
+                selectedCategorySubBreakdown(for: sel)
+            }
+        }
+    }
 
-                                Text(item.category.displayName)
-                                    .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .default))
-                                    .foregroundColor(Color.deepNavy)
-                                    .lineLimit(1)
+    @ViewBuilder
+    private func selectedCategorySubBreakdown(for category: SpendingCategory) -> some View {
+        let activeTxs = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == category.canonical }
+        let items = SubcategoryBreakdownService.shared.breakdown(
+            for: category,
+            transactions: activeTxs,
+            isHebrew: l10n.language == .hebrew
+        )
 
-                                Spacer(minLength: 4)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(l10n.language == .hebrew ? "פירוט עבור \(category.displayName):" : "Breakdown for \(category.displayName):")
+                        .font(.system(size: 11, weight: .bold, design: .default))
+                        .foregroundColor(Color.deepNavy)
+                    Spacer()
+                }
+                .padding(.top, 4)
 
-                                if isSelected {
-                                    Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
-                                        .font(.system(size: 8, weight: .bold))
-                                        .foregroundColor(item.category.themeColor)
-                                }
-
-                                Text("\(Int(round(item.fraction * 100)))%")
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(isSelected ? item.category.themeColor : Color.textSecondary)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 7)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(isSelected ? item.category.themeColor.opacity(0.12) : Color(uiColor: .systemGray6).opacity(0.65))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .stroke(isSelected ? item.category.themeColor.opacity(0.6) : Color.clear, lineWidth: 1)
-                            )
-                            .opacity(isDimmed ? 0.45 : 1.0)
+                VStack(spacing: 5) {
+                    ForEach(items.prefix(4)) { sub in
+                        HStack(spacing: 6) {
+                            MoneyIcon(sub.icon, size: 12, color: sub.color)
+                            Text(sub.name)
+                                .font(.system(size: 11, weight: .medium, design: .default))
+                                .foregroundColor(Color.deepNavy)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(l10n.format(amount: sub.amount.rounded()))
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Text("(\(Int(round(sub.fraction * 100)))%)")
+                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
                         }
-                        .buttonStyle(.plain)
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(Color(uiColor: .systemGray6).opacity(0.55))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                 }
             }
+            .padding(.top, 4)
         }
     }
 
@@ -1032,14 +837,13 @@ public struct AnalyticsView: View {
             }
 
             if categoryTotals.isEmpty {
-                Text(hiddenHousing > 0
+                SpentEmptyState(icon: .pieChart,
+                    title: l10n.isHebrew ? "התמונה תתמלא עם ההוצאות" : "Your spending brings the picture together",
+                    message: hiddenHousing > 0
                      ? (l10n.language == .hebrew
                         ? "החודש נרשם דיור בלבד, והוא מוסתר כרגע מהחישוב"
                         : "Only housing was recorded this month, and it is currently hidden")
-                     : (l10n.language == .hebrew ? "אין עדיין עסקאות בחודש זה" : "No transactions recorded yet this month"))
-                    .font(.system(size: 14, weight: .medium, design: .default))
-                    .foregroundColor(Color.textMuted)
-                    .padding(.vertical, 14)
+                     : (l10n.language == .hebrew ? "כאן יופיע הפירוט לפי קטגוריות כשיירשמו הוצאות בחודש הזה." : "Your category breakdown will appear here when expenses are recorded this month."))
             } else {
                 let visibleCategories = showAllCategories ? categoryTotals : Array(categoryTotals.prefix(5))
                 VStack(spacing: 14) {
@@ -1134,83 +938,113 @@ public struct AnalyticsView: View {
                 }
             }
 
-            // 6 Evenly Spaced Month Columns
-            HStack(alignment: .bottom, spacing: 10) {
-                ForEach(months, id: \.offset) { item in
-                    let frac = maxAmt > 0 ? CGFloat(item.amount / maxAmt) : 0
-                    let barHeight: CGFloat = animateChart
-                        ? (item.amount > 0 ? max(frac * chartHeight, 10) : 4)
-                        : 4
-                    let isHighlighted = (item.offset == highlightedOffset)
+            // 6 Evenly Spaced Month Columns with Discrete Touch Scrubbing
+            GeometryReader { geo in
+                HStack(alignment: .bottom, spacing: 10) {
+                    ForEach(months, id: \.offset) { item in
+                        let frac = maxAmt > 0 ? CGFloat(item.amount / maxAmt) : 0
+                        let barHeight: CGFloat = animateChart
+                            ? (item.amount > 0 ? max(frac * chartHeight, 10) : 4)
+                            : 4
+                        let isHighlighted = (item.offset == highlightedOffset)
+                        let columnOpacity: Double = isHighlighted ? 1.0 : ((isScrubbingChart || selectedBarOffset != nil) ? 0.55 : 1.0)
 
-                    Button(action: {
-                        Haptics.selection()
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) {
-                            // Tap highlights this bar and updates the data below — chart stays put
-                            selectedBarOffset = item.offset
-                            selectedSlice = nil
-                            drilledCategory = nil
-                            selectedSubcategoryId = nil
+                        Button(action: {
+                            Haptics.selection()
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) {
+                                selectedBarOffset = item.offset
+                                selectedSlice = nil
+                            }
+                        }) {
+                            VStack(spacing: 6) {
+                                // Amount Badge above the bar
+                                ZStack {
+                                    if isHighlighted && item.amount > 0 {
+                                        Text(l10n.format(amount: item.amount.rounded()))
+                                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                                            .foregroundColor(storyVibrantPurple)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(storySoftLilac.opacity(0.85))
+                                            .clipShape(Capsule())
+                                            .fixedSize()
+                                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                                    } else {
+                                        Color.clear.frame(height: 18)
+                                    }
+                                }
+                                .frame(height: 18)
+
+                                // Bar track + Filled pillar
+                                ZStack(alignment: .bottom) {
+                                    // Subtle track providing clean structure for all 6 months
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(Color(uiColor: .systemGray6).opacity(0.9))
+                                        .frame(width: 28, height: chartHeight)
+
+                                    // Dynamic filled bar
+                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                        .fill(isHighlighted ? storyVibrantPurple : (item.amount > 0 ? storySoftLilac : Color.clear))
+                                        .frame(width: 28, height: barHeight)
+                                        .scaleEffect(isHighlighted ? 1.04 : 1.0, anchor: .bottom)
+                                }
+
+                                // Month abbreviation label
+                                Text(item.label)
+                                    .font(.system(size: 11, weight: isHighlighted ? .bold : .medium, design: .default))
+                                    .foregroundColor(isHighlighted ? Color.deepNavy : Color.textSecondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .opacity(columnOpacity)
+                            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: columnOpacity)
+                            .contentShape(Rectangle())
                         }
-                    }) {
-                        VStack(spacing: 6) {
-                            // Amount Badge above the bar
-                            ZStack {
-                                if isHighlighted && item.amount > 0 {
-                                    Text(l10n.format(amount: item.amount.rounded()))
-                                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                                        .foregroundColor(storyVibrantPurple)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(storySoftLilac.opacity(0.65))
-                                        .clipShape(Capsule())
-                                        .fixedSize()
-                                        .transition(.opacity.combined(with: .scale(scale: 0.85)))
-                                } else {
-                                    Color.clear.frame(height: 18)
+                        .buttonStyle(.plain)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                .contentShape(Rectangle())
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 6)
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) * 0.7 else { return }
+                            isScrubbingChart = true
+                            let totalWidth = geo.size.width
+                            guard totalWidth > 0, !months.isEmpty else { return }
+                            let count = months.count
+                            let fraction = max(0, min(1, value.location.x / totalWidth))
+                            let isHe = l10n.language == .hebrew
+                            let index = isHe
+                                ? min(max(Int((1.0 - fraction) * Double(count)), 0), count - 1)
+                                : min(max(Int(fraction * Double(count)), 0), count - 1)
+
+                            let candidateOffset = months[index].offset
+                            if candidateOffset != selectedBarOffset {
+                                Haptics.selection()
+                                withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+                                    selectedBarOffset = candidateOffset
+                                    selectedSlice = nil
                                 }
                             }
-                            .frame(height: 18)
-
-                            // Bar track + Filled pillar
-                            ZStack(alignment: .bottom) {
-                                // Subtle track providing clean structure for all 6 months
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(Color(uiColor: .systemGray6).opacity(0.9))
-                                    .frame(width: 28, height: chartHeight)
-
-                                // Dynamic filled bar
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(isHighlighted ? storyVibrantPurple : (item.amount > 0 ? storySoftLilac : Color.clear))
-                                    .frame(width: 28, height: barHeight)
-                                    .scaleEffect(isHighlighted ? 1.04 : 1.0, anchor: .bottom)
-                            }
-
-                            // Month abbreviation label
-                            Text(item.label)
-                                .font(.system(size: 11, weight: isHighlighted ? .bold : .medium, design: .default))
-                                .foregroundColor(isHighlighted ? Color.deepNavy : Color.textSecondary)
-                                .lineLimit(1)
                         }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
+                        .onEnded { _ in
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                isScrubbingChart = false
+                            }
+                        }
+                )
             }
+            .frame(height: 118)
         }
         .padding(.vertical, 4)
         .onChange(of: selectedMonthOffset) { _, _ in
             // When user navigates with the arrows, reset bar selection to the new current month
             selectedBarOffset = nil
             selectedSlice = nil
-            drilledCategory = nil
-            selectedSubcategoryId = nil
         }
         .onChange(of: selectedBarOffset) { _, _ in
             selectedSlice = nil
-            drilledCategory = nil
-            selectedSubcategoryId = nil
         }
     }
 
@@ -1368,10 +1202,8 @@ public struct AnalyticsView: View {
                     Haptics.impact(.light)
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                         excludeHousing = val
-                        if excludeHousing && (selectedSlice?.canonical == .housing || drilledCategory?.canonical == .housing) {
+                        if excludeHousing && selectedSlice?.canonical == .housing {
                             selectedSlice = nil
-                            drilledCategory = nil
-                            selectedSubcategoryId = nil
                         }
                     }
                 }
@@ -1383,4 +1215,3 @@ public struct AnalyticsView: View {
         .padding(.vertical, 6)
     }
 }
-

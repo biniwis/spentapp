@@ -366,9 +366,13 @@ public struct EditTransactionSheet: View {
         }
         transaction.category = selectedCategory
         transaction.buildingIdRaw = selectedBuildingId
+        transaction.currency = l10n.baseCurrency.symbol
         transaction.isConfirmed = true
         transaction.confidenceScore = 1.0
-        DatabaseService.safeSave(modelContext)
+        guard DatabaseService.safeSave(modelContext) else {
+            Haptics.notify(.error)
+            return
+        }
         if transaction.savingsGoalId != nil {
             SavingsGoalService.reconcileAll(context: modelContext)
         }
@@ -383,7 +387,10 @@ public struct EditTransactionSheet: View {
         withAnimation {
             modelContext.delete(transaction)
         }
-        DatabaseService.safeSave(modelContext)
+        guard DatabaseService.safeSave(modelContext) else {
+            Haptics.notify(.error)
+            return
+        }
         if hadGoal {
             SavingsGoalService.reconcileAll(context: modelContext)
         }

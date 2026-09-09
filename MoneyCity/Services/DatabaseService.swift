@@ -73,6 +73,48 @@ public final class DatabaseService {
         }
     }
 
+    // MARK: - Authoritative Store Path
+    
+    public nonisolated static func authoritativeStoreDirectoryURL() -> URL {
+        let fm = FileManager.default
+        let appSupport = try? fm.url(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask,
+            appropriateFor: nil,
+            create: true
+        )
+        let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app")
+        
+        // 1. Check if store exists in user Application Support
+        if let appSupport = appSupport {
+            let userStore = appSupport.appendingPathComponent("default.store")
+            if fm.fileExists(atPath: userStore.path) {
+                return appSupport
+            }
+        }
+        
+        // 2. Check if store exists in App Group container
+        if let groupURL = groupURL {
+            let groupStore = groupURL.appendingPathComponent("default.store")
+            if fm.fileExists(atPath: groupStore.path) {
+                return groupURL
+            }
+        }
+        
+        // 3. Default to user Application Support
+        if let appSupport = appSupport {
+            return appSupport
+        }
+        if let groupURL = groupURL {
+            return groupURL
+        }
+        return fm.temporaryDirectory
+    }
+
+    public nonisolated static func authoritativeStoreURL() -> URL {
+        authoritativeStoreDirectoryURL().appendingPathComponent("default.store")
+    }
+
     // MARK: - Container recovery
 
     /// Opens the store, preferring to keep the user's data over keeping the app quiet.
@@ -86,10 +128,11 @@ public final class DatabaseService {
     private static func openContainer(
         schema: Schema
     ) -> (container: ModelContainer, mode: StorageMode, failure: String?) {
+        let storeURL = authoritativeStoreURL()
 
         // 1. The ordinary path.
         do {
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            let config = ModelConfiguration(schema: schema, url: storeURL)
             let container = try ModelContainer(
                 for: schema,
                 migrationPlan: MoneyCityMigrationPlan.self,
@@ -106,7 +149,7 @@ public final class DatabaseService {
             if let backup = quarantineExistingStore() {
                 MoneyCityLog.error("previous store moved to \(backup); retrying on disk")
                 do {
-                    let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+                    let config = ModelConfiguration(schema: schema, url: storeURL)
                     let container = try ModelContainer(
                         for: schema,
                         migrationPlan: MoneyCityMigrationPlan.self,
@@ -135,12 +178,7 @@ public final class DatabaseService {
     /// on disk is pointless.
     private static func quarantineExistingStore() -> String? {
         let fm = FileManager.default
-        guard let support = try? fm.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        ) else { return nil }
+        let support = authoritativeStoreDirectoryURL()
 
         let names = ["default.store", "default.store-wal", "default.store-shm"]
         let present = names.filter { fm.fileExists(atPath: support.appendingPathComponent($0).path) }

@@ -188,6 +188,9 @@ public struct MainCityView: View {
     @State private var activeNewMonthRecap: MonthlyRecap? = nil
     @AppStorage("hasSeenCityTapHint") private var hasSeenCityTapHint: Bool = false
     @State private var showCityTapHint: Bool = false
+    @AppStorage("hasSeenRecurringPrompt") private var hasSeenRecurringPrompt: Bool = false
+    @State private var showRecurringCoachmark: Bool = false
+    @State private var showRecurringExpensesSheet: Bool = false
     
     public init() {}
     
@@ -219,7 +222,7 @@ public struct MainCityView: View {
             && !showSortingHubSheet && !showReserveSanctuarySheet
             && resolvingPendingItem == nil && activeNewMonthRecap == nil
             && pendingRecapForNewMonth == nil && pendingWalletItems.isEmpty
-            && visibleConfirmationBanner == nil
+            && visibleConfirmationBanner == nil && !showRecurringExpensesSheet
     }
     
     private var currentCity: MonthlyCity {
@@ -646,6 +649,7 @@ public struct MainCityView: View {
             refreshPendingWalletItems()
             checkNewMonthTransition()
             checkCityTapHint()
+            checkRecurringCoachmark()
             
             // Check if app was cold-launched or opened via payment notification tap
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -655,9 +659,13 @@ public struct MainCityView: View {
         .onChange(of: transactionsDigest) { _, _ in
             syncWidgetData()
             checkCityTapHint()
+            checkRecurringCoachmark()
         }
         .onChange(of: canPresentCityLesson) { _, canPresent in
-            if canPresent { checkCityTapHint() }
+            if canPresent {
+                checkCityTapHint()
+                checkRecurringCoachmark()
+            }
         }
         .onReceive(confirmationCoordinator.$activeConfirmation) { newConf in
             if newConf != nil {
@@ -819,6 +827,10 @@ public struct MainCityView: View {
         }
         .sheet(isPresented: $showReserveSanctuarySheet) {
             ReserveSanctuarySheet()
+                .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showRecurringExpensesSheet) {
+            RecurringExpensesSheet()
                 .environmentObject(l10n)
         }
         .fullScreenCover(item: $activeNewMonthRecap) { recap in
@@ -999,6 +1011,7 @@ public struct MainCityView: View {
         if !hasSeenCityTapHint {
             hasSeenCityTapHint = true
             withAnimation(.easeOut(duration: 0.2)) { showCityTapHint = false }
+            checkRecurringCoachmark()
         }
 
         let isSwap = inspectedBuilding != nil && inspectedBuilding?.id != real.id
@@ -1013,8 +1026,9 @@ public struct MainCityView: View {
     }
 
     private func dismissNewMonthBanner() {
-        let currentMonthStr = MonthlyRecapService.monthId(for: Date())
-        UserDefaults.standard.set(currentMonthStr, forKey: "last_acknowledged_month")
+        let status = MonthlyRecapService.checkRecapWindow()
+        let ackId = status.isActive ? status.monthId : MonthlyRecapService.monthId(for: Date())
+        UserDefaults.standard.set(ackId, forKey: "last_acknowledged_month")
         withAnimation(.easeOut(duration: 0.25)) {
             pendingRecapForNewMonth = nil
         }
@@ -1022,29 +1036,32 @@ public struct MainCityView: View {
 
     private func checkNewMonthTransition() {
         guard hasCompletedOnboarding, !isSnapshotMode else { return }
-        let cal = Calendar.current
-        let currentMonthStr = MonthlyRecapService.monthId(for: Date())
+        let status = MonthlyRecapService.checkRecapWindow()
+        guard status.isActive, let targetMonthDate = status.targetMonthDate else {
+            if pendingRecapForNewMonth != nil {
+                pendingRecapForNewMonth = nil
+            }
+            return
+        }
+
         let lastAck = UserDefaults.standard.string(forKey: "last_acknowledged_month")
-        
         if let lastAck = lastAck {
-            if lastAck != currentMonthStr {
-                if let prevMonthDate = cal.date(byAdding: .month, value: -1, to: Date()) {
-                    let prevRecap = MonthlyRecapService.generateRecap(
-                        for: prevMonthDate,
-                        allTransactions: allTransactions,
-                        monthlyBudget: effectiveMonthlyBudget
-                    )
-                    if prevRecap.transactionCount > 0 {
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                            pendingRecapForNewMonth = prevRecap
-                        }
-                    } else {
-                        UserDefaults.standard.set(currentMonthStr, forKey: "last_acknowledged_month")
+            if lastAck != status.monthId {
+                let recap = MonthlyRecapService.generateRecap(
+                    for: targetMonthDate,
+                    allTransactions: allTransactions,
+                    monthlyBudget: effectiveMonthlyBudget
+                )
+                if recap.transactionCount > 0 {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                        pendingRecapForNewMonth = recap
                     }
+                } else {
+                    UserDefaults.standard.set(status.monthId, forKey: "last_acknowledged_month")
                 }
             }
         } else {
-            UserDefaults.standard.set(currentMonthStr, forKey: "last_acknowledged_month")
+            UserDefaults.standard.set(status.monthId, forKey: "last_acknowledged_month")
         }
     }
 
@@ -1084,9 +1101,78 @@ public struct MainCityView: View {
             Button(l10n.isHebrew ? "אגלה בעצמי" : "I'll explore on my own") {
                 hasSeenCityTapHint = true
                 withAnimation(.easeOut(duration: 0.2)) { showCityTapHint = false }
+                checkRecurringCoachmark()
             }
             .font(.subheadline.weight(.semibold)).foregroundStyle(Color.deepNavy)
             .frame(minHeight: 44)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 24))
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1))
+        .shadow(color: Color.deepNavy.opacity(0.07), radius: 16, y: 6)
+        .padding(.horizontal, 16)
+    }
+
+    private func checkRecurringCoachmark() {
+        guard canPresentCityLesson, hasSeenCityTapHint, !hasSeenRecurringPrompt,
+              !isSnapshotMode, showCityTapHint == false, !showRecurringExpensesSheet else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            guard canPresentCityLesson, hasSeenCityTapHint, !hasSeenRecurringPrompt,
+                  !isSnapshotMode, !showQuickAdd, !showOnboarding, activeTab == "city",
+                  inspectedBuilding == nil, selectedDistrict == nil, !showRecurringExpensesSheet else { return }
+            withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.8)) {
+                showRecurringCoachmark = true
+            }
+        }
+    }
+
+    private var recurringExpensesCoachmark: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                MoneyIcon(.receipt, size: 26, color: Color.primaryBlue)
+                    .padding(10)
+                    .background(Color.primaryBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(l10n.isHebrew ? "שגרת העיר" : "City routine")
+                        .font(.caption.weight(.semibold)).foregroundStyle(Color.textSecondary)
+                    Text(l10n.isHebrew ? "יש לך הוצאות קבועות?" : "Have fixed expenses?")
+                        .font(.headline).foregroundStyle(Color.deepNavy)
+                }
+                Spacer(minLength: 0)
+            }
+            Text(l10n.isHebrew
+                 ? "שכירות, מנויים או חשבונות חודשיים? הוסף אותם כעת כדי שהעיר תחשב אותם אוטומטית בכל חודש."
+                 : "Rent, subscriptions, or fixed bills? Add them so your city accounts for them automatically.")
+                .font(.subheadline).foregroundStyle(Color.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 12) {
+                Button {
+                    hasSeenRecurringPrompt = true
+                    withAnimation(.easeOut(duration: 0.2)) { showRecurringCoachmark = false }
+                    showRecurringExpensesSheet = true
+                } label: {
+                    Text(l10n.isHebrew ? "הוספת הוצאות קבועות" : "Add fixed expenses")
+                        .font(.subheadline.weight(.bold)).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.deepNavy, in: Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    hasSeenRecurringPrompt = true
+                    withAnimation(.easeOut(duration: 0.2)) { showRecurringCoachmark = false }
+                } label: {
+                    Text(l10n.isHebrew ? "אולי אחר כך" : "Maybe later")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(Color.textSecondary)
+                        .padding(.horizontal, 8)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 4)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1673,6 +1759,12 @@ public struct MainCityView: View {
         } else {
             if cityTutorialBuildingId != nil {
                 cityTapCoachmark
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+            } else if showRecurringCoachmark && !hasSeenRecurringPrompt {
+                recurringExpensesCoachmark
                     .transition(.asymmetric(
                         insertion: .move(edge: .bottom).combined(with: .opacity),
                         removal: .opacity

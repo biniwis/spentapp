@@ -283,6 +283,62 @@ final class MonthlyRecapTests: XCTestCase {
         XCTAssertEqual(recap.city.categoryTotals[.shopping], 0)
         XCTAssertEqual(recap.city.venueStates.first { $0.id == "food_wolt" }?.purchaseCount, 1)
     }
+
+    // MARK: - 12. Recap Celebration Window Tests
+    func testRecapCelebrationWindow() {
+        let cal = Calendar(identifier: .gregorian)
+
+        // 1. Last day of month (August 31) -> Active for August
+        let aug31 = date(year: 2026, month: 8, day: 31)
+        let statusAug31 = MonthlyRecapService.checkRecapWindow(now: aug31, calendar: cal)
+        XCTAssertTrue(statusAug31.isActive)
+        XCTAssertTrue(statusAug31.isFinalDayOfCurrentMonth)
+        XCTAssertEqual(statusAug31.monthId, "2026-08")
+
+        // 2. Day 1 of next month (Sept 1) -> Active for August (previous month)
+        let sep1 = date(year: 2026, month: 9, day: 1)
+        let statusSep1 = MonthlyRecapService.checkRecapWindow(now: sep1, calendar: cal)
+        XCTAssertTrue(statusSep1.isActive)
+        XCTAssertFalse(statusSep1.isFinalDayOfCurrentMonth)
+        XCTAssertEqual(statusSep1.monthId, "2026-08")
+
+        // 3. Day 2 of next month (Sept 2) -> Active for August
+        let sep2 = date(year: 2026, month: 9, day: 2)
+        let statusSep2 = MonthlyRecapService.checkRecapWindow(now: sep2, calendar: cal)
+        XCTAssertTrue(statusSep2.isActive)
+        XCTAssertFalse(statusSep2.isFinalDayOfCurrentMonth)
+        XCTAssertEqual(statusSep2.monthId, "2026-08")
+
+        // 4. Day 3 of month (Sept 3) -> Inactive
+        let sep3 = date(year: 2026, month: 9, day: 3)
+        let statusSep3 = MonthlyRecapService.checkRecapWindow(now: sep3, calendar: cal)
+        XCTAssertFalse(statusSep3.isActive)
+        XCTAssertNil(statusSep3.targetMonthDate)
+
+        // 5. Mid month (Sept 15) -> Inactive
+        let sep15 = date(year: 2026, month: 9, day: 15)
+        let statusSep15 = MonthlyRecapService.checkRecapWindow(now: sep15, calendar: cal)
+        XCTAssertFalse(statusSep15.isActive)
+
+        // 6. Day before last (Sept 29 in 30-day month) -> Inactive
+        let sep29 = date(year: 2026, month: 9, day: 29)
+        let statusSep29 = MonthlyRecapService.checkRecapWindow(now: sep29, calendar: cal)
+        XCTAssertFalse(statusSep29.isActive)
+
+        // 7. Last day in 30-day month (Sept 30) -> Active for September
+        let sep30 = date(year: 2026, month: 9, day: 30)
+        let statusSep30 = MonthlyRecapService.checkRecapWindow(now: sep30, calendar: cal)
+        XCTAssertTrue(statusSep30.isActive)
+        XCTAssertTrue(statusSep30.isFinalDayOfCurrentMonth)
+        XCTAssertEqual(statusSep30.monthId, "2026-09")
+
+        // 8. Leap year February 29 (2024-02-29) -> Active for February
+        let feb29 = date(year: 2024, month: 2, day: 29)
+        let statusFeb29 = MonthlyRecapService.checkRecapWindow(now: feb29, calendar: cal)
+        XCTAssertTrue(statusFeb29.isActive)
+        XCTAssertTrue(statusFeb29.isFinalDayOfCurrentMonth)
+        XCTAssertEqual(statusFeb29.monthId, "2024-02")
+    }
 }
 
 final class MonthlyRecapEditorialTests: XCTestCase {

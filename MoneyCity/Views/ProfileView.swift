@@ -31,6 +31,19 @@ public struct ProfileView: View {
     @State private var showDetailedTransactions = false
     @State private var showDetailedStreak = false
     @State private var showDetailedBudget = false
+    @State private var activeRecapForSheet: MonthlyRecap? = nil
+
+    private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus)? {
+        let status = MonthlyRecapService.checkRecapWindow()
+        guard status.isActive, let targetDate = status.targetMonthDate else { return nil }
+        let recap = MonthlyRecapService.generateRecap(
+            for: targetDate,
+            allTransactions: allTransactions,
+            monthlyBudget: effectiveBudgetLimit > 0 ? effectiveBudgetLimit : nil
+        )
+        guard recap.transactionCount > 0 else { return nil }
+        return (recap, status)
+    }
 
     private var thisMonthTransactions: [Transaction] {
         let cal = Calendar.current
@@ -196,6 +209,11 @@ public struct ProfileView: View {
                     // ── User Avatar & City Greeting Card (Mayor Hero Badge) ──
                     userProfileCard
 
+                    // ── Festive Monthly Recap Banner (Celebration Window) ──
+                    if let (recap, status) = activeWindowRecapAndStatus {
+                        festiveMonthlyRecapRow(recap: recap, status: status)
+                    }
+
                     // ── 4 Bento Metric Tiles (Tactile with live micro-indicators) ──
                     statsGridCard
 
@@ -208,6 +226,9 @@ public struct ProfileView: View {
                     Spacer(minLength: 120)
                 }
             }
+        }
+        .fullScreenCover(item: $activeRecapForSheet) { recap in
+            MonthlyRecapSheet(recap: recap, onNavigateToCity: onNavigateToCity)
         }
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
@@ -237,6 +258,93 @@ public struct ProfileView: View {
             BackupSheet()
                 .environmentObject(l10n)
         }
+    }
+
+    // MARK: - Festive Monthly Recap Banner (Celebration Window)
+
+    private func festiveMonthlyRecapRow(recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus) -> some View {
+        let isHe = l10n.language == .hebrew
+        let monthName = isHe ? status.monthNameHe : status.monthNameEn
+
+        return Button(action: {
+            Haptics.impact(.medium)
+            activeRecapForSheet = recap
+        }) {
+            VStack(alignment: .leading, spacing: 10) {
+                // ── Top Mini Celebration Tag ──
+                HStack(spacing: 6) {
+                    HStack(spacing: 4) {
+                        Text(isHe ? "✦ אירוע סוף חודש" : "✦ MONTHLY CELEBRATION")
+                            .font(.system(size: 10, weight: .black, design: .rounded))
+                            .tracking(0.5)
+                            .foregroundColor(Color(red: 180/255, green: 83/255, blue: 9/255))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(red: 254/255, green: 243/255, blue: 199/255))
+                    .clipShape(Capsule())
+
+                    Spacer()
+
+                    Text(isHe ? "זמין לזמן מוגבל" : "Limited Time")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
+                }
+
+                // ── Main Content Row ──
+                HStack(spacing: 14) {
+                    // Festive Double-Ring Medal Badge
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
+                            .frame(width: 46, height: 46)
+                        Circle()
+                            .stroke(Color(red: 253/255, green: 230/255, blue: 138/255), lineWidth: 1.5)
+                            .frame(width: 42, height: 42)
+                        MoneyIcon(.trophy, size: 22, color: Color(red: 217/255, green: 119/255, blue: 6/255))
+                    }
+
+                    // Titles
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(isHe ? "הסיכום של \(monthName) מוכן!" : "\(monthName) City Story is Ready!")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+
+                        Text(isHe ? "בוא לראות איך העיר שלך נראית ומה היו השיאים" : "See your skyline growth and spending highlights")
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 4)
+
+                    // CTA Pill Button
+                    HStack(spacing: 4) {
+                        Text(isHe ? "צפה ✨" : "View ✨")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.deepNavy)
+                    .clipShape(Capsule())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Color(red: 255/255, green: 251/255, blue: 235/255))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color(red: 253/255, green: 230/255, blue: 138/255), lineWidth: 1.2)
+            )
+            .shadow(color: Color(red: 180/255, green: 83/255, blue: 9/255).opacity(0.06), radius: 10, y: 3)
+            .padding(.horizontal, 16)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - User Profile Greeting Card (Mayor Hero Badge)

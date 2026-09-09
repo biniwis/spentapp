@@ -10,6 +10,7 @@ import UIKit
 public enum NotificationService {
 
     public static let weeklyIdentifier = "moneycity.weekly.summary"
+    public static let monthlyRecapIdentifier = "moneycity.monthly.recap"
     public static let categoryMissingAmount = "moneycity.missing_amount"
     public static let actionEnterAmount = "ACTION_ENTER_AMOUNT"
 
@@ -30,7 +31,7 @@ public enum NotificationService {
         #if canImport(UserNotifications)
         let center = UNUserNotificationCenter.current()
         guard enabled else {
-            center.removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier])
+            center.removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier, monthlyRecapIdentifier])
             return
         }
         center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
@@ -40,6 +41,8 @@ public enum NotificationService {
                 }
                 return
             }
+            scheduleWeeklyNotification(isHebrew: isHebrew)
+            scheduleMonthlyRecapNotification(isHebrew: isHebrew)
             Task { @MainActor in
                 CityNarrativeEngine.shared.onAppForeground()
             }
@@ -92,6 +95,30 @@ public enum NotificationService {
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         let request = UNNotificationRequest(identifier: weeklyIdentifier, content: content, trigger: trigger)
+        center.add(request, withCompletionHandler: nil)
+    }
+
+    /// Schedules a monthly notification for the 1st of every month at 11:00 AM.
+    public static func scheduleMonthlyRecapNotification(isHebrew: Bool) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [monthlyRecapIdentifier])
+
+        let content = UNMutableNotificationContent()
+        content.title = isHebrew ? "הסיכום החודשי של העיר שלך מוכן! 🏙️🎉" : "Your Monthly City Recap is Ready! 🏙️🎉"
+        content.body = isHebrew
+            ? "חודש חדש נפתח! היכנס לגלות איזה רובע הוביל, מה היה יום השיא ואיך נראה קו הרקיע שלך."
+            : "A new month has begun! Tap to discover your top district, peak day, and city story."
+        content.sound = .default
+        content.userInfo = ["type": "monthly_recap"]
+
+        // Fires on the 1st of every month at 11:00 AM
+        var components = DateComponents()
+        components.day = 1
+        components.hour = 11
+        components.minute = 0
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let request = UNNotificationRequest(identifier: monthlyRecapIdentifier, content: content, trigger: trigger)
         center.add(request, withCompletionHandler: nil)
     }
 

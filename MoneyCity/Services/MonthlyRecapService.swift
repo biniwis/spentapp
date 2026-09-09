@@ -131,6 +131,82 @@ public enum MonthlyRecapService {
         return formatter.string(from: start)
     }
 
+    public struct RecapWindowStatus: Equatable, Sendable {
+        public let isActive: Bool
+        public let targetMonthDate: Date?
+        public let monthId: String
+        public let isFinalDayOfCurrentMonth: Bool
+        public let monthNameHe: String
+        public let monthNameEn: String
+
+        public init(
+            isActive: Bool,
+            targetMonthDate: Date? = nil,
+            monthId: String = "",
+            isFinalDayOfCurrentMonth: Bool = false,
+            monthNameHe: String = "",
+            monthNameEn: String = ""
+        ) {
+            self.isActive = isActive
+            self.targetMonthDate = targetMonthDate
+            self.monthId = monthId
+            self.isFinalDayOfCurrentMonth = isFinalDayOfCurrentMonth
+            self.monthNameHe = monthNameHe
+            self.monthNameEn = monthNameEn
+        }
+    }
+
+    /// Determines if the given date falls in the monthly recap celebration window
+    /// (the last day of the month, or day 1 or 2 of the next month).
+    public static func checkRecapWindow(now: Date = Date(), calendar: Calendar = .current) -> RecapWindowStatus {
+        let day = calendar.component(.day, from: now)
+        guard let dayRange = calendar.range(of: .day, in: .month, for: now) else {
+            return RecapWindowStatus(isActive: false)
+        }
+        let lastDay = dayRange.count
+
+        if day == lastDay {
+            // Last day of current month: recaps current month
+            let id = monthId(for: now, calendar: calendar)
+            let nameHe = formatMonthName(now, localeId: "he_IL", calendar: calendar)
+            let nameEn = formatMonthName(now, localeId: "en_US", calendar: calendar)
+            return RecapWindowStatus(
+                isActive: true,
+                targetMonthDate: now,
+                monthId: id,
+                isFinalDayOfCurrentMonth: true,
+                monthNameHe: nameHe,
+                monthNameEn: nameEn
+            )
+        } else if day == 1 || day == 2 {
+            // Days 1 & 2: recaps previous month
+            guard let prevMonth = calendar.date(byAdding: .month, value: -1, to: now) else {
+                return RecapWindowStatus(isActive: false)
+            }
+            let id = monthId(for: prevMonth, calendar: calendar)
+            let nameHe = formatMonthName(prevMonth, localeId: "he_IL", calendar: calendar)
+            let nameEn = formatMonthName(prevMonth, localeId: "en_US", calendar: calendar)
+            return RecapWindowStatus(
+                isActive: true,
+                targetMonthDate: prevMonth,
+                monthId: id,
+                isFinalDayOfCurrentMonth: false,
+                monthNameHe: nameHe,
+                monthNameEn: nameEn
+            )
+        } else {
+            return RecapWindowStatus(isActive: false)
+        }
+    }
+
+    private static func formatMonthName(_ date: Date, localeId: String, calendar: Calendar) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: localeId)
+        formatter.dateFormat = "LLLL"
+        return formatter.string(from: date)
+    }
+
     /// Convenience overload accepting `transactions:` parameter name
     public static func generateRecap(
         for monthDate: Date,

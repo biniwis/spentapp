@@ -91,6 +91,12 @@ public struct AnalyticsView: View {
         return cal.date(byAdding: .month, value: offset, to: Date()) ?? Date()
     }
 
+    private var isRecapWindowActiveForTargetMonth: Bool {
+        let status = MonthlyRecapService.checkRecapWindow()
+        guard status.isActive, let activeDate = status.targetMonthDate else { return false }
+        return Calendar.current.isDate(activeDate, equalTo: targetMonthDate, toGranularity: .month)
+    }
+
     private var monthYearString: String {
         let f = DateFormatter()
         f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
@@ -348,29 +354,31 @@ public struct AnalyticsView: View {
 
             Spacer()
 
-            // Monthly Story / Recap Button
-            Button(action: {
-                Haptics.impact(.medium)
-                activeRecap = MonthlyRecapService.generateRecap(
-                    for: targetMonthDate,
-                    allTransactions: allTransactions,
-                    monthlyBudget: BudgetService.monthlySpendingBudget(
-                        categoryBudgets: categoryBudgets,
-                        overallBudget: userMonthlyBudget
+            // Monthly Story / Recap Button (Active only during the celebration window for this month)
+            if isRecapWindowActiveForTargetMonth {
+                Button(action: {
+                    Haptics.impact(.medium)
+                    activeRecap = MonthlyRecapService.generateRecap(
+                        for: targetMonthDate,
+                        allTransactions: allTransactions,
+                        monthlyBudget: BudgetService.monthlySpendingBudget(
+                            categoryBudgets: categoryBudgets,
+                            overallBudget: userMonthlyBudget
+                        )
                     )
-                )
-            }) {
-                HStack(spacing: 5) {
-                    MoneyIcon(.calendar, size: 14, color: Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "סיכום חודשי" : "Monthly Recap")
-                        .font(.system(size: 12, weight: .semibold, design: .default))
-                        .foregroundColor(Color.deepNavy)
+                }) {
+                    HStack(spacing: 5) {
+                        MoneyIcon(.calendar, size: 14, color: Color.deepNavy)
+                        Text(l10n.language == .hebrew ? "סיכום חודשי" : "Monthly Recap")
+                            .font(.system(size: 12, weight: .semibold, design: .default))
+                            .foregroundColor(Color.deepNavy)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                    .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.white)
-                .clipShape(Capsule())
-                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
             }
         }
     }

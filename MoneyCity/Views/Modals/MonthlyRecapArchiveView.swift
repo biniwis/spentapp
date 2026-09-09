@@ -157,9 +157,9 @@ public struct MonthlyRecapArchiveView: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
+                    .fill(Color(red: 243/255, green: 244/255, blue: 246/255))
                     .frame(width: 48, height: 48)
-                MoneyIcon(.citySkyline, size: 22, color: Color(red: 217/255, green: 119/255, blue: 6/255))
+                MoneyIcon(.citySkyline, size: 22, color: Color.textSecondary)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -178,20 +178,16 @@ public struct MonthlyRecapArchiveView: View {
             Spacer(minLength: 4)
 
             Text(l10n.language == .hebrew ? "נבנה כעת" : "In progress")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundColor(Color(red: 180/255, green: 83/255, blue: 9/255))
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.textSecondary)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
-                .background(Color(red: 254/255, green: 243/255, blue: 199/255))
+                .background(Color(red: 243/255, green: 244/255, blue: 246/255))
                 .clipShape(Capsule())
         }
         .padding(14)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color(red: 253/255, green: 230/255, blue: 138/255).opacity(0.8), lineWidth: 1)
-        )
         .shadow(color: Color.deepNavy.opacity(0.03), radius: 8, y: 2)
     }
 }

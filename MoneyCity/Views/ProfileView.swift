@@ -275,33 +275,30 @@ public struct ProfileView: View {
                 HStack(spacing: 6) {
                     HStack(spacing: 4) {
                         Text(isHe ? "✦ אירוע סוף חודש" : "✦ MONTHLY CELEBRATION")
-                            .font(.system(size: 10, weight: .black, design: .rounded))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
                             .tracking(0.5)
-                            .foregroundColor(Color(red: 180/255, green: 83/255, blue: 9/255))
+                            .foregroundColor(Color.deepNavy)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(Color(red: 254/255, green: 243/255, blue: 199/255))
+                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
                     .clipShape(Capsule())
 
                     Spacer()
 
                     Text(isHe ? "זמין לזמן מוגבל" : "Limited Time")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 217/255, green: 119/255, blue: 6/255))
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
                 }
 
                 // ── Main Content Row ──
                 HStack(spacing: 14) {
-                    // Festive Double-Ring Medal Badge
+                    // Festive Badge
                     ZStack {
-                        Circle()
-                            .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
-                            .frame(width: 46, height: 46)
-                        Circle()
-                            .stroke(Color(red: 253/255, green: 230/255, blue: 138/255), lineWidth: 1.5)
-                            .frame(width: 42, height: 42)
-                        MoneyIcon(.trophy, size: 22, color: Color(red: 217/255, green: 119/255, blue: 6/255))
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.themeLavenderSoft)
+                            .frame(width: 48, height: 48)
+                        MoneyIcon(.trophy, size: 22, color: Color.deepNavy)
                     }
 
                     // Titles
@@ -333,15 +330,13 @@ public struct ProfileView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color(red: 255/255, green: 251/255, blue: 235/255))
-            )
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color(red: 253/255, green: 230/255, blue: 138/255), lineWidth: 1.2)
+                    .stroke(Color.borderSubtle, lineWidth: 1)
             )
-            .shadow(color: Color(red: 180/255, green: 83/255, blue: 9/255).opacity(0.06), radius: 10, y: 3)
+            .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
             .padding(.horizontal, 16)
         }
         .buttonStyle(.plain)

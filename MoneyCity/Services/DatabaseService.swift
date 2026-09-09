@@ -77,38 +77,93 @@ public final class DatabaseService {
     
     public nonisolated static func authoritativeStoreDirectoryURL() -> URL {
         let fm = FileManager.default
-        let appSupport = try? fm.url(
+        let appSupport = (try? fm.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
-        )
+        )) ?? fm.temporaryDirectory
+
         let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app")
         
-        // 1. Check if store exists in user Application Support
-        if let appSupport = appSupport {
-            let userStore = appSupport.appendingPathComponent("default.store")
-            if fm.fileExists(atPath: userStore.path) {
-                return appSupport
+        let canonicalDir: URL
+        if let groupURL = groupURL {
+            let groupAppSupport = groupURL.appendingPathComponent("Library/Application Support", isDirectory: true)
+            try? fm.createDirectory(at: groupAppSupport, withIntermediateDirectories: true)
+            canonicalDir = groupAppSupport
+        } else {
+            canonicalDir = appSupport
+        }
+
+        autoMigrateToCanonicalStoreIfNeeded(canonicalDir: canonicalDir, fallbackDir: appSupport)
+        return canonicalDir
+    }
+
+    private nonisolated static func autoMigrateToCanonicalStoreIfNeeded(canonicalDir: URL, fallbackDir: URL) {
+        let fm = FileManager.default
+        let canonicalStore = canonicalDir.appendingPathComponent("default.store")
+        let canonicalSize = (try? fm.attributesOfItem(atPath: canonicalStore.path)[.size] as? Int64) ?? 0
+
+        var candidateDirs: [URL] = [fallbackDir]
+        if let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app") {
+            candidateDirs.append(groupURL)
+            candidateDirs.append(groupURL.appendingPathComponent("Library/Application Support", isDirectory: true))
+        }
+
+        // Also search snapshot and recovered directories for any preserved user data
+        for baseDir in [fallbackDir, canonicalDir] {
+            let snapshotsDir = baseDir.appendingPathComponent("StoreSnapshots", isDirectory: true)
+            if let names = try? fm.contentsOfDirectory(atPath: snapshotsDir.path) {
+                for name in names.sorted(by: >) {
+                    candidateDirs.append(snapshotsDir.appendingPathComponent(name, isDirectory: true))
+                }
+            }
+
+            let recoveredDir = baseDir.appendingPathComponent("RecoveredStores", isDirectory: true)
+            if let names = try? fm.contentsOfDirectory(atPath: recoveredDir.path) {
+                for name in names.sorted(by: >) {
+                    candidateDirs.append(recoveredDir.appendingPathComponent(name, isDirectory: true))
+                }
+            }
+
+            if let contents = try? fm.contentsOfDirectory(atPath: baseDir.path) {
+                for name in contents where name.hasPrefix("CorruptStore-") {
+                    candidateDirs.append(baseDir.appendingPathComponent(name, isDirectory: true))
+                }
             }
         }
-        
-        // 2. Check if store exists in App Group container
-        if let groupURL = groupURL {
-            let groupStore = groupURL.appendingPathComponent("default.store")
-            if fm.fileExists(atPath: groupStore.path) {
-                return groupURL
+
+        // Exclude the canonical directory itself from candidates
+        candidateDirs.removeAll(where: { $0.standardizedFileURL.path == canonicalDir.standardizedFileURL.path })
+
+        var bestCandidate: URL? = nil
+        var bestSize: Int64 = 0
+
+        for dir in candidateDirs {
+            let store = dir.appendingPathComponent("default.store")
+            if fm.fileExists(atPath: store.path) {
+                let size = (try? fm.attributesOfItem(atPath: store.path)[.size] as? Int64) ?? 0
+                if size > bestSize {
+                    bestSize = size
+                    bestCandidate = dir
+                }
             }
         }
-        
-        // 3. Default to user Application Support
-        if let appSupport = appSupport {
-            return appSupport
+
+        // If canonical store does not exist OR is an empty placeholder (<= 32KB) and a candidate has more data
+        let shouldMigrate = !fm.fileExists(atPath: canonicalStore.path) || (canonicalSize <= 32768 && bestSize > canonicalSize)
+        if let bestDir = bestCandidate, bestSize > 0, shouldMigrate {
+            MoneyCityLog.debug("Auto-migrating store from \(bestDir.path) (size: \(bestSize)) to canonical \(canonicalDir.path)")
+            let names = ["default.store", "default.store-wal", "default.store-shm"]
+            for name in names {
+                let src = bestDir.appendingPathComponent(name)
+                let dst = canonicalDir.appendingPathComponent(name)
+                if fm.fileExists(atPath: src.path) {
+                    try? fm.removeItem(at: dst)
+                    try? fm.copyItem(at: src, to: dst)
+                }
+            }
         }
-        if let groupURL = groupURL {
-            return groupURL
-        }
-        return fm.temporaryDirectory
     }
 
     public nonisolated static func authoritativeStoreURL() -> URL {
@@ -118,41 +173,50 @@ public final class DatabaseService {
     // MARK: - Container recovery
 
     /// Opens the store, preferring to keep the user's data over keeping the app quiet.
-    ///
-    /// The previous version fell straight to an in-memory store on any failure and only
-    /// printed about it. That is the worst possible outcome for a ledger: the app opens,
-    /// looks empty, accepts new expenses all day, and loses them at relaunch — while the
-    /// real store is still sitting on disk, unopened and now competing with a month of
-    /// re-entered data. So the failure path here moves the unreadable store somewhere safe
-    /// first, and only gives up on disk entirely if that doesn't help.
     private static func openContainer(
         schema: Schema
     ) -> (container: ModelContainer, mode: StorageMode, failure: String?) {
         let storeURL = authoritativeStoreURL()
 
-        // 1. The ordinary path.
+        // 1. The ordinary path: standard automatic lightweight migration
         do {
             let config = ModelConfiguration(schema: schema, url: storeURL)
             let container = try ModelContainer(
                 for: schema,
-                migrationPlan: MoneyCityMigrationPlan.self,
                 configurations: [config]
             )
             return (container, .persistent, nil)
         } catch {
             let firstFailure = String(describing: error)
-            MoneyCityLog.error("on-disk container failed to open: \(firstFailure)")
+            MoneyCityLog.error("first-try ModelContainer failed: \(firstFailure)")
 
-            // 2. Quarantine whatever is there and try again on disk. If the store files
-            //    aren't where we expect, `quarantine` returns nil and retrying would just
-            //    fail the same way, so we skip straight to memory.
+            // 1b. Fallback: try opening with bare model list (unversioned lightweight schema)
+            do {
+                let bareSchema = Schema([
+                    Transaction.self,
+                    CityEnrichment.self,
+                    RecurringExpense.self,
+                    IncomeSource.self,
+                    CategoryBudget.self,
+                    MerchantRule.self,
+                    InstallmentPlan.self,
+                    SavingsGoal.self,
+                    IngestLogEntry.self
+                ])
+                let config = ModelConfiguration(schema: bareSchema, url: storeURL)
+                let container = try ModelContainer(for: bareSchema, configurations: [config])
+                return (container, .persistent, nil)
+            } catch {
+                MoneyCityLog.error("bare schema ModelContainer failed: \(error)")
+            }
+
+            // 2. Quarantine whatever is there and try again on disk as last resort.
             if let backup = quarantineExistingStore() {
                 MoneyCityLog.error("previous store moved to \(backup); retrying on disk")
                 do {
                     let config = ModelConfiguration(schema: schema, url: storeURL)
                     let container = try ModelContainer(
                         for: schema,
-                        migrationPlan: MoneyCityMigrationPlan.self,
                         configurations: [config]
                     )
                     return (container, .recoveredFreshStore(backupPath: backup), firstFailure)

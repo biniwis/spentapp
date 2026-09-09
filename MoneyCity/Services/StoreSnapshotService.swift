@@ -169,50 +169,66 @@ public enum StoreSnapshotService {
 
     public static func available() -> [Snapshot] {
         let fm = FileManager.default
-        guard let dir = snapshotsDirectory(),
-              let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
+        var searchDirs: [URL] = []
+        if let dir = snapshotsDirectory() {
+            searchDirs.append(dir)
+        }
+        if let appSupport = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+            searchDirs.append(appSupport.appendingPathComponent("Snapshots", isDirectory: true))
+            searchDirs.append(appSupport.appendingPathComponent("StoreSnapshots", isDirectory: true))
+        }
+        if let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app") {
+            let groupAppSupport = groupURL.appendingPathComponent("Library/Application Support", isDirectory: true)
+            searchDirs.append(groupAppSupport.appendingPathComponent("Snapshots", isDirectory: true))
+            searchDirs.append(groupAppSupport.appendingPathComponent("StoreSnapshots", isDirectory: true))
+        }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
-        return names.filter { !$0.hasPrefix(".") }.sorted(by: >).compactMap { name in
-            let folder = dir.appendingPathComponent(name, isDirectory: true)
-            guard fm.fileExists(atPath: folder.appendingPathComponent("default.store").path) else { return nil }
+        var seenIds = Set<String>()
+        var results: [Snapshot] = []
 
-            var takenAt = Date.distantPast
-            var build = "?"
-            var version = "?"
-            var count: Int? = nil
-            if let data = try? Data(contentsOf: folder.appendingPathComponent("meta.json")),
-               let meta = try? decoder.decode(Metadata.self, from: data) {
-                takenAt = meta.takenAt
-                build = meta.build
-                version = meta.version
-                count = meta.transactionCount
+        for dir in searchDirs {
+            guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { continue }
+            for name in names.filter({ !$0.hasPrefix(".") }) {
+                guard !seenIds.contains(name) else { continue }
+                let folder = dir.appendingPathComponent(name, isDirectory: true)
+                guard fm.fileExists(atPath: folder.appendingPathComponent("default.store").path) else { continue }
+
+                seenIds.insert(name)
+                var takenAt = Date.distantPast
+                var build = "?"
+                var version = "?"
+                var count: Int? = nil
+                if let data = try? Data(contentsOf: folder.appendingPathComponent("meta.json")),
+                   let meta = try? decoder.decode(Metadata.self, from: data) {
+                    takenAt = meta.takenAt
+                    build = meta.build
+                    version = meta.version
+                    count = meta.transactionCount
+                }
+
+                var bytes: Int64 = 0
+                for file in storeFileNames {
+                    let attrs = try? fm.attributesOfItem(atPath: folder.appendingPathComponent(file).path)
+                    bytes += (attrs?[.size] as? Int64) ?? 0
+                }
+
+                results.append(Snapshot(
+                    id: name, url: folder, takenAt: takenAt,
+                    build: build, version: version,
+                    transactionCount: count, byteSize: bytes
+                ))
             }
-
-            var bytes: Int64 = 0
-            for file in storeFileNames {
-                let attrs = try? fm.attributesOfItem(atPath: folder.appendingPathComponent(file).path)
-                bytes += (attrs?[.size] as? Int64) ?? 0
-            }
-
-            return Snapshot(
-                id: name, url: folder, takenAt: takenAt,
-                build: build, version: version,
-                transactionCount: count, byteSize: bytes
-            )
         }
+        return results.sorted(by: { $0.id > $1.id })
     }
 
     // MARK: - Restoring
 
     /// Restoring is deliberately a two-step: the choice is recorded now, the files are
     /// swapped at the top of the next launch.
-    ///
-    /// SwiftData holds the store open for the life of the process. Overwriting the file
-    /// underneath a live container is how a merely-empty database becomes a corrupt one, so
-    /// the swap happens at the only moment nothing has it open.
     public static func requestRestore(_ snapshot: Snapshot, defaults: UserDefaults = .standard) {
         defaults.set(snapshot.id, forKey: pendingRestoreKey)
     }
@@ -233,10 +249,28 @@ public enum StoreSnapshotService {
         defaults.removeObject(forKey: pendingRestoreKey)
 
         let fm = FileManager.default
-        guard let support = applicationSupportDirectory(),
-              let dir = snapshotsDirectory() else { return false }
-        let folder = dir.appendingPathComponent(id, isDirectory: true)
-        guard fm.fileExists(atPath: folder.appendingPathComponent("default.store").path) else {
+        guard let support = applicationSupportDirectory() else { return false }
+
+        var snapshotFolder: URL? = nil
+        var searchDirs: [URL] = []
+        if let dir = snapshotsDirectory() { searchDirs.append(dir) }
+        if let appSupport = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false) {
+            searchDirs.append(appSupport.appendingPathComponent("Snapshots", isDirectory: true))
+            searchDirs.append(appSupport.appendingPathComponent("StoreSnapshots", isDirectory: true))
+        }
+        if let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app") {
+            let groupAppSupport = groupURL.appendingPathComponent("Library/Application Support", isDirectory: true)
+            searchDirs.append(groupAppSupport.appendingPathComponent("Snapshots", isDirectory: true))
+            searchDirs.append(groupAppSupport.appendingPathComponent("StoreSnapshots", isDirectory: true))
+        }
+        for dir in searchDirs {
+            let candidate = dir.appendingPathComponent(id, isDirectory: true)
+            if fm.fileExists(atPath: candidate.appendingPathComponent("default.store").path) {
+                snapshotFolder = candidate
+                break
+            }
+        }
+        guard let folder = snapshotFolder else {
             MoneyCityLog.error("pending restore \(id) is missing")
             return false
         }

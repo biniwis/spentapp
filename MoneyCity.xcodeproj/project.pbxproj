@@ -71,6 +71,9 @@
 		B1000011B2C3D4E5F6000011 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000011B2C3D4E5F6000011; };
 		B1000012B2C3D4E5F6000012 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000012B2C3D4E5F6000012; };
 		B1000013B2C3D4E5F6000013 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000013B2C3D4E5F6000013; };
+		B1000014B2C3D4E5F6000014 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000014B2C3D4E5F6000014; };
+		B1000015B2C3D4E5F6000015 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000015B2C3D4E5F6000015; };
+		B1000016B2C3D4E5F6000016 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000016B2C3D4E5F6000016; };
 		BF1AC84137454359BB4972A5 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3BA77E33A1554CE987329BAD; };
 		1FB9C17E74DC4A31A22770C7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B5C8BE9EEF1342A3BE81E434; };
 		04991E494E8044D7927D38FA /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 95783AB9798D4000BF0EDC92; };
@@ -223,6 +226,9 @@
 		A1000011B2C3D4E5F6000011 /* CityDerivedCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityDerivedCache.swift"; path = "MoneyCity/Views/Components/CityDerivedCache.swift"; sourceTree = "<group>"; };
 		A1000012B2C3D4E5F6000012 /* CityTopBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityTopBarView.swift"; path = "MoneyCity/Views/Components/CityTopBarView.swift"; sourceTree = "<group>"; };
 		A1000013B2C3D4E5F6000013 /* DistrictDataHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DistrictDataHelper.swift"; path = "MoneyCity/Views/Components/DistrictDataHelper.swift"; sourceTree = "<group>"; };
+		A1000014B2C3D4E5F6000014 /* MoneyIconShapes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconShapes.swift"; path = "MoneyCity/Views/Components/MoneyIconShapes.swift"; sourceTree = "<group>"; };
+		A1000015B2C3D4E5F6000015 /* MoneyIconRows1to3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconRows1to3.swift"; path = "MoneyCity/Views/Components/MoneyIconRows1to3.swift"; sourceTree = "<group>"; };
+		A1000016B2C3D4E5F6000016 /* MoneyIconRows4to7.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconRows4to7.swift"; path = "MoneyCity/Views/Components/MoneyIconRows4to7.swift"; sourceTree = "<group>"; };
 		D7631F5AF1AD4D4C8C7D8512 /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaReadyWrapper.swift"; path = "MoneyCity/Views/Diorama/DioramaReadyWrapper.swift"; sourceTree = "<group>"; };
 		743000CD2FDC4B6CB9CF1B4F /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaSkeletonView.swift"; path = "MoneyCity/Views/Diorama/DioramaSkeletonView.swift"; sourceTree = "<group>"; };
 		9A7443012FDC448BBC7E62AE /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ThreeDioramaView.swift"; path = "MoneyCity/Views/Diorama/ThreeDioramaView.swift"; sourceTree = "<group>"; };
@@ -372,6 +378,9 @@
 				A1000011B2C3D4E5F6000011 /* CityDerivedCache.swift */,
 				A1000012B2C3D4E5F6000012 /* CityTopBarView.swift */,
 				A1000013B2C3D4E5F6000013 /* DistrictDataHelper.swift */,
+				A1000014B2C3D4E5F6000014 /* MoneyIconShapes.swift */,
+				A1000015B2C3D4E5F6000015 /* MoneyIconRows1to3.swift */,
+				A1000016B2C3D4E5F6000016 /* MoneyIconRows4to7.swift */,
 				D7631F5AF1AD4D4C8C7D8512 /* DioramaReadyWrapper.swift */,
 				743000CD2FDC4B6CB9CF1B4F /* DioramaSkeletonView.swift */,
 				9A7443012FDC448BBC7E62AE /* ThreeDioramaView.swift */,
@@ -636,6 +645,9 @@
 				B1000011B2C3D4E5F6000011 /* Sources */,
 				B1000012B2C3D4E5F6000012 /* Sources */,
 				B1000013B2C3D4E5F6000013 /* Sources */,
+				B1000014B2C3D4E5F6000014 /* Sources */,
+				B1000015B2C3D4E5F6000015 /* Sources */,
+				B1000016B2C3D4E5F6000016 /* Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

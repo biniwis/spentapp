@@ -29,6 +29,7 @@ public enum NotificationService {
         let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
         defaults.set(enabled, forKey: "notifications_enabled")
         #if canImport(UserNotifications)
+        registerNotificationCategories()
         let center = UNUserNotificationCenter.current()
         guard enabled else {
             center.removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier, monthlyRecapIdentifier])
@@ -61,10 +62,10 @@ public enum NotificationService {
     private static func registerNotificationCategories() {
         let enterAmountAction = UNTextInputNotificationAction(
             identifier: actionEnterAmount,
-            title: "הזן סכום",
+            title: AppLanguage.localized("הזן סכום", "Enter amount"),
             options: [],
-            textInputButtonTitle: "שמור",
-            textInputPlaceholder: "למשל: 48.50"
+            textInputButtonTitle: AppLanguage.localized("שמור", "Save"),
+            textInputPlaceholder: AppLanguage.localized("למשל: 48.50", "For example: 48.50")
         )
 
         let missingAmountCategory = UNNotificationCategory(
@@ -161,11 +162,11 @@ public enum NotificationService {
         let formattedAmount = "\(currency)\(amountFormatted)"
 
         if isRefund {
-            content.title = "זוהה זיכוי ע״ס \(formattedAmount) 💰"
-            content.body = "\(merchant) • ממתין לבדיקתך ב-SPENT"
+            content.title = AppLanguage.localized("זוהה זיכוי ע״ס \(formattedAmount) 💰", "Refund of \(formattedAmount) detected 💰")
+            content.body = AppLanguage.localized("\(merchant) • ממתין לבדיקתך ב-SPENT", "\(merchant) • Ready for review in SPENT")
         } else {
-            content.title = "\(formattedAmount) · \(merchant) נוספו לעיר ✓"
-            content.body = "\(categoryName) התעדכן בתקציב"
+            content.title = AppLanguage.localized("\(formattedAmount) · \(merchant) נוספו לעיר ✓", "\(formattedAmount) · \(merchant) added to your city ✓")
+            content.body = AppLanguage.localized("\(categoryName) התעדכן בתקציב", "\(categoryName) updated in your budget")
         }
         content.sound = .default
 
@@ -205,8 +206,8 @@ public enum NotificationService {
         let center = UNUserNotificationCenter.current()
         let content = UNMutableNotificationContent()
 
-        content.title = "💳 זוהה תשלום ב-Apple Pay"
-        content.body = "ב-\(pending.merchant). הקש להזנת סכום"
+        content.title = AppLanguage.localized("💳 זוהה תשלום ב-Apple Pay", "💳 Apple Pay payment detected")
+        content.body = AppLanguage.localized("ב-\(pending.merchant). הקש להזנת סכום", "At \(pending.merchant). Tap to enter the amount")
         content.categoryIdentifier = categoryMissingAmount
         content.sound = .default
 

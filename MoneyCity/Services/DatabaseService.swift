@@ -46,20 +46,26 @@ public final class DatabaseService {
     public var isEphemeral: Bool { storageMode == .memoryOnly }
 
     private init() {
-        // Both of these have to happen before the container exists, and in this order.
-        //
-        // A restore swaps the store file, which is only safe while nothing has it open — and
-        // a snapshot is worthless if it is taken after a migration has already reshaped the
-        // file it was meant to preserve. This is the one moment in the app's life when
-        // neither is true yet.
-        StoreSnapshotService.applyPendingRestoreIfNeeded()
-        StoreSnapshotService.snapshotIfBuildChanged()
-
-        // Built from the versioned schema, not a bare model list, so the store carries the
-        // version identifier the migration plan matches against. V1 is 1.0.0, which is also
-        // what an unversioned schema defaulted to — so an existing store opens unchanged.
         let schema = Schema(versionedSchema: MoneyCitySchemaV1.self)
-        let outcome = DatabaseService.openContainer(schema: schema)
+        let outcome: (container: ModelContainer, mode: StorageMode, failure: String?)
+        do {
+            let support = Self.authoritativeStoreDirectoryURL()
+            try StoreFileTransfer.recoverInterruptedRestore(in: support)
+            StoreSnapshotService.applyPendingRestoreIfNeeded()
+            // A failed rollback must never be followed by opening a mixed store.
+            try StoreFileTransfer.recoverInterruptedRestore(in: support)
+            try Self.autoMigrateToCanonicalStoreIfNeeded(canonicalDir: support)
+            StoreSnapshotService.snapshotIfBuildChanged()
+            outcome = Self.openContainer(schema: schema)
+        } catch {
+            MoneyCityLog.error("store preparation failed; originals preserved: \(error)")
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            do {
+                outcome = (try ModelContainer(for: schema, configurations: [config]), .memoryOnly, String(describing: error))
+            } catch {
+                fatalError("Critical: no in-memory container could be created: \(error)")
+            }
+        }
         self.container = outcome.container
         self.storageMode = outcome.mode
         self.storageFailure = outcome.failure
@@ -95,75 +101,22 @@ public final class DatabaseService {
             canonicalDir = appSupport
         }
 
-        autoMigrateToCanonicalStoreIfNeeded(canonicalDir: canonicalDir, fallbackDir: appSupport)
         return canonicalDir
     }
 
-    private nonisolated static func autoMigrateToCanonicalStoreIfNeeded(canonicalDir: URL, fallbackDir: URL) {
+    /// Called once before opening any store. Path lookup itself never moves data.
+    private nonisolated static func autoMigrateToCanonicalStoreIfNeeded(canonicalDir: URL) throws {
         let fm = FileManager.default
-        let canonicalStore = canonicalDir.appendingPathComponent("default.store")
-        let canonicalSize = (try? fm.attributesOfItem(atPath: canonicalStore.path)[.size] as? Int64) ?? 0
-
-        var candidateDirs: [URL] = [fallbackDir]
-        if let groupURL = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app") {
-            candidateDirs.append(groupURL)
-            candidateDirs.append(groupURL.appendingPathComponent("Library/Application Support", isDirectory: true))
+        var candidates: [URL] = []
+        if let fallback = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                      appropriateFor: nil, create: false) {
+            candidates.append(fallback)
         }
-
-        // Also search snapshot and recovered directories for any preserved user data
-        for baseDir in [fallbackDir, canonicalDir] {
-            let snapshotsDir = baseDir.appendingPathComponent("StoreSnapshots", isDirectory: true)
-            if let names = try? fm.contentsOfDirectory(atPath: snapshotsDir.path) {
-                for name in names.sorted(by: >) {
-                    candidateDirs.append(snapshotsDir.appendingPathComponent(name, isDirectory: true))
-                }
-            }
-
-            let recoveredDir = baseDir.appendingPathComponent("RecoveredStores", isDirectory: true)
-            if let names = try? fm.contentsOfDirectory(atPath: recoveredDir.path) {
-                for name in names.sorted(by: >) {
-                    candidateDirs.append(recoveredDir.appendingPathComponent(name, isDirectory: true))
-                }
-            }
-
-            if let contents = try? fm.contentsOfDirectory(atPath: baseDir.path) {
-                for name in contents where name.hasPrefix("CorruptStore-") {
-                    candidateDirs.append(baseDir.appendingPathComponent(name, isDirectory: true))
-                }
-            }
+        if let group = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.moneycity.app") {
+            candidates.append(group)
         }
-
-        // Exclude the canonical directory itself from candidates
-        candidateDirs.removeAll(where: { $0.standardizedFileURL.path == canonicalDir.standardizedFileURL.path })
-
-        var bestCandidate: URL? = nil
-        var bestSize: Int64 = 0
-
-        for dir in candidateDirs {
-            let store = dir.appendingPathComponent("default.store")
-            if fm.fileExists(atPath: store.path) {
-                let size = (try? fm.attributesOfItem(atPath: store.path)[.size] as? Int64) ?? 0
-                if size > bestSize {
-                    bestSize = size
-                    bestCandidate = dir
-                }
-            }
-        }
-
-        // If canonical store does not exist OR is an empty placeholder (<= 32KB) and a candidate has more data
-        let shouldMigrate = !fm.fileExists(atPath: canonicalStore.path) || (canonicalSize <= 32768 && bestSize > canonicalSize)
-        if let bestDir = bestCandidate, bestSize > 0, shouldMigrate {
-            MoneyCityLog.debug("Auto-migrating store from \(bestDir.path) (size: \(bestSize)) to canonical \(canonicalDir.path)")
-            let names = ["default.store", "default.store-wal", "default.store-shm"]
-            for name in names {
-                let src = bestDir.appendingPathComponent(name)
-                let dst = canonicalDir.appendingPathComponent(name)
-                if fm.fileExists(atPath: src.path) {
-                    try? fm.removeItem(at: dst)
-                    try? fm.copyItem(at: src, to: dst)
-                }
-            }
-        }
+        // Snapshots and quarantined stores are only restored by explicit user selection.
+        try StoreFileTransfer.migrateIfNeeded(to: canonicalDir, candidates: candidates)
     }
 
     public nonisolated static func authoritativeStoreURL() -> URL {
@@ -183,6 +136,7 @@ public final class DatabaseService {
             let config = ModelConfiguration(schema: schema, url: storeURL)
             let container = try ModelContainer(
                 for: schema,
+                migrationPlan: MoneyCityMigrationPlan.self,
                 configurations: [config]
             )
             return (container, .persistent, nil)
@@ -217,6 +171,7 @@ public final class DatabaseService {
                     let config = ModelConfiguration(schema: schema, url: storeURL)
                     let container = try ModelContainer(
                         for: schema,
+                        migrationPlan: MoneyCityMigrationPlan.self,
                         configurations: [config]
                     )
                     return (container, .recoveredFreshStore(backupPath: backup), firstFailure)

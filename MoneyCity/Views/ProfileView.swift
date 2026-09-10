@@ -888,6 +888,7 @@ public struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
+    @Environment(\.openURL) private var openURL
     @Query private var allTransactions: [Transaction]
 
     @AppStorage("userName") private var userName = ""
@@ -897,6 +898,7 @@ public struct SettingsSheet: View {
     
     @State private var showResetConfirmation = false
     @State private var showPrivacySheet = false
+    @State private var showAboutSheet = false
 
     public var body: some View {
         NavigationStack {
@@ -905,21 +907,17 @@ public struct SettingsSheet: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        // 1. Language & Currency
-                        settingsGroup(title: l10n.language == .hebrew ? "שפה ומטבעות" : "Language & Currency") {
-                            // The English translation is not finished: the onboarding wizard, the
-                            // month header on the City screen, every Siri and Shortcuts action and
-                            // the transaction-capture notifications are all Hebrew-only. Offering
-                            // the switch would send an English user into a Hebrew setup flow for
-                            // the app's headline feature. The picker comes back when the
-                            // translation does; the setting itself still works underneath.
-                            #if DEBUG
+                        // 1. General (Language, Currency, Mayor & Targets)
+                        settingsGroup(title: l10n.language == .hebrew ? "כללי" : "General") {
                             HStack {
                                 Text(l10n.language == .hebrew ? "שפת ממשק" : "Interface Language")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
-                                Picker("", selection: $l10n.language) {
+                                Picker("", selection: Binding(
+                                    get: { l10n.language },
+                                    set: { l10n.currentLanguageRaw = $0.rawValue }
+                                )) {
                                     ForEach(AppLanguage.allCases) { lang in
                                         Text(lang.displayName).tag(lang)
                                     }
@@ -930,7 +928,6 @@ public struct SettingsSheet: View {
                             .padding(.vertical, 4)
 
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
-                            #endif
 
                             HStack {
                                 Text(l10n.language == .hebrew ? "מטבע ראשי" : "Base Currency")
@@ -961,10 +958,9 @@ public struct SettingsSheet: View {
                             }
                             .tint(Color.primaryBlue)
                             .padding(.vertical, 4)
-                        }
 
-                        // 2. User & Monthly Budget
-                        settingsGroup(title: l10n.language == .hebrew ? "פרופיל ותקציב" : "User & Budget") {
+                            Divider().background(Color.borderSubtle).padding(.vertical, 4)
+
                             HStack(spacing: 12) {
                                 Text(l10n.language == .hebrew ? "שם ראש העיר" : "Mayor Name")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -979,9 +975,6 @@ public struct SettingsSheet: View {
 
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
 
-                            // The budget used to be editable here as well as on the budget
-                            // screen, and the two disagreed about what a budget even was.
-                            // It now has exactly one home.
                             HStack(spacing: 12) {
                                 Text(l10n.language == .hebrew ? "יעד תקציב חודשי" : "Monthly Budget Target")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -994,8 +987,8 @@ public struct SettingsSheet: View {
                             .padding(.vertical, 4)
                         }
 
-                        // 3. Notifications & Haptics
-                        settingsGroup(title: l10n.language == .hebrew ? "העדפות ממשק" : "Preferences") {
+                        // 2. Preferences & Notifications
+                        settingsGroup(title: l10n.language == .hebrew ? "העדפות ממשק והתראות" : "Preferences & Notifications") {
                             Toggle(isOn: $notificationsEnabled) {
                                 Text(l10n.language == .hebrew ? "התראות מערכת" : "System Notifications")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -1038,8 +1031,37 @@ public struct SettingsSheet: View {
                             .padding(.vertical, 4)
                         }
 
-                        // 4. Privacy & Transparency
-                        settingsGroup(title: l10n.language == .hebrew ? "פרטיות ושקיפות" : "Privacy & Transparency") {
+                        // 3. SPENT Section (Help & Feedback, Privacy, About)
+                        settingsGroup(title: "SPENT") {
+                            // Help & Feedback (Mailto to developer)
+                            Button(action: {
+                                let email = "support@moneycity.app"
+                                let subject = "SPENT Feedback"
+                                let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
+                                if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)") {
+                                    openURL(url)
+                                }
+                            }) {
+                                HStack(spacing: 10) {
+                                    MoneyIcon(.mail, size: 18, color: Color.primaryBlue)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(l10n.language == .hebrew ? "עזרה ומשוב" : "Help & Feedback")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                        Text(l10n.language == .hebrew ? "דיווח על באגים, שאלות והצעות" : "Bug reports, questions & ideas")
+                                            .font(.system(size: 11, design: .rounded))
+                                            .foregroundColor(Color.textMuted)
+                                    }
+                                    Spacer()
+                                    MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 12, color: Color.textMuted)
+                                }
+                                .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider().background(Color.borderSubtle).padding(.vertical, 4)
+
+                            // Privacy Policy
                             Button(action: { showPrivacySheet = true }) {
                                 HStack(spacing: 10) {
                                     MoneyIcon(.lock, size: 18, color: Color.themeMint)
@@ -1052,14 +1074,35 @@ public struct SettingsSheet: View {
                                             .foregroundColor(Color.textMuted)
                                     }
                                     Spacer()
-                                    MoneyIcon(.chevronRight, size: 12, color: Color.textMuted)
+                                    MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 12, color: Color.textMuted)
+                                }
+                                .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider().background(Color.borderSubtle).padding(.vertical, 4)
+
+                            // About SPENT
+                            Button(action: { showAboutSheet = true }) {
+                                HStack(spacing: 10) {
+                                    MoneyIcon(.infoCircle, size: 18, color: Color.deepNavy)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(l10n.language == .hebrew ? "אודות SPENT" : "About SPENT")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                        Text(l10n.language == .hebrew ? "גרסה, זכויות יוצרים ומידע" : "Version, copyright & details")
+                                            .font(.system(size: 11, design: .rounded))
+                                            .foregroundColor(Color.textMuted)
+                                    }
+                                    Spacer()
+                                    MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 12, color: Color.textMuted)
                                 }
                                 .padding(.vertical, 6)
                             }
                             .buttonStyle(.plain)
                         }
 
-                        // 5. Danger Zone
+                        // 4. Danger Zone (Data Management)
                         settingsGroup(title: l10n.language == .hebrew ? "אזור איפוס נתונים" : "Data Management") {
                             Button(role: .destructive, action: { showResetConfirmation = true }) {
                                 HStack(spacing: 8) {
@@ -1074,7 +1117,13 @@ public struct SettingsSheet: View {
                             .buttonStyle(.plain)
                         }
 
-                        Spacer(minLength: 40)
+                        // 5. Quiet Dynamic Version Footer
+                        Text("SPENT \(StoreSnapshotService.currentVersion()) • Build \(StoreSnapshotService.currentBuild())")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.textMuted.opacity(0.8))
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 4)
+                            .padding(.bottom, 24)
                     }
                     .padding(.top, 16)
                 }
@@ -1096,16 +1145,15 @@ public struct SettingsSheet: View {
                 PrivacyPolicySheet()
                     .environmentObject(l10n)
             }
+            .sheet(isPresented: $showAboutSheet) {
+                AboutSpentSheet()
+                    .environmentObject(l10n)
+            }
             .confirmationDialog(
                 l10n.language == .hebrew ? "האם אתה בטוח שברצונך לאפס את כל הנתונים?" : "Are you sure you want to reset all data?",
                 isPresented: $showResetConfirmation,
                 titleVisibility: .visible
             ) {
-                // This used to delete transactions only, while the dialog promised to erase
-                // everything — leaving the earned city, the split-payment plans, the ingest
-                // log and the merchant rules the app had learned about the user still in
-                // place. DatabaseService.resetAllData draws the line properly and, until
-                // now, nothing called it.
                 Button(l10n.language == .hebrew ? "מחק הכל ואפס" : "Delete & Reset", role: .destructive) {
                     Task {
                         try? await DatabaseService.shared.resetAllData()
@@ -1114,8 +1162,6 @@ public struct SettingsSheet: View {
                 }
                 Button(l10n.language == .hebrew ? "ביטול" : "Cancel", role: .cancel) {}
             } message: {
-                // Say what survives. A destructive action that is vague about its scope is
-                // one the user either fears or is surprised by afterwards.
                 Text(l10n.language == .hebrew
                      ? "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס."
                      : "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero.")
@@ -1629,3 +1675,114 @@ public struct PrivacyPolicySheet: View {
         .shadow(color: Color.black.opacity(0.025), radius: 6, y: 2)
     }
 }
+
+// MARK: - About SPENT Sheet
+
+public struct AboutSpentSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    private var isHebrew: Bool { l10n.language == .hebrew }
+
+    public init() {}
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+
+                VStack(spacing: 20) {
+                    Spacer(minLength: 12)
+
+                    // Hero App Emblem Card
+                    VStack(spacing: 14) {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                .fill(Color.themeLavenderSoft)
+                                .frame(width: 76, height: 76)
+                            MoneyIcon(.citySkyline, size: 38, color: Color.deepNavy)
+                        }
+
+                        VStack(spacing: 4) {
+                            Text("SPENT")
+                                .font(.system(size: 26, weight: .black, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                                .tracking(1)
+
+                            Text(isHebrew ? "מעקב הוצאות ובניית עיר חכמה" : "Mindful Spending & City Builder")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundColor(Color.textMuted)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                    .padding(.horizontal, 20)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+
+                    // Details Inset Card
+                    VStack(spacing: 0) {
+                        infoRow(
+                            label: isHebrew ? "גרסת אפליקציה" : "App Version",
+                            value: StoreSnapshotService.currentVersion()
+                        )
+
+                        Divider().background(Color.borderSubtle).padding(.vertical, 6)
+
+                        infoRow(
+                            label: isHebrew ? "מספר Build" : "Build Number",
+                            value: StoreSnapshotService.currentBuild()
+                        )
+
+                        Divider().background(Color.borderSubtle).padding(.vertical, 6)
+
+                        infoRow(
+                            label: isHebrew ? "זכויות יוצרים" : "Copyright",
+                            value: "© 2026 Binyamin Wisemon"
+                        )
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 12)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+
+                    Spacer()
+
+                    // Quiet footer note
+                    Text(isHebrew ? "נוצר בישראל באהבה 🏙️" : "Crafted with care 🏙️")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted.opacity(0.8))
+                        .padding(.bottom, 16)
+                }
+                .padding(.horizontal, 20)
+            }
+            .navigationTitle(isHebrew ? "אודות SPENT" : "About SPENT")
+            #if os(iOS)
+            .navigationBarTitleDisplayMode(.inline)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l10n.text(for: "close")) { dismiss() }
+                        .foregroundColor(Color.primaryBlue)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                }
+            }
+        }
+    }
+
+    private func infoRow(label: String, value: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+        }
+        .padding(.vertical, 4)
+    }
+}
+

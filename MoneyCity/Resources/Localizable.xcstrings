@@ -1,0 +1,2610 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "\n%@" : {
+
+    },
+    "—" : {
+
+    },
+    "?" : {
+
+    },
+    "(%lld%%)" : {
+
+    },
+    "(Amount)" : {
+
+    },
+    "(Merchant)" : {
+
+    },
+    "(סכום)" : {
+
+    },
+    "(שם העסק)" : {
+
+    },
+    "[Merchant Name]" : {
+
+    },
+    "[Shortcut Input]" : {
+
+    },
+    "[Transaction Amount]" : {
+
+    },
+    "[סכום העסקה]" : {
+
+    },
+    "[קלט הקיצור]" : {
+
+    },
+    "[שם בית העסק]" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ — איזה כיף שבאת!" : {
+
+    },
+    "%@ / %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@"
+          }
+        }
+      }
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%@ %@ • %lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ • %3$lld %4$@"
+          }
+        }
+      }
+    },
+    "%@ by month end" : {
+
+    },
+    "%@ City is Ready!" : {
+
+    },
+    "%@ City Story is Ready!" : {
+
+    },
+    "%@ hidden from total" : {
+
+    },
+    "%@ joined your city!" : {
+
+    },
+    "%@ remaining" : {
+
+    },
+    "%@ spent" : {
+
+    },
+    "%@ הוצאות" : {
+
+    },
+    "%@ לחודש" : {
+
+    },
+    "%@ מוסתרים מהחישוב" : {
+
+    },
+    "%@ עד סוף החודש" : {
+
+    },
+    "%@/mo" : {
+
+    },
+    "%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld active goals" : {
+
+    },
+    "%lld txs" : {
+
+    },
+    "%lld visits" : {
+
+    },
+    "%lld visits (%@ total) • View Details" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld visits (%2$@ total) • View Details"
+          }
+        }
+      }
+    },
+    "%lld יעדים מוגדרים" : {
+
+    },
+    "%lld עסקאות" : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "%lld%% budget · Savings ₪%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%% budget · Savings ₪%2$lld"
+          }
+        }
+      }
+    },
+    "%lld%% מהתקציב · חיסכון ₪%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%% מהתקציב · חיסכון ₪%2$lld"
+          }
+        }
+      }
+    },
+    "%lldd" : {
+
+    },
+    "%lldx" : {
+
+    },
+    "•" : {
+
+    },
+    "• ↩️ Refund" : {
+
+    },
+    "• ↩️ זיכוי" : {
+
+    },
+    "• Tap" : {
+
+    },
+    "• Tap 'Done' — and you are all set! 🎉" : {
+
+    },
+    "• Tap 'Done' at the top — and you're set! 🎉" : {
+
+    },
+    "• unverified" : {
+
+    },
+    "• לחץ" : {
+
+    },
+    "• לחץ 'סיום' (Done) — מעכשיו הכל יקלט אוטומטית! 🎉" : {
+
+    },
+    "• לחץ 'סיום' (Done) למעלה — וזהו! 🎉" : {
+
+    },
+    "• סיווג לא ודאי" : {
+
+    },
+    "+ Add First Goal" : {
+
+    },
+    "＋ Additional options (note, installments)" : {
+
+    },
+    "＋ אפשרויות נוספות (הערה, תשלומים)" : {
+
+    },
+    "+ הוסף את היעד הראשון" : {
+
+    },
+    "+%@" : {
+
+    },
+    "+%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "≈ %@" : {
+
+    },
+    "✦ MONTHLY CELEBRATION" : {
+
+    },
+    "✦ אירוע סוף חודש" : {
+
+    },
+    "➔" : {
+
+    },
+    "➔ select" : {
+
+    },
+    "➔ בחר" : {
+
+    },
+    "🏛️" : {
+
+    },
+    "$" : {
+
+    },
+    "₪%@" : {
+
+    },
+    "₪%lld" : {
+
+    },
+    "₪%lld / ₪%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "₪%1$lld / ₪%2$lld"
+          }
+        }
+      }
+    },
+    "₪%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "₪%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "₪%lld left" : {
+
+    },
+    "0" : {
+
+    },
+    "1x" : {
+
+    },
+    "3" : {
+
+    },
+    "4" : {
+
+    },
+    "6-Month Overview" : {
+
+    },
+    "12-Month Overview" : {
+
+    },
+    "100% On-Device · Zero Remote Servers" : {
+
+    },
+    "100% מקומי על המכשיר שלך · ללא שרתים" : {
+
+    },
+    "A goal gives you a reason to open the app on a day you bought nothing." : {
+
+    },
+    "A little reward for your weekly progress" : {
+
+    },
+    "A new city is growing" : {
+
+    },
+    "About SPENT" : {
+
+    },
+    "Active Streak" : {
+
+    },
+    "Active Today! 🔥" : {
+
+    },
+    "Activity" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add a goal" : {
+
+    },
+    "Add a purchase you've made and see where it appears in your city." : {
+
+    },
+    "Add an expense" : {
+
+    },
+    "Add Expense" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add Expense"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת הוצאה"
+          }
+        }
+      }
+    },
+    "Add Expense +" : {
+
+    },
+    "Add expense of ${amount} at ${merchant}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add expense of ${amount} at ${merchant}"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוסף הוצאה של ${amount} ב-${merchant}"
+          }
+        }
+      }
+    },
+    "Add fixed expenses" : {
+
+    },
+    "Add transactions from your Home Screen with a single tap." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add transactions from your Home Screen with a single tap."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוסף עסקאות ישירות מהמסך בנגיעה אחת."
+          }
+        }
+      }
+    },
+    "All" : {
+
+    },
+    "All expenses are assigned to their proper city buildings. No packages waiting." : {
+
+    },
+    "All sorted & clean!" : {
+
+    },
+    "Already in the city, here to stay. No placing or managing — just a familiar face to spot." : {
+
+    },
+    "Always remember this category" : {
+
+    },
+    "Amount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amount"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סכום"
+          }
+        }
+      }
+    },
+    "Amount as Text" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amount as Text"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סכום כטקסט"
+          }
+        }
+      }
+    },
+    "Analytics" : {
+
+    },
+    "Apple Pay Refund Detected" : {
+
+    },
+    "Are you sure you want to reset all data?" : {
+
+    },
+    "Assign each package to its city district with a single tap to clear the hub." : {
+
+    },
+    "Assign to 3D Building" : {
+
+    },
+    "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device." : {
+
+    },
+    "At this rate:" : {
+
+    },
+    "Auto Convert FX" : {
+
+    },
+    "Automatic Apple Pay Setup" : {
+
+    },
+    "Avg per transaction" : {
+
+    },
+    "Avg: %@" : {
+
+    },
+    "Avg: %@/mo" : {
+
+    },
+    "Back" : {
+
+    },
+    "Back to City" : {
+
+    },
+    "Back to this month" : {
+
+    },
+    "Back to Today" : {
+
+    },
+    "Backup & Restore" : {
+
+    },
+    "Base Currency" : {
+
+    },
+    "Breakdown for %@:" : {
+
+    },
+    "Budget & Income" : {
+
+    },
+    "Bug reports, questions & ideas" : {
+
+    },
+    "Built-in to iOS — just enable the 3-step automation:" : {
+
+    },
+    "Calendar & Jump to Date" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Capture Apple Pay Payment (Simple)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture Apple Pay Payment (Simple)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קליטת תשלום Apple Pay (פשוט)"
+          }
+        }
+      }
+    },
+    "Capture payment from ${payload}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capture payment from ${payload}"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קלוט תשלום מתוך ${payload}"
+          }
+        }
+      }
+    },
+    "Categories" : {
+
+    },
+    "Category" : {
+
+    },
+    "Category & Memory" : {
+
+    },
+    "Change currency" : {
+
+    },
+    "City" : {
+
+    },
+    "City companions" : {
+
+    },
+    "City companions — weekly reward" : {
+
+    },
+    "City is still growing... Recap arrives at month end 🏙️" : {
+
+    },
+    "City routine" : {
+
+    },
+    "City Sorting Hub" : {
+
+    },
+    "Close" : {
+
+    },
+    "Condition" : {
+
+    },
+    "Confirm category" : {
+
+    },
+    "Confirm Deposit" : {
+
+    },
+    "Confirming will deduct this amount from your monthly spending" : {
+
+    },
+    "Connect Input (Important! 💡)" : {
+
+    },
+    "Connect Shortcut Input (💡)" : {
+
+    },
+    "Couldn't create the portrait" : {
+
+    },
+    "Crafted with care 🏙️" : {
+
+    },
+    "Create" : {
+
+    },
+    "Currency" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Currency"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מטבע"
+          }
+        }
+      }
+    },
+    "Daily Avg" : {
+
+    },
+    "Date and Time" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date and Time"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תאריך ושעה"
+          }
+        }
+      }
+    },
+    "Day %lld each month" : {
+
+    },
+    "Defaults to the base currency selected in the app" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Defaults to the base currency selected in the app"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ברירת המחדל היא המטבע הראשי שהוגדר באפליקציה"
+          }
+        }
+      }
+    },
+    "Delete" : {
+
+    },
+    "Delete & Reset" : {
+
+    },
+    "Delete goal" : {
+
+    },
+    "Delete this transaction?" : {
+
+    },
+    "Delete Transaction" : {
+
+    },
+    "Deleted: %@" : {
+
+    },
+    "Deposit" : {
+
+    },
+    "Deposit into:" : {
+
+    },
+    "Deposit to goal" : {
+
+    },
+    "Deposit to Goal" : {
+
+    },
+    "Deposits & funds" : {
+
+    },
+    "Done" : {
+
+    },
+    "Drag the shortcut input into this single field. The app extracts the amount and merchant automatically." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drag the shortcut input into this single field. The app extracts the amount and merchant automatically."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שדה אחד בלבד — גרור לתוכו את קלט הקיצור. האפליקציה מחלצת ממנו את הסכום ואת שם בית העסק בעצמה."
+          }
+        }
+      }
+    },
+    "Due to iOS privacy, a quick Shortcuts automation is required to stream tap-to-pay charges directly into your city." : {
+
+    },
+    "Edit fixed expense" : {
+
+    },
+    "Edit Transaction" : {
+
+    },
+    "Enter ✎" : {
+
+    },
+    "Enter amount to update city" : {
+
+    },
+    "Enter an expense in an on-screen prompt without opening the app." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter an expense in an on-screen prompt without opening the app."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הזנת הוצאה ישירות מחלונית צפה על המסך ללא פתיחת האפליקציה."
+          }
+        }
+      }
+    },
+    "Enter Payment Amount" : {
+
+    },
+    "Enter your name (e.g. Benjamin)" : {
+
+    },
+    "Every building has a story" : {
+
+    },
+    "Every shekel saved nurtures the lake, grows the trees, and powers your goals." : {
+
+    },
+    "Every shekel that stays put lands here" : {
+
+    },
+    "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero." : {
+
+    },
+    "Filter to This Day Only" : {
+
+    },
+    "Financial Privacy at SPENT" : {
+
+    },
+    "Fixed Expenses" : {
+
+    },
+    "Fixed monthly total" : {
+
+    },
+    "Full Map View" : {
+
+    },
+    "Future transactions at %@ will auto-categorize" : {
+
+    },
+    "Goal completed! 🎉" : {
+
+    },
+    "Goal name (e.g. Emergency Fund, Trip)" : {
+
+    },
+    "Haptic Feedback" : {
+
+    },
+    "Have fixed expenses?" : {
+
+    },
+    "Help & Feedback" : {
+
+    },
+    "Hey, %@" : {
+
+    },
+    "Hidden" : {
+
+    },
+    "Hide additional options" : {
+
+    },
+    "History" : {
+
+    },
+    "Housing Expenses" : {
+
+    },
+    "How much did you pay?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much did you pay?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כמה שילמת?"
+          }
+        }
+      }
+    },
+    "How much to deposit?" : {
+
+    },
+    "How this month is going" : {
+
+    },
+    "I'll explore on my own" : {
+
+    },
+    "Identify the amount, merchant, date, and category in a screenshot or receipt and save the expense in your city." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identify the amount, merchant, date, and category in a screenshot or receipt and save the expense in your city."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מזהה אוטומטית סכום, בית עסק, תאריך וקטגוריה מתוך צילום מסך או קבלה ושומר את ההוצאה בעיר."
+          }
+        }
+      }
+    },
+    "Image file to scan" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image file to scan"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קובץ התמונה לסריקה"
+          }
+        }
+      }
+    },
+    "Immediate push alert when a purchase is logged" : {
+
+    },
+    "In All Goals" : {
+
+    },
+    "In progress" : {
+
+    },
+    "Included" : {
+
+    },
+    "Income sources" : {
+
+    },
+    "Installments" : {
+
+    },
+    "Instant Purchase Alerts" : {
+
+    },
+    "Interface Language" : {
+
+    },
+    "Keep streak tomorrow" : {
+
+    },
+    "Let's get to know your weeks first" : {
+
+    },
+    "Limited Time" : {
+
+    },
+    "Live Bank of Israel rates" : {
+
+    },
+    "Main Category" : {
+
+    },
+    "Maybe later" : {
+
+    },
+    "Mayor Name" : {
+
+    },
+    "Meet in the city" : {
+
+    },
+    "Meet your city" : {
+
+    },
+    "Merchant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merchant"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שם בית העסק"
+          }
+        }
+      }
+    },
+    "Merchant Details" : {
+
+    },
+    "Merchant Details (%@)" : {
+
+    },
+    "Merchant name" : {
+
+    },
+    "Merchant name received from Apple Pay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merchant name received from Apple Pay"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שם העסק (Merchant) שהתקבל ב-Apple Pay"
+          }
+        }
+      }
+    },
+    "Merge" : {
+
+    },
+    "Mindful Spending & City Builder" : {
+
+    },
+    "Monthly budget" : {
+
+    },
+    "Monthly Budget" : {
+
+    },
+    "Monthly Budget Target" : {
+
+    },
+    "Monthly Recap" : {
+
+    },
+    "Move to which district?" : {
+
+    },
+    "Name" : {
+
+    },
+    "Nature & Savings Reserve" : {
+
+    },
+    "Nature & Savings Sanctuary" : {
+
+    },
+    "New fixed expense" : {
+
+    },
+    "New Goal" : {
+
+    },
+    "Next" : {
+
+    },
+    "Next reward check from" : {
+
+    },
+    "No expenses recorded this month" : {
+
+    },
+    "No expenses this month" : {
+
+    },
+    "No goals yet" : {
+
+    },
+    "No Monthly Recaps Yet" : {
+
+    },
+    "No new reward to choose this week yet" : {
+
+    },
+    "No savings goals defined yet" : {
+
+    },
+    "No snapshots yet." : {
+
+    },
+    "Not in use — the ceilings below take over" : {
+
+    },
+    "Not now" : {
+
+    },
+    "Note / Merchant name (optional)" : {
+
+    },
+    "of %@ budget" : {
+
+    },
+    "Official Mayor: %@" : {
+
+    },
+    "OK" : {
+
+    },
+    "On the budget screen" : {
+
+    },
+    "One choice every seven days when everyday spending decreases by more than ₪10 compared with the previous week. Existing companions always stay." : {
+
+    },
+    "Open Shortcuts App" : {
+
+    },
+    "Open Shortcuts App Now" : {
+
+    },
+    "Optional fallback if the numeric amount is empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional fallback if the numeric amount is empty"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אופציונלי. גיבוי אם הסכום המספרי מגיע ריק"
+          }
+        }
+      }
+    },
+    "Or break it down by category — any ceiling you fill in here replaces the overall figure." : {
+
+    },
+    "Or select a quick target:" : {
+
+    },
+    "Over" : {
+
+    },
+    "Overall" : {
+
+    },
+    "Packages Waiting for Sorting" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Payment at %@" : {
+
+    },
+    "Please enter a valid amount" : {
+
+    },
+    "Please try sharing again." : {
+
+    },
+    "Previous" : {
+
+    },
+    "Privacy Policy" : {
+
+    },
+    "Profile" : {
+
+    },
+    "Quick Expense" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quick Expense"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוספת הוצאה מהירה"
+          }
+        }
+      }
+    },
+    "Reading the amount and merchant from your receipt…" : {
+
+    },
+    "Recaps Archive" : {
+
+    },
+    "Recenter" : {
+
+    },
+    "Record a payment and automatically categorize it in your city." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record a payment and automatically categorize it in your city."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קולט עסקת תשלום ומסווג אותה אוטומטית לעיר."
+          }
+        }
+      }
+    },
+    "Record Apple Pay Transaction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record Apple Pay Transaction"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטת עסקת Apple Pay"
+          }
+        }
+      }
+    },
+    "Record payment of ${amount} at ${merchant}" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record payment of ${amount} at ${merchant}"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קלוט עסקה של ${amount} ב-${merchant}"
+          }
+        }
+      }
+    },
+    "Record Transaction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Record Transaction"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקלטת עסקה"
+          }
+        }
+      }
+    },
+    "Rent" : {
+
+    },
+    "Rent & utilities included (%@)" : {
+
+    },
+    "Rent, subscriptions, or fixed bills? Add them so your city accounts for them automatically." : {
+
+    },
+    "Replace" : {
+
+    },
+    "Replace deletes everything here first. Export a copy before you do." : {
+
+    },
+    "Reset" : {
+
+    },
+    "Reset All Transactions & Data" : {
+
+    },
+    "Reset Filters" : {
+
+    },
+    "Resets each month — the land stays" : {
+
+    },
+    "Restore" : {
+
+    },
+    "Restore this snapshot?" : {
+
+    },
+    "Resume" : {
+
+    },
+    "Return to this month to continue your city's story." : {
+
+    },
+    "Review (%lld)" : {
+
+    },
+    "Review Only (%lld)" : {
+
+    },
+    "Salary" : {
+
+    },
+    "Sanctuary & Goals" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save Expense" : {
+
+    },
+    "Save to City" : {
+
+    },
+    "Save Transaction" : {
+
+    },
+    "Saved This Month" : {
+
+    },
+    "Saving failed or the choice is no longer available. A failed save does not consume your reward. Please try again." : {
+
+    },
+    "Savings Goals" : {
+
+    },
+    "Savings History" : {
+
+    },
+    "Scan Screenshot or Receipt in SPENT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scan Screenshot or Receipt in SPENT"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סרוק צילום מסך / קבלה ל-SPENT"
+          }
+        }
+      }
+    },
+    "Scene %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scene %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Screenshot or Receipt Image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Screenshot or Receipt Image"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צילום מסך או תמונת קבלה"
+          }
+        }
+      }
+    },
+    "Search transaction or category..." : {
+
+    },
+    "See All" : {
+
+    },
+    "See your skyline growth and spending highlights" : {
+
+    },
+    "Select Category" : {
+
+    },
+    "Set a goal for emergencies, vacation, or investments — and watch the sanctuary grow." : {
+
+    },
+    "Set Goal" : {
+
+    },
+    "Set Up New Savings Goal" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Share" : {
+
+    },
+    "Shortcuts Guide" : {
+
+    },
+    "Show All Transactions" : {
+
+    },
+    "Show Entire Month" : {
+
+    },
+    "Show Less" : {
+
+    },
+    "Skip" : {
+
+    },
+    "Sorting Hub is Spotless!" : {
+
+    },
+    "Spending Breakdown" : {
+
+    },
+    "SPENT" : {
+
+    },
+    "SPENT  /  %@" : {
+
+    },
+    "SPENT - Quick Add & Tracking" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SPENT - Quick Add & Tracking"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SPENT - הוספה מהירה ומעקב"
+          }
+        }
+      }
+    },
+    "SPENT %@ • Build %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "SPENT %1$@ • Build %2$@"
+          }
+        }
+      }
+    },
+    "SPENT actions are already installed!" : {
+
+    },
+    "SPENT City" : {
+
+    },
+    "SPENT Month" : {
+
+    },
+    "Start Today! ✨" : {
+
+    },
+    "Status:" : {
+
+    },
+    "System Notifications" : {
+
+    },
+    "Tap below to step into your city — every payment builds your very first landmarks! 🏙️" : {
+
+    },
+    "Tap blue fields and attach to Shortcut Input:" : {
+
+    },
+    "Tap for Quick Add +" : {
+
+    },
+    "Tap the blue fields to attach 'Shortcut Input':" : {
+
+    },
+    "Tap the marked building to discover the expenses behind it." : {
+
+    },
+    "Tap to Add +" : {
+
+    },
+    "Tap to continue" : {
+
+    },
+    "Tap to view your monthly recap" : {
+
+    },
+    "Target amount" : {
+
+    },
+    "The amount you paid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The amount you paid"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסכום ששילמת"
+          }
+        }
+      }
+    },
+    "The City's Future & Stability Sanctuary" : {
+
+    },
+    "The current state is snapshotted first, so this can be undone." : {
+
+    },
+    "The Nature Sanctuary grows with every shekel saved or deposited into goals. Tap below to manage goals." : {
+
+    },
+    "The whole gang is here" : {
+
+    },
+    "This is also recorded as a savings transfer and grows the city's park." : {
+
+    },
+    "This month: %@" : {
+
+    },
+    "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
+
+    },
+    "Top Categories" : {
+
+    },
+    "Top Expense" : {
+
+    },
+    "Total" : {
+
+    },
+    "Total %@ this month" : {
+
+    },
+    "Total Saved" : {
+
+    },
+    "Total Spent" : {
+
+    },
+    "Total This Year" : {
+
+    },
+    "Transaction Amount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaction Amount"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סכום העסקה"
+          }
+        }
+      }
+    },
+    "Transaction amount received from Wallet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaction amount received from Wallet"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סכום העסקה שהועבר מ-Wallet"
+          }
+        }
+      }
+    },
+    "Transaction Details" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaction Details"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרטי העסקה"
+          }
+        }
+      }
+    },
+    "Transaction History (%lld)" : {
+
+    },
+    "Transaction input received from Wallet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaction input received from Wallet"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קלט העסקה שהועבר מ-Wallet"
+          }
+        }
+      }
+    },
+    "Transactions" : {
+
+    },
+    "Triage" : {
+
+    },
+    "Trip to Japan" : {
+
+    },
+    "Uncategorized expenses gather here. Tap to triage and send funds to their buildings." : {
+
+    },
+    "Undo" : {
+
+    },
+    "Vacant Lot • %@0" : {
+
+    },
+    "Version, copyright & details" : {
+
+    },
+    "View" : {
+
+    },
+    "View ✨" : {
+
+    },
+    "We compare two weeks of everyday spending, excluding housing, subscriptions, health, finance and savings. A decrease of more than ₪10 can unlock a new companion. There's no need to skip things you need." : {
+
+    },
+    "Welcome" : {
+
+    },
+    "Welcome to the city" : {
+
+    },
+    "When the transaction took place" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When the transaction took place"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זמן ביצוע העסקה"
+          }
+        }
+      }
+    },
+    "Where did you pay?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where did you pay?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפה שילמת?"
+          }
+        }
+      }
+    },
+    "Where you paid (for example: groceries, coffee, gas)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Where you paid (for example: groceries, coffee, gas)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איפה שילמת (למשל: סופר, קפה, דלק)"
+          }
+        }
+      }
+    },
+    "Without income, the savings figure rests on a number the app invented." : {
+
+    },
+    "You've been here %lld times" : {
+
+    },
+    "Your city is ready for your story" : {
+
+    },
+    "Your companion wasn't added" : {
+
+    },
+    "Your companions are here to stay. There are no more companions to choose right now." : {
+
+    },
+    "Your everyday spending in the last 7 days was %@ lower than in the previous 7 days. Choose one companion to stay in your city." : {
+
+    },
+    "Your first building of the month" : {
+
+    },
+    "Your first recap will appear at the end of the month" : {
+
+    },
+    "Your Savings Goals" : {
+
+    },
+    "אגלה בעצמי" : {
+
+    },
+    "או בחר יעד מהיר:" : {
+
+    },
+    "או פרט לפי קטגוריה — כל תקרה שתמלא כאן מחליפה את הסכום הכולל." : {
+
+    },
+    "אודות SPENT" : {
+
+    },
+    "אולי אחר כך" : {
+
+    },
+    "אי החוסן והעתיד של העיר" : {
+
+    },
+    "אין הוצאות בחודש הזה" : {
+
+    },
+    "אין עדיין יעדים" : {
+
+    },
+    "אין עדיין סיכומים חודשיים" : {
+
+    },
+    "אין עדיין תצלומים." : {
+
+    },
+    "איפוס" : {
+
+    },
+    "איפוס כל העסקאות והנתונים" : {
+
+    },
+    "איפוס מבט" : {
+
+    },
+    "איפוס סינונים" : {
+
+    },
+    "אישור" : {
+
+    },
+    "אישור מיידי על כל רכישה" : {
+
+    },
+    "אישור עסקה זו יקזז את הסכום מסך ההוצאות החודשי שלך" : {
+
+    },
+    "אנא הזן סכום תקין" : {
+
+    },
+    "אפשר לחזור לחודש הנוכחי ולהמשיך לבנות את העיר שלך." : {
+
+    },
+    "אפשר לנסות לשתף שוב." : {
+
+    },
+    "ארכיון סיכומים" : {
+
+    },
+    "אשר את הסיווג" : {
+
+    },
+    "ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
+
+    },
+    "ב־7 הימים האחרונים ההוצאות היומיומיות היו נמוכות ב־%@ מב־7 הימים שלפניהם. אפשר לבחור חבר אחד שיישאר בעיר." : {
+
+    },
+    "בגלל ש-iOS שומרת על פרטיות, נדרש חיבור קצר באפליקציית 'קיצורים' (Shortcuts) כדי שכל תשלום ייקלט מיד בעיר שלך." : {
+
+    },
+    "בוא לראות איך העיר שלך נראית ומה היו השיאים" : {
+
+    },
+    "בואו נראה בעיר" : {
+
+    },
+    "בחירה אחת בכל שבעה ימים, כשההוצאות היומיומיות יורדות ביותר מ־10 ₪ לעומת השבוע הקודם. החברים שכבר הצטרפו נשארים תמיד." : {
+
+    },
+    "בחר קטגוריה" : {
+
+    },
+    "בטל" : {
+
+    },
+    "ביטול" : {
+
+    },
+    "ביקרת כאן %lld פעמים (סה״כ %@) • צפה בהיסטוריה" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ביקרת כאן %1$lld פעמים (סה״כ %2$@) • צפה בהיסטוריה"
+          }
+        }
+      }
+    },
+    "בית עסק / תיאור" : {
+
+    },
+    "בלחיצה אחת +" : {
+
+    },
+    "בלחיצה למטה תיכנס לעיר שלך — כל תשלום שתבצע דרך Apple Pay או ידנית יקים את המבנים הראשונים! 🏙️" : {
+
+    },
+    "בלי הכנסה, כל חישוב החיסכון נשען על מספר שהאפליקציה המציאה." : {
+
+    },
+    "במסך התקציב" : {
+
+    },
+    "בצע הפקדה לשמורה" : {
+
+    },
+    "בקצב הזה:" : {
+
+    },
+    "גיבוי ושחזור" : {
+
+    },
+    "גרסה, זכויות יוצרים ומידע" : {
+
+    },
+    "דיווח על באגים, שאלות והצעות" : {
+
+    },
+    "דלג" : {
+
+    },
+    "האם אתה בטוח שברצונך לאפס את כל הנתונים?" : {
+
+    },
+    "האם למחוק הוצאה זו?" : {
+
+    },
+    "הבא" : {
+
+    },
+    "הגדר יעד" : {
+
+    },
+    "הגדר יעד לקרן חירום, חופשה או השקעה — והשמורה תצמח יחד איתו." : {
+
+    },
+    "הגדרות" : {
+
+    },
+    "הגדרת אוטומציה" : {
+
+    },
+    "הגדרת יעד חיסכון חדש" : {
+
+    },
+    "הגדרת קליטת Apple Pay אוטומטית" : {
+
+    },
+    "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
+
+    },
+    "הוסף" : {
+
+    },
+    "הוסף הוצאה" : {
+
+    },
+    "הוסף הוצאה +" : {
+
+    },
+    "הוסף הוצאה שכבר ביצעת וראה איפה היא מופיעה בעיר." : {
+
+    },
+    "הוספה" : {
+
+    },
+    "הוספה מהירה +" : {
+
+    },
+    "הוספת הוצאה" : {
+
+    },
+    "הוספת הוצאות קבועות" : {
+
+    },
+    "הוצאה קבועה חדשה" : {
+
+    },
+    "הוצאות דיור" : {
+
+    },
+    "הוצאות החודש" : {
+
+    },
+    "הוצאות קבועות" : {
+
+    },
+    "הוצאות שונות מצטברות כאן כחבילות. לחץ למיון מהיר ושיוך למבנים הנכונים בעיר." : {
+
+    },
+    "הוצאת שיא" : {
+
+    },
+    "הושלם" : {
+
+    },
+    "הזן סכום ✎" : {
+
+    },
+    "הזן סכום לעדכון העיר" : {
+
+    },
+    "הזנת סכום לתשלום" : {
+
+    },
+    "החבר החדש כבר בעיר ויישאר בה. בלי הצבה או ניהול — רק לפגוש אותו מדי פעם." : {
+
+    },
+    "החבר עדיין לא נוסף" : {
+
+    },
+    "החברים שהצטרפו נשארים בעיר. כרגע אין חברים נוספים לבחירה." : {
+
+    },
+    "החודש: %@" : {
+
+    },
+    "החלף מטבע" : {
+
+    },
+    "החלפה" : {
+
+    },
+    "החלפה מוחקת את כל מה שיש כאן. תצלום אוטומטי נשמר בכל בנייה, אבל לא לפני ייבוא — ייצא עותק קודם." : {
+
+    },
+    "היי, ברוך הבא" : {
+
+    },
+    "היית כאן %lld פעמים" : {
+
+    },
+    "היסטוריה" : {
+
+    },
+    "היסטוריית חסכונות" : {
+
+    },
+    "היסטוריית עסקאות (%lld)" : {
+
+    },
+    "היעד הושלם בהצלחה! 🎉" : {
+
+    },
+    "הכל" : {
+
+    },
+    "הכל ממוין ומסודר!" : {
+
+    },
+    "הכנס את שמך (למשל: בנימין)" : {
+
+    },
+    "המבנה הראשון שלך לחודש זה" : {
+
+    },
+    "המצב הנוכחי יישמר כגיבוי נוסף לפני ההחלפה, כך שאפשר יהיה לחזור ממנו." : {
+
+    },
+    "המרה אוטומטית לעסקאות מט״ח" : {
+
+    },
+    "הסיכום החודשי הראשון שלך יופיע בסיום החודש" : {
+
+    },
+    "הסיכום של %@ מוכן!" : {
+
+    },
+    "הסכום יירשם גם כהפקדה לחיסכון ויגדיל את הפארק בעיר." : {
+
+    },
+    "הסתר אפשרויות נוספות" : {
+
+    },
+    "העיר מחכה לסיפור שלך" : {
+
+    },
+    "העיר עדיין נבנית... הסיכום יהיה זמין בסוף החודש 🏙️" : {
+
+    },
+    "העיר של %@ מוכנה לסיכום!" : {
+
+    },
+    "העיר שלך החודש" : {
+
+    },
+    "הפעולה מובנית במערכת — נותר רק להפעיל אוטומציה:" : {
+
+    },
+    "הפעולות של SPENT כבר מותקנות באייפון!" : {
+
+    },
+    "הפעל" : {
+
+    },
+    "הפקד" : {
+
+    },
+    "הפקד ליעד" : {
+
+    },
+    "הפקדה" : {
+
+    },
+    "הפקדה ליעד" : {
+
+    },
+    "הפקדה ליעד חיסכון" : {
+
+    },
+    "הפקדה ליעד:" : {
+
+    },
+    "הפקדות והשקעות" : {
+
+    },
+    "הפרס הבא ייבדק החל מ־" : {
+
+    },
+    "הצג את כל החודש" : {
+
+    },
+    "הצג את כל העסקאות" : {
+
+    },
+    "הצג הכל" : {
+
+    },
+    "הצג עסקאות של יום זה בלבד" : {
+
+    },
+    "הצג פחות" : {
+
+    },
+    "הקודם" : {
+
+    },
+    "הקש לצפייה בסיכום החודשי שלך" : {
+
+    },
+    "הקש על הבניין המסומן בעיר כדי לגלות אילו הוצאות בנו אותו." : {
+
+    },
+    "הקשה להמשך" : {
+
+    },
+    "השבוע עדיין אין פרס חדש לבחירה" : {
+
+    },
+    "השהה" : {
+
+    },
+    "השוואה חצי שנתית" : {
+
+    },
+    "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. כשל בשמירה לא מנצל את הפרס. אפשר לנסות שוב." : {
+
+    },
+    "התחל היום! ✨" : {
+
+    },
+    "התמונה לא נוצרה" : {
+
+    },
+    "התפלגות הוצאות" : {
+
+    },
+    "התראות מערכת" : {
+
+    },
+    "זוהה זיכוי / החזר מ-Apple Pay" : {
+
+    },
+    "זכור קטגוריה זו תמיד" : {
+
+    },
+    "זמין לזמן מוגבל" : {
+
+    },
+    "חבילות והוצאות שממתינות למיון" : {
+
+    },
+    "חבר את הקלט (חשוב! 💡)" : {
+
+    },
+    "חבר את הקלט (סכום ובית עסק 💡)" : {
+
+    },
+    "חזרה" : {
+
+    },
+    "חזרה להיום" : {
+
+    },
+    "חזרה לחודש הנוכחי" : {
+
+    },
+    "חזרה לעיר" : {
+
+    },
+    "חפש עסקה או קטגוריה..." : {
+
+    },
+    "חריגה" : {
+
+    },
+    "טיול ליפן" : {
+
+    },
+    "טרם הגדרת יעדי חיסכון" : {
+
+    },
+    "טרם נרשמו הוצאות החודש" : {
+
+    },
+    "יעד חדש" : {
+
+    },
+    "יעד נותן סיבה לפתוח את האפליקציה גם כשלא קנית כלום." : {
+
+    },
+    "יעד ראשון" : {
+
+    },
+    "יעד תקציב חודשי" : {
+
+    },
+    "יעדי החיסכון שלך" : {
+
+    },
+    "יעדי חיסכון" : {
+
+    },
+    "יש לך הוצאות קבועות?" : {
+
+    },
+    "כל %lld בחודש" : {
+
+    },
+    "כל ההוצאות חולקו בהצלחה למבנים הנכונים בעיר. אין חבילות שממתינות למיון." : {
+
+    },
+    "כל החבורה כבר בעיר שלך" : {
+
+    },
+    "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס." : {
+
+    },
+    "כל שקל שלא יוצא נשאר כאן" : {
+
+    },
+    "כל שקל שנשמר מזין את האגם, מצמיח את היער ומחזק את המטרות שלך." : {
+
+    },
+    "כלול" : {
+
+    },
+    "כמה ברצונך להפקיד?" : {
+
+    },
+    "לא בשימוש — התקרות למטה גוברות" : {
+
+    },
+    "לא עכשיו" : {
+
+    },
+    "לאיזה רובע ומבנה להעביר?" : {
+
+    },
+    "לאישור (%lld)" : {
+
+    },
+    "לבחור שיצטרף" : {
+
+    },
+    "לוח שנה ומעבר לתאריך" : {
+
+    },
+    "לחץ על השדות הכחולים וחבר אותם ל'קלט הקיצור':" : {
+
+    },
+    "לכל בניין יש סיפור" : {
+
+    },
+    "לעיר" : {
+
+    },
+    "לשחזר את הגיבוי הזה?" : {
+
+    },
+    "מגרש פנוי • %@ החודש" : {
+
+    },
+    "מדיניות פרטיות" : {
+
+    },
+    "מוסתר" : {
+
+    },
+    "מושהה" : {
+
+    },
+    "מחק" : {
+
+    },
+    "מחק הוצאה" : {
+
+    },
+    "מחק הוצאה זו" : {
+
+    },
+    "מחק הכל ואפס" : {
+
+    },
+    "מחק יעד" : {
+
+    },
+    "מחק עסקה" : {
+
+    },
+    "מטבע ראשי" : {
+
+    },
+    "מיזוג" : {
+
+    },
+    "מיין חבילות" : {
+
+    },
+    "מכירים את העיר" : {
+
+    },
+    "ממוצע ליום" : {
+
+    },
+    "ממוצע לעסקה" : {
+
+    },
+    "ממוצע: %@" : {
+
+    },
+    "ממוצע: %@/חודש" : {
+
+    },
+    "מעקב הוצאות ובניית עיר חכמה" : {
+
+    },
+    "מפענח סכום ופרטי עסק מתמונת הקבלה..." : {
+
+    },
+    "מצב החודש הזה" : {
+
+    },
+    "מצב השמורה" : {
+
+    },
+    "מצטרפים לעיר" : {
+
+    },
+    "מצטרפים לעיר — הפרס השבועי" : {
+
+    },
+    "מקורות הכנסה" : {
+
+    },
+    "מרכז המיון והדואר" : {
+
+    },
+    "מרכז המיון נקי ומסודר!" : {
+
+    },
+    "משווים שני שבועות של הוצאות יומיומיות, בלי דיור, מנויים, בריאות, בנק וחיסכון. ירידה של יותר מ־10 ₪ יכולה לפתוח בחירה של חבר חדש. אין צורך לוותר על דברים שאתה צריך." : {
+
+    },
+    "משכורת" : {
+
+    },
+    "מתאפס בכל חודש — הקרקע נשארת" : {
+
+    },
+    "מתוך %@ תקציב" : {
+
+    },
+    "נא להזין סכום תקין" : {
+
+    },
+    "נבנה כעת" : {
+
+    },
+    "נוצר בישראל באהבה 🏙️" : {
+
+    },
+    "נותרו %@ ליעד" : {
+
+    },
+    "נותרו ₪%lld בתקציב" : {
+
+    },
+    "נחסך החודש" : {
+
+    },
+    "ניתוח נתונים" : {
+
+    },
+    "נמחקה: %@" : {
+
+    },
+    "סגור" : {
+
+    },
+    "סגירה" : {
+
+    },
+    "סה״כ" : {
+
+    },
+    "סה״כ %@ החודש" : {
+
+    },
+    "סה״כ החודש" : {
+
+    },
+    "סה״כ קבוע בחודש" : {
+
+    },
+    "סווג כל חבילה למבנה הנכון בעיר בלחיצה אחת כדי לפנות את המרכז." : {
+
+    },
+    "סטטוס:" : {
+
+    },
+    "סיום" : {
+
+    },
+    "סיכום חודשי" : {
+
+    },
+    "סך הכל ביעדים" : {
+
+    },
+    "סך הכל השנה" : {
+
+    },
+    "סך כל החיסכון" : {
+
+    },
+    "סכום" : {
+
+    },
+    "סכום יעד" : {
+
+    },
+    "סכום כולל" : {
+
+    },
+    "סקירת 12 חודשים" : {
+
+    },
+    "עדכון שערי יציג חי של בנק ישראל" : {
+
+    },
+    "עזרה ומשוב" : {
+
+    },
+    "עיר חדשה מתחילה לצמוח" : {
+
+    },
+    "עסקאות" : {
+
+    },
+    "עסקאות החודש" : {
+
+    },
+    "עסקאות לאישור בלבד (%lld)" : {
+
+    },
+    "עסקאות עתידיות ב-%@ יסווגו אוטומטית" : {
+
+    },
+    "ערוך עסקה" : {
+
+    },
+    "עריכת הוצאה" : {
+
+    },
+    "עריכת הוצאה קבועה" : {
+
+    },
+    "פירוט עבור %@:" : {
+
+    },
+    "פעיל היום! 🔥" : {
+
+    },
+    "פעילות" : {
+
+    },
+    "פרופיל" : {
+
+    },
+    "פרטי בית עסק" : {
+
+    },
+    "פרטי בית עסק (%@)" : {
+
+    },
+    "פרטיות פיננסית ב-SPENT" : {
+
+    },
+    "פריסה לתשלומים" : {
+
+    },
+    "פרס קטן על ההתקדמות השבועית שלך" : {
+
+    },
+    "פתח את אפליקציית 'קיצורים'" : {
+
+    },
+    "פתח את אפליקציית 'קיצורים' עכשיו" : {
+
+    },
+    "צור" : {
+
+    },
+    "צפה" : {
+
+    },
+    "צפה ✨" : {
+
+    },
+    "קבלת פוש מיידי כשרכישה נקלטת בהצלחה בעיר" : {
+
+    },
+    "קודם נכיר את השבועות שלך" : {
+
+    },
+    "קטגוריה" : {
+
+    },
+    "קטגוריה ראשית" : {
+
+    },
+    "קטגוריות" : {
+
+    },
+    "קטגוריות מובילות" : {
+
+    },
+    "ראש העיר הרשמי: %@" : {
+
+    },
+    "רטט פידבק (Haptics)" : {
+
+    },
+    "רצף ימים פעיל" : {
+
+    },
+    "שגרת העיר" : {
+
+    },
+    "שוט %lld מתוך %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "שוט %1$lld מתוך %2$lld"
+          }
+        }
+      }
+    },
+    "שחזר" : {
+
+    },
+    "שיוך לבניין בעיר" : {
+
+    },
+    "שיוך קטגוריה וזיכרון" : {
+
+    },
+    "שיתוף" : {
+
+    },
+    "שכירות וחשבונות כלולים (%@)" : {
+
+    },
+    "שכירות, מנויים או חשבונות חודשיים? הוסף אותם כעת כדי שהעיר תחשב אותם אוטומטית בכל חודש." : {
+
+    },
+    "שכר דירה" : {
+
+    },
+    "שלום, %@" : {
+
+    },
+    "שם" : {
+
+    },
+    "שם בית העסק / הערה (אופציונלי)" : {
+
+    },
+    "שם היעד (למשל: קרן ביטחון, חופשה, רכב)" : {
+
+    },
+    "שם העסק" : {
+
+    },
+    "שם ראש העיר" : {
+
+    },
+    "שמור" : {
+
+    },
+    "שמור בעיר" : {
+
+    },
+    "שמור הוצאה" : {
+
+    },
+    "שמור יעד" : {
+
+    },
+    "שמור על הרצף מחר" : {
+
+    },
+    "שמורת הטבע והחיסכון" : {
+
+    },
+    "שמורת הטבע והחיסכון צומחת עם כל שקל שנשמר או הופקד ליעד. לחץ על התפריט המיוחד לניהול יעדים והפקדות." : {
+
+    },
+    "שפת ממשק" : {
+
+    },
+    "תפריט השמורה ויעדים" : {
+
+    },
+    "תצוגת מפה מלאה" : {
+
+    },
+    "תקציב והכנסות" : {
+
+    },
+    "תקציב חודשי" : {
+
+    },
+    "תשלום 1" : {
+
+    },
+    "תשלום ב-%@" : {
+
+    }
+  },
+  "version" : "1.0"
+}

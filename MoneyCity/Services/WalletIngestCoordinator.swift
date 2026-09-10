@@ -97,7 +97,7 @@ public final class IngestStateMachine {
             states.append(.duplicate)
             return .duplicate
         } catch TransactionIngestError.missingAmount {
-            let name = salvaged.merchant ?? "תשלום Apple Pay"
+            let name = salvaged.merchant ?? AppLanguage.localized("תשלום Apple Pay", "Apple Pay payment")
             let rules = try context.fetch(FetchDescriptor<MerchantRule>())
             let classification = MerchantRuleService.classify(merchant: name, amount: 0, rules: rules)
             let registration = pendingStore.findOrRegister(merchant: name, currency: resolvedCurrency,
@@ -140,7 +140,7 @@ public enum WalletIngestCoordinator {
             switch outcome {
             case .duplicate:
                 log.outcome = "כפילות — לא נשמר שוב"
-                return WalletIngestResult(message: "העסקה הזו כבר טופלה.", succeeded: true)
+                return WalletIngestResult(message: AppLanguage.localized("העסקה הזו כבר טופלה.", "This transaction has already been processed."), succeeded: true)
             case .pending(let pending, let isNew):
                 if isNew {
                     #if canImport(UserNotifications)
@@ -150,8 +150,8 @@ public enum WalletIngestCoordinator {
                 log.outcome = "ממתין לסכום"
                 log.resolvedMerchant = pending.merchant
                 return WalletIngestResult(message: isNew
-                    ? "זוהה תשלום ב-\(pending.merchant). נשלחה בקשה להזנת הסכום."
-                    : "כבר קיימת בקשה להזנת סכום עבור התשלום הזה.", succeeded: true)
+                    ? AppLanguage.localized("זוהה תשלום ב-\(pending.merchant). נשלחה בקשה להזנת הסכום.", "Payment at \(pending.merchant) detected. A request to enter the amount was sent.")
+                    : AppLanguage.localized("כבר קיימת בקשה להזנת סכום עבור התשלום הזה.", "A request to enter the amount for this payment already exists."), succeeded: true)
             case .finalized(let transaction):
                 let refund = transaction.amount < 0
                 log.resolvedAmount = transaction.amount
@@ -164,7 +164,7 @@ public enum WalletIngestCoordinator {
                 }
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(amount: abs(transaction.amount),
-                    currency: transaction.currency, categoryName: transaction.category.shortName,
+                    currency: transaction.currency, categoryName: transaction.category.shortName(for: AppLanguage.current),
                     merchant: transaction.merchant, isRefund: refund)
                 CityNarrativeEngine.shared.onApplePayTransactionIngested(transactionDate: transaction.timestamp,
                     category: transaction.category, amount: abs(transaction.amount), currency: transaction.currency)
@@ -177,13 +177,13 @@ public enum WalletIngestCoordinator {
                         merchant: transaction.merchant, isRefund: refund)
                 }
                 let formatted = String(format: "%.2f", abs(transaction.amount))
-                let review = transaction.isConfirmed ? "" : " ממתין לבדיקתך בהיסטוריה."
-                return WalletIngestResult(message: "\(refund ? "נרשם זיכוי" : "נרשמה עסקה") ע״ס \(transaction.currency)\(formatted) ב-\(transaction.merchant).\(review)", succeeded: true)
+                let review = transaction.isConfirmed ? "" : AppLanguage.localized(" ממתין לבדיקתך בהיסטוריה.", " Ready for review in History.")
+                return WalletIngestResult(message: AppLanguage.localized("\(refund ? "נרשם זיכוי" : "נרשמה עסקה") ע״ס \(transaction.currency)\(formatted) ב-\(transaction.merchant).\(review)", "\(refund ? "Refund" : "Payment") of \(transaction.currency)\(formatted) at \(transaction.merchant) recorded.\(review)"), succeeded: true)
             }
         } catch {
             log.outcome = "הקליטה נכשלה"
             log.failureReason = String(describing: error)
-            return WalletIngestResult(message: "לא ניתן לשמור את העסקה. פרטי התקלה נשמרו ביומן הקליטה; אפשר לנסות שוב.", succeeded: false)
+            return WalletIngestResult(message: AppLanguage.localized("לא ניתן לשמור את העסקה. פרטי התקלה נשמרו ביומן הקליטה; אפשר לנסות שוב.", "Could not save the transaction. Error details were saved in the ingestion log; please try again."), succeeded: false)
         }
     }
 

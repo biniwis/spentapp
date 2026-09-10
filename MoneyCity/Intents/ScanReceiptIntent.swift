@@ -5,16 +5,16 @@ import SwiftData
 /// App Intent for scanning payment confirmation screenshots and receipts via Apple Shortcuts or iOS Share Sheet.
 public struct ScanReceiptIntent: AppIntent {
 
-    public static var title: LocalizedStringResource = "סרוק צילום מסך / קבלה ל-SPENT"
+    public static var title: LocalizedStringResource = "Scan Screenshot or Receipt in SPENT"
     public static var description = IntentDescription(
-        "מזהה אוטומטית סכום, בית עסק, תאריך וקטגוריה מתוך צילום מסך או קבלה ושומר את ההוצאה בעיר."
+        "Identify the amount, merchant, date, and category in a screenshot or receipt and save the expense in your city."
     )
 
     public static var openAppWhenRun: Bool = false
 
     @Parameter(
-        title: "צילום מסך או תמונת קבלה",
-        description: "קובץ התמונה לסריקה",
+        title: "Screenshot or Receipt Image",
+        description: "Image file to scan",
         supportedTypeIdentifiers: ["public.image", "public.png", "public.jpeg", "public.heic"]
     )
     public var imageFile: IntentFile?
@@ -29,8 +29,8 @@ public struct ScanReceiptIntent: AppIntent {
     public func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
         guard let imageFile = imageFile else {
             return .result(
-                value: "לא התקבלה תמונה לסריקה",
-                dialog: "לא התקבלה תמונה לסריקה. אנא בחר צילום מסך של אישור תשלום."
+                value: AppLanguage.localized("לא התקבלה תמונה לסריקה", "No image was provided to scan"),
+                dialog: IntentDialog(stringLiteral: AppLanguage.localized("לא התקבלה תמונה לסריקה. אנא בחר צילום מסך של אישור תשלום.", "No image was provided. Please select a payment confirmation screenshot."))
             )
         }
 
@@ -94,7 +94,7 @@ public struct ScanReceiptIntent: AppIntent {
             }
 
             guard !newTransactions.isEmpty else {
-                let msg = "כל העסקאות בצילום המסך כבר קיימות באפליקציה (זוהו ככפולות)"
+                let msg = AppLanguage.localized("כל העסקאות בצילום המסך כבר קיימות באפליקציה (זוהו ככפולות)", "All transactions in this screenshot already exist in the app (duplicates detected)")
                 return .result(value: msg, dialog: "\(msg)")
             }
 
@@ -105,13 +105,13 @@ public struct ScanReceiptIntent: AppIntent {
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(
                     amount: primary.amount,
-                    categoryName: primary.category.displayName,
+                    categoryName: primary.category.displayName(for: AppLanguage.current),
                     merchant: primary.merchant
                 )
                 #endif
 
                 let formattedAmount = "₪" + (primary.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", primary.amount) : String(format: "%.2f", primary.amount))
-                let successMessage = "נוספו \(formattedAmount) ל\(primary.category.displayName) — \(primary.merchant)"
+                let successMessage = AppLanguage.localized("נוספו \(formattedAmount) ל\(primary.category.displayName) — \(primary.merchant)", "Added \(formattedAmount) to \(primary.category.displayName(for: AppLanguage.current)) — \(primary.merchant)")
 
                 return .result(
                     value: successMessage,
@@ -122,13 +122,13 @@ public struct ScanReceiptIntent: AppIntent {
                 let totalSum = newTransactions.reduce(0.0) { $0 + $1.amount }
                 let formattedTotal = "₪" + (totalSum.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", totalSum) : String(format: "%.2f", totalSum))
                 let storesSummary = newTransactions.map { "\($0.merchant) (₪\($0.amount.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", $0.amount) : String(format: "%.2f", $0.amount)))" }.joined(separator: ", ")
-                let successMessage = "נוספו \(count) עסקאות מתוך צילום המסך (סך הכל \(formattedTotal)): \(storesSummary)"
+                let successMessage = AppLanguage.localized("נוספו \(count) עסקאות מתוך צילום המסך (סך הכל \(formattedTotal)): \(storesSummary)", "Added \(count) transactions from the screenshot (total \(formattedTotal)): \(storesSummary)")
 
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(
                     amount: totalSum,
-                    categoryName: newTransactions.first?.category.displayName ?? "קניות",
-                    merchant: "\(count) חנויות: \(newTransactions.map(\.merchant).joined(separator: ", "))"
+                    categoryName: newTransactions.first?.category.displayName(for: AppLanguage.current) ?? AppLanguage.localized("קניות", "Shopping"),
+                    merchant: AppLanguage.localized("\(count) חנויות: \(newTransactions.map(\.merchant).joined(separator: ", "))", "\(count) stores: \(newTransactions.map(\.merchant).joined(separator: ", "))")
                 )
                 #endif
 
@@ -147,8 +147,8 @@ public struct ScanReceiptIntent: AppIntent {
                 trace: failure?.trace
             )
             return .result(
-                value: "שגיאה בפענוח צילום המסך",
-                dialog: "לא הצלחנו לפענח את הסכום או בית העסק מתוך התמונה."
+                value: AppLanguage.localized("שגיאה בפענוח צילום המסך", "Could not read the screenshot"),
+                dialog: IntentDialog(stringLiteral: AppLanguage.localized("לא הצלחנו לפענח את הסכום או בית העסק מתוך התמונה.", "Could not read the amount or merchant from the image."))
             )
         }
     }

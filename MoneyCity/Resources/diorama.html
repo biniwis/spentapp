@@ -1539,31 +1539,87 @@
       return packRigidModel(g);
     }
 
+    // Food identities use readable silhouettes, not text or color alone.
+    function groceryShelf(parent, x, y, z, width) {
+      const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g);
+      g.add(mesh(new THREE.BoxGeometry(width, 0.66, 0.09), mat(0x286447, 0.8), 0, 0.33, -0.09));
+      [0.08, 0.36].forEach(function (yy) {
+        g.add(mesh(new THREE.BoxGeometry(width, 0.045, 0.30), M_WARM_STONE, 0, yy, 0));
+        for (let i = 0; i < 5; i++) {
+          const xx = (i - 2) * width / 5.4;
+          g.add(mesh(new THREE.BoxGeometry(width / 7, 0.20, 0.14), mat([0xEAC454, 0xD76547, 0xF6EDD4, 0x619FC0, 0x86A75A][i], 0.8), xx, yy + 0.12, 0));
+          g.add(mesh(new THREE.BoxGeometry(width / 10, 0.045, 0.015), M_WHITE, xx, yy + 0.13, 0.078, false, false));
+        }
+      });
+    }
+
+    function groceryCart(parent, x, z, scale) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.scale.setScalar(scale || 1); g.rotation.y = -0.35; parent.add(g);
+      const steel = M_MULLION;
+      g.add(mesh(new THREE.BoxGeometry(0.46, 0.035, 0.38), steel, 0, 0.23, 0));
+      [-0.22, 0.22].forEach(function (xx) {
+        [0.27, 0.40, 0.53].forEach(function (yy) { g.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.40), steel, xx, yy, 0)); });
+        [-0.18, 0, 0.18].forEach(function (zz) { g.add(mesh(new THREE.BoxGeometry(0.025, 0.30, 0.025), steel, xx, 0.39, zz)); });
+        [-0.15, 0.15].forEach(function (zz) {
+          const wheel = mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 8), M_DARKFRAME, xx, 0.07, zz); wheel.rotation.z = Math.PI / 2; g.add(wheel);
+        });
+      });
+      [-0.18, 0.18].forEach(function (zz) { g.add(mesh(new THREE.BoxGeometry(0.46, 0.025, 0.025), steel, 0, 0.53, zz)); });
+      g.add(mesh(new THREE.BoxGeometry(0.48, 0.055, 0.06), mat(0x287A4C, 0.7), 0, 0.58, -0.24));
+      g.add(mesh(new THREE.BoxGeometry(0.17, 0.29, 0.17), M_CANVAS, -0.09, 0.39, 0));
+      g.add(mesh(new THREE.SphereGeometry(0.10, 8, 6), mat(0x6A9B43, 0.8), 0.10, 0.37, 0.04));
+    }
+
+    function foodEmblem(parent, kind, x, y, z, scale) {
+      const g = new THREE.Group(); g.position.set(x, y, z); g.scale.setScalar(scale || 1); parent.add(g);
+      if (kind === "coffee") {
+        g.add(mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.32, 14), M_WHITE, 0, 0, 0));
+        g.add(mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.018, 14), mat(0x583828, 0.85), 0, 0.165, 0));
+        g.add(mesh(new THREE.TorusGeometry(0.11, 0.035, 6, 12), M_WHITE, 0.23, 0.01, 0));
+        g.add(mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.035, 14), M_WHITE, 0, -0.18, 0));
+      } else {
+        const plate = mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.045, 20), M_WHITE, 0, 0, 0); plate.rotation.x = Math.PI / 2; g.add(plate);
+        g.add(mesh(new THREE.TorusGeometry(0.19, 0.018, 6, 20), M_GOLD, 0, 0, 0.028));
+        [-0.37, 0.37].forEach(function (xx) { g.add(mesh(new THREE.BoxGeometry(0.05, 0.46, 0.05), M_WHITE, xx, 0, 0)); });
+        [-0.425, -0.37, -0.315].forEach(function (xx) { g.add(mesh(new THREE.BoxGeometry(0.025, 0.16, 0.05), M_WHITE, xx, 0.21, 0)); });
+        g.add(mesh(new THREE.BoxGeometry(0.09, 0.23, 0.05), M_WHITE, 0.39, 0.14, 0));
+      }
+    }
+
+    function diningTable(parent, x, z, venue) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+      g.add(mesh(new THREE.BoxGeometry(0.58, 0.05, 0.66), M_WOOD, 0, 0.44, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.60, 0.025, 0.68), M_CANVAS, 0, 0.475, 0));
+      [-0.21, 0.21].forEach(function (xx) { [-0.24, 0.24].forEach(function (zz) { g.add(mesh(new THREE.BoxGeometry(0.035, 0.42, 0.035), M_DARKFRAME, xx, 0.21, zz)); }); });
+      [-1, 1].forEach(function (side) {
+        if (venue) {
+          const guest = makeFigure({ seated: true, shirt: side < 0 ? 0x417BA9 : 0xBC6978, dark: side > 0 });
+          guest.position.z = side * 0.48; guest.rotation.y = side > 0 ? Math.PI : 0;
+          g.add(guest); packRigidModel(guest);
+          bindVenueActor(guest, venue, (x < 0 ? 0.18 : 0.45) + (side > 0 ? 0.28 : 0));
+        }
+        g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), M_WHITE, 0, 0.50, side * 0.19));
+        g.add(mesh(new THREE.BoxGeometry(0.025, 0.015, 0.16), M_MULLION, 0.17, 0.50, side * 0.19));
+        g.add(mesh(new THREE.BoxGeometry(0.28, 0.035, 0.26), M_WOOD, 0, 0.26, side * 0.48));
+        g.add(mesh(new THREE.BoxGeometry(0.28, 0.28, 0.035), M_WOOD, 0, 0.39, side * 0.59));
+        [-0.10, 0.10].forEach(function (xx) { g.add(mesh(new THREE.BoxGeometry(0.035, 0.26, 0.23), M_DARKFRAME, xx, 0.13, side * 0.48)); });
+      });
+    }
+
     const CHARACTER = {
       food_super: function (g, w, d) {
         crateStack(g, -w * 0.34, d / 2 + 0.42);
         crateStack(g,  w * 0.30, d / 2 + 0.40);
-        // Shopping trolley
-        const t = new THREE.Group(); t.position.set(w * 0.05, 0, d / 2 + 0.55); t.rotation.y = 0.5; g.add(t);
-        t.add(mesh(new THREE.BoxGeometry(0.28, 0.22, 0.20), M_MULLION, 0, 0.26, 0, false, false));
-        t.add(mesh(new THREE.BoxGeometry(0.26, 0.02, 0.18), M_MULLION, 0, 0.15, 0, false, false));
-        [[-0.11, -0.08], [0.11, -0.08], [-0.11, 0.08], [0.11, 0.08]].forEach(function (p) {
-          t.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 6), M_DARKFRAME, p[0], 0.03, p[1], false, false));
-        });
+        groceryCart(g, w * 0.08, d / 2 + 0.50, 1.15);
       },
       food_bistro: function (g, w, d) {
-        aFrameBoard(g, -w * 0.38, d / 2 + 0.46, 0.5);
-        cafeTableSet(g, -0.48, d / 2 + 0.48, { occupied: true, venue: "food_bistro", threshold: 0.18, shirt: 0x417BA9 });
-        cafeTableSet(g, 0.48, d / 2 + 0.48, { occupied: true, venue: "food_bistro", threshold: 0.45, dark: true, umbrella: 0xDD7352 });
+        aFrameBoard(g, -w * 0.38, d / 2 + 0.35, 0.5);
+        diningTable(g, -0.38, d / 2 + 0.75, "food_bistro");
+        diningTable(g, 0.38, d / 2 + 0.75, "food_bistro");
+        foodEmblem(g, "dining", 0, 1.70, d / 2 + 0.14, 0.90);
       },
       food_coffee: function (g, w, d) {
-        // Oversized cup sign on a bracket
-        const c = new THREE.Group(); c.position.set(w * 0.34, 0.95, d / 2 + 0.30); g.add(c);
-        c.add(mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.24, 12), M_WHITE, 0, 0, 0));
-        c.add(mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.03, 12), mat(0x6B3E20, 0.6), 0, 0.11, 0, false, false));
-        const handle = mesh(new THREE.TorusGeometry(0.07, 0.022, 6, 12), M_WHITE, 0.17, 0, 0, false, false);
-        c.add(handle);
-        c.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.30), M_DARKFRAME, 0, 0.10, -0.20, false, false));
+        foodEmblem(g, "coffee", w * 0.30, 1.56, d / 2 + 0.20, 1.10);
         cafeTableSet(g, w * 0.13, d / 2 + 0.85, { occupied: true, venue: "food_coffee", threshold: 0.18, shirt: 0xBC6978 });
         // Coffee sacks
         g.add(mesh(roundedBox(0.24, 0.28, 0.20, 0.06), mat(0xC8AE7D, 0.92), -w * 0.34, 0.14, d / 2 + 0.40, false, false));
@@ -1705,29 +1761,28 @@
     // 🎪 3e. CUSTOM TIER 1 STALLS — Bespoke character for every category
     // ────────────────────────────────────────────────────────────────
     const CUSTOM_STALLS = {
-      // 1. Food - Supermarket (Farmer's market produce stall)
+      // A miniature grocery shop: open shelves and produce under a flat green fascia.
       food_super: function (g, w, d) {
-        g.add(mesh(roundedBox(1.50, 0.60, 0.90, 0.05), M_WOOD, 0, 0.30, 0));
-        g.add(mesh(new THREE.BoxGeometry(1.60, 0.06, 1.00), M_WARM_STONE, 0, 0.63, 0, false, false));
-        [-0.45, 0, 0.45].forEach(function (bx, i) {
-          const bin = mesh(roundedBox(0.38, 0.14, 0.45, 0.03), mat(0x854D0E, 0.85), bx, 0.72, 0.12);
-          bin.rotation.x = 0.20; g.add(bin);
-          const col = [0x22C55E, 0xF59E0B, 0xEF4444][i];
-          for (let j = 0; j < 4; j++) {
-            g.add(mesh(new THREE.SphereGeometry(0.055, 6, 6), mat(col, 0.75), bx - 0.08 + (j % 2) * 0.16, 0.80, (j < 2 ? 0.02 : 0.20), false, false));
+        const green = mat(0x287A4C, 0.8);
+        g.add(mesh(roundedBox(1.65, 0.50, 0.64, 0.04), green, 0, 0.25, 0.18));
+        g.add(mesh(new THREE.BoxGeometry(1.72, 0.055, 0.70), M_WARM_STONE, 0, 0.53, 0.18));
+        groceryShelf(g, 0, 0.30, -0.35, 1.48);
+        [-0.53, 0, 0.53].forEach(function (xx, i) {
+          g.add(mesh(new THREE.BoxGeometry(0.45, 0.12, 0.40), M_WOOD, xx, 0.60, 0.23));
+          for (let j = 0; j < 6; j++) {
+            g.add(mesh(new THREE.SphereGeometry(0.075, 7, 6), mat([0xD9533F, 0xE7BD43, 0x79A64B][i], 0.8), xx + (j % 3 - 1) * 0.13, 0.71, 0.13 + Math.floor(j / 3) * 0.16));
           }
         });
-        const awMat = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#15803D", "#FFFFFF"), roughness: 0.85 });
-        [[-0.68, -0.40], [0.68, -0.40], [-0.68, 0.40], [0.68, 0.40]].forEach(function (p) {
-          g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.75, 6), M_DARKFRAME, p[0], 1.02, p[1], false, false));
-        });
-        const canopy = mesh(new THREE.BoxGeometry(1.65, 0.06, 1.10), awMat, 0, 1.42, 0);
-        canopy.rotation.x = 0.10; g.add(canopy);
+        [-0.80, 0.80].forEach(function (xx) { g.add(mesh(new THREE.BoxGeometry(0.06, 1.28, 0.06), green, xx, 0.64, -0.41)); });
+        g.add(mesh(new THREE.BoxGeometry(1.78, 0.12, 0.62), green, 0, 1.28, -0.20));
+        signPlate(g, 1.90, 1.24, 0.20, "MARKET", "#287A4C", "#FFF9EE", 30);
+        groceryCart(g, 0.65, 0.83, 0.95);
+        crateStack(g, -0.64, 0.79);
       },
 
       // 2. Food - Bistro (Vintage Airstream / Food Truck)
       food_bistro: function (g, w, d) {
-        const body = mat(0xE2E8F0, 0.35, 0.65);
+        const body = mat(0xAC493B, 0.65);
         g.add(mesh(roundedBox(1.50, 0.74, 0.84, 0.16), body, 0, 0.42, 0));
         const gMat = glassMaterial(0xBFE3FA); registerGlass(gMat);
         g.add(mesh(new THREE.BoxGeometry(0.80, 0.34, 0.04), gMat, 0, 0.48, 0.43, false, false));
@@ -1739,12 +1794,18 @@
           const wh = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 10), mat(0x0F172A, 0.9), p[0], 0.12, 0.43, false, false);
           wh.rotation.x = Math.PI / 2; g.add(wh);
         });
-        aFrameBoard(g, -0.65, 0.62, 0.4);
+        // Restaurant identity is plated food and a hot kitchen, never an espresso cart.
+        foodEmblem(g, "dining", -0.08, 1.14, 0.13, 0.85);
+        g.add(mesh(new THREE.BoxGeometry(0.44, 0.16, 0.28), M_DARKFRAME, 0.05, 0.40, 0.54));
+        for (let i = 0; i < 5; i++) g.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.26), M_MULLION, -0.12 + i * 0.085, 0.49, 0.54));
+        const hood = mesh(new THREE.CylinderGeometry(0.10, 0.16, 0.22, 8), M_MULLION, 0.53, 1.02, -0.16); g.add(hood);
+        diningTable(g, -0.32, 1.02);
+        aFrameBoard(g, 0.64, 0.78, -0.25);
       },
 
       // 3. Food - Cafe (Retro Italian Espresso Cart / Piaggio Ape)
       food_coffee: function (g, w, d) {
-        const mint = mat(0xA7F3D0, 0.6);
+        const mint = mat(0x895D40, 0.8);
         g.add(mesh(roundedBox(1.20, 0.55, 0.75, 0.08), mint, 0, 0.35, 0));
         g.add(mesh(new THREE.BoxGeometry(1.26, 0.05, 0.82), M_WOOD, 0, 0.65, 0, false, false));
         const chrome = mat(0xE2E8F0, 0.2, 0.85);
@@ -1754,8 +1815,9 @@
           g.add(mesh(new THREE.CylinderGeometry(0.04, 0.03, 0.06, 8), M_WHITE, 0.10 + i * 0.09, 0.99, 0, false, false));
         }
         const umbPole = mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 6), M_WOOD, -0.45, 0.80, -0.20, false, false);
-        const umbTop = mesh(new THREE.ConeGeometry(0.65, 0.24, 10), mat(0xEA580C, 0.7), -0.45, 1.35, -0.20);
+        const umbTop = mesh(new THREE.ConeGeometry(0.65, 0.24, 10), mat(0x5C9691, 0.8), -0.45, 1.35, -0.20);
         g.add(umbPole, umbTop);
+        foodEmblem(g, "coffee", 0.42, 1.25, 0.17, 1.05);
         g.add(mesh(roundedBox(0.24, 0.26, 0.20, 0.05), mat(0xC8AE7D, 0.9), -0.55, 0.13, 0.40, false, false));
       },
 
@@ -1945,14 +2007,16 @@
       // 1. Food - Supermarket (Wide sliding entrance hall with green glass canopy)
       food_super: function (ground, w, d, cfg, bodyMat) {
         const gm = glassMaterial(0xCFE9FB); registerGlass(gm);
-        const span = w - 0.42;
+        const span = w * 0.38;
+        groceryShelf(ground, -w * 0.34, 0.12, d / 2 + 0.13, w * 0.25);
+        groceryShelf(ground, w * 0.34, 0.12, d / 2 + 0.13, w * 0.25);
         ground.add(mesh(new THREE.BoxGeometry(span, 0.76, 0.05), gm, 0, 0.48, d / 2 + 0.03, false, false));
         ground.add(mesh(new THREE.BoxGeometry(0.06, 0.80, 0.07), mat(0x15803D, 0.7), 0, 0.50, d / 2 + 0.035, false, false));
         [-span / 2, span / 2].forEach(function (fx) {
           ground.add(mesh(new THREE.BoxGeometry(0.08, 0.82, 0.08), mat(0x15803D, 0.7), fx, 0.50, d / 2 + 0.04, false, false));
         });
         ground.add(mesh(new THREE.BoxGeometry(span + 0.14, 0.14, 0.08), mat(0x15803D, 0.7), 0, 0.95, d / 2 + 0.04, false, false));
-        ground.add(mesh(new THREE.BoxGeometry(w - 0.12, 0.05, 0.46), gm, 0, 1.04, d / 2 + 0.24, false, false));
+        ground.add(mesh(new THREE.BoxGeometry(w + 0.10, 0.12, 0.48), mat(0x287A4C, 0.8), 0, 1.04, d / 2 + 0.24, false, false));
         ground.add(mesh(new THREE.BoxGeometry(w - 0.10, 0.08, 0.10), M_WARM_STONE, 0, 0.04, d / 2 + 0.04, false, false));
       },
 
@@ -1993,7 +2057,7 @@
         ground.add(mesh(new THREE.BoxGeometry(0.38, 0.72, 0.06), M_WOOD, w * 0.26, 0.38, d / 2 + 0.063, false, false));
         ground.add(mesh(new THREE.BoxGeometry(0.27, 0.41, 0.024), M_GLASS_BL, w * 0.26, 0.53, d / 2 + 0.108, false, false));
         ground.add(mesh(new THREE.SphereGeometry(0.035, 6, 6), M_GOLD, w * 0.26 + 0.12, 0.42, d / 2 + 0.07, false, false));
-        stripedAwning(ground, w, d, "#EA580C", "#FEF3C7", 0.98);
+        stripedAwning(ground, w, d, "#5C9691", "#FEF3C7", 0.98);
       },
 
       // 4. Food - Wolt (Industrial Concrete Courier Depot)
@@ -2361,7 +2425,7 @@
     makeBuilding({
       id: "food_super", minTier: 1, district: "food", name: "סופרמרקט", trend: "קניות שבועיות במכולת",
       kind: "shop", x: 9.2, z: -3.25, w: 2.25, d: 2.10, rotY: Math.PI / 2,
-      body: 0xF6E9D5, roof: 0x55A665, accent: 0x73BA65, glass: 0xC5DFEC, roofStyle: "barrel",
+      body: 0xF6E9D5, roof: 0x55A665, accent: 0x73BA65, glass: 0xC5DFEC, roofStyle: "deck",
       sign: { text: "SUPER", bg: "#438B54", fg: "#FFF9EE", size: 28 }
     });
     makeBuilding({
@@ -2375,7 +2439,7 @@
       id: "food_coffee", minTier: 1, district: "food", name: "קפה ומאפים", trend: "הרגל הקפה היומי",
       kind: "shop", x: 9.1, z: 1.15, w: 1.70, d: 2.10, rotY: Math.PI / 2,
       body: 0xEEDFC7, roof: 0x9B694B, accent: 0xBA8357, glass: 0xF6DFB9, roofStyle: "pitch", chimney: true, dormer: true,
-      awning: ["#E78655", "#FFF2D9"],
+      awning: ["#5C9691", "#FFF2D9"],
       sign: { text: "CAFE", bg: "#A86443", fg: "#FFF2D9", size: 34 }
     });
     makeBuilding({
@@ -4047,11 +4111,31 @@ function animateCompanions(now, dt) {
     const pointers = new Map();
     let isDragging = false, downX = 0, downY = 0, downTime = 0;
     let spinVel = 0, tiltVel = 0;
-    let gesture = null; // two-finger state: { dist, cx, cy, zoom }
+    let gesture = null; // two-finger state: { dist, angle, cx, cy, zoom, az }
+    let cameraIsOffset = false;
+    let savedCameraBeforeBuilding = null;
 
-    const ZOOM_MIN = 0.70, ZOOM_MAX = 3.40, PAN_LIMIT = 9.0;
+    const ZOOM_MIN = 0.65, ZOOM_MAX = 3.20, PAN_LIMIT = 11.5;
 
     function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+    function checkCameraOffset() {
+      if (currentMode !== "city" || selectedBuilding) {
+        if (cameraIsOffset) {
+          cameraIsOffset = false;
+          post("cameraOffsetChanged", false);
+        }
+        return;
+      }
+      const base = CAM_MODES.city;
+      const isOff = Math.abs(targetCam.az - base.az) > 0.15 ||
+                    Math.hypot(targetCam.lookX - base.lookX, targetCam.lookZ - base.lookZ) > 1.0 ||
+                    Math.abs((targetCam.zoom || 1.0) - base.zoom) > 0.18;
+      if (isOff !== cameraIsOffset) {
+        cameraIsOffset = isOff;
+        post("cameraOffsetChanged", isOff);
+      }
+    }
 
     // Move the look-at point across the ground plane by a screen-pixel delta.
     function panByPixels(dxPx, dyPx) {
@@ -4064,9 +4148,10 @@ function animateCompanions(now, dt) {
       const fx = Math.cos(az), fz = Math.sin(az);
       const moveR = -dxPx * unitsX;
       // The ground is foreshortened by sin(elevation), so vertical drags need dividing by it.
-      const moveF = dyPx * unitsY / Math.max(0.30, Math.sin(currentCam.el));
+      const moveF = -dyPx * unitsY / Math.max(0.30, Math.sin(currentCam.el));
       targetCam.lookX = clamp(targetCam.lookX + rx * moveR + fx * moveF, -PAN_LIMIT, PAN_LIMIT);
       targetCam.lookZ = clamp(targetCam.lookZ + rz * moveR + fz * moveF, -PAN_LIMIT, PAN_LIMIT);
+      checkCameraOffset();
     }
 
     function twoFingerState() {
@@ -4074,6 +4159,7 @@ function animateCompanions(now, dt) {
       const a = pts[0], b = pts[1];
       return {
         dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+        angle: Math.atan2(b.y - a.y, b.x - a.x),
         cx: (a.x + b.x) / 2,
         cy: (a.y + b.y) / 2
       };
@@ -4081,13 +4167,14 @@ function animateCompanions(now, dt) {
 
     function onDown(id, x, y) {
       noteEnergyInteraction();
-      pointers.set(id, { x: x, y: y });
+      pointers.set(id, { x: x, y: y, startX: x, startY: y, lastX: x, lastY: y, time: performance.now() });
       if (pointers.size === 1) {
-        isDragging = false; downX = x; downY = y; downTime = performance.now();
+        isDragging = false;
+        downX = x; downY = y; downTime = performance.now();
         spinVel = 0; tiltVel = 0; gesture = null;
       } else if (pointers.size === 2) {
         const g = twoFingerState();
-        gesture = { dist: g.dist, cx: g.cx, cy: g.cy, zoom: targetCam.zoom || 1.0 };
+        gesture = { dist: g.dist, angle: g.angle, cx: g.cx, cy: g.cy, zoom: targetCam.zoom || 1.0, az: targetCam.az };
         isDragging = true; spinVel = 0; tiltVel = 0;
       }
     }
@@ -4096,40 +4183,73 @@ function animateCompanions(now, dt) {
       noteEnergyInteraction();
       const p = pointers.get(id);
       if (!p) return;
+      const prevX = p.x, prevY = p.y;
       p.x = x; p.y = y;
 
+      // ── Two Finger: Pinch Zoom + Two-Finger Twist Rotation + Two-Finger Pan ──
       if (pointers.size >= 2) {
-        if (!gesture) { const g0 = twoFingerState(); gesture = { dist: g0.dist, cx: g0.cx, cy: g0.cy, zoom: targetCam.zoom || 1.0 }; return; }
+        if (!gesture) {
+          const g0 = twoFingerState();
+          gesture = { dist: g0.dist, angle: g0.angle, cx: g0.cx, cy: g0.cy, zoom: targetCam.zoom || 1.0, az: targetCam.az };
+          return;
+        }
         const g = twoFingerState();
-        targetCam.zoom = clamp(gesture.zoom * (g.dist / gesture.dist), ZOOM_MIN, ZOOM_MAX);
+
+        // 1. Pinch Zoom
+        const zoomRatio = g.dist / gesture.dist;
+        targetCam.zoom = clamp(gesture.zoom * zoomRatio, ZOOM_MIN, ZOOM_MAX);
+
+        // 2. Two-Finger Twist / Rotation (natural diorama spin)
+        let dAngle = g.angle - gesture.angle;
+        while (dAngle > Math.PI) dAngle -= 2 * Math.PI;
+        while (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+        targetCam.az = gesture.az - dAngle * 1.05;
+
+        // 3. Two-Finger Pan
         panByPixels(g.cx - gesture.cx, g.cy - gesture.cy);
         gesture.cx = g.cx; gesture.cy = g.cy;
+
         isDragging = true;
+        checkCameraOffset();
         return;
       }
 
-      const dx = x - downX, dy = y - downY;
-      if (!isDragging && Math.hypot(dx, dy) <= 5) return;
-      isDragging = true;
-      targetCam.az -= dx * 0.006;
-      targetCam.el = clamp(targetCam.el + dy * 0.004, 0.30, 1.15);
-      spinVel = clamp(-dx * 0.0012, -0.025, 0.025);
-      tiltVel = 0;
-      downX = x; downY = y;
+      // ── One Finger: Pan ──
+      const totalDx = x - p.startX, totalDy = y - p.startY;
+      if (!isDragging) {
+        // Generous 10px threshold absorbs microscopic finger rolling/tremor on iPhone retina screens
+        if (Math.hypot(totalDx, totalDy) <= 10) return;
+        isDragging = true;
+      }
+
+      const deltaX = x - prevX;
+      const deltaY = y - prevY;
+      panByPixels(deltaX, deltaY);
+      checkCameraOffset();
     }
 
     function onUp(id, cx, cy) {
       const wasSingle = pointers.size === 1;
+      const p = pointers.get(id);
+      const tapOriginX = p ? p.startX : cx;
+      const tapOriginY = p ? p.startY : cy;
       pointers.delete(id);
+
       if (pointers.size < 2) gesture = null;
       if (pointers.size === 1) {
-        // Second finger lifted: re-seat the orbit anchor so the view does not jump.
+        // Second finger lifted: re-seat anchor so view does not jump
         const rest = Array.from(pointers.values())[0];
-        downX = rest.x; downY = rest.y; downTime = performance.now(); isDragging = true;
+        rest.startX = rest.x; rest.startY = rest.y;
+        downX = rest.x; downY = rest.y; downTime = performance.now();
+        isDragging = true;
         return;
       }
       if (!wasSingle) { isDragging = false; return; }
-      if (!isDragging && performance.now() - downTime < 300) handleTap(cx, cy);
+
+      // A tap must not have crossed the 10px drag threshold and must release within 450ms
+      if (!isDragging && performance.now() - downTime < 450) {
+        handleTap(tapOriginX, tapOriginY);
+      }
       isDragging = false;
     }
 
@@ -4139,7 +4259,7 @@ function animateCompanions(now, dt) {
       mouse.y = -((cy - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
 
-      // 1. Citizen tapped
+      // 1. Citizen tapped (direct hit only)
       const cHits = raycaster.intersectObjects(interactiveCitizens.filter(visibleInScene), true);
       if (cHits.length > 0) {
         const u = cHits[0].object.userData;
@@ -4150,35 +4270,61 @@ function animateCompanions(now, dt) {
         }
       }
 
-      // 3. Building tapped
-      const bHits = raycaster.intersectObjects(interactiveBuildings.concat(interactiveVenueInstances).filter(visibleInScene), false);
+      // 2. Building tapped: Exact Raycast + Screen-Space Nearest-Target Fallback
+      const candidates = interactiveBuildings.concat(interactiveVenueInstances).filter(visibleInScene);
+      let bestObj = null;
+
+      // Step A: Exact raycast hit on building proxy
+      const bHits = raycaster.intersectObjects(candidates, false);
       if (bHits.length > 0) {
-        const obj = bHits[0].object;
-        const bData = obj.userData;
-        if (bData) {
-          pulseBuilding(obj);
-          // Districts with only one building skip the district-overview step —
-          // there's nothing to choose between, so go straight to the building card.
-          const SINGLE_BUILDING_DISTRICTS = { savings: true, transport: true };
-          const isSingleDistrict = SINGLE_BUILDING_DISTRICTS[bData.district];
-          // During the hands-on lesson, one tap must fulfil the promise in the copy and open
-          // the inspector. Requiring an unexplained second tap made the map feel broken.
-          const tutorialIsActive = !!currentTutorialBuilding;
-          if (currentMode === "city" && CAM_MODES[bData.district] && !isSingleDistrict && !tutorialIsActive) {
-            // ── First tap from city overview: enter the district, show district card ──
-            setSelectedBuilding(null);
-            setDistrict(bData.district);
-            post("districtSelected", bData.district);
-          } else {
-            // ── Direct to building card: already in district, OR single-building district ──
-            if (tutorialIsActive) setTutorialBuilding(null);
-            if (CAM_MODES[bData.district]) setDistrict(bData.district);
-            setSelectedBuilding(obj);
-            post("buildingTapped", {
-              id: bData.id, district: bData.district, name: bData.name,
-              amount: bData.amount || 0, visits: bData.visits || 0, trend: bData.trend || ""
-            });
+        bestObj = bHits[0].object;
+      } else {
+        // Step B: Screen-space nearest-target resolution within ~34 CSS pixels
+        const MAX_SCREEN_FALLBACK_PX = 34;
+        let bestDist = MAX_SCREEN_FALLBACK_PX;
+        let bestDepth = Infinity;
+        const vProj = new THREE.Vector3();
+
+        for (let i = 0; i < candidates.length; i++) {
+          const cand = candidates[i];
+          cand.getWorldPosition(vProj);
+          vProj.y += 0.8; // Representative interaction anchor near mid-height
+          vProj.project(camera);
+
+          // Must be in front of near plane and within frustum
+          if (vProj.z < -1 || vProj.z > 1) continue;
+
+          const sx = ((vProj.x + 1) / 2) * rect.width + rect.left;
+          const sy = ((-vProj.y + 1) / 2) * rect.height + rect.top;
+          const d = Math.hypot(sx - cx, sy - cy);
+
+          // Closer candidate wins; ties broken by depth (foreground closest to camera)
+          if (d < bestDist || (Math.abs(d - bestDist) < 3.0 && vProj.z < bestDepth)) {
+            bestDist = d;
+            bestDepth = vProj.z;
+            bestObj = cand;
           }
+        }
+      }
+
+      if (bestObj) {
+        const bData = bestObj.userData;
+        if (bData && bData.id) {
+          // Immediate tactile acknowledgment
+          pulseBuilding(bestObj);
+          setSelectedBuilding(bestObj);
+
+          if (currentTutorialBuilding) setTutorialBuilding(null);
+
+          // ALWAYS trigger direct building inspection! City -> Building directly
+          post("buildingTapped", {
+            id: bData.id,
+            district: bData.district,
+            name: bData.name,
+            amount: bData.amount || 0,
+            visits: bData.visits || 0,
+            trend: bData.trend || ""
+          });
         }
       }
     }
@@ -4202,6 +4348,7 @@ function animateCompanions(now, dt) {
     stage.addEventListener("wheel", function (e) {
       noteEnergyInteraction();
       targetCam.zoom = clamp((targetCam.zoom || 1.0) - e.deltaY * 0.0015, ZOOM_MIN, ZOOM_MAX);
+      checkCameraOffset();
     }, { passive: true });
     // iOS fires gesturestart/change for pinch on some WebKit paths; swallow them so the
     // page never scales itself underneath the canvas.
@@ -4226,20 +4373,23 @@ function animateCompanions(now, dt) {
         targetCam = Object.assign({}, CAM_MODES[currentMode]);
         targetCam.zoom = modeZoom(currentMode);
         spinVel = 0; tiltVel = 0;
+        savedCameraBeforeBuilding = null;
         // Clear any building selection when switching district/mode
         setSelectedBuilding(null);
+        checkCameraOffset();
       }
     }
     window.setDistrict = setDistrict;
 
-    // Swift pushes viewResetToken on every single data update, so an unconditional reset
-    // here would yank the camera back to the city the moment any figure changed. Only an
-    // actual change of the token means "the user asked to go back to the city".
-    let lastResetToken = null;
+    // Reset back to canonical city hero view
     window.resetCityView = function (token) {
-      if (token === undefined || token === null) { setDistrict("city", true); return; }
-      if (lastResetToken === null) { lastResetToken = token; return; }
-      if (token !== lastResetToken) { lastResetToken = token; setDistrict("city", true); }
+      setSelectedBuilding(null);
+      savedCameraBeforeBuilding = null;
+      currentMode = "city";
+      targetCam = Object.assign({}, CAM_MODES.city);
+      targetCam.zoom = modeZoom("city");
+      spinVel = 0; tiltVel = 0;
+      checkCameraOffset();
     };
 
     window.setCityOverview = function (on) {
@@ -4425,13 +4575,34 @@ window.dioramaEnergyState = function () {
       selectedBuilding = obj || null;
       if (!selectedBuilding) {
         selectionRing.visible = false;
-        // Smoothly drift back to the city centre look-point
-        const base = CAM_MODES[currentMode] || CAM_MODES.city;
-        targetCam.lookX = base.lookX;
-        targetCam.lookY = base.lookY;
-        targetCam.lookZ = base.lookZ;
-        targetCam.zoom  = base.zoom;
+        // Smoothly restore previous camera context before building inspection
+        if (savedCameraBeforeBuilding) {
+          targetCam.lookX = savedCameraBeforeBuilding.lookX;
+          targetCam.lookY = savedCameraBeforeBuilding.lookY;
+          targetCam.lookZ = savedCameraBeforeBuilding.lookZ;
+          targetCam.zoom  = savedCameraBeforeBuilding.zoom;
+          targetCam.az    = savedCameraBeforeBuilding.az;
+          targetCam.el    = savedCameraBeforeBuilding.el;
+          savedCameraBeforeBuilding = null;
+        } else {
+          const base = CAM_MODES[currentMode] || CAM_MODES.city;
+          targetCam.lookX = base.lookX;
+          targetCam.lookY = base.lookY;
+          targetCam.lookZ = base.lookZ;
+          targetCam.zoom  = base.zoom;
+        }
+        checkCameraOffset();
         return;
+      }
+      if (!savedCameraBeforeBuilding) {
+        savedCameraBeforeBuilding = {
+          lookX: targetCam.lookX,
+          lookY: targetCam.lookY,
+          lookZ: targetCam.lookZ,
+          zoom:  targetCam.zoom,
+          az:    targetCam.az,
+          el:    targetCam.el
+        };
       }
       const w = new THREE.Vector3();
       selectedBuilding.getWorldPosition(w);
@@ -4444,8 +4615,16 @@ window.dioramaEnergyState = function () {
       targetCam.lookY = w.y + 0.4;
       targetCam.lookZ = w.z * 0.72;
       targetCam.zoom  = Math.min(ZOOM_MAX, (targetCam.zoom || 1.0) * 1.35);
+      checkCameraOffset();
     }
     window.selectDioramaBuilding = function (id) {
+      if (!id) {
+        setSelectedBuilding(null);
+        return true;
+      }
+      if (selectedBuilding && selectedBuilding.userData && selectedBuilding.userData.id === id) {
+        return true;
+      }
       for (let i = 0; i < interactiveBuildings.length; i++) {
         if (interactiveBuildings[i].userData && interactiveBuildings[i].userData.id === id) {
           pulseBuilding(interactiveBuildings[i]);
@@ -4830,9 +5009,9 @@ window.dioramaEnergyState = function () {
       for (let i = buildingPulses.length - 1; i >= 0; i--) {
         const p = buildingPulses[i];
         p.t += dt;
-        const k = Math.min(1, p.t / 0.42);
-        p.amp = Math.sin(k * Math.PI) * (1 - k) * 0.16;
-        const target = p.obj.userData && p.obj.userData.shell ? p.obj.userData.shell : null;
+        const k = Math.min(1, p.t / 0.20);
+        p.amp = Math.sin(k * Math.PI) * (1 - k) * 0.18;
+        const target = (p.obj.userData && p.obj.userData.shell) ? p.obj.userData.shell : (p.obj.userData && p.obj.userData.id && buildingRoots[p.obj.userData.id] ? buildingRoots[p.obj.userData.id] : p.obj);
         if (target) {
           target.scale.y = 1 + p.amp;
           target.scale.x = 1 - p.amp * 0.28;

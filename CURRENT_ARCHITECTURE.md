@@ -1,6 +1,6 @@
 # SPENT — Current architecture
 
-Updated: 2026-09-09. This is the authoritative architecture reference. Historical product/UI proposals do not override the implementation described here.
+Updated: 2026-09-10. This is the authoritative architecture reference. Historical product/UI proposals do not override the implementation described here.
 
 ## Build and tests
 
@@ -24,7 +24,7 @@ Both Wallet App Intents and inline notification amount completion call `WalletIn
 - Completion uses the pending UUID as the saved transaction UUID. Save happens before pending removal. A retry after a crash between these operations can recognize the saved UUID.
 - A failed save rolls back its context and keeps the pending request for retry. Database failures are no longer described as missing Wallet fields.
 - Diagnostics include the ingest UUID and state trace. Pending creation, completion and its transaction share a UUID. Independent full reports without a provider event ID still rely on the duplicate heuristic.
-- Duplicate comparison uses normalized merchant, signed original amount, canonical original currency and an inclusive rolling 90-second window. Conversion to the base currency must not change identity. Charges and refunds are distinct.
+- Duplicate comparison uses normalized merchant, signed original amount, canonical original currency and an inclusive rolling 15-second window. Conversion to the base currency must not change identity. Charges and refunds are distinct.
 - Pending matching uses normalized merchant, canonical currency and the same time window. It does not use time buckets or distinguish Intent names.
 
 Limitations: without a stable provider event ID, identical legitimate purchases within the window can collide. The lock/main actor protects this process, not multiple independent writer processes. Pending storage and SwiftData are separate persistence systems; this is not a cross-store atomic transaction. Pending retention is currently 48 hours, purged on registration. These constraints must not be presented as exactly-once delivery.
@@ -72,3 +72,35 @@ for timing, selection thresholds, controls and sharing behavior.
 ## Historical references
 
 `PRODUCT_SPEC.md`, `UI_SCREENS_SPEC.md`, and `APPLE_PAY_TESTING.md` are marked historical. The Apple Pay guide can inform manual testing, but platform assertions require revalidation on the test device. `SPENT_VISUAL_LANGUAGE.md` is a visual reference, not authority for runtime behavior. README is a project overview and points here for current architecture/testing.
+
+## Store transfer and recovery
+
+Store path lookup is read-only with respect to store contents. Startup first rolls back an
+interrupted restore, applies an explicitly requested snapshot, then considers relocation.
+Relocation only runs when the canonical store and its sidecars are absent and exactly one
+legacy live location exists. Existing stores are never classified as empty by byte size.
+Snapshots, recovered stores and corrupt-store quarantine directories are not automatic
+relocation candidates. Ambiguity, invalid source data or transfer failure preserves the
+originals and opens the existing visible memory-only mode rather than a new empty disk store.
+
+Relocation and snapshot creation use SQLite's backup API to include committed WAL data.
+The staged copy must pass `quick_check` and contain Core Data metadata; this is structural
+validation, not a guarantee that every historical schema can migrate. The copy is closed in
+DELETE journal mode and published as one file. Versioned container opens pass
+`MoneyCityMigrationPlan`; the existing bare-schema recovery fallback remains explicit.
+
+Explicit restore keeps a full original file set and an atomic rollback manifest before
+changing the destination. Failure or interruption before commit restores that set before
+opening SwiftData. Rollback copies originals, retaining them and the manifest if recovery
+fails. Restore requests are cleared only on success. These operations require no other
+process to have the destination open; cross-process live store replacement is unsupported.
+
+City cache keys include merchant, building assignment, note, confirmation and savings-goal
+identity as well as transaction ID, amount, category and timestamp.
+
+Validation on 2026-09-10: `MoneyCityTests` passed 272 tests with zero failures on the
+SPENT Round 1 Regression iOS 26.3 simulator. Eleven added regressions cover fresh and
+synthetic unversioned stores, WAL transfer, ambiguous/corrupt sources, existing-store
+preservation, orphaned sidecars, repeat relocation, restore rollback/interruption and city
+cache edits. This does not replace testing archived stores from released builds or
+physical-device profiling. SQLite backup contract: https://www.sqlite.org/backup.html.

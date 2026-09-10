@@ -58,6 +58,7 @@ public struct FloatingBottomBar: View {
                         if !isPlusSquished {
                             isPlusSquished = true
                             didFireLongPress = false
+                            Haptics.impact(.light)
                             pressTimer?.invalidate()
                             let timer = Timer(timeInterval: 0.32, repeats: false) { _ in
                                 DispatchQueue.main.async {
@@ -77,7 +78,7 @@ public struct FloatingBottomBar: View {
                             isPlusSquished = false
                         }
                         if !didFireLongPress {
-                            Haptics.impact(.medium)
+                            Haptics.impact(.light)
                             onQuickAdd()
                         }
                         didFireLongPress = false

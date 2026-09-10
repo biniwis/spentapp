@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 
 /// Keeps a few recent copies of the SwiftData store file, so a launch that cannot open it
 /// has somewhere to go back to.
@@ -98,9 +99,11 @@ public enum StoreSnapshotService {
         guard previous != build else { return nil }
 
         let url = takeSnapshot(build: build, defaults: defaults, now: now)
-        // Recorded even when nothing was copied — a first install has no store to snapshot,
-        // and retrying that on every launch would achieve nothing.
-        defaults.set(build, forKey: lastBuildKey)
+        let storeExists = applicationSupportDirectory().map {
+            FileManager.default.fileExists(atPath: $0.appendingPathComponent("default.store").path)
+        } ?? false
+        // Retry a failed backup on the next launch; first install has nothing to preserve.
+        if url != nil || !storeExists { defaults.set(build, forKey: lastBuildKey) }
         return url
     }
 
@@ -125,11 +128,10 @@ public enum StoreSnapshotService {
         )
         do {
             try fm.createDirectory(at: folder, withIntermediateDirectories: true)
-            for name in present {
-                let dest = folder.appendingPathComponent(name)
-                if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
-                try fm.copyItem(at: support.appendingPathComponent(name), to: dest)
-            }
+            let destination = folder.appendingPathComponent("default.store")
+            guard !fm.fileExists(atPath: destination.path) else { return nil }
+            try StoreFileTransfer.validatedSnapshot(
+                from: support.appendingPathComponent("default.store"), to: destination)
             let meta = Metadata(
                 takenAt: now,
                 build: build,
@@ -140,6 +142,7 @@ public enum StoreSnapshotService {
             encoder.dateEncodingStrategy = .iso8601
             try encoder.encode(meta).write(to: folder.appendingPathComponent("meta.json"))
         } catch {
+            try? fm.removeItem(at: folder)
             MoneyCityLog.error("snapshot failed: \(error)")
             return nil
         }
@@ -246,8 +249,6 @@ public enum StoreSnapshotService {
     @discardableResult
     public static func applyPendingRestoreIfNeeded(defaults: UserDefaults = .standard) -> Bool {
         guard let id = pendingRestoreId(defaults: defaults) else { return false }
-        defaults.removeObject(forKey: pendingRestoreKey)
-
         let fm = FileManager.default
         guard let support = applicationSupportDirectory() else { return false }
 
@@ -275,79 +276,20 @@ public enum StoreSnapshotService {
             return false
         }
 
-        // 1. Stage the snapshot files first to verify integrity
         let stagingFolder = support.appendingPathComponent("RestoreStaging-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: stagingFolder) }
         do {
             try fm.createDirectory(at: stagingFolder, withIntermediateDirectories: true)
-            for name in storeFileNames {
-                let src = folder.appendingPathComponent(name)
-                if fm.fileExists(atPath: src.path) {
-                    try fm.copyItem(at: src, to: stagingFolder.appendingPathComponent(name))
-                }
-            }
             let stagedStore = stagingFolder.appendingPathComponent("default.store")
-            let attrs = try fm.attributesOfItem(atPath: stagedStore.path)
-            let size = (attrs[.size] as? Int64) ?? 0
-            guard size > 0 else {
-                MoneyCityLog.error("restore staged default.store is 0 bytes; aborting")
-                try? fm.removeItem(at: stagingFolder)
-                return false
-            }
-        } catch {
-            MoneyCityLog.error("failed staging restore source files: \(error)")
-            try? fm.removeItem(at: stagingFolder)
-            return false
-        }
-
-        // 2. The file being replaced is itself snapshotted first, protecting `id` from being pruned!
-        takeSnapshot(build: currentBuild() + "-prerestore", defaults: defaults, excludingFromPrune: id)
-
-        // 3. Rollback safety: move live files to a rollback folder before replacing
-        let rollbackFolder = support.appendingPathComponent("RestoreRollback-\(UUID().uuidString)", isDirectory: true)
-        var movedLiveFiles: [String] = []
-        do {
-            try fm.createDirectory(at: rollbackFolder, withIntermediateDirectories: true)
-            for name in storeFileNames {
-                let live = support.appendingPathComponent(name)
-                if fm.fileExists(atPath: live.path) {
-                    let dest = rollbackFolder.appendingPathComponent(name)
-                    try fm.moveItem(at: live, to: dest)
-                    movedLiveFiles.append(name)
-                }
-            }
-
-            // 4. Move staged files into live position
-            for name in storeFileNames {
-                let staged = stagingFolder.appendingPathComponent(name)
-                if fm.fileExists(atPath: staged.path) {
-                    let live = support.appendingPathComponent(name)
-                    try fm.moveItem(at: staged, to: live)
-                }
-            }
-
-            // Verify live store exists and is non-empty
-            let liveStore = support.appendingPathComponent("default.store")
-            guard fm.fileExists(atPath: liveStore.path) else {
-                throw NSError(domain: "StoreSnapshotService", code: 1, userInfo: [NSLocalizedDescriptionKey: "Live store missing after swap"])
-            }
-
-            // Cleanup staging & rollback on success
-            try? fm.removeItem(at: stagingFolder)
-            try? fm.removeItem(at: rollbackFolder)
+            try StoreFileTransfer.validatedSnapshot(
+                from: folder.appendingPathComponent("default.store"), to: stagedStore)
+            takeSnapshot(build: currentBuild() + "-prerestore", defaults: defaults, excludingFromPrune: id)
+            try StoreFileTransfer.replaceStore(in: support, with: stagedStore)
+            defaults.removeObject(forKey: pendingRestoreKey)
             MoneyCityLog.debug("restored store from snapshot \(id)")
             return true
         } catch {
-            MoneyCityLog.error("restore failed: \(error). Rolling back.")
-            // Rollback
-            for name in movedLiveFiles {
-                let dest = support.appendingPathComponent(name)
-                let src = rollbackFolder.appendingPathComponent(name)
-                if !fm.fileExists(atPath: dest.path) && fm.fileExists(atPath: src.path) {
-                    try? fm.moveItem(at: src, to: dest)
-                }
-            }
-            try? fm.removeItem(at: stagingFolder)
-            try? fm.removeItem(at: rollbackFolder)
+            MoneyCityLog.error("restore failed; source and rollback data retained: \(error)")
             return false
         }
     }
@@ -360,5 +302,137 @@ public enum StoreSnapshotService {
 
     public static func currentVersion() -> String {
         (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0"
+    }
+}
+
+/// File operations run before SwiftData opens the destination. SQLite's backup API
+/// includes committed WAL contents; a byte copy of the main file alone does not.
+enum StoreFileTransfer {
+    enum Failure: Error {
+        case ambiguousSources, orphanedSidecars, invalidStore, sqlite(Int32), incompleteRollback
+    }
+
+    static let names = ["default.store", "default.store-wal", "default.store-shm"]
+    static let rollbackName = "PendingStoreRollback"
+
+    static func migrateIfNeeded(to destination: URL, candidates: [URL]) throws {
+        let fm = FileManager.default
+        let target = destination.appendingPathComponent(names[0])
+        // Size cannot tell us whether a store contains valuable user data.
+        guard !fm.fileExists(atPath: target.path) else { return }
+        guard !names.dropFirst().contains(where: {
+            fm.fileExists(atPath: destination.appendingPathComponent($0).path)
+        }) else { throw Failure.orphanedSidecars }
+        let canonical = destination.resolvingSymlinksInPath().standardizedFileURL
+        let sources = Set(candidates.map { $0.resolvingSymlinksInPath().standardizedFileURL })
+            .filter { $0 != canonical && fm.fileExists(atPath: $0.appendingPathComponent(names[0]).path) }
+        guard sources.count <= 1 else { throw Failure.ambiguousSources }
+        guard let source = sources.first else { return }
+        try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+        let stage = destination.appendingPathComponent(".StoreMigration-\(UUID().uuidString)")
+        try fm.createDirectory(at: stage, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: stage) }
+        let stagedStore = stage.appendingPathComponent(names[0])
+        try validatedSnapshot(from: source.appendingPathComponent(names[0]), to: stagedStore)
+        // One complete, closed SQLite file is published on the same filesystem.
+        // No existing destination or source file is removed.
+        try fm.moveItem(at: stagedStore, to: target)
+    }
+
+    static func validatedSnapshot(from source: URL, to destination: URL) throws {
+        var input: OpaquePointer?
+        var output: OpaquePointer?
+        defer {
+            if let input { sqlite3_close(input) }
+            if let output { sqlite3_close(output) }
+        }
+        let opened = sqlite3_open_v2(source.path, &input, SQLITE_OPEN_READONLY, nil)
+        guard opened == SQLITE_OK else { throw Failure.sqlite(opened) }
+        let created = sqlite3_open_v2(destination.path, &output, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nil)
+        guard created == SQLITE_OK else { throw Failure.sqlite(created) }
+        sqlite3_busy_timeout(input, 1000)
+        guard let backup = sqlite3_backup_init(output, "main", input, "main") else {
+            throw Failure.sqlite(sqlite3_errcode(output))
+        }
+        let step = sqlite3_backup_step(backup, -1)
+        let finish = sqlite3_backup_finish(backup)
+        guard step == SQLITE_DONE, finish == SQLITE_OK else {
+            throw Failure.sqlite(step == SQLITE_DONE ? finish : step)
+        }
+        // A self-contained result has no WAL dependency when it is renamed.
+        guard sqlite3_exec(output, "PRAGMA journal_mode=DELETE", nil, nil, nil) == SQLITE_OK else {
+            throw Failure.sqlite(sqlite3_errcode(output))
+        }
+        guard try scalar(output, "PRAGMA quick_check") == "ok",
+              try scalar(output, "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='Z_METADATA'") == "1" else {
+            throw Failure.invalidStore
+        }
+    }
+
+    private static func scalar(_ db: OpaquePointer?, _ sql: String) throws -> String {
+        var statement: OpaquePointer?
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK,
+              sqlite3_step(statement) == SQLITE_ROW,
+              let value = sqlite3_column_text(statement, 0) else {
+            throw Failure.sqlite(sqlite3_errcode(db))
+        }
+        return String(cString: value)
+    }
+
+    /// Copies the old set before writing a durable rollback manifest. An interrupted
+    /// replacement is rolled back on next launch, before any container can open it.
+    static func replaceStore(in support: URL, with stagedStore: URL,
+                             beforeInstall: () throws -> Void = {}) throws {
+        let fm = FileManager.default
+        try recoverInterruptedRestore(in: support)
+        let rollback = support.appendingPathComponent(rollbackName, isDirectory: true)
+        try fm.createDirectory(at: rollback, withIntermediateDirectories: true)
+        let originals = names.filter { fm.fileExists(atPath: support.appendingPathComponent($0).path) }
+        for name in originals {
+            try fm.copyItem(at: support.appendingPathComponent(name), to: rollback.appendingPathComponent(name))
+        }
+        // No destination mutation is permitted before this atomic marker exists.
+        try JSONEncoder().encode(originals).write(to: rollback.appendingPathComponent("manifest.json"), options: .atomic)
+        do {
+            for name in names {
+                let url = support.appendingPathComponent(name)
+                if fm.fileExists(atPath: url.path) { try fm.removeItem(at: url) }
+            }
+            try beforeInstall()
+            try fm.moveItem(at: stagedStore, to: support.appendingPathComponent(names[0]))
+            // Removing the marker commits; a crash before this point restores the old set.
+            try fm.removeItem(at: rollback.appendingPathComponent("manifest.json"))
+        } catch {
+            try recoverInterruptedRestore(in: support)
+            throw error
+        }
+        try? fm.removeItem(at: rollback)
+    }
+
+    static func recoverInterruptedRestore(in support: URL) throws {
+        let fm = FileManager.default
+        let rollback = support.appendingPathComponent(rollbackName, isDirectory: true)
+        guard fm.fileExists(atPath: rollback.path) else { return }
+        let manifest = rollback.appendingPathComponent("manifest.json")
+        guard fm.fileExists(atPath: manifest.path) else {
+            // Either preparation never touched the live set, or replacement committed.
+            try fm.removeItem(at: rollback)
+            return
+        }
+        let originals = try JSONDecoder().decode([String].self, from: Data(contentsOf: manifest))
+        guard Set(originals).isSubset(of: Set(names)), originals.allSatisfy({
+            fm.fileExists(atPath: rollback.appendingPathComponent($0).path)
+        }) else { throw Failure.incompleteRollback }
+        for name in names {
+            let live = support.appendingPathComponent(name)
+            if fm.fileExists(atPath: live.path) { try fm.removeItem(at: live) }
+            if originals.contains(name) {
+                // Copy, never move: every original survives another interrupted rollback.
+                try fm.copyItem(at: rollback.appendingPathComponent(name), to: live)
+            }
+        }
+        try fm.removeItem(at: manifest)
+        try? fm.removeItem(at: rollback)
     }
 }

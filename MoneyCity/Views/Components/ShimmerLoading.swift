@@ -98,6 +98,7 @@ public struct TransactionSkeletonRow: View {
 
 /// Interactive Holographic Receipt Scanner Placeholder Card
 public struct ReceiptScanningSkeletonView: View {
+    @EnvironmentObject private var l10n: LocalizationManager
     @State private var scanBeamOffset: CGFloat = -40
     
     public init() {}
@@ -151,7 +152,7 @@ public struct ReceiptScanningSkeletonView: View {
             
             HStack(spacing: 8) {
                 ProgressView().tint(Color.themeMint)
-                Text("מפענח סכום ופרטי עסק מתמונת הקבלה...")
+                Text(l10n.isHebrew ? "מפענח סכום ופרטי עסק מתמונת הקבלה..." : "Reading the amount and merchant from your receipt…")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundColor(Color.themeMint)
             }

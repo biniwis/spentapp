@@ -6,6 +6,15 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     case hebrew = "he"
     case english = "en"
 
+    /// Readable from background ingestion and notification callbacks as well as the UI.
+    public static var current: AppLanguage {
+        AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language_pref") ?? "he") ?? .hebrew
+    }
+
+    public static func localized(_ hebrew: String, _ english: String) -> String {
+        current == .hebrew ? hebrew : english
+    }
+
     public var id: String { rawValue }
 
     public var displayName: String {

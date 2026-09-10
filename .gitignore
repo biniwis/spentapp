@@ -28,4 +28,5 @@ main
 *.log
 scratch/
 scratch_archive/
+artifacts/
 .DS_Store

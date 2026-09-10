@@ -21,6 +21,7 @@ public struct DioramaReadyWrapper: View {
     public let newlyUnlockedEnrichmentId: String?
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
+    public let selectedBuildingId: String?
     /// Optional first-use focus rendered on top of the real 3D building.
     public let tutorialBuildingId: String?
     public let language: String
@@ -28,6 +29,7 @@ public struct DioramaReadyWrapper: View {
     public let onSelectDistrict: (String?) -> Void
     public let onBuildingSelected: (DistrictBuildingInfo) -> Void
     public let onSlotTapped: ((String, String?) -> Void)?
+    public let onCameraOffsetChanged: ((Bool) -> Void)?
 
     @State private var isLoaded = false
     @State private var hasStarted = false
@@ -48,12 +50,14 @@ public struct DioramaReadyWrapper: View {
         newlyUnlockedEnrichmentId: String?,
         slotPlacements: [String: String],
         selectedDistrict: String?,
+        selectedBuildingId: String? = nil,
         tutorialBuildingId: String? = nil,
         language: String = "he",
         isPaused: Bool,
         onSelectDistrict: @escaping (String?) -> Void,
         onBuildingSelected: @escaping (DistrictBuildingInfo) -> Void,
-        onSlotTapped: ((String, String?) -> Void)?
+        onSlotTapped: ((String, String?) -> Void)? = nil,
+        onCameraOffsetChanged: ((Bool) -> Void)? = nil
     ) {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
@@ -70,12 +74,14 @@ public struct DioramaReadyWrapper: View {
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
+        self.selectedBuildingId = selectedBuildingId
         self.tutorialBuildingId = tutorialBuildingId
         self.language = language
         self.isPaused = isPaused
         self.onSelectDistrict = onSelectDistrict
         self.onBuildingSelected = onBuildingSelected
         self.onSlotTapped = onSlotTapped
+        self.onCameraOffsetChanged = onCameraOffsetChanged
     }
 
     public var body: some View {
@@ -99,12 +105,14 @@ public struct DioramaReadyWrapper: View {
                 newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
                 slotPlacements: slotPlacements,
                 selectedDistrict: selectedDistrict,
+                selectedBuildingId: selectedBuildingId,
                 tutorialBuildingId: tutorialBuildingId,
                 language: language,
                 isPaused: isPaused,
                 onSelectDistrict: onSelectDistrict,
                 onBuildingSelected: onBuildingSelected,
-                onSlotTapped: onSlotTapped
+                onSlotTapped: onSlotTapped,
+                onCameraOffsetChanged: onCameraOffsetChanged
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {

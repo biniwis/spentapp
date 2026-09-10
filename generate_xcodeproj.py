@@ -37,12 +37,12 @@ for root, dirs, files in os.walk(source_dir):
             swift_files.append((f, rel_path))
         elif f.endswith(".xcprivacy"):
             xcprivacy_files.append((f, rel_path))
-        elif f.endswith(".html") or f.endswith(".js") or f.endswith(".png") or f.endswith(".jpg"):
+        elif f.endswith(".xcstrings") or f.endswith(".html") or f.endswith(".js") or f.endswith(".png") or f.endswith(".jpg"):
             resource_files.append((f, rel_path))
 
 # 2. Gather Widget Extension source files and resources
 widget_swift_files = []
-widget_resource_files = []
+widget_resource_files = [("Localizable.xcstrings", "MoneyCity/Resources/Localizable.xcstrings")]
 widget_xcassets_catalogs = []
 
 for root, dirs, files in os.walk(widget_dir):
@@ -117,7 +117,7 @@ for name, rel_path in swift_files:
 for name, rel_path in resource_files:
     f_ref = uid()
     b_file = uid()
-    ftype = "text.html" if name.endswith(".html") else ("sourcecode.javascript" if name.endswith(".js") else "file")
+    ftype = "text.json.xcstrings" if name.endswith(".xcstrings") else "text.html" if name.endswith(".html") else ("sourcecode.javascript" if name.endswith(".js") else "file")
     file_refs.append((f_ref, name, rel_path, ftype))
     build_files.append((b_file, f_ref, "Resources", "MoneyCity"))
     parent_rel = os.path.dirname(rel_path)
@@ -154,6 +154,17 @@ for name, rel_path in widget_swift_files:
     parent_rel = os.path.dirname(rel_path)
     if parent_rel not in groups_dict:
         groups_dict[parent_rel] = (uid(), os.path.basename(parent_rel), [])
+    groups_dict[parent_rel][2].append(f_ref)
+
+# Share native localized labels with the widget's bundle.
+for name, rel_path in widget_resource_files:
+    if not name.endswith(".xcstrings"):
+        continue
+    f_ref = uid()
+    b_file = uid()
+    file_refs.append((f_ref, name, rel_path, "text.json.xcstrings"))
+    build_files.append((b_file, f_ref, "WidgetResources", "spent fastExtension"))
+    parent_rel = os.path.dirname(rel_path)
     groups_dict[parent_rel][2].append(f_ref)
 
 for name, rel_path in widget_xcassets_catalogs:
@@ -326,6 +337,7 @@ pbx.append("\t\t\tdevelopmentRegion = en;")
 pbx.append("\t\t\thasScannedForEncodings = 0;")
 pbx.append("\t\t\tknownRegions = (")
 pbx.append("\t\t\t\ten,")
+pbx.append("\t\t\t\the,")
 pbx.append("\t\t\t\tBase,")
 pbx.append("\t\t\t);")
 pbx.append(f"\t\t\tmainGroup = {main_group_id};")

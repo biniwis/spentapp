@@ -96,7 +96,7 @@ public final class ExpenseExtractionService: Sendable {
                 } else if let p = raw.product?.trimmingCharacters(in: .whitespacesAndNewlines), !p.isEmpty {
                     merchantName = p
                 } else {
-                    merchantName = "הוצאה מצילום מסך"
+                    merchantName = AppLanguage.localized("הוצאה מצילום מסך", "Expense from screenshot")
                 }
                 
                 let doubleAmount = NSDecimalNumber(decimal: raw.amount).doubleValue

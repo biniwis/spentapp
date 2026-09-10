@@ -336,9 +336,9 @@ public enum DataPortabilityService {
         public var errorDescription: String? {
             switch self {
             case .notABackup:
-                return "הקובץ הזה אינו גיבוי של MoneyCity."
+                return AppLanguage.localized("הקובץ הזה אינו גיבוי של MoneyCity.", "This file is not a MoneyCity backup.")
             case .futureFormat(let v):
-                return "הגיבוי נוצר בגרסה חדשה יותר של האפליקציה (פורמט \(v))."
+                return AppLanguage.localized("הגיבוי נוצר בגרסה חדשה יותר של האפליקציה (פורמט \(v)).", "This backup was created by a newer version of the app (format \(v)).")
             }
         }
     }

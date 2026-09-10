@@ -6,11 +6,11 @@ extension TransactionIngestError: CustomLocalizedStringResourceConvertible {
     public var localizedStringResource: LocalizedStringResource {
         switch self {
         case .missingMerchant:
-            return "לא התקבל שם בית עסק מ-Wallet, לכן העסקה לא נרשמה."
+            return LocalizedStringResource(stringLiteral: AppLanguage.localized("לא התקבל שם בית עסק מ-Wallet, לכן העסקה לא נרשמה.", "Wallet did not provide a merchant name, so the transaction was not recorded."))
         case .missingAmount:
-            return "לא התקבל סכום תקין מ-Wallet, לכן העסקה לא נרשמה."
+            return LocalizedStringResource(stringLiteral: AppLanguage.localized("לא התקבל סכום תקין מ-Wallet, לכן העסקה לא נרשמה.", "Wallet did not provide a valid amount, so the transaction was not recorded."))
         case .duplicate:
-            return "העסקה הזו כבר נרשמה."
+            return LocalizedStringResource(stringLiteral: AppLanguage.localized("העסקה הזו כבר נרשמה.", "This transaction has already been recorded."))
         }
     }
 }
@@ -23,37 +23,37 @@ extension TransactionIngestError: CustomLocalizedStringResourceConvertible {
 /// Shortcuts stop and *ask* for a value, which in a background automation just fails silently.
 /// Optional parameters let this intent receive the bad payload, refuse it, and say why.
 public struct RecordTransactionIntent: AppIntent {
-    public static var title: LocalizedStringResource = "הקלטת עסקת Apple Pay"
-    public static var description = IntentDescription("קולט עסקת תשלום ומסווג אותה אוטומטית לעיר.")
+    public static var title: LocalizedStringResource = "Record Apple Pay Transaction"
+    public static var description = IntentDescription("Record a payment and automatically categorize it in your city.")
 
     public static var openAppWhenRun: Bool = false
     public static var isDiscoverable: Bool = true
 
     @Parameter(
-        title: "סכום העסקה",
-        description: "סכום העסקה שהועבר מ-Wallet"
+        title: "Transaction Amount",
+        description: "Transaction amount received from Wallet"
     )
     public var amount: Double?
 
     /// Fallback for the known Shortcuts defect where the numeric amount arrives as 0.0
     /// while the text representation of the same transaction is intact.
-    @Parameter(title: "סכום כטקסט", description: "אופציונלי. גיבוי אם הסכום המספרי מגיע ריק")
+    @Parameter(title: "Amount as Text", description: "Optional fallback if the numeric amount is empty")
     public var amountText: String?
 
     @Parameter(
-        title: "שם בית העסק",
-        description: "שם העסק (Merchant) שהתקבל ב-Apple Pay"
+        title: "Merchant",
+        description: "Merchant name received from Apple Pay"
     )
     public var merchant: String?
 
-    @Parameter(title: "מטבע", description: "ברירת המחדל היא המטבע הראשי שהוגדר באפליקציה")
+    @Parameter(title: "Currency", description: "Defaults to the base currency selected in the app")
     public var currency: String?
 
-    @Parameter(title: "תאריך ושעה", description: "זמן ביצוע העסקה")
+    @Parameter(title: "Date and Time", description: "When the transaction took place")
     public var transactionDate: Date?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("קלוט עסקה של \(\.$amount) ב-\(\.$merchant)") {
+        Summary("Record payment of \(\.$amount) at \(\.$merchant)") {
             \.$currency
             \.$transactionDate
             \.$amountText
@@ -82,7 +82,7 @@ public struct RecordTransactionIntent: AppIntent {
         var effectiveMerchant = merchant
 
         if (effectiveMerchant == nil || effectiveMerchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true) && (effectiveAmount != nil && effectiveAmount! > 0) {
-            effectiveMerchant = "תשלום Apple Pay"
+            effectiveMerchant = AppLanguage.localized("תשלום Apple Pay", "Apple Pay payment")
         }
 
         let debugRaw = """

@@ -269,8 +269,8 @@ public struct spent_fast: Widget {
             spent_fastEntryView(entry: entry)
                 .containerBackground(.white, for: .widget)
         }
-        .configurationDisplayName("SPENT - הוספה מהירה ומעקב")
-        .description("הוסף עסקאות ישירות מהמסך בנגיעה אחת.")
+        .configurationDisplayName("SPENT - Quick Add & Tracking")
+        .description("Add transactions from your Home Screen with a single tap.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,

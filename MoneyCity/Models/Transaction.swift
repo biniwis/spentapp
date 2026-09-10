@@ -140,3 +140,24 @@ public enum MoneyAmount {
         return Int(min(max(value, -maximum), maximum))
     }
 }
+
+/// Includes fields used by city classification, inspection and progress calculations.
+/// Keep the digest shared so edit regressions exercise the same key as the city view.
+enum CityTransactionDigest {
+    static func make(_ transactions: [Transaction]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(transactions.count)
+        for tx in transactions {
+            hasher.combine(tx.id)
+            hasher.combine(tx.amount)
+            hasher.combine(tx.timestamp)
+            hasher.combine(tx.categoryRawValue)
+            hasher.combine(tx.merchant)
+            hasher.combine(tx.buildingIdRaw)
+            hasher.combine(tx.note)
+            hasher.combine(tx.isConfirmed)
+            hasher.combine(tx.savingsGoalId)
+        }
+        return hasher.finalize()
+    }
+}

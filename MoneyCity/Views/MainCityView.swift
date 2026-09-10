@@ -17,7 +17,7 @@ import Combine
 /// Deliberately not marked `@MainActor`: it is only ever touched from `body`, which already
 /// runs there, and annotating it would make the `@State` initialiser cross an isolation
 /// boundary for no benefit.
-private final class CityDerivedCache {
+final class CityDerivedCache {
     private var monthKey: Int?
     private var monthRows: [Transaction]?
     private var cityKey: Int?
@@ -74,22 +74,8 @@ public struct MainCityView: View {
 
     @State private var derived = CityDerivedCache()
 
-    /// A cheap fingerprint of everything the derived values depend on.
-    ///
-    /// Counting rows is not enough — editing an amount or a category leaves the count
-    /// untouched — so the fields that actually feed the simulation are folded in. Four hash
-    /// combines per transaction, against the twenty-five substring searches per transaction
-    /// this saves.
     private var transactionsDigest: Int {
-        var hasher = Hasher()
-        hasher.combine(allTransactions.count)
-        for tx in allTransactions {
-            hasher.combine(tx.id)
-            hasher.combine(tx.amount)
-            hasher.combine(tx.timestamp)
-            hasher.combine(tx.categoryRawValue)
-        }
-        return hasher.finalize()
+        CityTransactionDigest.make(allTransactions)
     }
 
     /// Real income wins over the stored fallback. The 8,000 default was a number the app
@@ -172,6 +158,7 @@ public struct MainCityView: View {
     /// the view the app opens on — the district alone is not enough, because rotating and
     /// panning happen inside city mode and leave nothing for a district change to undo.
     @State private var cityViewResetToken: Int = 0
+    @State private var isCameraOffset = false
 
     // ── Live Expense Confirmation & Rolling Amount ──
     @ObservedObject private var confirmationCoordinator = ExpenseConfirmationCoordinator.shared
@@ -375,6 +362,7 @@ public struct MainCityView: View {
                     newlyUnlockedEnrichmentId: newlyUnlockedEnrichmentId,
                     slotPlacements: currentSlotPlacements,
                     selectedDistrict: selectedDistrict,
+                    selectedBuildingId: inspectedBuilding?.id,
                     tutorialBuildingId: cityTutorialBuildingId,
                     language: l10n.language == .hebrew ? "he" : "en",
                     isPaused: activeTab != "city" || companionScenePhase != .active
@@ -382,7 +370,12 @@ public struct MainCityView: View {
                         || showSortingHubSheet || showReserveSanctuarySheet,
                     onSelectDistrict: handleSelectDistrict,
                     onBuildingSelected: handleSelectBuilding,
-                    onSlotTapped: nil
+                    onSlotTapped: nil,
+                    onCameraOffsetChanged: { isOff in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            isCameraOffset = isOff
+                        }
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -573,6 +566,33 @@ public struct MainCityView: View {
             if !isChromeHidden {
                 VStack(spacing: 8) {
                     Spacer()
+                    if isCameraOffset && activeTab == "city" && selectedDistrict == nil && inspectedBuilding == nil && !isQuickActionActive {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    cityViewResetToken &+= 1
+                                    isCameraOffset = false
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    MoneyIcon(.navigation, size: 14, color: Color.deepNavy)
+                                    Text(l10n.language == .hebrew ? "איפוס מבט" : "Recenter")
+                                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.white.opacity(0.95))
+                                .clipShape(Capsule())
+                                .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+                            }
+                            .buttonStyle(.plain)
+                            .bouncyPress(scale: 0.94)
+                            .padding(.trailing, 16)
+                            .transition(.scale(scale: 0.85).combined(with: .opacity))
+                        }
+                    }
                     if activeTab == "city" && !isQuickActionActive {
                         cityActiveCardView
                     }
@@ -1851,6 +1871,13 @@ public struct MainCityView: View {
                 MoneyIcon(.home, size: 24)
             }
             topDistrictPill(
+                id: "transport",
+                title: l10n.language == .hebrew ? "תחבורה" : "Transport",
+                unselectedBg: Color(red: 236/255, green: 253/255, blue: 245/255)
+            ) { isSelected in
+                MoneyIcon(.car, size: 24)
+            }
+            topDistrictPill(
                 id: "savings",
                 title: l10n.language == .hebrew ? "חיסכון" : "Savings",
                 unselectedBg: Color(red: 234/255, green: 248/255, blue: 240/255)
@@ -2025,12 +2052,14 @@ public struct MainCityView: View {
             return [
                 BuildingPillItem(id: "savings_sanctuary", title: isHe ? "שמורת החיסכון" : "Savings Park", amount: sav, info: DistrictBuildingInfo(id: "savings_sanctuary", districtId: "savings", name: isHe ? "שמורת הטבע והחיסכון" : "Nature & Savings Park", amount: sav, visitCount: savVisits, trendText: sav > 0 ? (isHe ? "צמיחה ירוקה החודש" : "Growing green this month") : (isHe ? "התחל לחסוך כדי להצמיח את השמורה" : "Start saving to grow the park")))
             ]
-        default:
+        case "transport":
             let tr = currentCity.categoryTotals[.transport] ?? 0
             let transVisits = displayTransactions.filter { $0.category == .transport }.count
             return [
                 BuildingPillItem(id: "trans_station", title: isHe ? "תחבורה ודלק" : "Transit & Fuel", amount: tr, info: DistrictBuildingInfo(id: "trans_station", districtId: "transport", name: isHe ? "תחבורה וחניה" : "Transit & Parking", amount: tr, visitCount: transVisits, trendText: transVisits == 0 ? (isHe ? "טרם נרשמו עסקאות החודש" : "No visits this month") : (isHe ? "\(transVisits) עסקאות החודש" : "\(transVisits) visits this month")))
             ]
+        default:
+            return []
         }
     }
     
@@ -2067,7 +2096,7 @@ public struct MainCityView: View {
                             .font(.system(size: 13, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                         
-                        Text("סה״כ \(l10n.format(amount: districtTotal(for: dist))) החודש")
+                        Text(l10n.isHebrew ? "סה״כ \(l10n.format(amount: districtTotal(for: dist))) החודש" : "Total \(l10n.format(amount: districtTotal(for: dist))) this month")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundColor(Color.primaryBlue)
                     }

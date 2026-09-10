@@ -8,9 +8,9 @@ import Foundation
 /// built automation ended up delivering five empty fields. This action asks for one thing:
 /// the transaction. Everything else is worked out in the app, where it can be tested.
 public struct LogWalletPaymentIntent: AppIntent {
-    public static var title: LocalizedStringResource = "קליטת תשלום Apple Pay (פשוט)"
+    public static var title: LocalizedStringResource = "Capture Apple Pay Payment (Simple)"
     public static var description = IntentDescription(
-        "שדה אחד בלבד — גרור לתוכו את קלט הקיצור. האפליקציה מחלצת ממנו את הסכום ואת שם בית העסק בעצמה."
+        "Drag the shortcut input into this single field. The app extracts the amount and merchant automatically."
     )
 
     public static var openAppWhenRun: Bool = false
@@ -19,14 +19,14 @@ public struct LogWalletPaymentIntent: AppIntent {
     /// A single parameter, so Shortcuts has one obvious thing to connect the automation's
     /// input to instead of five it can silently leave blank.
     @Parameter(
-        title: "פרטי העסקה",
-        description: "קלט העסקה שהועבר מ-Wallet",
+        title: "Transaction Details",
+        description: "Transaction input received from Wallet",
         inputConnectionBehavior: .connectToPreviousIntentResult
     )
     public var payload: String?
 
     public static var parameterSummary: some ParameterSummary {
-        Summary("קלוט תשלום מתוך \(\.$payload)")
+        Summary("Capture payment from \(\.$payload)")
     }
 
     public init() {}

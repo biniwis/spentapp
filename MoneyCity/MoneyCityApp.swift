@@ -37,6 +37,10 @@ struct MoneyCityApp: App {
                 .preferredColorScheme(.light)
                 .moneyCityFont()
                 .environment(\.layoutDirection, l10n.layoutDirection)
+                .environment(\.locale, Locale(identifier: l10n.language.rawValue))
+                .onChange(of: l10n.language) { _, language in
+                    NotificationService.sync(enabled: NotificationService.isEnabled, isHebrew: language == .hebrew)
+                }
                 .environmentObject(l10n)
                 .onAppear {
                     // Background fetch latest currency exchange rates

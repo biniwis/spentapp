@@ -6,23 +6,20 @@ public struct MoneyCityShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: QuickExpensePromptIntent(),
             phrases: [
-                "הוסף הוצאה ב-\(.applicationName)",
-                "רשום הוצאה ב-\(.applicationName)",
                 "Add expense in \(.applicationName)",
                 "Quick expense in \(.applicationName)"
             ],
-            shortTitle: "הוספת הוצאה",
+            shortTitle: "Add Expense",
             systemImageName: "plus.circle.fill"
         )
 
         AppShortcut(
             intent: RecordTransactionIntent(),
             phrases: [
-                "הקלט עסקה ב-\(.applicationName)",
-                "רשום תשלום ב-\(.applicationName)",
-                "Log payment in \(.applicationName)"
+                "Log payment in \(.applicationName)",
+                "Record transaction in \(.applicationName)"
             ],
-            shortTitle: "הקלטת עסקה",
+            shortTitle: "Record Transaction",
             systemImageName: "creditcard.and.123"
         )
     }

@@ -117,6 +117,9 @@
 		7F020069E4680C1F9B1BD614 = {isa = PBXBuildFile; fileRef = 9C2E806A681D7E1D5F5C9539; };
 		3F53B25034B05E8BE10F8D75 = {isa = PBXBuildFile; fileRef = 91C4335FCD9490427BB05C91; };
 		ABB633D59B4EF1BF131CACB0 = {isa = PBXBuildFile; fileRef = 5AC141236FC48C41E5582044; };
+		A10CA1100000000000000101 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A10CA1100000000000000001; };
+		A10CA1100000000000000102 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A10CA1100000000000000002; };
+		A10CA1100000000000000201 /* Localizable.xcstrings in Widget Resources */ = {isa = PBXBuildFile; fileRef = A10CA1100000000000000001; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -258,6 +261,8 @@
 		91C4335FCD9490427BB05C91 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TransactionIngestTests.swift"; sourceTree = "<group>"; };
 		5AC141236FC48C41E5582044 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "VisionTransactionExtractorTests.swift"; sourceTree = "<group>"; };
 		C5EC5C01A8307CA97AB50E34 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MoneyCityTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10CA1100000000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "MoneyCity/Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
+		A10CA1100000000000000002 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "MoneyCity/Resources/AppShortcuts.xcstrings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -364,6 +369,8 @@
 				0B556FB730714722856D9765 /* GeminiTransactionExtractor.swift */,
 				61A18AAFBB794302AD37A6FA /* VisionTransactionExtractor.swift */,
 				2B4395E1279D415AAC96C267 /* diorama.html */,
+				A10CA1100000000000000001 /* Localizable.xcstrings */,
+				A10CA1100000000000000002 /* AppShortcuts.xcstrings */,
 				B6AD39F4C06042E188D28C38 /* Assets.xcassets */,
 				F168858C77C947D89C8A4DA8 /* PrivacyInfo.xcprivacy */,
 				A881C6E930C5463FAC030379 /* spent_fast.swift */,
@@ -450,6 +457,7 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				he,
 				Base,
 			);
 			mainGroup = C490495732BA440B9F0EE242;
@@ -470,6 +478,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				38F5A33FCB424885AF30A425 /* Resources */,
+				A10CA1100000000000000102 /* AppShortcuts.xcstrings in Resources */,
+				A10CA1100000000000000101 /* Localizable.xcstrings in Resources */,
 				B8EBADAACD014ADA96563047 /* Resources */,
 				247D8B9D9D3B4A698516BD1A /* Resources */,
 			);
@@ -480,6 +490,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				3E8C361253554C2A8C0BF0CA /* WidgetResources */,
+				A10CA1100000000000000201 /* Localizable.xcstrings in Widget Resources */,
 				3E8C361253554C2A8C0BF0CB /* PrivacyInfo in spent fastExtension */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -51,6 +51,7 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let newlyUnlockedEnrichmentId: String?
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
+    public let selectedBuildingId: String?
     /// A building highlighted during the contextual first-use lesson.
     public let tutorialBuildingId: String?
     public let language: String
@@ -58,6 +59,7 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let onSelectDistrict: (String?) -> Void
     public let onBuildingSelected: (DistrictBuildingInfo) -> Void
     public let onSlotTapped: ((String, String?) -> Void)?
+    public let onCameraOffsetChanged: ((Bool) -> Void)?
     
     public init(
         totalSpent: Double,
@@ -75,12 +77,14 @@ public struct ThreeDioramaView: ViewRepresentable {
         newlyUnlockedEnrichmentId: String? = nil,
         slotPlacements: [String: String] = [:],
         selectedDistrict: String?,
+        selectedBuildingId: String? = nil,
         tutorialBuildingId: String? = nil,
         language: String = "he",
         isPaused: Bool = false,
         onSelectDistrict: @escaping (String?) -> Void,
         onBuildingSelected: @escaping (DistrictBuildingInfo) -> Void,
-        onSlotTapped: ((String, String?) -> Void)? = nil
+        onSlotTapped: ((String, String?) -> Void)? = nil,
+        onCameraOffsetChanged: ((Bool) -> Void)? = nil
     ) {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
@@ -97,12 +101,14 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.newlyUnlockedEnrichmentId = newlyUnlockedEnrichmentId
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
+        self.selectedBuildingId = selectedBuildingId
         self.tutorialBuildingId = tutorialBuildingId
         self.language = language
         self.isPaused = isPaused
         self.onSelectDistrict = onSelectDistrict
         self.onBuildingSelected = onBuildingSelected
         self.onSlotTapped = onSlotTapped
+        self.onCameraOffsetChanged = onCameraOffsetChanged
     }
     
     #if canImport(UIKit)
@@ -293,6 +299,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         config.userContentController.add(context.coordinator, name: "dioramaError")
         config.userContentController.add(context.coordinator, name: "citizenTapped")
         config.userContentController.add(context.coordinator, name: "slotTapped")
+        config.userContentController.add(context.coordinator, name: "cameraOffsetChanged")
         
         // Inject current city data payload at document start
         let initScript = WKUserScript(
@@ -349,13 +356,19 @@ public struct ThreeDioramaView: ViewRepresentable {
             js = controls
         } else {
             let payload = dataPayloadJSON
-            js = controls + """
+            var script = controls + """
             if(window.updateDioramaData){window.updateDioramaData(\(payload));}
             else {window._initialDataPayload = \(payload);}
             \(districtJS)
             if(window.setCityOverview){window.setCityOverview(\(isOverview ? "true" : "false"));}
             if(window.resetCityView){window.resetCityView(\(viewResetToken));}
             """
+            if let bId = selectedBuildingId {
+                script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding('\(bId)');}"
+            } else {
+                script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding(null);}"
+            }
+            js = script
         }
         guard coordinator.lastSentPayload != js else { return }
         coordinator.lastSentPayload = js
@@ -463,7 +476,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             } else if message.name == "buildingTapped", let dict = message.body as? [String: Any] {
                 let id = dict["id"] as? String ?? "b1"
                 let district = dict["district"] as? String ?? "food"
-                let name = dict["name"] as? String ?? "מסעדה"
+                let name = dict["name"] as? String ?? AppLanguage.localized("מסעדה", "Restaurant")
                 // Zero, not an invented figure: MainCityView recomputes all three from the
                 // user's own transactions before anything is shown.
                 let amount = dict["amount"] as? Double ?? 0
@@ -472,6 +485,8 @@ public struct ThreeDioramaView: ViewRepresentable {
                 
                 let info = DistrictBuildingInfo(id: id, districtId: district, name: name, amount: amount, visitCount: visits, trendText: trend)
                 parent.onBuildingSelected(info)
+            } else if message.name == "cameraOffsetChanged", let isOff = message.body as? Bool {
+                parent.onCameraOffsetChanged?(isOff)
             }
         }
     }

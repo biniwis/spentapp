@@ -130,7 +130,14 @@ public struct HistoryView: View {
                     }
 
                     // Filter Bar: Slider/Filter button on the left, horizontal category pills
-                    filterBar
+                    HistoryFilterBar(
+                        selectedCategory: $selectedCategory,
+                        showOnlyUnconfirmed: $showOnlyUnconfirmed,
+                        selectedSpecificDate: $selectedSpecificDate,
+                        searchText: $searchText,
+                        unconfirmedCount: unconfirmedCount,
+                        dayLabel: { dayLabel($0) }
+                    )
                 }
                 .background(Color.appBackground)
 
@@ -181,7 +188,31 @@ public struct HistoryView: View {
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showCalendarPicker) {
-            calendarSheet
+            HistoryCalendarSheet(
+                calendarPickerDate: $calendarPickerDate,
+                showCalendarPicker: $showCalendarPicker,
+                onFilterDay: { pickedDate in
+                    withAnimation(.spring(response: 0.35)) {
+                        currentDate = pickedDate
+                        selectedSpecificDate = pickedDate
+                        showCalendarPicker = false
+                    }
+                },
+                onShowEntireMonth: { pickedDate in
+                    withAnimation(.spring(response: 0.35)) {
+                        currentDate = pickedDate
+                        selectedSpecificDate = nil
+                        showCalendarPicker = false
+                    }
+                },
+                onBackToToday: {
+                    withAnimation(.spring(response: 0.35)) {
+                        currentDate = Date()
+                        selectedSpecificDate = nil
+                        showCalendarPicker = false
+                    }
+                }
+            )
         }
     }
 
@@ -295,162 +326,6 @@ public struct HistoryView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
-    // MARK: - Filter Bar & Chips (Exact Reference Style: 36pt height, #F3F4F6 pills, #111827 active)
-
-    private var filterBar: some View {
-        HStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    if selectedSpecificDate != nil {
-                        specificDateFilterChip
-                    }
-
-                    if unconfirmedCount > 0 {
-                        reviewFilterChip
-                    }
-
-                    allFilterChip
-                    ForEach(SpendingCategory.primaryCategories, id: \.self) { cat in
-                        categoryFilterChip(cat)
-                    }
-                }
-                .padding(.horizontal, 2)
-            }
-
-            filterMenuButton
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 4)
-        .padding(.bottom, 6)
-    }
-
-    private var specificDateFilterChip: some View {
-        Button(action: {
-            Haptics.selection()
-            withAnimation(.spring(response: 0.3)) {
-                selectedSpecificDate = nil
-            }
-        }) {
-            HStack(spacing: 6) {
-                MoneyIcon(.calendar, size: 14)
-                Text(dayLabel(selectedSpecificDate ?? Date()))
-                    .font(.system(size: 13, weight: .bold, design: .default))
-                MoneyIcon(.xmarkCircle, size: 14)
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(Color(red: 17/255, green: 24/255, blue: 39/255))
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var filterMenuButton: some View {
-        Menu {
-            if unconfirmedCount > 0 {
-                Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        showOnlyUnconfirmed.toggle()
-                        if showOnlyUnconfirmed { selectedCategory = nil }
-                    }
-                } label: {
-                    Label {
-                        Text(showOnlyUnconfirmed
-                            ? (l10n.language == .hebrew ? "הצג את כל העסקאות" : "Show All Transactions")
-                            : (l10n.language == .hebrew ? "עסקאות לאישור בלבד (\(unconfirmedCount))" : "Review Only (\(unconfirmedCount))"))
-                    } icon: {
-                        MoneyIcon(showOnlyUnconfirmed ? .checkCircle : .warningCircle, size: 18)
-                    }
-                }
-            }
-
-            Button {
-                withAnimation(.spring(response: 0.3)) {
-                    selectedCategory = nil
-                    showOnlyUnconfirmed = false
-                    selectedSpecificDate = nil
-                    searchText = ""
-                }
-            } label: {
-                Label {
-                    Text(l10n.language == .hebrew ? "איפוס סינונים" : "Reset Filters")
-                } icon: {
-                    MoneyIcon(.refresh, size: 18)
-                }
-            }
-        } label: {
-            MoneyIcon(.sliders, size: 18)
-                .frame(width: 36, height: 36)
-                .background(showOnlyUnconfirmed ? Color.deepNavy : Color(red: 243/255, green: 244/255, blue: 246/255))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var reviewFilterChip: some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.3)) {
-                showOnlyUnconfirmed.toggle()
-                if showOnlyUnconfirmed { selectedCategory = nil }
-            }
-        }) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(showOnlyUnconfirmed ? .white : Color(red: 245/255, green: 158/255, blue: 11/255))
-                    .frame(width: 7, height: 7)
-                Text(l10n.language == .hebrew ? "לאישור (\(unconfirmedCount))" : "Review (\(unconfirmedCount))")
-                    .font(.system(size: 13.5, weight: .semibold, design: .default))
-            }
-            .foregroundColor(showOnlyUnconfirmed ? .white : Color.deepNavy)
-            .padding(.horizontal, 14)
-            .frame(height: 36)
-            .background(showOnlyUnconfirmed ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 243/255, green: 244/255, blue: 246/255))
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var allFilterChip: some View {
-        let isSelected = selectedCategory == nil && !showOnlyUnconfirmed && selectedSpecificDate == nil
-        return Button(action: {
-            Haptics.selection()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                selectedCategory = nil
-                showOnlyUnconfirmed = false
-                selectedSpecificDate = nil
-            }
-        }) {
-            Text(l10n.language == .hebrew ? "הכל" : "All")
-                .font(.system(size: 13.5, weight: isSelected ? .bold : .semibold, design: .default))
-                .foregroundColor(isSelected ? .white : Color(red: 75/255, green: 85/255, blue: 99/255))
-                .padding(.horizontal, 16)
-                .frame(height: 36)
-                .background(isSelected ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 243/255, green: 244/255, blue: 246/255))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func categoryFilterChip(_ cat: SpendingCategory) -> some View {
-        let isSelected = selectedCategory == cat && !showOnlyUnconfirmed
-        return Button(action: {
-            Haptics.selection()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                selectedCategory = isSelected ? nil : cat
-                showOnlyUnconfirmed = false
-            }
-        }) {
-            Text(cat.shortName(for: l10n.language))
-                .font(.system(size: 13.5, weight: isSelected ? .bold : .semibold, design: .default))
-                .foregroundColor(isSelected ? .white : Color(red: 75/255, green: 85/255, blue: 99/255))
-                .padding(.horizontal, 16)
-                .frame(height: 36)
-                .background(isSelected ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 243/255, green: 244/255, blue: 246/255))
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
 
     // MARK: - Day Section (Direct on Background, Editorial Ledger)
 
@@ -737,99 +612,5 @@ public struct HistoryView: View {
         Haptics.notify(.success)
     }
 
-    // MARK: - Calendar Jump Sheet
 
-    private var calendarSheet: some View {
-        VStack(spacing: 16) {
-            // Header
-            HStack {
-                Text(l10n.language == .hebrew ? "לוח שנה ומעבר לתאריך" : "Calendar & Jump to Date")
-                    .font(.system(size: 17, weight: .bold, design: .default))
-                    .foregroundColor(Color.deepNavy)
-                Spacer()
-                Button(action: { showCalendarPicker = false }) {
-                    MoneyIcon(.xmarkCircle, size: 22)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-
-            // Apple Graphical Calendar
-            DatePicker(
-                "",
-                selection: $calendarPickerDate,
-                in: ...Date(),
-                displayedComponents: [.date]
-            )
-            .datePickerStyle(.graphical)
-            .tint(Color.deepNavy)
-            .padding(.horizontal, 16)
-
-            // Action buttons
-            VStack(spacing: 10) {
-                Button(action: {
-                    Haptics.selection()
-                    withAnimation(.spring(response: 0.35)) {
-                        currentDate = calendarPickerDate
-                        selectedSpecificDate = calendarPickerDate
-                        showCalendarPicker = false
-                    }
-                }) {
-                    HStack(spacing: 6) {
-                        MoneyIcon(.sliders, size: 16)
-                        Text(l10n.language == .hebrew ? "הצג עסקאות של יום זה בלבד" : "Filter to This Day Only")
-                            .font(.system(size: 15, weight: .bold, design: .default))
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color.deepNavy)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
-
-                HStack(spacing: 12) {
-                    Button(action: {
-                        Haptics.selection()
-                        withAnimation(.spring(response: 0.35)) {
-                            currentDate = calendarPickerDate
-                            selectedSpecificDate = nil
-                            showCalendarPicker = false
-                        }
-                    }) {
-                        Text(l10n.language == .hebrew ? "הצג את כל החודש" : "Show Entire Month")
-                            .font(.system(size: 14, weight: .semibold, design: .default))
-                            .foregroundColor(Color.deepNavy)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 42)
-                            .background(Color(red: 243/255, green: 244/255, blue: 246/255))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: {
-                        Haptics.selection()
-                        withAnimation(.spring(response: 0.35)) {
-                            currentDate = Date()
-                            selectedSpecificDate = nil
-                            showCalendarPicker = false
-                        }
-                    }) {
-                        Text(l10n.language == .hebrew ? "חזרה להיום" : "Back to Today")
-                            .font(.system(size: 14, weight: .semibold, design: .default))
-                            .foregroundColor(Color.deepNavy)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 42)
-                            .background(Color(red: 243/255, green: 244/255, blue: 246/255))
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 20)
-        }
-        .presentationDetents([.medium, .large], selection: .constant(.large))
-    }
 }

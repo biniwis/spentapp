@@ -82,6 +82,8 @@
 		B1000022B2C3D4E5F6000022 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000022B2C3D4E5F6000022; };
 		B1000023B2C3D4E5F6000023 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000023B2C3D4E5F6000023; };
 		B1000024B2C3D4E5F6000024 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000024B2C3D4E5F6000024; };
+		B1000025B2C3D4E5F6000025 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000025B2C3D4E5F6000025; };
+		B1000026B2C3D4E5F6000026 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000026B2C3D4E5F6000026; };
 		BF1AC84137454359BB4972A5 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3BA77E33A1554CE987329BAD; };
 		1FB9C17E74DC4A31A22770C7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B5C8BE9EEF1342A3BE81E434; };
 		04991E494E8044D7927D38FA /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 95783AB9798D4000BF0EDC92; };
@@ -245,6 +247,8 @@
 		A1000022B2C3D4E5F6000022 /* DonutArcShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DonutArcShape.swift"; path = "MoneyCity/Views/Components/DonutArcShape.swift"; sourceTree = "<group>"; };
 		A1000023B2C3D4E5F6000023 /* AnalyticsComparativeBarChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AnalyticsComparativeBarChart.swift"; path = "MoneyCity/Views/Components/AnalyticsComparativeBarChart.swift"; sourceTree = "<group>"; };
 		A1000024B2C3D4E5F6000024 /* AnalyticsDonutCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AnalyticsDonutCard.swift"; path = "MoneyCity/Views/Components/AnalyticsDonutCard.swift"; sourceTree = "<group>"; };
+		A1000025B2C3D4E5F6000025 /* HistoryFilterBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "HistoryFilterBar.swift"; path = "MoneyCity/Views/Components/HistoryFilterBar.swift"; sourceTree = "<group>"; };
+		A1000026B2C3D4E5F6000026 /* HistoryCalendarSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "HistoryCalendarSheet.swift"; path = "MoneyCity/Views/Modals/HistoryCalendarSheet.swift"; sourceTree = "<group>"; };
 		D7631F5AF1AD4D4C8C7D8512 /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaReadyWrapper.swift"; path = "MoneyCity/Views/Diorama/DioramaReadyWrapper.swift"; sourceTree = "<group>"; };
 		743000CD2FDC4B6CB9CF1B4F /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaSkeletonView.swift"; path = "MoneyCity/Views/Diorama/DioramaSkeletonView.swift"; sourceTree = "<group>"; };
 		9A7443012FDC448BBC7E62AE /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ThreeDioramaView.swift"; path = "MoneyCity/Views/Diorama/ThreeDioramaView.swift"; sourceTree = "<group>"; };
@@ -405,6 +409,8 @@
 				A1000022B2C3D4E5F6000022 /* DonutArcShape.swift */,
 				A1000023B2C3D4E5F6000023 /* AnalyticsComparativeBarChart.swift */,
 				A1000024B2C3D4E5F6000024 /* AnalyticsDonutCard.swift */,
+				A1000025B2C3D4E5F6000025 /* HistoryFilterBar.swift */,
+				A1000026B2C3D4E5F6000026 /* HistoryCalendarSheet.swift */,
 				D7631F5AF1AD4D4C8C7D8512 /* DioramaReadyWrapper.swift */,
 				743000CD2FDC4B6CB9CF1B4F /* DioramaSkeletonView.swift */,
 				9A7443012FDC448BBC7E62AE /* ThreeDioramaView.swift */,
@@ -680,6 +686,8 @@
 				B1000022B2C3D4E5F6000022 /* Sources */,
 				B1000023B2C3D4E5F6000023 /* Sources */,
 				B1000024B2C3D4E5F6000024 /* Sources */,
+				B1000025B2C3D4E5F6000025 /* Sources */,
+				B1000026B2C3D4E5F6000026 /* Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

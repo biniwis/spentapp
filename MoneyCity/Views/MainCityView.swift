@@ -2,54 +2,6 @@ import SwiftUI
 import SwiftData
 import Combine
 
-/// Remembers the derived values the main view reads over and over within a single render.
-///
-/// `currentCity`, `progressReport` and the month filter are computed properties, and SwiftUI
-/// runs a computed property on every access — not once per render. `body` reaches for them
-/// seven to thirteen times depending on what is expanded, and each run rebuilt the month
-/// filter (one `Calendar.dateComponents` per transaction) and then the entire city
-/// simulation (a `lowercased()` plus roughly twenty-five substring searches per transaction).
-/// At a few hundred transactions that is tens of thousands of string operations per frame,
-/// sitting directly on top of a live WebGL canvas — and it got worse as history grew.
-///
-/// Keyed on a cheap digest of the inputs rather than a change notification, so an edit that
-/// leaves the transaction count the same still invalidates it.
-/// Deliberately not marked `@MainActor`: it is only ever touched from `body`, which already
-/// runs there, and annotating it would make the `@State` initialiser cross an isolation
-/// boundary for no benefit.
-final class CityDerivedCache {
-    private var monthKey: Int?
-    private var monthRows: [Transaction]?
-    private var cityKey: Int?
-    private var cachedCity: MonthlyCity?
-    private var reportKey: Int?
-    private var cachedReport: WeeklyProgressReport?
-
-    func monthTransactions(key: Int, build: () -> [Transaction]) -> [Transaction] {
-        if monthKey == key, let monthRows { return monthRows }
-        let value = build()
-        monthKey = key
-        monthRows = value
-        return value
-    }
-
-    func city(key: Int, build: () -> MonthlyCity) -> MonthlyCity {
-        if cityKey == key, let cachedCity { return cachedCity }
-        let value = build()
-        cityKey = key
-        cachedCity = value
-        return value
-    }
-
-    func report(key: Int, build: () -> WeeklyProgressReport) -> WeeklyProgressReport {
-        if reportKey == key, let cachedReport { return cachedReport }
-        let value = build()
-        reportKey = key
-        cachedReport = value
-        return value
-    }
-}
-
 /// The main edge-to-edge view showcasing the real-time 3D living diorama with Multi-Building Neighborhood Deep-Dive and Spatial Inspection.
 public struct MainCityView: View {
     @Environment(\.modelContext) private var modelContext
@@ -1019,8 +971,8 @@ public struct MainCityView: View {
             districtId: building.districtId,
             name: building.name,
             amount: currentCity.buildingTotals[building.id] ?? 0,
-            visitCount: buildingVisitCount(for: building.id),
-            trendText: buildingTrendText(for: building.id)
+            visitCount: DistrictDataHelper.buildingVisitCount(for: building.id, transactions: displayTransactions),
+            trendText: DistrictDataHelper.buildingTrendText(for: building.id, transactions: displayTransactions, language: l10n.language)
         )
         // Selecting a different building only changed the numbers inside a card that was
         // already on screen, so SwiftUI reused the same view: no transition ran, nothing moved,
@@ -1144,122 +1096,30 @@ public struct MainCityView: View {
     private var topControlsHeader: some View {
         if !isChromeHidden {
             VStack(spacing: 10) {
-                topNavigationBar
-                newMonthRecapBanner
-                heroKpiRow
+                CityTopBarView(
+                    hasWeeklyReward: !weeklyRewardOptions.isEmpty,
+                    isZenMode: $isZenMode,
+                    onOpenCompanions: {
+                        companionNow = Date()
+                        showProgressSheet = true
+                    }
+                )
+                if let recap = pendingRecapForNewMonth {
+                    CityNewMonthRecapBanner(
+                        recap: recap,
+                        onOpen: {
+                            activeNewMonthRecap = recap
+                            dismissNewMonthBanner()
+                        },
+                        onDismiss: dismissNewMonthBanner
+                    )
+                }
+                CityHeroKpiRow(spentValue: animatedSpentValue ?? currentCity.totalSpent)
                 confirmationBannerView
                 districtSelectorRow
             }
             .frame(maxWidth: .infinity)
         }
-    }
-
-    @ViewBuilder
-    private var newMonthRecapBanner: some View {
-        if let recap = pendingRecapForNewMonth {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.spentGreenSoft)
-                        .frame(width: 32, height: 32)
-                    MoneyIcon(.trophy, size: 16, color: Color.spentGreen)
-                }
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(l10n.language == .hebrew ? "העיר של \(recap.monthNameHe) מוכנה לסיכום!" : "\(recap.monthNameEn) City is Ready!")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                    Text(l10n.language == .hebrew ? "הקש לצפייה בסיכום החודשי שלך" : "Tap to view your monthly recap")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                }
-                
-                Spacer()
-                
-                Button(action: {
-                    activeNewMonthRecap = recap
-                    dismissNewMonthBanner()
-                }) {
-                    Text(l10n.language == .hebrew ? "צפה" : "View")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Color.spentGreen)
-                        .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: dismissNewMonthBanner) {
-                    MoneyIcon(.xmarkCircle, size: 16, color: Color.textMuted)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .shadow(color: Color.black.opacity(0.06), radius: 8, y: 2)
-            .padding(.horizontal, 20)
-            .transition(.move(edge: .top).combined(with: .opacity))
-        }
-    }
-
-    private var topNavigationBar: some View {
-        HStack(alignment: .center) {
-            Text("SPENT")
-                .font(.system(size: 20, weight: .black, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-                .tracking(0.5)
-
-            Spacer()
-
-            Button {
-                companionNow = Date()
-                showProgressSheet = true
-            } label: {
-                MoneyIcon(.gift, size: 24)
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.94), in: Circle())
-                    .overlay(alignment: .topTrailing) {
-                        if !weeklyRewardOptions.isEmpty {
-                            Circle().fill(Color.themeMint).frame(width: 10, height: 10)
-                        }
-                    }
-            }
-            .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — הפרס השבועי" : "City companions — weekly reward")
-
-            Button(action: {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                    isZenMode.toggle()
-                }
-            }) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.94))
-                        .frame(width: 38, height: 38)
-                        .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
-                    DioramaExpandVectorIcon(isExpanded: isZenMode, color: Color.deepNavy)
-                        .frame(width: 15, height: 15)
-                }
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 4)
-    }
-
-    private var heroKpiRow: some View {
-        HStack(alignment: .center, spacing: 10) {
-            RollingNumberText(
-                value: animatedSpentValue ?? currentCity.totalSpent,
-                format: { (amt: Double) -> String in l10n.format(amount: amt) }
-            )
-
-            Spacer()
-
-        }
-        .padding(.horizontal, 20)
     }
 
     // MARK: - Dynamic Top Buildings (Subcategories) for Fast Action
@@ -1428,227 +1288,21 @@ public struct MainCityView: View {
         )
     }
     
-    @ViewBuilder
-    private func buildingIcon(_ id: String) -> some View {
-        switch id {
-        case "food_bistro": MoneyIcon(.cutlery, size: 18)
-        case "food_super": MoneyIcon(.cart, size: 18)
-        case "food_coffee": MoneyIcon(.coffee, size: 18)
-        case "food_wolt": MoneyIcon(.car, size: 18)
-        case "shop_boutique": MoneyIcon(.shoppingBag, size: 18)
-        case "shop_tech": MoneyIcon(.gamepad, size: 18)
-        case "shop_travel": MoneyIcon(.airplane, size: 18)
-        case "shop_arcade": MoneyIcon(.gamepad, size: 18)
-        case "house_tower": MoneyIcon(.home, size: 18)
-        case "house_util": MoneyIcon(.lightning, size: 18)
-        case "house_subs": MoneyIcon(.refresh, size: 18)
-        case "savings_sanctuary": MoneyIcon(.leaf, size: 18)
-        case "city_sorting_hub": MoneyIcon(.mail, size: 18)
-        case "museum_curiosities": MoneyIcon(.gift, size: 18)
-        default: MoneyIcon(.home, size: 18)
-        }
-    }
-
-    private func isPillSelected(_ pill: BuildingPillItem) -> Bool {
-        inspectedBuilding?.id == pill.id
-    }
-
-
     private func districtName(for dist: String) -> String {
-        let isHebrew = l10n.language == .hebrew
-        switch dist {
-        case "food": return isHebrew ? "רובע האוכל והמסעדות" : "Food & Dining District"
-        case "shopping": return isHebrew ? "שדרת הקניות והאופנה" : "Shopping & Fashion Avenue"
-        case "housing": return isHebrew ? "מתחם המגורים והחשבונות" : "Housing & Bills Quarter"
-        case "transport": return isHebrew ? "מרכז התחבורה והרכב" : "Mobility & Transport Hub"
-        case "savings": return isHebrew ? "שמורת הטבע והחיסכון" : "Nature & Savings Park"
-        default: return isHebrew ? "רובע בעיר" : "City District"
-        }
+        DistrictDataHelper.districtName(for: dist, language: l10n.language)
     }
     
     private func districtTotal(for dist: String) -> Double {
-        switch dist {
-        case "food":
-            let r = currentCity.categoryTotals[.food] ?? 0
-            let g = currentCity.categoryTotals[.groceries] ?? 0
-            let c = currentCity.categoryTotals[.coffee] ?? 0
-            return r + g + c
-        case "shopping":
-            let s = currentCity.categoryTotals[.shopping] ?? 0
-            let e = currentCity.categoryTotals[.entertainment] ?? 0
-            return s + e
-        case "housing":
-            let h = currentCity.categoryTotals[.housing] ?? 0
-            let subs = currentCity.categoryTotals[.subscriptions] ?? 0
-            return h + subs
-        case "transport":
-            return currentCity.categoryTotals[.transport] ?? 0
-        case "savings":
-            return currentCity.totalSavings
-        default:
-            return 0
-        }
-    }
-    
-    private func buildingVisitCount(for bId: String) -> Int {
-        displayTransactions.filter { $0.buildingId == bId }.count
-    }
-    
-    private func buildingTrendText(for bId: String) -> String {
-        let count = buildingVisitCount(for: bId)
-        if count == 0 {
-            return l10n.language == .hebrew ? "טרם נרשמו עסקאות החודש" : "No visits this month"
-        } else {
-            return l10n.language == .hebrew ? "\(count) עסקאות החודש" : "\(count) visits this month"
-        }
+        DistrictDataHelper.districtTotal(for: dist, currentCity: currentCity)
     }
     
     private func districtBuildingPills(for dist: String) -> [BuildingPillItem] {
-        let isHe = l10n.language == .hebrew
-        switch dist {
-        case "food":
-            let r = currentCity.buildingTotals["food_bistro"] ?? 0
-            let g = currentCity.buildingTotals["food_super"] ?? 0
-            let c = currentCity.buildingTotals["food_coffee"] ?? 0
-            let d = currentCity.buildingTotals["food_wolt"] ?? 0
-            return [
-                BuildingPillItem(id: "food_bistro", title: isHe ? "מסעדות" : "Restaurants", amount: r, info: DistrictBuildingInfo(id: "food_bistro", districtId: "food", name: isHe ? "מסעדות" : "Restaurants", amount: r, visitCount: buildingVisitCount(for: "food_bistro"), trendText: buildingTrendText(for: "food_bistro"))),
-                BuildingPillItem(id: "food_super", title: isHe ? "סופר ומכולת" : "Groceries", amount: g, info: DistrictBuildingInfo(id: "food_super", districtId: "food", name: isHe ? "סופר ומכולת" : "Supermarket & Groceries", amount: g, visitCount: buildingVisitCount(for: "food_super"), trendText: buildingTrendText(for: "food_super"))),
-                BuildingPillItem(id: "food_coffee", title: isHe ? "בתי קפה" : "Coffee", amount: c, info: DistrictBuildingInfo(id: "food_coffee", districtId: "food", name: isHe ? "בתי קפה" : "Cafes", amount: c, visitCount: buildingVisitCount(for: "food_coffee"), trendText: buildingTrendText(for: "food_coffee"))),
-                BuildingPillItem(id: "food_wolt", title: isHe ? "משלוחים" : "Delivery", amount: d, info: DistrictBuildingInfo(id: "food_wolt", districtId: "food", name: isHe ? "משלוחי אוכל" : "Food Delivery", amount: d, visitCount: buildingVisitCount(for: "food_wolt"), trendText: buildingTrendText(for: "food_wolt")))
-            ]
-        case "shopping":
-            let f = currentCity.buildingTotals["shop_boutique"] ?? 0
-            let t = currentCity.buildingTotals["shop_tech"] ?? 0
-            let tr = currentCity.buildingTotals["shop_travel"] ?? 0
-            let a = currentCity.buildingTotals["shop_arcade"] ?? 0
-            return [
-                BuildingPillItem(id: "shop_boutique", title: isHe ? "ביגוד" : "Fashion", amount: f, info: DistrictBuildingInfo(id: "shop_boutique", districtId: "shopping", name: isHe ? "בוטיק אופנה" : "Fashion Boutique", amount: f, visitCount: buildingVisitCount(for: "shop_boutique"), trendText: buildingTrendText(for: "shop_boutique"))),
-                BuildingPillItem(id: "shop_tech", title: isHe ? "טכנולוגיה" : "Tech", amount: t, info: DistrictBuildingInfo(id: "shop_tech", districtId: "shopping", name: isHe ? "חנות אלקטרוניקה" : "Electronics Store", amount: t, visitCount: buildingVisitCount(for: "shop_tech"), trendText: buildingTrendText(for: "shop_tech"))),
-                BuildingPillItem(id: "shop_travel", title: isHe ? "חופשות" : "Travel", amount: tr, info: DistrictBuildingInfo(id: "shop_travel", districtId: "shopping", name: isHe ? "סוכנות נסיעות" : "Travel Agency", amount: tr, visitCount: buildingVisitCount(for: "shop_travel"), trendText: buildingTrendText(for: "shop_travel"))),
-                BuildingPillItem(id: "shop_arcade", title: isHe ? "פנאי ובידור" : "Arcade", amount: a, info: DistrictBuildingInfo(id: "shop_arcade", districtId: "shopping", name: isHe ? "מתחם ארקייד" : "Arcade Complex", amount: a, visitCount: buildingVisitCount(for: "shop_arcade"), trendText: buildingTrendText(for: "shop_arcade")))
-            ]
-        case "housing":
-            let rent = currentCity.buildingTotals["house_tower"] ?? 0
-            let util = currentCity.buildingTotals["house_util"] ?? 0
-            let subs = currentCity.buildingTotals["house_subs"] ?? 0
-            return [
-                BuildingPillItem(id: "house_tower", title: isHe ? "שכירות" : "Rent", amount: rent, info: DistrictBuildingInfo(id: "house_tower", districtId: "housing", name: isHe ? "מגדל מגורים" : "Residential Tower", amount: rent, visitCount: buildingVisitCount(for: "house_tower"), trendText: buildingTrendText(for: "house_tower"))),
-                BuildingPillItem(id: "house_util", title: isHe ? "חשבונות" : "Utilities", amount: util, info: DistrictBuildingInfo(id: "house_util", districtId: "housing", name: isHe ? "חשמל ומים" : "Power & Water", amount: util, visitCount: buildingVisitCount(for: "house_util"), trendText: buildingTrendText(for: "house_util"))),
-                BuildingPillItem(id: "house_subs", title: isHe ? "מנויים" : "Subscriptions", amount: subs, info: DistrictBuildingInfo(id: "house_subs", districtId: "housing", name: isHe ? "שירותי סטרימינג" : "Streaming & Subs", amount: subs, visitCount: buildingVisitCount(for: "house_subs"), trendText: buildingTrendText(for: "house_subs")))
-            ]
-        case "savings":
-            let sav = currentCity.totalSavings
-            let savVisits = displayTransactions.filter { $0.category == .savings }.count
-            return [
-                BuildingPillItem(id: "savings_sanctuary", title: isHe ? "שמורת החיסכון" : "Savings Park", amount: sav, info: DistrictBuildingInfo(id: "savings_sanctuary", districtId: "savings", name: isHe ? "שמורת הטבע והחיסכון" : "Nature & Savings Park", amount: sav, visitCount: savVisits, trendText: sav > 0 ? (isHe ? "צמיחה ירוקה החודש" : "Growing green this month") : (isHe ? "התחל לחסוך כדי להצמיח את השמורה" : "Start saving to grow the park")))
-            ]
-        case "transport":
-            let tr = currentCity.categoryTotals[.transport] ?? 0
-            let transVisits = displayTransactions.filter { $0.category == .transport }.count
-            return [
-                BuildingPillItem(id: "trans_station", title: isHe ? "תחבורה ודלק" : "Transit & Fuel", amount: tr, info: DistrictBuildingInfo(id: "trans_station", districtId: "transport", name: isHe ? "תחבורה וחניה" : "Transit & Parking", amount: tr, visitCount: transVisits, trendText: transVisits == 0 ? (isHe ? "טרם נרשמו עסקאות החודש" : "No visits this month") : (isHe ? "\(transVisits) עסקאות החודש" : "\(transVisits) visits this month")))
-            ]
-        default:
-            return []
-        }
-    }
-    
-    @ViewBuilder
-    private var topDistrictSummaryHeader: some View {
-        if let dist = selectedDistrict {
-            VStack(spacing: 8) {
-                // Main District Title & Total Bar
-                HStack {
-                    // Close / Back button
-                    Button(action: {
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                            selectedDistrict = nil
-                            inspectedBuilding = nil
-                        }
-                    }) {
-                        HStack(spacing: 5) {
-                            MoneyIcon(.xmarkCircle, size: 14)
-                            Text(l10n.language == .hebrew ? "חזרה לעיר" : "Back to City")
-                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                        }
-                        .foregroundColor(Color.textSecondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.appBackground)
-                        .clipShape(Capsule())
-                    }
-                    
-                    Spacer()
-                    
-                    // District Title & Total
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(districtName(for: dist))
-                            .font(.system(size: 13, weight: .black, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        
-                        Text(l10n.isHebrew ? "סה״כ \(l10n.format(amount: districtTotal(for: dist))) החודש" : "Total \(l10n.format(amount: districtTotal(for: dist))) this month")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.primaryBlue)
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
-                
-                // Horizontal Quick Building Pills
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(districtBuildingPills(for: dist)) { pill in
-                            Button(action: {
-                                handleSelectBuilding(pill.info)
-                            }) {
-                                HStack(spacing: 6) {
-                                    buildingIcon(pill.id)
-                                    
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(pill.title)
-                                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                                            .foregroundColor(Color.textSecondary)
-                                        
-                                        Text(l10n.format(amount: pill.amount))
-                                            .font(.system(size: 12, weight: .black, design: .rounded))
-                                            .foregroundColor(Color.deepNavy)
-                                    }
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(isPillSelected(pill) ? Color.themeLavenderSoft : Color.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(isPillSelected(pill) ? Color.primaryBlue : Color.clear,
-                                                lineWidth: isPillSelected(pill) ? 2 : 0)
-                                )
-                                // Lifted and slightly larger, so which one is selected reads
-                                // from the corner of the eye rather than needing to be looked
-                                // for. The tint and hairline border alone did not register.
-                                .scaleEffect(isPillSelected(pill) ? 1.05 : 1.0)
-                                .shadow(color: isPillSelected(pill) ? Color.primaryBlue.opacity(0.22) : Color.deepNavy.opacity(0.04),
-                                        radius: isPillSelected(pill) ? 7 : 4,
-                                        y: isPillSelected(pill) ? 3 : 2)
-                                .animation(.spring(response: 0.28, dampingFraction: 0.7), value: inspectedBuilding?.id)
-                            }
-                            .buttonStyle(.plain)
-                            .bouncyPress(scale: 0.94)
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 6)
-                }
-            }
-            .padding(.vertical, 6)
-            .background(Color.white.opacity(0.96))
-            .clipShape(RoundedRectangle(cornerRadius: 18))
-            .shadow(color: Color.black.opacity(0.08), radius: 10, y: 4)
-            .padding(.horizontal, 14)
-            .padding(.top, 4)
-            .transition(.move(edge: .top).combined(with: .opacity))
-        }
+        DistrictDataHelper.districtBuildingPills(
+            for: dist,
+            currentCity: currentCity,
+            transactions: displayTransactions,
+            language: l10n.language
+        )
     }
 
     private var spendingCard: some View {

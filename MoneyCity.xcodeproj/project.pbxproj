@@ -74,6 +74,11 @@
 		B1000014B2C3D4E5F6000014 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000014B2C3D4E5F6000014; };
 		B1000015B2C3D4E5F6000015 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000015B2C3D4E5F6000015; };
 		B1000016B2C3D4E5F6000016 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000016B2C3D4E5F6000016; };
+		B1000017B2C3D4E5F6000017 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000017B2C3D4E5F6000017; };
+		B1000018B2C3D4E5F6000018 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000018B2C3D4E5F6000018; };
+		B1000019B2C3D4E5F6000019 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000019B2C3D4E5F6000019; };
+		B1000020B2C3D4E5F6000020 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000020B2C3D4E5F6000020; };
+		B1000021B2C3D4E5F6000021 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000021B2C3D4E5F6000021; };
 		BF1AC84137454359BB4972A5 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3BA77E33A1554CE987329BAD; };
 		1FB9C17E74DC4A31A22770C7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B5C8BE9EEF1342A3BE81E434; };
 		04991E494E8044D7927D38FA /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 95783AB9798D4000BF0EDC92; };
@@ -229,6 +234,11 @@
 		A1000014B2C3D4E5F6000014 /* MoneyIconShapes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconShapes.swift"; path = "MoneyCity/Views/Components/MoneyIconShapes.swift"; sourceTree = "<group>"; };
 		A1000015B2C3D4E5F6000015 /* MoneyIconRows1to3.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconRows1to3.swift"; path = "MoneyCity/Views/Components/MoneyIconRows1to3.swift"; sourceTree = "<group>"; };
 		A1000016B2C3D4E5F6000016 /* MoneyIconRows4to7.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconRows4to7.swift"; path = "MoneyCity/Views/Components/MoneyIconRows4to7.swift"; sourceTree = "<group>"; };
+		A1000017B2C3D4E5F6000017 /* SettingsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SettingsSheet.swift"; path = "MoneyCity/Views/Modals/SettingsSheet.swift"; sourceTree = "<group>"; };
+		A1000018B2C3D4E5F6000018 /* ProfileVectorIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ProfileVectorIcons.swift"; path = "MoneyCity/Views/Components/ProfileVectorIcons.swift"; sourceTree = "<group>"; };
+		A1000019B2C3D4E5F6000019 /* ApplePayGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ApplePayGuideSheet.swift"; path = "MoneyCity/Views/Modals/ApplePayGuideSheet.swift"; sourceTree = "<group>"; };
+		A1000020B2C3D4E5F6000020 /* PrivacyPolicySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PrivacyPolicySheet.swift"; path = "MoneyCity/Views/Modals/PrivacyPolicySheet.swift"; sourceTree = "<group>"; };
+		A1000021B2C3D4E5F6000021 /* AboutSpentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AboutSpentSheet.swift"; path = "MoneyCity/Views/Modals/AboutSpentSheet.swift"; sourceTree = "<group>"; };
 		D7631F5AF1AD4D4C8C7D8512 /* DioramaReadyWrapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaReadyWrapper.swift"; path = "MoneyCity/Views/Diorama/DioramaReadyWrapper.swift"; sourceTree = "<group>"; };
 		743000CD2FDC4B6CB9CF1B4F /* DioramaSkeletonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DioramaSkeletonView.swift"; path = "MoneyCity/Views/Diorama/DioramaSkeletonView.swift"; sourceTree = "<group>"; };
 		9A7443012FDC448BBC7E62AE /* ThreeDioramaView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ThreeDioramaView.swift"; path = "MoneyCity/Views/Diorama/ThreeDioramaView.swift"; sourceTree = "<group>"; };
@@ -381,6 +391,11 @@
 				A1000014B2C3D4E5F6000014 /* MoneyIconShapes.swift */,
 				A1000015B2C3D4E5F6000015 /* MoneyIconRows1to3.swift */,
 				A1000016B2C3D4E5F6000016 /* MoneyIconRows4to7.swift */,
+				A1000017B2C3D4E5F6000017 /* SettingsSheet.swift */,
+				A1000018B2C3D4E5F6000018 /* ProfileVectorIcons.swift */,
+				A1000019B2C3D4E5F6000019 /* ApplePayGuideSheet.swift */,
+				A1000020B2C3D4E5F6000020 /* PrivacyPolicySheet.swift */,
+				A1000021B2C3D4E5F6000021 /* AboutSpentSheet.swift */,
 				D7631F5AF1AD4D4C8C7D8512 /* DioramaReadyWrapper.swift */,
 				743000CD2FDC4B6CB9CF1B4F /* DioramaSkeletonView.swift */,
 				9A7443012FDC448BBC7E62AE /* ThreeDioramaView.swift */,
@@ -648,6 +663,11 @@
 				B1000014B2C3D4E5F6000014 /* Sources */,
 				B1000015B2C3D4E5F6000015 /* Sources */,
 				B1000016B2C3D4E5F6000016 /* Sources */,
+				B1000017B2C3D4E5F6000017 /* Sources */,
+				B1000018B2C3D4E5F6000018 /* Sources */,
+				B1000019B2C3D4E5F6000019 /* Sources */,
+				B1000020B2C3D4E5F6000020 /* Sources */,
+				B1000021B2C3D4E5F6000021 /* Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

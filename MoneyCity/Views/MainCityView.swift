@@ -1098,39 +1098,11 @@ public struct MainCityView: View {
     }
 
     private var cityTapCoachmark: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                MoneyIcon(.home, size: 30)
-                    .padding(10)
-                    .background(Color.spentGreenSoft, in: RoundedRectangle(cornerRadius: 16))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(l10n.isHebrew ? "מכירים את העיר" : "Meet your city")
-                        .font(.caption.weight(.semibold)).foregroundStyle(Color.textSecondary)
-                    Text(l10n.isHebrew ? "לכל בניין יש סיפור" : "Every building has a story")
-                        .font(.headline).foregroundStyle(Color.deepNavy)
-                }
-                Spacer(minLength: 0)
-            }
-            Text(l10n.isHebrew
-                 ? "הקש על הבניין המסומן בעיר כדי לגלות אילו הוצאות בנו אותו."
-                 : "Tap the marked building to discover the expenses behind it.")
-                .font(.subheadline).foregroundStyle(Color.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Button(l10n.isHebrew ? "אגלה בעצמי" : "I'll explore on my own") {
-                hasSeenCityTapHint = true
-                withAnimation(.easeOut(duration: 0.2)) { showCityTapHint = false }
-                checkRecurringCoachmark()
-            }
-            .font(.subheadline.weight(.semibold)).foregroundStyle(Color.deepNavy)
-            .frame(minHeight: 44)
+        CityTapCoachmark {
+            hasSeenCityTapHint = true
+            withAnimation(.easeOut(duration: 0.2)) { showCityTapHint = false }
+            checkRecurringCoachmark()
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1))
-        .shadow(color: Color.deepNavy.opacity(0.07), radius: 16, y: 6)
-        .padding(.horizontal, 16)
     }
 
     private func checkRecurringCoachmark() {
@@ -1147,90 +1119,25 @@ public struct MainCityView: View {
     }
 
     private var recurringExpensesCoachmark: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
-                MoneyIcon(.receipt, size: 26, color: Color.primaryBlue)
-                    .padding(10)
-                    .background(Color.primaryBlue.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(l10n.isHebrew ? "שגרת העיר" : "City routine")
-                        .font(.caption.weight(.semibold)).foregroundStyle(Color.textSecondary)
-                    Text(l10n.isHebrew ? "יש לך הוצאות קבועות?" : "Have fixed expenses?")
-                        .font(.headline).foregroundStyle(Color.deepNavy)
-                }
-                Spacer(minLength: 0)
+        RecurringExpensesCoachmark(
+            onAddRecurring: {
+                hasSeenRecurringPrompt = true
+                withAnimation(.easeOut(duration: 0.2)) { showRecurringCoachmark = false }
+                showRecurringExpensesSheet = true
+            },
+            onDismiss: {
+                hasSeenRecurringPrompt = true
+                withAnimation(.easeOut(duration: 0.2)) { showRecurringCoachmark = false }
             }
-            Text(l10n.isHebrew
-                 ? "שכירות, מנויים או חשבונות חודשיים? הוסף אותם כעת כדי שהעיר תחשב אותם אוטומטית בכל חודש."
-                 : "Rent, subscriptions, or fixed bills? Add them so your city accounts for them automatically.")
-                .font(.subheadline).foregroundStyle(Color.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            HStack(spacing: 12) {
-                Button {
-                    hasSeenRecurringPrompt = true
-                    withAnimation(.easeOut(duration: 0.2)) { showRecurringCoachmark = false }
-                    showRecurringExpensesSheet = true
-                } label: {
-                    Text(l10n.isHebrew ? "הוספת הוצאות קבועות" : "Add fixed expenses")
-                        .font(.subheadline.weight(.bold)).foregroundStyle(.white)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(Color.deepNavy, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    hasSeenRecurringPrompt = true
-                    withAnimation(.easeOut(duration: 0.2)) { showRecurringCoachmark = false }
-                } label: {
-                    Text(l10n.isHebrew ? "אולי אחר כך" : "Maybe later")
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(Color.textSecondary)
-                        .padding(.horizontal, 8)
-                        .frame(minHeight: 44)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.top, 4)
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.borderSubtle, lineWidth: 1))
-        .shadow(color: Color.deepNavy.opacity(0.07), radius: 16, y: 6)
-        .padding(.horizontal, 16)
+        )
     }
 
     private var firstTransactionCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                MoneyIcon(.citySkyline, size: 36).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(isViewingPastMonth
-                         ? (l10n.isHebrew ? "אין הוצאות בחודש הזה" : "No expenses this month")
-                         : (l10n.isHebrew ? "העיר מחכה לסיפור שלך" : "Your city is ready for your story"))
-                        .font(.headline).foregroundStyle(Color.deepNavy)
-                    Text(isViewingPastMonth
-                         ? (l10n.isHebrew ? "אפשר לחזור לחודש הנוכחי ולהמשיך לבנות את העיר שלך." : "Return to this month to continue your city's story.")
-                         : (l10n.isHebrew ? "הוסף הוצאה שכבר ביצעת וראה איפה היא מופיעה בעיר."
-                         : "Add a purchase you've made and see where it appears in your city."))
-                        .font(.subheadline).foregroundStyle(Color.textSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Button {
-                if isViewingPastMonth { returnToCurrentMonth() } else { showQuickAdd = true }
-            } label: {
-                Text(isViewingPastMonth ? (l10n.isHebrew ? "חזרה לחודש הנוכחי" : "Back to this month")
-                     : (l10n.isHebrew ? "הוספת הוצאה" : "Add an expense"))
-                    .font(.headline).foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .background(Color.deepNavy, in: Capsule())
-            }.buttonStyle(.plain)
-        }
-        .padding(20)
-        .background(Color.cardBackground, in: RoundedRectangle(cornerRadius: 24))
-        .padding(.horizontal, 16)
+        FirstTransactionCard(
+            isViewingPastMonth: isViewingPastMonth,
+            onReturnToCurrentMonth: returnToCurrentMonth,
+            onAddExpense: { showQuickAdd = true }
+        )
     }
 
     @ViewBuilder
@@ -1357,86 +1264,7 @@ public struct MainCityView: View {
 
     // MARK: - Dynamic Top Buildings (Subcategories) for Fast Action
     private var dynamicTopBuildings: [CityBuilding] {
-        var counts: [String: Int] = [:]
-        for tx in allTransactions {
-            let m = "\(tx.merchant) \(tx.note ?? "")".lowercased()
-            let bId = tx.buildingId
-            
-            // Accurately resolve transaction to specific everyday subcategory
-            let resolvedId: String
-            if tx.category == .food || tx.category == .groceries || tx.category == .coffee {
-                if bId == "food_super" || m.contains("סופר") || m.contains("super") || m.contains("שופרסל") || m.contains("רמי לוי") || m.contains("מכולת") || m.contains("יוחננוף") || m.contains("ויקטורי") || m.contains("אושר עד") || m.contains("קרפור") || m.contains("am:pm") {
-                    resolvedId = "food_super"
-                } else if bId == "food_coffee" || m.contains("קפה") || m.contains("cafe") || m.contains("coffee") || m.contains("ארומה") || m.contains("aroma") || m.contains("גולדה") || m.contains("מאפיה") || m.contains("מאפיית") || m.contains("bakery") || m.contains("לנדוור") || m.contains("ארקפה") {
-                    resolvedId = "food_coffee"
-                } else if bId == "food_wolt" || m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") || m.contains("tabit") || m.contains("משלוח") {
-                    resolvedId = "food_wolt"
-                } else {
-                    resolvedId = "food_bistro"
-                }
-            } else if tx.category == .transport {
-                resolvedId = "trans_station"
-            } else if tx.category == .shopping {
-                if bId == "shop_tech" || m.contains("חשמל") || m.contains("ksp") || m.contains("ivory") || m.contains("מחשב") || m.contains("באג") {
-                    resolvedId = "shop_tech"
-                } else {
-                    resolvedId = "shop_boutique"
-                }
-            } else if tx.category == .health {
-                resolvedId = "health_pharmacy"
-            } else {
-                resolvedId = bId
-            }
-
-            if resolvedId != "city_sorting_hub" && CityBuilding.find(id: resolvedId) != nil {
-                counts[resolvedId, default: 0] += 1
-            }
-        }
-
-        // Ordered priority fallbacks when counts are equal or zero:
-        // 1. Supermarket, 2. Cafes, 3. Restaurants, 4. Food Delivery, 5. Transit, 6. Fashion
-        let fallbackOrder = [
-            "food_super",      // סופרמרקט
-            "food_coffee",     // בתי קפה
-            "food_bistro",     // מסעדות
-            "food_wolt",       // משלוחי אוכל
-            "trans_station",   // תחבורה ודלק
-            "shop_boutique",   // ביגוד ואופנה
-            "health_pharmacy", // פארם ובריאות
-            "shop_tech"        // טכנולוגיה
-        ]
-
-        var candidates = Array(counts.keys)
-        for fb in fallbackOrder {
-            if !candidates.contains(fb) {
-                candidates.append(fb)
-            }
-        }
-
-        let sortedIds = candidates.sorted { id1, id2 in
-            let c1 = counts[id1, default: 0]
-            let c2 = counts[id2, default: 0]
-            if c1 != c2 {
-                return c1 > c2
-            }
-            let idx1 = fallbackOrder.firstIndex(of: id1) ?? 999
-            let idx2 = fallbackOrder.firstIndex(of: id2) ?? 999
-            if idx1 != idx2 {
-                return idx1 < idx2
-            }
-            return id1 < id2
-        }
-
-        var result: [CityBuilding] = []
-        for bId in sortedIds {
-            if let b = CityBuilding.find(id: bId) {
-                result.append(b)
-                if result.count == 3 {
-                    break
-                }
-            }
-        }
-        return result
+        CityQuickActionHelper.dynamicTopBuildings(from: allTransactions)
     }
 
     private func handleLongPressAdd() {
@@ -1452,63 +1280,6 @@ public struct MainCityView: View {
             isQuickActionActive = false
             quickActionBuilding = nil
             quickActionAmountText = ""
-        }
-    }
-
-    private func handleQuickActionKeypad(_ key: String) {
-        if key == "⌫" {
-            Haptics.impact(.light)
-            if !quickActionAmountText.isEmpty {
-                quickActionAmountText.removeLast()
-            }
-        } else if key == "." {
-            Haptics.selection()
-            if !quickActionAmountText.contains(".") {
-                if quickActionAmountText.isEmpty {
-                    quickActionAmountText = "0."
-                } else {
-                    quickActionAmountText += "."
-                }
-            }
-        } else {
-            Haptics.impact(.light)
-            if quickActionAmountText == "0" {
-                quickActionAmountText = key
-            } else {
-                if let dot = quickActionAmountText.firstIndex(of: ".") {
-                    let decs = quickActionAmountText.distance(from: dot, to: quickActionAmountText.endIndex)
-                    if decs <= 2 {
-                        quickActionAmountText += key
-                    }
-                } else if quickActionAmountText.count < 7 {
-                    quickActionAmountText += key
-                }
-            }
-        }
-    }
-
-    private var displayQuickActionAmount: String {
-        if quickActionAmountText.isEmpty {
-            return "0"
-        }
-        let parts = quickActionAmountText.split(separator: ".", omittingEmptySubsequences: false)
-        let intPart = String(parts[0])
-        let formattedInt: String
-        if let val = Double(intPart) {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.groupingSeparator = ","
-            formatter.maximumFractionDigits = 0
-            formattedInt = formatter.string(from: NSNumber(value: val)) ?? intPart
-        } else {
-            formattedInt = intPart
-        }
-        if parts.count > 1 {
-            return "\(formattedInt).\(parts[1])"
-        } else if quickActionAmountText.hasSuffix(".") {
-            return "\(formattedInt)."
-        } else {
-            return formattedInt
         }
     }
 
@@ -1555,179 +1326,26 @@ public struct MainCityView: View {
     // MARK: - 3 Mini Subcategory Pills (Phase 1)
     @ViewBuilder
     private var quickActionBuildingPickerBar: some View {
-        HStack(spacing: 8) {
-            ForEach(dynamicTopBuildings) { building in
-                Button(action: {
-                    Haptics.impact(.light)
-                    withAnimation(.spring(response: 0.30, dampingFraction: 0.78)) {
-                        quickActionBuilding = building
-                        quickActionAmountText = ""
-                    }
-                }) {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(building.category.softBackgroundColor)
-                            .frame(width: 28, height: 28)
-                            .overlay(
-                                MoneyIcon(building.iconType, size: 16)
-                            )
-
-                        Text(building.shortName(for: l10n.language))
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                    }
-                    .padding(.leading, 6)
-                    .padding(.trailing, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.white)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.borderSubtle.opacity(0.8), lineWidth: 1)
-                    )
-                    .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 3)
+        QuickActionBuildingPickerBar(
+            buildings: dynamicTopBuildings,
+            onSelect: { building in
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.78)) {
+                    quickActionBuilding = building
+                    quickActionAmountText = ""
                 }
-                .bouncyPress(scale: 0.94)
             }
-        }
-        .padding(.bottom, 6)
-        .transition(.asymmetric(
-            insertion: .scale(scale: 0.75, anchor: .bottom).combined(with: .opacity).combined(with: .move(edge: .bottom)),
-            removal: .scale(scale: 0.85, anchor: .bottom).combined(with: .opacity)
-        ))
+        )
     }
 
     // MARK: - Big Quick Amount Overlay (Phase 2 - Clean Editorial Fast Entry)
     @ViewBuilder
     private func bigQuickAmountOverlay(for building: CityBuilding) -> some View {
-        let keys: [[String]] = [
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
-            [".", "0", "⌫"]
-        ]
-        let canSubmit = (Double(quickActionAmountText.replacingOccurrences(of: ",", with: ".")) ?? 0) > 0
-
-        ZStack {
-            // Soft dark backdrop over the 3D diorama
-            Color.black.opacity(0.28)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    closeQuickAction()
-                }
-
-            // Clean Centered Quick Entry Card
-            VStack(spacing: 16) {
-                // 1. Header: Subcategory Icon + Title + Close Button
-                HStack(spacing: 10) {
-                    Circle()
-                        .fill(building.category.softBackgroundColor)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            MoneyIcon(building.iconType, size: 22)
-                        )
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(building.displayName(for: l10n.language))
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-
-                        Text(building.category.displayName)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundColor(building.category.themeColor)
-                    }
-
-                    Spacer()
-
-                    Button(action: closeQuickAction) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(Color.textMuted)
-                            .frame(width: 30, height: 30)
-                            .background(Color(red: 245/255, green: 246/255, blue: 248/255))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                // 2. Large Amount Hero Display: ₪ [Amount]
-                HStack(alignment: .center, spacing: 6) {
-                    Text(l10n.baseCurrency.symbol)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    Text(displayQuickActionAmount)
-                        .font(.system(size: 48, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.65)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
-
-                // 3. Thumb-friendly Keypad (Flat style, no nested strokes)
-                VStack(spacing: 8) {
-                    ForEach(keys, id: \.self) { row in
-                        HStack(spacing: 8) {
-                            ForEach(row, id: \.self) { key in
-                                Button(action: {
-                                    handleQuickActionKeypad(key)
-                                }) {
-                                    ZStack {
-                                        if key == "⌫" {
-                                            MoneyIcon(.backspace, size: 20, color: Color.deepNavy)
-                                        } else if key == "." {
-                                            Text("•")
-                                                .font(.system(size: 22, weight: .black, design: .rounded))
-                                                .foregroundColor(Color.deepNavy)
-                                        } else {
-                                            Text(key)
-                                                .font(.system(size: 21, weight: .bold, design: .rounded))
-                                                .foregroundColor(Color.deepNavy)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 46)
-                                    .background(Color(red: 246/255, green: 247/255, blue: 249/255))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                }
-                                .bouncyPress(scale: 0.94)
-                            }
-                        }
-                    }
-                }
-
-                // 4. Big Clean Confirm Button
-                Button(action: submitQuickAction) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 16, weight: .bold))
-                        Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Expense")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(canSubmit ? .white : Color.textMuted)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(canSubmit ? Color.spentGreen : Color.black.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .bouncyPress(scale: 0.94)
-                .disabled(!canSubmit)
-            }
-            .padding(20)
-            .frame(maxWidth: 320)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: 8)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.borderSubtle.opacity(0.6), lineWidth: 1)
-            )
-            .padding(.horizontal, 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        BigQuickAmountOverlay(
+            building: building,
+            amountText: $quickActionAmountText,
+            onClose: closeQuickAction,
+            onSubmit: submitQuickAction
+        )
     }
 
     // MARK: - Active City Card Modular View
@@ -1800,132 +1418,14 @@ public struct MainCityView: View {
 
     @ViewBuilder
     private var confirmationBannerView: some View {
-        if let banner = visibleConfirmationBanner {
-            let label: String = banner.merchant.isEmpty
-                ? (l10n.isHebrew ? "הוצאה עודכנה" : "Expense recorded")
-                : banner.merchant
-            let amountStr: String = l10n.format(amount: banner.amount)
-
-            HStack(spacing: 7) {
-                MoneyIcon(.checkCircle, size: 13)
-                    .foregroundColor(MoneyCityTheme.mint)
-
-                Text("+\(amountStr) · \(label)")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(Color.white)
-                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.borderSubtle, lineWidth: 1)
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, -4)
-        }
+        CityConfirmationBanner(banner: visibleConfirmationBanner)
     }
     
     private var districtSelectorRow: some View {
-        HStack(spacing: 0) {
-            topDistrictPill(
-                id: nil,
-                title: l10n.language == .hebrew ? "כל העיר" : "All City",
-                unselectedBg: Color(red: 243/255, green: 244/255, blue: 246/255)
-            ) { isSelected in
-                MoneyIcon(.citySkyline, size: 24)
-            }
-            topDistrictPill(
-                id: "food",
-                title: l10n.language == .hebrew ? "אוכל" : "Food",
-                unselectedBg: Color(red: 254/255, green: 242/255, blue: 232/255)
-            ) { isSelected in
-                MoneyIcon(.cutlery, size: 24)
-            }
-            topDistrictPill(
-                id: "shopping",
-                title: l10n.language == .hebrew ? "קניות" : "Shopping",
-                unselectedBg: Color(red: 253/255, green: 238/255, blue: 244/255)
-            ) { isSelected in
-                MoneyIcon(.shoppingBag, size: 24)
-            }
-            topDistrictPill(
-                id: "housing",
-                title: l10n.language == .hebrew ? "מגורים" : "Housing",
-                unselectedBg: Color(red: 238/255, green: 245/255, blue: 254/255)
-            ) { isSelected in
-                MoneyIcon(.home, size: 24)
-            }
-            topDistrictPill(
-                id: "transport",
-                title: l10n.language == .hebrew ? "תחבורה" : "Transport",
-                unselectedBg: Color(red: 236/255, green: 253/255, blue: 245/255)
-            ) { isSelected in
-                MoneyIcon(.car, size: 24)
-            }
-            topDistrictPill(
-                id: "savings",
-                title: l10n.language == .hebrew ? "חיסכון" : "Savings",
-                unselectedBg: Color(red: 234/255, green: 248/255, blue: 240/255)
-            ) { isSelected in
-                MoneyIcon(.leaf, size: 24)
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .background(Color.white.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 3)
-        .padding(.horizontal, 16)
-    }
-    
-    private func topDistrictPill<V: View>(
-        id: String?,
-        title: String,
-        unselectedBg: Color = Color(red: 246/255, green: 247/255, blue: 250/255),
-        @ViewBuilder icon: (Bool) -> V
-    ) -> some View {
-        let isSelected = (id == nil && selectedDistrict == nil) || (id != nil && selectedDistrict == id)
-        return Button(action: {
-            handleSelectDistrict(id)
-        }) {
-            VStack(spacing: 5) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? Color.white : unselectedBg)
-                        .frame(width: 44, height: 44)
-                        .overlay(
-                            Circle()
-                                .stroke(isSelected ? Color(red: 24/255, green: 24/255, blue: 27/255) : Color.clear, lineWidth: 2.2)
-                        )
-                        .shadow(color: isSelected ? Color.black.opacity(0.12) : Color.clear, radius: 4, y: 2)
-                        .scaleEffect(isSelected ? 1.06 : 1.0)
-                    
-                    icon(isSelected)
-                }
-                
-                Text(title)
-                    .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .rounded))
-                    .foregroundColor(isSelected ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 100/255, green: 116/255, blue: 139/255))
-                
-                // Crisp Minimal Selection Indicator
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 17/255, green: 24/255, blue: 39/255))
-                        .frame(width: 12, height: 2.5)
-                } else {
-                    Color.clear.frame(width: 12, height: 2.5)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .bouncyPress(scale: 0.90)
-        .frame(maxWidth: .infinity)
+        CityDistrictSelector(
+            selectedDistrict: selectedDistrict,
+            onSelectDistrict: handleSelectDistrict
+        )
     }
     
     @ViewBuilder
@@ -2152,242 +1652,13 @@ public struct MainCityView: View {
     }
 
     private var spendingCard: some View {
-        let foodAmt = (currentCity.categoryTotals[.food] ?? 0) + (currentCity.categoryTotals[.groceries] ?? 0)
-        let shopAmt = currentCity.categoryTotals[.shopping] ?? 0
-        let houseAmt = currentCity.categoryTotals[.housing] ?? 0
-        let savingsAmt = currentCity.totalSavings
-        let displayTotal = max(currentCity.totalSpent, 1.0)
-
-        let (badgeBg, title, subtitle, amount): (Color, String, String, Double) = {
-            switch selectedDistrict {
-            case "food":
-                return (Color(red: 254/255, green: 242/255, blue: 232/255),
-                        l10n.language == .hebrew ? "רובע האוכל" : "Food District",
-                        l10n.language == .hebrew ? "\(Int(round((foodAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((foodAmt / displayTotal) * 100)))% of spending",
-                        foodAmt)
-            case "shopping":
-                return (Color(red: 253/255, green: 238/255, blue: 244/255),
-                        l10n.language == .hebrew ? "שדרת הקניות" : "Shopping District",
-                        l10n.language == .hebrew ? "\(Int(round((shopAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((shopAmt / displayTotal) * 100)))% of spending",
-                        shopAmt)
-            case "housing":
-                return (Color(red: 238/255, green: 245/255, blue: 254/255),
-                        l10n.language == .hebrew ? "מתחם המגורים" : "Housing District",
-                        l10n.language == .hebrew ? "\(Int(round((houseAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((houseAmt / displayTotal) * 100)))% of spending",
-                        houseAmt)
-            case "savings":
-                return (Color(red: 234/255, green: 248/255, blue: 240/255),
-                        l10n.language == .hebrew ? "שמורת הטבע" : "Savings Sanctuary",
-                        l10n.language == .hebrew ? "יעדי חיסכון והשקעות" : "Savings & Investments",
-                        savingsAmt)
-            default:
-                return (Color(red: 243/255, green: 244/255, blue: 246/255),
-                        l10n.language == .hebrew ? "כל העיר" : "All City",
-                        l10n.language == .hebrew ? "לחץ להצגת פירוט רבעים" : "Tap for district breakdown",
-                        currentCity.totalSpent)
-            }
-        }()
-
-        return VStack(spacing: 8) {
-            // Header Row: Floating District Row (Reference Screen 1)
-            Button(action: {
-                withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                    isDetailsExpanded.toggle()
-                }
-            }) {
-                HStack(spacing: 12) {
-                    // 42pt circular pastel badge
-                    ZStack {
-                        Circle()
-                            .fill(badgeBg)
-                            .frame(width: 42, height: 42)
-
-                        if selectedDistrict == "shopping" {
-                            DistrictBoutiqueVectorIcon(color: Color(red: 236/255, green: 72/255, blue: 153/255))
-                                .scaleEffect(0.85)
-                        } else if selectedDistrict == "housing" {
-                            DistrictHousingVectorIcon(color: Color(red: 59/255, green: 130/255, blue: 246/255))
-                                .scaleEffect(0.85)
-                        } else if selectedDistrict == "savings" {
-                            DistrictParkVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
-                                .scaleEffect(0.85)
-                        } else if selectedDistrict == "food" {
-                            DistrictBistroVectorIcon(color: Color(red: 249/255, green: 115/255, blue: 22/255))
-                                .scaleEffect(0.85)
-                        } else {
-                            DistrictSkylineVectorIcon(color: Color(red: 17/255, green: 24/255, blue: 39/255))
-                                .scaleEffect(0.85)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-
-                        Text(subtitle)
-                            .font(.system(size: 12, weight: .medium, design: .default))
-                            .foregroundColor(Color.textSecondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 6) {
-                        Text(l10n.format(amount: amount))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-
-                        MoneyIcon(isDetailsExpanded ? .chevronDown : (l10n.language == .hebrew ? .chevronLeft : .chevronRight), size: 12)
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-
-            // Contextual Month Milestone
-            if displayTransactions.isEmpty {
-                HStack(spacing: 6) {
-                    MoneyIcon(.leaf, size: 14)
-                    Text(l10n.language == .hebrew ? "עיר חדשה מתחילה לצמוח" : "A new city is growing")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                    Spacer()
-                }
-                .padding(.horizontal, 4)
-                .padding(.top, 1)
-            } else if displayTransactions.count == 1 {
-                HStack(spacing: 6) {
-                    MoneyIcon(.home, size: 14)
-                    Text(l10n.language == .hebrew ? "המבנה הראשון שלך לחודש זה" : "Your first building of the month")
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                    Spacer()
-                }
-                .padding(.horizontal, 4)
-                .padding(.top, 1)
-            }
-            
-
-            
-            // District Details (Expanded only on tap!)
-            if isDetailsExpanded {
-                Divider().background(Color.borderSubtle)
-                
-                let foodAmt = (currentCity.categoryTotals[.food] ?? 0) + (currentCity.categoryTotals[.groceries] ?? 0)
-                let shopAmt = currentCity.categoryTotals[.shopping] ?? 0
-                let houseAmt = currentCity.categoryTotals[.housing] ?? 0
-                let savingsAmt = currentCity.totalSavings
-                let displayTotal = max(currentCity.totalSpent, 1.0)
-                
-                if currentCity.totalSpent <= 0 && savingsAmt <= 0 {
-                    HStack(spacing: 8) {
-                        DistrictSkylineVectorIcon(color: Color.textMuted)
-                            .frame(width: 18, height: 18)
-                            .scaleEffect(0.75)
-                        Text(l10n.language == .hebrew ? "טרם נרשמו הוצאות החודש" : "No expenses recorded this month")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
-                        Spacer()
-                    }
-                    .padding(.vertical, 10)
-                    .transition(.opacity)
-                } else {
-                    VStack(spacing: 4) {
-                        districtRow(
-                            bgColor: Color(red: 254/255, green: 242/255, blue: 232/255),
-                            title: l10n.language == .hebrew ? "רובע האוכל" : "Food District",
-                            amount: foodAmt,
-                            percentage: Int(round((foodAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.cutlery, size: 22) }
-                        ) {
-                            handleSelectDistrict("food")
-                        }
-                        
-                        Divider().background(Color.borderSubtle)
-                        
-                        districtRow(
-                            bgColor: Color(red: 253/255, green: 238/255, blue: 244/255),
-                            title: l10n.language == .hebrew ? "שדרת הקניות" : "Shopping Street",
-                            amount: shopAmt,
-                            percentage: Int(round((shopAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.shoppingBag, size: 22) }
-                        ) {
-                            handleSelectDistrict("shopping")
-                        }
-                        
-                        Divider().background(Color.borderSubtle)
-                        
-                        districtRow(
-                            bgColor: Color(red: 238/255, green: 245/255, blue: 254/255),
-                            title: l10n.language == .hebrew ? "מתחם המגורים" : "Housing Quarter",
-                            amount: houseAmt,
-                            percentage: Int(round((houseAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.home, size: 22) }
-                        ) {
-                            handleSelectDistrict("housing")
-                        }
-
-                        Divider().background(Color.borderSubtle)
-
-                        districtRow(
-                            bgColor: Color(red: 234/255, green: 248/255, blue: 240/255),
-                            title: l10n.language == .hebrew ? "שמורת הטבע (חיסכון)" : "Savings Sanctuary",
-                            amount: savingsAmt,
-                            percentage: Int(round((savingsAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.leaf, size: 22) }
-                        ) {
-                            handleSelectDistrict("savings")
-                        }
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: Color.black.opacity(0.045), radius: 14, x: 0, y: 3)
-        .padding(.horizontal, 16)
-    }
-    
-    private func districtRow<V: View>(
-        bgColor: Color,
-        title: String,
-        amount: Double,
-        percentage: Int,
-        @ViewBuilder icon: () -> V,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                // Soft pastel circle badge (matches reference)
-                ZStack {
-                    Circle()
-                        .fill(bgColor)
-                        .frame(width: 34, height: 34)
-                    
-                    icon()
-                }
-                
-                Text(title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                
-                Spacer()
-                
-                Text(l10n.format(amount: amount))
-                    .font(.system(size: 13, weight: .black, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                
-                Text("\(percentage)%")
-                    .font(.system(size: 11.5, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                    .frame(width: 34, alignment: .trailing)
-            }
-            .padding(.vertical, 2)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        CitySpendingCard(
+            currentCity: currentCity,
+            selectedDistrict: selectedDistrict,
+            isDetailsExpanded: $isDetailsExpanded,
+            displayTransactions: displayTransactions,
+            onSelectDistrict: handleSelectDistrict
+        )
     }
     
     private var monthYearString: String {

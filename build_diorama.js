@@ -18,7 +18,14 @@ const htmlContent = `<!DOCTYPE html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
   <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", "Helvetica Neue", "Arial Hebrew", "Arial", sans-serif; }
+    *, html, body, #stage, canvas {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none !important;
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
+    * { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "SF Pro Text", "Helvetica Neue", "Arial Hebrew", "Arial", sans-serif; }
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background: transparent !important; touch-action:none; }
     #stage { width:100%; height:100%; position:relative; overflow:hidden; background: transparent !important; }
     canvas { display:block; width:100% !important; height:100% !important; background: transparent !important; }
@@ -3687,6 +3694,10 @@ ${threeMinJs}
     // page never scales itself underneath the canvas.
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (n) {
       stage.addEventListener(n, function (e) { e.preventDefault(); });
+    });
+    ["contextmenu", "selectstart"].forEach(function (n) {
+      window.addEventListener(n, function (e) { e.preventDefault(); return false; }, false);
+      stage.addEventListener(n, function (e) { e.preventDefault(); return false; }, false);
     });
 
     // ────────────────────────────────────────────────────────────────

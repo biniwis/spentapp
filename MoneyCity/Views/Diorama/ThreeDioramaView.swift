@@ -4,9 +4,20 @@ import WebKit
 #if canImport(UIKit)
 import UIKit
 public typealias ViewRepresentable = UIViewRepresentable
+
+/// Lightweight WKWebView subclass providing a surgical fallback against text-editing actions
+final class DioramaWebView: WKWebView {
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == #selector(copy(_:)) || action == #selector(select(_:)) || action == #selector(selectAll(_:)) {
+            return false
+        }
+        return super.canPerformAction(action, withSender: sender)
+    }
+}
 #elseif canImport(AppKit)
 import AppKit
 public typealias ViewRepresentable = NSViewRepresentable
+typealias DioramaWebView = WKWebView
 #endif
 
 /// District inspection detail model
@@ -309,7 +320,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         )
         config.userContentController.addUserScript(initScript)
         
-        let webView = WKWebView(frame: .zero, configuration: config)
+        let webView = DioramaWebView(frame: .zero, configuration: config)
         context.coordinator.observeLifecycle(of: webView)
         webView.navigationDelegate = context.coordinator
         #if canImport(UIKit)

@@ -1,50 +1,6 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Donut Chart Shape & Slice Model
-
-public struct DonutArcShape: Shape {
-    public var startAngle: Double
-    public var endAngle: Double
-
-    public var animatableData: AnimatablePair<Double, Double> {
-        get { AnimatablePair(startAngle, endAngle) }
-        set {
-            startAngle = newValue.first
-            endAngle = newValue.second
-        }
-    }
-
-    public func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let radius = max((min(rect.width, rect.height) - 30) / 2, 10)
-        path.addArc(
-            center: center,
-            radius: radius,
-            startAngle: .degrees(startAngle),
-            endAngle: .degrees(endAngle),
-            clockwise: false
-        )
-        return path
-    }
-}
-
-private struct DonutSliceData: Identifiable {
-    let id: String
-    let category: SpendingCategory
-    let name: String
-    let icon: MoneyIconType?
-    let color: Color
-    let amount: Double
-    let fraction: Double
-    let count: Int
-    let startAngle: Double
-    let endAngle: Double
-    let rawStartAngle: Double
-    let rawEndAngle: Double
-}
-
 // MARK: - Analytics View
 
 public struct AnalyticsView: View {
@@ -198,17 +154,17 @@ public struct AnalyticsView: View {
     }
 
     /// Top categories sorted by spending
-    private var categoryTotals: [(category: SpendingCategory, amount: Double, fraction: Double)] {
+    private var categoryTotals: [AnalyticsCategoryTotal] {
         var totals: [SpendingCategory: Double] = [:]
         for tx in displayTransactions where countsTowardStats(tx) {
             totals[tx.category.canonical, default: 0] += tx.amount
         }
         let total = max(totals.values.reduce(0, +), 1.0)
-        return totals.sorted { $0.value > $1.value }.map { (category: $0.key, amount: $0.value, fraction: $0.value / total) }
+        return totals.sorted { $0.value > $1.value }.map { AnalyticsCategoryTotal(category: $0.key, amount: $0.value, fraction: $0.value / total) }
     }
 
     /// 6 comparative months for the bar chart up to chartAnchorDate
-    private var chartMonths: [(monthDate: Date, label: String, amount: Double, isCurrent: Bool, offset: Int)] {
+    private var chartMonths: [AnalyticsChartMonth] {
         let cal = Calendar.current
         let isHe = l10n.language == .hebrew
 
@@ -223,7 +179,7 @@ public struct AnalyticsView: View {
             f.locale = Locale(identifier: isHe ? "he_IL" : "en_US")
             f.dateFormat = "MMM"
             let lbl = f.string(from: mDate)
-            return (mDate, lbl, total, isCurrent, selectedMonthOffset - i)
+            return AnalyticsChartMonth(monthDate: mDate, label: lbl, amount: total, isCurrent: isCurrent, offset: selectedMonthOffset - i)
         }
     }
 
@@ -461,357 +417,13 @@ public struct AnalyticsView: View {
     // MARK: - Category Donut Card ("עוגה בעיגול" - בשפת כרטיסי הפרופיל עם פירוט תתי-סוגים)
 
     private var categoryDonutCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header: Category Title / Back Button / Reset
-            donutCardHeader
-
-            // Interactive Donut Chart with Center Info Hub
-            donutView
-
-            // Interactive Category / Subcategory Legend Chips
-            donutLegendView
-        }
-        .padding(18)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
-    }
-
-    // MARK: - Donut Card Header
-
-    private var donutCardHeader: some View {
-        HStack {
-            HStack(spacing: 6) {
-                MoneyIcon(.pieChart, size: 16, color: Color.deepNavy)
-                Text(l10n.language == .hebrew ? "התפלגות הוצאות" : "Spending Breakdown")
-                    .font(.system(size: 16, weight: .bold, design: .default))
-                    .foregroundColor(Color.deepNavy)
-            }
-
-            Spacer()
-
-            if selectedSlice != nil {
-                Button(action: {
-                    Haptics.selection()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                        selectedSlice = nil
-                    }
-                }) {
-                    Text(l10n.language == .hebrew ? "איפוס" : "Reset")
-                        .font(.system(size: 12, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 10)
-                        .background(Color(uiColor: .systemGray6))
-                        .clipShape(Capsule())
-                }
-            }
-        }
-    }
-
-    // MARK: - Donut Chart Ring & Calculations
-
-    private var donutSlices: [DonutSliceData] {
-        let totals = categoryTotals
-        guard !totals.isEmpty else { return [] }
-        let totalAmt = max(totals.reduce(0.0) { $0 + $1.amount }, 1.0)
-        let gap: Double = totals.count > 1 ? 2.5 : 0.0
-        var currentAngle: Double = -90.0
-
-        var slices: [DonutSliceData] = []
-        for item in totals {
-            let sweep = (item.amount / totalAmt) * 360.0
-            let rawStart = currentAngle
-            let rawEnd = currentAngle + sweep
-
-            let sAngle = rawStart + (gap / 2.0)
-            let eAngle = rawEnd - (gap / 2.0)
-            let validEnd = max(sAngle, eAngle)
-
-            let txCount = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == item.category.canonical }.count
-
-            slices.append(DonutSliceData(
-                id: item.category.rawValue,
-                category: item.category,
-                name: item.category.displayName,
-                icon: nil,
-                color: item.category.themeColor,
-                amount: item.amount,
-                fraction: item.fraction,
-                count: txCount,
-                startAngle: sAngle,
-                endAngle: validEnd,
-                rawStartAngle: rawStart,
-                rawEndAngle: rawEnd
-            ))
-            currentAngle += sweep
-        }
-        return slices
-    }
-
-    private var donutView: some View {
-        let diameter: CGFloat = 185
-
-        return ZStack {
-            // Track background ring
-            Circle()
-                .stroke(Color(uiColor: .systemGray6).opacity(0.85), lineWidth: 21)
-                .frame(width: diameter, height: diameter)
-
-            // Dynamic Slices
-            ForEach(donutSlices) { slice in
-                let isSelected = selectedSlice == slice.category
-                let isDimmed = selectedSlice != nil && !isSelected
-
-                DonutArcShape(startAngle: slice.startAngle, endAngle: slice.endAngle)
-                    .stroke(
-                        slice.color,
-                        style: StrokeStyle(lineWidth: isSelected ? 26 : 21, lineCap: .butt)
-                    )
-                    .frame(width: diameter, height: diameter)
-                    .opacity(isDimmed ? 0.35 : 1.0)
-                    .scaleEffect(isSelected ? 1.05 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isSelected)
-            }
-
-            // Center Info Hub
-            donutCenterHub
-        }
-        .frame(width: diameter, height: diameter)
-        .contentShape(Circle())
-        .onTapGesture(coordinateSpace: .local) { location in
-            handleDonutTap(at: location, diameter: diameter)
-        }
-        .environment(\.layoutDirection, .leftToRight)
-        .frame(maxWidth: .infinity, alignment: .center)
-    }
-
-    private func handleDonutTap(at location: CGPoint, diameter: CGFloat) {
-        let center = CGPoint(x: diameter / 2, y: diameter / 2)
-        let dx = location.x - center.x
-        let dy = location.y - center.y
-        let dist = sqrt(dx * dx + dy * dy)
-
-        // Center hub tap (radius ~52pt) or tap outside ring -> reset selection
-        if dist <= 52 || dist > (diameter / 2 + 18) {
-            Haptics.selection()
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                selectedSlice = nil
-            }
-            return
-        }
-
-        let slices = donutSlices
-        guard !slices.isEmpty else { return }
-
-        // Method 1: Geometric Path hit-test using stroked arc (lineWidth 36 for easy, forgiving finger touch)
-        let radius = max((diameter - 30) / 2, 10)
-        var hitSlice: DonutSliceData? = nil
-        for slice in slices {
-            var path = Path()
-            path.addArc(
-                center: center,
-                radius: radius,
-                startAngle: .degrees(slice.startAngle),
-                endAngle: .degrees(slice.endAngle),
-                clockwise: false
-            )
-            let strokePath = path.strokedPath(StrokeStyle(lineWidth: 36, lineCap: .butt))
-            if strokePath.contains(location) {
-                hitSlice = slice
-                break
-            }
-        }
-
-        // Method 2: Polar angle fallback (if tap landed precisely in the gap between slices)
-        if hitSlice == nil {
-            var angleDeg = atan2(dy, dx) * 180.0 / .pi
-            if angleDeg < -90.0 {
-                angleDeg += 360.0
-            }
-            for (index, slice) in slices.enumerated() {
-                let isLast = (index == slices.count - 1)
-                let matches = isLast
-                    ? (angleDeg >= slice.rawStartAngle && angleDeg <= slice.rawEndAngle + 0.5)
-                    : (angleDeg >= slice.rawStartAngle && angleDeg < slice.rawEndAngle)
-                if matches {
-                    hitSlice = slice
-                    break
-                }
-            }
-        }
-
-        if let hit = hitSlice {
-            Haptics.selection()
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                if selectedSlice == hit.category {
-                    // Tapping already-selected category toggles it off!
-                    selectedSlice = nil
-                } else {
-                    selectedSlice = hit.category
-                }
-            }
-        }
-    }
-
-    private var donutCenterHub: some View {
-        VStack(spacing: 2) {
-            if let sel = selectedSlice, let match = categoryTotals.first(where: { $0.category == sel }) {
-                // Category Selected
-                CategoryBadge(category: sel, size: 22)
-
-                Text(sel.displayName)
-                    .font(.system(size: 11, weight: .bold, design: .default))
-                    .foregroundColor(Color.deepNavy)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-
-                Text(l10n.format(amount: match.amount.rounded()))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(sel.themeColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                Text("\(Int(round(match.fraction * 100)))%")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-
-                let count = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == sel.canonical }.count
-                Text("\(count) \(l10n.language == .hebrew ? "עסקאות" : "txs")")
-                    .font(.system(size: 8, weight: .medium, design: .default))
-                    .foregroundColor(Color.textSecondary)
-            } else {
-                // Default: Month Total Spending
-                Text(l10n.language == .hebrew ? "סה״כ החודש" : "Total Spent")
-                    .font(.system(size: 10, weight: .medium, design: .default))
-                    .foregroundColor(Color.textSecondary)
-
-                Text(l10n.format(amount: totalSpent.rounded()))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                let count = displayTransactions.filter(countsTowardStats).count
-                if count > 0 {
-                    Text("\(count) \(l10n.language == .hebrew ? "עסקאות" : "txs")")
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                }
-            }
-        }
-        .frame(width: 104, height: 104)
-        .background(
-            Circle()
-                .fill(Color(red: 250/255, green: 250/255, blue: 252/255))
+        AnalyticsDonutCard(
+            categoryTotals: categoryTotals,
+            totalSpent: totalSpent,
+            displayTransactions: displayTransactions,
+            selectedSlice: $selectedSlice,
+            countsTowardStats: countsTowardStats
         )
-    }
-
-    private var donutLegendView: some View {
-        let columns = [
-            GridItem(.flexible(), spacing: 8),
-            GridItem(.flexible(), spacing: 8)
-        ]
-
-        return VStack(spacing: 12) {
-            LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(categoryTotals, id: \.category) { item in
-                    let isSelected = selectedSlice == item.category
-                    let isDimmed = selectedSlice != nil && !isSelected
-
-                    Button(action: {
-                        Haptics.selection()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            if selectedSlice == item.category {
-                                selectedSlice = nil
-                            } else {
-                                selectedSlice = item.category
-                            }
-                        }
-                    }) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(item.category.themeColor)
-                                .frame(width: 8, height: 8)
-
-                            Text(item.category.displayName)
-                                .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .default))
-                                .foregroundColor(Color.deepNavy)
-                                .lineLimit(1)
-
-                            Spacer(minLength: 4)
-
-                            Text("\(Int(round(item.fraction * 100)))%")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(isSelected ? item.category.themeColor : Color.textSecondary)
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(isSelected ? item.category.themeColor.opacity(0.12) : Color(uiColor: .systemGray6).opacity(0.65))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .stroke(isSelected ? item.category.themeColor.opacity(0.6) : Color.clear, lineWidth: 1)
-                        )
-                        .opacity(isDimmed ? 0.45 : 1.0)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            // Subcategory / Merchant Breakdown when a category is selected
-            if let sel = selectedSlice {
-                selectedCategorySubBreakdown(for: sel)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func selectedCategorySubBreakdown(for category: SpendingCategory) -> some View {
-        let activeTxs = displayTransactions.filter { countsTowardStats($0) && $0.category.canonical == category.canonical }
-        let items = SubcategoryBreakdownService.shared.breakdown(
-            for: category,
-            transactions: activeTxs,
-            isHebrew: l10n.language == .hebrew
-        )
-
-        if !items.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text(l10n.language == .hebrew ? "פירוט עבור \(category.displayName):" : "Breakdown for \(category.displayName):")
-                        .font(.system(size: 11, weight: .bold, design: .default))
-                        .foregroundColor(Color.deepNavy)
-                    Spacer()
-                }
-                .padding(.top, 4)
-
-                VStack(spacing: 5) {
-                    ForEach(items.prefix(4)) { sub in
-                        HStack(spacing: 6) {
-                            MoneyIcon(sub.icon, size: 12, color: sub.color)
-                            Text(sub.name)
-                                .font(.system(size: 11, weight: .medium, design: .default))
-                                .foregroundColor(Color.deepNavy)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(l10n.format(amount: sub.amount.rounded()))
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                            Text("(\(Int(round(sub.fraction * 100)))%)")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
-                                .foregroundColor(Color.textSecondary)
-                        }
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Color(uiColor: .systemGray6).opacity(0.55))
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    }
-                }
-            }
-            .padding(.top, 4)
-        }
     }
 
     // MARK: - Top Categories Section
@@ -913,141 +525,18 @@ public struct AnalyticsView: View {
     // MARK: - Compact Comparative Bar Chart
 
     private var compactBarChart: some View {
-        let months = chartMonths
-        let maxAmt = max(months.map(\.amount).max() ?? 1, 100)
-        let chartHeight: CGFloat = 72
-        let avgAmt = averageChartSpending
-
-        // Which bar is highlighted — defaults to the current month (offset == selectedMonthOffset)
-        let highlightedOffset = selectedBarOffset ?? selectedMonthOffset
-
-        return VStack(spacing: 10) {
-            // Section Header: Title + Clean Average Capsule Badge
-            HStack(alignment: .center) {
-                Text(l10n.language == .hebrew ? "השוואה חצי שנתית" : "6-Month Overview")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-
-                Spacer()
-
-                if avgAmt > 10 {
-                    HStack(spacing: 5) {
-                        Circle()
-                            .fill(storyVibrantPurple)
-                            .frame(width: 5, height: 5)
-                        Text(l10n.language == .hebrew ? "ממוצע: \(l10n.format(amount: avgAmt.rounded()))" : "Avg: \(l10n.format(amount: avgAmt.rounded()))")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                    }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 3.5)
-                    .background(Color(uiColor: .systemGray6))
-                    .clipShape(Capsule())
-                }
+        AnalyticsComparativeBarChart(
+            months: chartMonths,
+            averageSpending: averageChartSpending,
+            selectedMonthOffset: selectedMonthOffset,
+            selectedBarOffset: $selectedBarOffset,
+            isScrubbingChart: $isScrubbingChart,
+            animateChart: animateChart,
+            onSelectOffset: { _ in
+                selectedSlice = nil
             }
-
-            // 6 Evenly Spaced Month Columns with Discrete Touch Scrubbing
-            GeometryReader { geo in
-                HStack(alignment: .bottom, spacing: 10) {
-                    ForEach(months, id: \.offset) { item in
-                        let frac = maxAmt > 0 ? CGFloat(item.amount / maxAmt) : 0
-                        let barHeight: CGFloat = animateChart
-                            ? (item.amount > 0 ? max(frac * chartHeight, 10) : 4)
-                            : 4
-                        let isHighlighted = (item.offset == highlightedOffset)
-                        let columnOpacity: Double = isHighlighted ? 1.0 : ((isScrubbingChart || selectedBarOffset != nil) ? 0.55 : 1.0)
-
-                        Button(action: {
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) {
-                                selectedBarOffset = item.offset
-                                selectedSlice = nil
-                            }
-                        }) {
-                            VStack(spacing: 6) {
-                                // Amount Badge above the bar
-                                ZStack {
-                                    if isHighlighted && item.amount > 0 {
-                                        Text(l10n.format(amount: item.amount.rounded()))
-                                            .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                                            .foregroundColor(storyVibrantPurple)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(storySoftLilac.opacity(0.85))
-                                            .clipShape(Capsule())
-                                            .fixedSize()
-                                            .transition(.opacity.combined(with: .scale(scale: 0.85)))
-                                    } else {
-                                        Color.clear.frame(height: 18)
-                                    }
-                                }
-                                .frame(height: 18)
-
-                                // Bar track + Filled pillar
-                                ZStack(alignment: .bottom) {
-                                    // Subtle track providing clean structure for all 6 months
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .fill(Color(uiColor: .systemGray6).opacity(0.9))
-                                        .frame(width: 28, height: chartHeight)
-
-                                    // Dynamic filled bar
-                                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                        .fill(isHighlighted ? storyVibrantPurple : (item.amount > 0 ? storySoftLilac : Color.clear))
-                                        .frame(width: 28, height: barHeight)
-                                        .scaleEffect(isHighlighted ? 1.04 : 1.0, anchor: .bottom)
-                                }
-
-                                // Month abbreviation label
-                                Text(item.label)
-                                    .font(.system(size: 11, weight: isHighlighted ? .bold : .medium, design: .default))
-                                    .foregroundColor(isHighlighted ? Color.deepNavy : Color.textSecondary)
-                                    .lineLimit(1)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .opacity(columnOpacity)
-                            .animation(.spring(response: 0.25, dampingFraction: 0.8), value: columnOpacity)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .contentShape(Rectangle())
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 6)
-                        .onChanged { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) * 0.7 else { return }
-                            isScrubbingChart = true
-                            let totalWidth = geo.size.width
-                            guard totalWidth > 0, !months.isEmpty else { return }
-                            let count = months.count
-                            let fraction = max(0, min(1, value.location.x / totalWidth))
-                            let isHe = l10n.language == .hebrew
-                            let index = isHe
-                                ? min(max(Int((1.0 - fraction) * Double(count)), 0), count - 1)
-                                : min(max(Int(fraction * Double(count)), 0), count - 1)
-
-                            let candidateOffset = months[index].offset
-                            if candidateOffset != selectedBarOffset {
-                                Haptics.selection()
-                                withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
-                                    selectedBarOffset = candidateOffset
-                                    selectedSlice = nil
-                                }
-                            }
-                        }
-                        .onEnded { _ in
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                isScrubbingChart = false
-                            }
-                        }
-                )
-            }
-            .frame(height: 118)
-        }
-        .padding(.vertical, 4)
+        )
         .onChange(of: selectedMonthOffset) { _, _ in
-            // When user navigates with the arrows, reset bar selection to the new current month
             selectedBarOffset = nil
             selectedSlice = nil
         }

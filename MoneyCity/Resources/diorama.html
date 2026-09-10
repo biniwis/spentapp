@@ -4381,15 +4381,33 @@ function animateCompanions(now, dt) {
     }
     window.setDistrict = setDistrict;
 
-    // Reset back to canonical city hero view
+    // Swift pushes viewResetToken on every single data update, so an unconditional reset
+    // here would yank the camera back to the city the moment any figure or selection changed.
+    // Only an actual change of the token means "the user explicitly asked to reset the camera".
+    let lastResetToken = null;
     window.resetCityView = function (token) {
-      setSelectedBuilding(null);
-      savedCameraBeforeBuilding = null;
-      currentMode = "city";
-      targetCam = Object.assign({}, CAM_MODES.city);
-      targetCam.zoom = modeZoom("city");
-      spinVel = 0; tiltVel = 0;
-      checkCameraOffset();
+      function doReset() {
+        setSelectedBuilding(null);
+        savedCameraBeforeBuilding = null;
+        currentMode = "city";
+        targetCam = Object.assign({}, CAM_MODES.city);
+        targetCam.zoom = modeZoom("city");
+        spinVel = 0; tiltVel = 0;
+        checkCameraOffset();
+      }
+
+      if (token === undefined || token === null) {
+        doReset();
+        return;
+      }
+      if (lastResetToken === null) {
+        lastResetToken = token;
+        return;
+      }
+      if (token !== lastResetToken) {
+        lastResetToken = token;
+        doReset();
+      }
     };
 
     window.setCityOverview = function (on) {

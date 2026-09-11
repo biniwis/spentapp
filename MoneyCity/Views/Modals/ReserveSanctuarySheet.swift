@@ -403,8 +403,8 @@ public struct ReserveSanctuarySheet: View {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundColor(Color.deepNavy)
             Text(isHebrew
-                 ? "הגדר יעד לקרן חירום, חופשה או השקעה — והשמורה תצמח יחד איתו."
-                 : "Set a goal for emergencies, vacation, or investments — and watch the sanctuary grow.")
+                 ? "הגדר יעד לקרן חירום, חופשה או השקעה — והפארק יצמח יחד איתו."
+                 : "Set a goal for emergencies, vacation, or investments — and watch the park grow.")
                 .font(.system(size: 11.5, weight: .medium, design: .rounded))
                 .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)
@@ -459,7 +459,7 @@ public struct ReserveSanctuarySheet: View {
                 Button {
                     applyDeposit(to: goal)
                 } label: {
-                    Text(isHebrew ? "בצע הפקדה לשמורה" : "Confirm Deposit")
+                    Text(isHebrew ? "בצע הפקדה לחיסכון" : "Confirm Deposit")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)

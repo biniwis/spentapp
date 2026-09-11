@@ -95,13 +95,13 @@
     "%@ City is Ready!" : {
 
     },
-    "%@ City Story is Ready!" : {
-
-    },
     "%@ hidden from total" : {
 
     },
     "%@ joined your city!" : {
+
+    },
+    "%@ Recap is Ready" : {
 
     },
     "%@ remaining" : {
@@ -260,10 +260,10 @@
     "≈ %@" : {
 
     },
-    "✦ MONTHLY CELEBRATION" : {
+    "✦ MONTHLY RECAP" : {
 
     },
-    "✦ אירוע סוף חודש" : {
+    "✦ סיכום חודשי" : {
 
     },
     "➔" : {
@@ -328,16 +328,10 @@
     "12-Month Overview" : {
 
     },
-    "100% On-Device · Zero Remote Servers" : {
-
-    },
-    "100% מקומי על המכשיר שלך · ללא שרתים" : {
-
-    },
     "A goal gives you a reason to open the app on a day you bought nothing." : {
 
     },
-    "A little reward for your weekly progress" : {
+    "A little addition for your weekly progress" : {
 
     },
     "A new city is growing" : {
@@ -427,10 +421,10 @@
     "All" : {
 
     },
-    "All expenses are assigned to their proper city buildings. No packages waiting." : {
+    "All sorted & clean!" : {
 
     },
-    "All sorted & clean!" : {
+    "All transactions have been categorized. You're completely caught up." : {
 
     },
     "Already in the city, here to stay. No placing or managing — just a familiar face to spot." : {
@@ -482,7 +476,7 @@
     "Are you sure you want to reset all data?" : {
 
     },
-    "Assign each package to its city district with a single tap to clear the hub." : {
+    "Assign each transaction to a category with a single tap." : {
 
     },
     "Assign to 3D Building" : {
@@ -491,10 +485,10 @@
     "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device." : {
 
     },
-    "Auto Convert FX" : {
+    "Automatic Apple Pay Setup" : {
 
     },
-    "Automatic Apple Pay Setup" : {
+    "Automatic Currency Conversion" : {
 
     },
     "Avg per transaction" : {
@@ -588,22 +582,22 @@
     "Change currency" : {
 
     },
+    "Choose a Category" : {
+
+    },
     "City" : {
 
     },
     "City companions" : {
 
     },
-    "City companions — weekly reward" : {
+    "City companions — weekly addition" : {
 
     },
     "City is still growing... Recap arrives at month end 🏙️" : {
 
     },
     "City routine" : {
-
-    },
-    "City Sorting Hub" : {
 
     },
     "Close" : {
@@ -650,7 +644,7 @@
         }
       }
     },
-    "Daily Avg" : {
+    "Daily Average" : {
 
     },
     "Date and Time" : {
@@ -785,9 +779,6 @@
 
     },
     "Every building has a story" : {
-
-    },
-    "Every shekel saved nurtures the lake, grows the trees, and powers your goals." : {
 
     },
     "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero." : {
@@ -1004,22 +995,13 @@
     "Monthly Budget" : {
 
     },
-    "Monthly Budget Target" : {
-
-    },
     "Monthly Recap" : {
 
     },
     "Monthly spending pace" : {
 
     },
-    "Move to which district?" : {
-
-    },
     "Name" : {
-
-    },
-    "Nature & Savings Sanctuary" : {
 
     },
     "Nature Sanctuary" : {
@@ -1034,7 +1016,7 @@
     "Next" : {
 
     },
-    "Next reward check from" : {
+    "Next addition check from" : {
 
     },
     "No expenses recorded this month" : {
@@ -1049,7 +1031,7 @@
     "No Monthly Recaps Yet" : {
 
     },
-    "No new reward to choose this week yet" : {
+    "No new addition to choose this week yet" : {
 
     },
     "No savings goals defined yet" : {
@@ -1065,6 +1047,9 @@
 
     },
     "Note / Merchant name (optional)" : {
+
+    },
+    "Notifications" : {
 
     },
     "of %@" : {
@@ -1111,16 +1096,13 @@
     "Or break it down by category — any ceiling you fill in here replaces the overall figure." : {
 
     },
-    "Or select a quick target:" : {
+    "Or choose an amount:" : {
 
     },
     "Over" : {
 
     },
     "Overall" : {
-
-    },
-    "Packages Waiting for Sorting" : {
 
     },
     "Pause" : {
@@ -1304,7 +1286,7 @@
     "Saved This Month" : {
 
     },
-    "Saving failed or the choice is no longer available. A failed save does not consume your reward. Please try again." : {
+    "Saving failed or the choice is no longer available. Please try again." : {
 
     },
     "Savings Goals" : {
@@ -1402,9 +1384,6 @@
     "Skip" : {
 
     },
-    "Sorting Hub is Spotless!" : {
-
-    },
     "Spending Breakdown" : {
 
     },
@@ -1456,9 +1435,6 @@
     "Status:" : {
 
     },
-    "System Notifications" : {
-
-    },
     "Tap below to step into your city — every payment builds your very first landmarks! 🏙️" : {
 
     },
@@ -1503,10 +1479,13 @@
         }
       }
     },
-    "The City's Future & Stability Sanctuary" : {
+    "The current state is snapshotted first, so this can be undone." : {
 
     },
-    "The current state is snapshotted first, so this can be undone." : {
+    "The Park" : {
+
+    },
+    "The park changes with your budget and savings." : {
 
     },
     "The whole gang is here" : {
@@ -1616,6 +1595,9 @@
     "Transactions" : {
 
     },
+    "Transactions to Categorize" : {
+
+    },
     "Triage" : {
 
     },
@@ -1623,6 +1605,9 @@
 
     },
     "Uncategorized expenses gather here. Tap to triage and send funds to their buildings." : {
+
+    },
+    "Uncategorized Transactions" : {
 
     },
     "Undo" : {
@@ -1703,6 +1688,9 @@
     "Without income, the savings figure rests on a number the app invented." : {
 
     },
+    "You're All Caught Up" : {
+
+    },
     "You've been here %lld times" : {
 
     },
@@ -1718,19 +1706,19 @@
     "Your everyday spending in the last 7 days was %@ lower than in the previous 7 days. Choose one companion to stay in your city." : {
 
     },
+    "Your financial data stays on your device" : {
+
+    },
     "Your first building of the month" : {
 
     },
     "Your first recap will appear at the end of the month" : {
 
     },
-    "Your Savings Goals" : {
-
-    },
     "אגלה בעצמי" : {
 
     },
-    "או בחר יעד מהיר:" : {
+    "או בחר סכום:" : {
 
     },
     "או פרט לפי קטגוריה — כל תקרה שתמלא כאן מחליפה את הסכום הכולל." : {
@@ -1740,9 +1728,6 @@
 
     },
     "אולי אחר כך" : {
-
-    },
-    "אי החוסן והעתיד של העיר" : {
 
     },
     "אין הוצאות בחודש הזה" : {
@@ -1977,13 +1962,16 @@
     "היסטוריה" : {
 
     },
-    "היסטוריית חסכונות" : {
+    "היסטוריית חיסכון" : {
 
     },
     "היסטוריית עסקאות (%lld)" : {
 
     },
     "היעד הושלם בהצלחה! 🎉" : {
+
+    },
+    "הכול מסווג" : {
 
     },
     "הכל" : {
@@ -1998,10 +1986,13 @@
     "המבנה הראשון שלך לחודש זה" : {
 
     },
+    "המידע הפיננסי נשמר במכשיר שלך" : {
+
+    },
     "המצב הנוכחי יישמר כגיבוי נוסף לפני ההחלפה, כך שאפשר יהיה לחזור ממנו." : {
 
     },
-    "המרה אוטומטית לעסקאות מט״ח" : {
+    "המרת מטבע אוטומטית" : {
 
     },
     "הסיכום החודשי הראשון שלך יופיע בסיום החודש" : {
@@ -2028,6 +2019,12 @@
     "העיר שלך החודש" : {
 
     },
+    "הפארק" : {
+
+    },
+    "הפארק משתנה לפי התקציב והחיסכון שלך." : {
+
+    },
     "הפעולה מובנית במערכת — נותר רק להפעיל אוטומציה:" : {
 
     },
@@ -2049,16 +2046,10 @@
     "הפקדה ליעד" : {
 
     },
-    "הפקדה ליעד חיסכון" : {
-
-    },
     "הפקדה ליעד:" : {
 
     },
     "הפקדות והשקעות" : {
-
-    },
-    "הפרס הבא ייבדק החל מ־" : {
 
     },
     "הצג את כל החודש" : {
@@ -2088,7 +2079,7 @@
     "הקשה להמשך" : {
 
     },
-    "השבוע עדיין אין פרס חדש לבחירה" : {
+    "השבוע עדיין אין תוספת חדשה לבחירה" : {
 
     },
     "השהה" : {
@@ -2097,7 +2088,10 @@
     "השוואה חצי שנתית" : {
 
     },
-    "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. כשל בשמירה לא מנצל את הפרס. אפשר לנסות שוב." : {
+    "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : {
+
+    },
+    "התוספת הבאה תיבדק החל מ־" : {
 
     },
     "התחל היום! ✨" : {
@@ -2109,7 +2103,7 @@
     "התפלגות הוצאות" : {
 
     },
-    "התראות מערכת" : {
+    "התראות" : {
 
     },
     "זוהה זיכוי / החזר מ-Apple Pay" : {
@@ -2119,9 +2113,6 @@
 
     },
     "זמין לזמן מוגבל" : {
-
-    },
-    "חבילות והוצאות שממתינות למיון" : {
 
     },
     "חבר את הקלט (חשוב! 💡)" : {
@@ -2169,9 +2160,6 @@
     "יעד תקציב חודשי" : {
 
     },
-    "יעדי החיסכון שלך" : {
-
-    },
     "יעדי חיסכון" : {
 
     },
@@ -2184,16 +2172,13 @@
     "כל %lld בחודש" : {
 
     },
-    "כל ההוצאות חולקו בהצלחה למבנים הנכונים בעיר. אין חבילות שממתינות למיון." : {
-
-    },
     "כל החבורה כבר בעיר שלך" : {
 
     },
-    "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס." : {
+    "כל העסקאות שויכו לקטגוריות מתאימות. אין עסקאות שממתינות לסיווג." : {
 
     },
-    "כל שקל שנשמר מזין את האגם, מצמיח את היער ומחזק את המטרות שלך." : {
+    "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס." : {
 
     },
     "כלול" : {
@@ -2208,7 +2193,7 @@
     "לא עכשיו" : {
 
     },
-    "לאיזה רובע ומבנה להעביר?" : {
+    "לאיזו קטגוריה להעביר?" : {
 
     },
     "לאישור (%lld)" : {
@@ -2298,16 +2283,13 @@
     "מצטרפים לעיר" : {
 
     },
-    "מצטרפים לעיר — הפרס השבועי" : {
+    "מצטרפים לעיר — תוספת שבועית" : {
 
     },
     "מקורות הכנסה" : {
 
     },
-    "מרכז המיון והדואר" : {
-
-    },
-    "מרכז המיון נקי ומסודר!" : {
+    "משוב במגע" : {
 
     },
     "משווים שני שבועות של הוצאות יומיומיות, בלי דיור, מנויים, בריאות, בנק וחיסכון. ירידה של יותר מ־10 ₪ יכולה לפתוח בחירה של חבר חדש. אין צורך לוותר על דברים שאתה צריך." : {
@@ -2343,7 +2325,7 @@
     "נחסך החודש" : {
 
     },
-    "ניתוח נתונים" : {
+    "ניתוח הוצאות" : {
 
     },
     "נמחקה: %@" : {
@@ -2364,7 +2346,7 @@
     "סה״כ קבוע בחודש" : {
 
     },
-    "סווג כל חבילה למבנה הנכון בעיר בלחיצה אחת כדי לפנות את המרכז." : {
+    "סווג כל עסקה לקטגוריה הנכונה בלחיצה אחת." : {
 
     },
     "סטטוס:" : {
@@ -2412,10 +2394,16 @@
     "עסקאות החודש" : {
 
     },
+    "עסקאות לא מסווגות" : {
+
+    },
     "עסקאות לאישור בלבד (%lld)" : {
 
     },
     "עסקאות עתידיות ב-%@ יסווגו אוטומטית" : {
+
+    },
+    "עסקאות שמחכות לסיווג" : {
 
     },
     "ערוך עסקה" : {
@@ -2452,9 +2440,6 @@
 
     },
     "פריסה לתשלומים" : {
-
-    },
-    "פרס קטן על ההתקדמות השבועית שלך" : {
 
     },
     "פתח את אפליקציית 'קיצורים'" : {
@@ -2494,9 +2479,6 @@
 
     },
     "ראש העיר הרשמי: %@" : {
-
-    },
-    "רטט פידבק (Haptics)" : {
 
     },
     "רצף ימים פעיל" : {
@@ -2572,10 +2554,10 @@
     "שמורת הטבע" : {
 
     },
-    "שמורת הטבע והחיסכון" : {
+    "שפת ממשק" : {
 
     },
-    "שפת ממשק" : {
+    "תוספת קטנה על ההתקדמות השבועית שלך" : {
 
     },
     "תצוגת מפה מלאה" : {

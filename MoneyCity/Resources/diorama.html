@@ -2592,14 +2592,14 @@
       props: [{ type: "planter", x: -1.24, z: 1.38, kind: "shrub", from: 2 }]
     });
     makeBuilding({
-      id: "museum_curiosities", district: "civic", name: "לימודים וקהילה", trend: "השכלה, ספרים ופנאי מסקרן",
+      id: "museum_curiosities", district: "civic", name: "שונות", trend: "מתנות, תרומות ושונות",
       kind: "shop", x: 0.0, z: 9.35, w: 2.10, d: 2.20, maxTier: 3,
       body: 0xE6D2B4, roof: 0x4A6077, accent: 0xA87550, glass: 0xF1DDB8, roofStyle: "pitch", chimney: true,
-      sign: { text: "BOOKS", bg: "#496B92", fg: "#FFF0D6", size: 28 },
+      sign: { text: "MISC", bg: "#496B92", fg: "#FFF0D6", size: 28 },
       props: [{ type: "aframe", x: 1.16, z: 1.38, rotY: -0.4, from: 2 }]
     });
     makeBuilding({
-      id: "city_sorting_hub", minTier: 1, district: "civic", name: "עמדת המיון והדואר", trend: "הוצאות שעוד לא סווגו",
+      id: "city_sorting_hub", minTier: 1, district: "civic", name: "עסקאות שמחכות לסיווג", trend: "הוצאות שעוד לא סווגו",
       kind: "shop", x: 2.85, z: 9.1, w: 2.10, d: 2.00, maxTier: 2,
       body: 0xF0D2C6, roof: 0x4B6076, accent: 0xD46A5C, glass: 0xF0DDBF, roofStyle: "pitch",
       sign: { text: "POST", bg: "#B75B54", fg: "#FFFDF7", size: 30 },
@@ -3563,7 +3563,7 @@ function normalizedSlotPlacements(input) {
     // 3. Nature Reserve Bridge & Trail Walker
     addCitizen(0x059669, 0x1E293B, 0x10B981, [
       {x: 8.6, z: -9.8}, {x: 9.3, z: -9.4}, {x: 10.0, z: -9.0}, {x: 9.3, z: -9.4}
-    ], ["האוויר כאן בשמורה פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here 🌲", "Growing my savings 💚"], false, 0.30);
+    ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30);
 
     // 4. Active Jogger doing laps with athletic stride
     addCitizen(0xF97316, 0x1E293B, 0xEF4444, [
@@ -4880,10 +4880,10 @@ window.dioramaEnergyState = function () {
       food_bistro:        { he: ["מסעדות", "ארוחות בחוץ"],                   en: ["Restaurants", "Eating out"] },
       food_coffee:        { he: ["קפה ומאפים", "הרגל הקפה היומי"],           en: ["Coffee", "The daily coffee habit"] },
       food_wolt:          { he: ["משלוחי אוכל", "וולט, תן ביס ומשלוחים"],    en: ["Food delivery", "Delivery apps"] },
-      city_sorting_hub:   { he: ["עמדת המיון והדואר", "הוצאות שעוד לא סווגו"], en: ["Sorting & post", "Transactions not filed yet"] },
+      city_sorting_hub:   { he: ["עסקאות שמחכות לסיווג", "הוצאות שעוד לא סווגו"], en: ["To Categorize", "Transactions not filed yet"] },
       health_pharmacy:    { he: ["בית מרקחת", "תרופות, פארם ובריאות"],       en: ["Pharmacy", "Medicine and everyday health"] },
-      museum_curiosities: { he: ["לימודים וקהילה", "השכלה, ספרים ופנאי מסקרן"], en: ["Learning", "Books, courses and curiosity"] },
-      savings_sanctuary:  { he: ["שמורת הטבע", "קצב הוצאות חודשי"], en: ["Nature Reserve", "Monthly spending pace"] }
+      museum_curiosities: { he: ["שונות", "מתנות, תרומות ושונות"],           en: ["Miscellaneous", "Gifts, donations and other"] },
+      savings_sanctuary:  { he: ["הפארק", "קצב הוצאות וחיסכון"],             en: ["The Park", "Monthly spending pace"] }
     };
 
     let currentLang = "he";

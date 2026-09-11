@@ -177,8 +177,8 @@ public struct ReserveModalView: View {
     private var noBudgetContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(isHebrew
-                 ? "כדי שהשמורה תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש."
-                 : "To have the sanctuary reflect your monthly pace, set your estimated monthly spending.")
+                 ? "כדי שהפארק ישקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש."
+                 : "To have the park reflect your monthly pace, set your estimated monthly spending.")
                 .font(.system(size: 13, weight: .medium, design: .default))
                 .foregroundColor(Color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

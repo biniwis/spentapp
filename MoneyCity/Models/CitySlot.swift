@@ -58,9 +58,9 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
         self.districtId = districtId; self.icon = icon; self.defaultItemId = defaultItemId
     }
     public static let allSlots: [CitySlot] = [
-        CitySlot(id: "slot_tree_sakura", name: "גן הפריחה", subtitle: "פינת טבע בקצה השמורה", districtId: "savings", icon: "leaf.fill", defaultItemId: "tree_sakura"),
+        CitySlot(id: "slot_tree_sakura", name: "גן הפריחה", subtitle: "פינת טבע בקצה הפארק", districtId: "savings", icon: "leaf.fill", defaultItemId: "tree_sakura"),
         CitySlot(id: "slot_pet_golden_dog", name: "שביל האגם", subtitle: "פינה שקטה לצד המים", districtId: "savings", icon: "pawprint.fill", defaultItemId: "pet_golden_dog"),
-        CitySlot(id: "slot_repair_bench", name: "פינת המנוחה", subtitle: "רחבת ישיבה ליד השמורה", districtId: "savings", icon: "chair.lounge.fill", defaultItemId: "repair_bench"),
+        CitySlot(id: "slot_repair_bench", name: "פינת המנוחה", subtitle: "רחבת ישיבה בפארק", districtId: "savings", icon: "chair.lounge.fill", defaultItemId: "repair_bench"),
         CitySlot(id: "slot_park_bridge", name: "גשר האגם", subtitle: "שדרוג הגשר הקיים מעל המים", districtId: "savings", icon: "building.2.fill", defaultItemId: "park_bridge"),
         CitySlot(id: "slot_fountain_marble", name: "מזרקת הכיכר", subtitle: "שדרוג המזרקה המרכזית", districtId: "city", icon: "drop.fill", defaultItemId: "fountain_marble"),
         CitySlot(id: "slot_cafe_stand", name: "רחבת הקפה", subtitle: "בין המסעדות לבתי הקפה", districtId: "food", icon: "cup.and.saucer.fill", defaultItemId: "cafe_stand"),

@@ -4446,7 +4446,8 @@ function animateCompanions(now, dt) {
     let spinVel = 0, tiltVel = 0;
     let gesture = null; // two-finger state: { dist, angle, cx, cy, zoom, az }
     let cameraIsOffset = false;
-    let savedCameraBeforeBuilding = null;
+    let userAdjustedZoom = false;
+    let buildingFocusHasAppliedAutoZoom = false;
 
     const ZOOM_MIN = 0.65, ZOOM_MAX = 5.50, PAN_LIMIT = 11.5;
 
@@ -4531,6 +4532,9 @@ function animateCompanions(now, dt) {
         // 1. Pinch Zoom
         const zoomRatio = g.dist / gesture.dist;
         targetCam.zoom = clamp(gesture.zoom * zoomRatio, ZOOM_MIN, ZOOM_MAX);
+        if (Math.abs(zoomRatio - 1.0) > 0.01) {
+          userAdjustedZoom = true;
+        }
 
         // 2. Two-Finger Twist / Rotation (natural diorama spin)
         let dAngle = g.angle - gesture.angle;
@@ -4681,6 +4685,7 @@ function animateCompanions(now, dt) {
     stage.addEventListener("wheel", function (e) {
       noteEnergyInteraction();
       targetCam.zoom = clamp((targetCam.zoom || 1.0) - e.deltaY * 0.0015, ZOOM_MIN, ZOOM_MAX);
+      userAdjustedZoom = true;
       checkCameraOffset();
     }, { passive: true });
     // iOS fires gesturestart/change for pinch on some WebKit paths; swallow them so the
@@ -4710,7 +4715,8 @@ function animateCompanions(now, dt) {
         targetCam = Object.assign({}, CAM_MODES[currentMode]);
         targetCam.zoom = modeZoom(currentMode);
         spinVel = 0; tiltVel = 0;
-        savedCameraBeforeBuilding = null;
+        userAdjustedZoom = false;
+        buildingFocusHasAppliedAutoZoom = false;
         // Clear any building selection when switching district/mode
         setSelectedBuilding(null);
         checkCameraOffset();
@@ -4725,11 +4731,12 @@ function animateCompanions(now, dt) {
     window.resetCityView = function (token) {
       function doReset() {
         setSelectedBuilding(null);
-        savedCameraBeforeBuilding = null;
         currentMode = "city";
         targetCam = Object.assign({}, CAM_MODES.city);
         targetCam.zoom = modeZoom("city");
         spinVel = 0; tiltVel = 0;
+        userAdjustedZoom = false;
+        buildingFocusHasAppliedAutoZoom = false;
         checkCameraOffset();
       }
 
@@ -4930,34 +4937,8 @@ window.dioramaEnergyState = function () {
       selectedBuilding = obj || null;
       if (!selectedBuilding) {
         selectionRing.visible = false;
-        // Smoothly restore previous camera context before building inspection
-        if (savedCameraBeforeBuilding) {
-          targetCam.lookX = savedCameraBeforeBuilding.lookX;
-          targetCam.lookY = savedCameraBeforeBuilding.lookY;
-          targetCam.lookZ = savedCameraBeforeBuilding.lookZ;
-          targetCam.zoom  = savedCameraBeforeBuilding.zoom;
-          targetCam.az    = savedCameraBeforeBuilding.az;
-          targetCam.el    = savedCameraBeforeBuilding.el;
-          savedCameraBeforeBuilding = null;
-        } else {
-          const base = CAM_MODES[currentMode] || CAM_MODES.city;
-          targetCam.lookX = base.lookX;
-          targetCam.lookY = base.lookY;
-          targetCam.lookZ = base.lookZ;
-          targetCam.zoom  = base.zoom;
-        }
         checkCameraOffset();
         return;
-      }
-      if (!savedCameraBeforeBuilding) {
-        savedCameraBeforeBuilding = {
-          lookX: targetCam.lookX,
-          lookY: targetCam.lookY,
-          lookZ: targetCam.lookZ,
-          zoom:  targetCam.zoom,
-          az:    targetCam.az,
-          el:    targetCam.el
-        };
       }
       const w = new THREE.Vector3();
       selectedBuilding.getWorldPosition(w);
@@ -4965,11 +4946,23 @@ window.dioramaEnergyState = function () {
       selectionRing.visible = true;
       selectionRing.material.opacity = 0.0;
       selectionRing.scale.setScalar(1.35);
-      // Drift the camera to centre on the selected building (Google-Maps style)
-      targetCam.lookX = w.x * 0.72;
-      targetCam.lookY = w.y + 0.4;
-      targetCam.lookZ = w.z * 0.72;
-      targetCam.zoom  = Math.min(ZOOM_MAX, (targetCam.zoom || 1.0) * 1.35);
+
+      // Smoothly center near the selected building, offset slightly toward camera (screen bottom)
+      // so the building appears near visual center, slightly above center above the inspector card.
+      const az = targetCam.az;
+      const fx = Math.cos(az);
+      const fz = Math.sin(az);
+      const groundOffset = 1.8;
+      targetCam.lookX = clamp(w.x + groundOffset * fx, -PAN_LIMIT, PAN_LIMIT);
+      targetCam.lookY = Math.max(0.2, (w.y || 0) + 0.35);
+      targetCam.lookZ = clamp(w.z + groundOffset * fz, -PAN_LIMIT, PAN_LIMIT);
+
+      // Hybrid zoom: apply subtle one-time zoom only once and only when untouched at default zoom
+      if (!userAdjustedZoom && !buildingFocusHasAppliedAutoZoom) {
+        const base = modeZoom(currentMode);
+        targetCam.zoom = clamp(base * 1.18, ZOOM_MIN, ZOOM_MAX);
+        buildingFocusHasAppliedAutoZoom = true;
+      }
       checkCameraOffset();
     }
     window.selectDioramaBuilding = function (id) {
@@ -5637,7 +5630,16 @@ window.dioramaEnergyState = function () {
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },
       camModes: CAM_MODES,
-      state: function () { return { mode: currentMode, cam: currentCam, target: targetCam, parkHealth: parkHealthValue }; }
+      state: function () {
+        return {
+          mode: currentMode,
+          cam: currentCam,
+          target: targetCam,
+          userAdjustedZoom: userAdjustedZoom,
+          buildingFocusHasAppliedAutoZoom: buildingFocusHasAppliedAutoZoom,
+          parkHealth: parkHealthValue
+        };
+      }
     };
 
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.dioramaReady) {

@@ -573,6 +573,9 @@
     "Categories" : {
 
     },
+    "Categorize" : {
+
+    },
     "Category" : {
 
     },
@@ -1351,7 +1354,7 @@
     "Select Category" : {
 
     },
-    "Set a goal for emergencies, vacation, or investments — and watch the sanctuary grow." : {
+    "Set a goal for emergencies, vacation, or investments — and watch the park grow." : {
 
     },
     "Set Goal" : {
@@ -1500,7 +1503,7 @@
     "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
 
     },
-    "To have the sanctuary reflect your monthly pace, set your estimated monthly spending." : {
+    "To have the park reflect your monthly pace, set your estimated monthly spending." : {
 
     },
     "Top Categories" : {
@@ -1598,16 +1601,13 @@
     "Transactions to Categorize" : {
 
     },
-    "Triage" : {
-
-    },
     "Trip to Japan" : {
 
     },
-    "Uncategorized expenses gather here. Tap to triage and send funds to their buildings." : {
+    "Uncategorized Transactions" : {
 
     },
-    "Uncategorized Transactions" : {
+    "Uncategorized transactions gather here. Tap to triage and send funds to their buildings." : {
 
     },
     "Undo" : {
@@ -1830,7 +1830,7 @@
     "במסך התקציב" : {
 
     },
-    "בצע הפקדה לשמורה" : {
+    "בצע הפקדה לחיסכון" : {
 
     },
     "גיבוי ושחזור" : {
@@ -1857,7 +1857,7 @@
     "הגדר יעד" : {
 
     },
-    "הגדר יעד לקרן חירום, חופשה או השקעה — והשמורה תצמח יחד איתו." : {
+    "הגדר יעד לקרן חירום, חופשה או השקעה — והפארק יצמח יחד איתו." : {
 
     },
     "הגדרות" : {
@@ -1912,9 +1912,6 @@
 
     },
     "הוצאות קבועות" : {
-
-    },
-    "הוצאות שונות מצטברות כאן כחבילות. לחץ למיון מהיר ושיוך למבנים הנכונים בעיר." : {
 
     },
     "הוצאת שיא" : {
@@ -1974,10 +1971,10 @@
     "הכול מסווג" : {
 
     },
-    "הכל" : {
+    "הכול מסווג ומסודר!" : {
 
     },
-    "הכל ממוין ומסודר!" : {
+    "הכל" : {
 
     },
     "הכנס את שמך (למשל: בנימין)" : {
@@ -2166,7 +2163,7 @@
     "יש לך הוצאות קבועות?" : {
 
     },
-    "כדי שהשמורה תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
+    "כדי שהפארק ישקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
 
     },
     "כל %lld בחודש" : {
@@ -2254,9 +2251,6 @@
 
     },
     "מיזוג" : {
-
-    },
-    "מיין חבילות" : {
 
     },
     "מכירים את העיר" : {
@@ -2349,6 +2343,9 @@
     "סווג כל עסקה לקטגוריה הנכונה בלחיצה אחת." : {
 
     },
+    "סווג עסקאות" : {
+
+    },
     "סטטוס:" : {
 
     },
@@ -2398,6 +2395,9 @@
 
     },
     "עסקאות לאישור בלבד (%lld)" : {
+
+    },
+    "עסקאות ללא קטגוריה מצטברות כאן. לחץ לסיווג מהיר לקטגוריה הנכונה." : {
 
     },
     "עסקאות עתידיות ב-%@ יסווגו אוטומטית" : {

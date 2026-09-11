@@ -2600,14 +2600,14 @@ ${threeMinJs}
       props: [{ type: "planter", x: -1.24, z: 1.38, kind: "shrub", from: 2 }]
     });
     makeBuilding({
-      id: "museum_curiosities", district: "civic", name: "לימודים וקהילה", trend: "השכלה, ספרים ופנאי מסקרן",
+      id: "museum_curiosities", district: "civic", name: "שונות", trend: "מתנות, תרומות ושונות",
       kind: "shop", x: 0.0, z: 9.35, w: 2.10, d: 2.20, maxTier: 3,
       body: 0xE6D2B4, roof: 0x4A6077, accent: 0xA87550, glass: 0xF1DDB8, roofStyle: "pitch", chimney: true,
-      sign: { text: "BOOKS", bg: "#496B92", fg: "#FFF0D6", size: 28 },
+      sign: { text: "MISC", bg: "#496B92", fg: "#FFF0D6", size: 28 },
       props: [{ type: "aframe", x: 1.16, z: 1.38, rotY: -0.4, from: 2 }]
     });
     makeBuilding({
-      id: "city_sorting_hub", minTier: 1, district: "civic", name: "עמדת המיון והדואר", trend: "הוצאות שעוד לא סווגו",
+      id: "city_sorting_hub", minTier: 1, district: "civic", name: "עסקאות שמחכות לסיווג", trend: "הוצאות שעוד לא סווגו",
       kind: "shop", x: 2.85, z: 9.1, w: 2.10, d: 2.00, maxTier: 2,
       body: 0xF0D2C6, roof: 0x4B6076, accent: 0xD46A5C, glass: 0xF0DDBF, roofStyle: "pitch",
       sign: { text: "POST", bg: "#B75B54", fg: "#FFFDF7", size: 30 },
@@ -3518,7 +3518,7 @@ ${threeMinJs}
     // 3. Nature Reserve Bridge & Trail Walker
     addCitizen(0x059669, 0x1E293B, 0x10B981, [
       {x: 8.6, z: -9.8}, {x: 9.3, z: -9.4}, {x: 10.0, z: -9.0}, {x: 9.3, z: -9.4}
-    ], ["האוויר כאן בשמורה פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here 🌲", "Growing my savings 💚"], false, 0.30);
+    ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30);
 
     // 4. Active Jogger doing laps with athletic stride
     addCitizen(0xF97316, 0x1E293B, 0xEF4444, [
@@ -3676,7 +3676,8 @@ ${threeMinJs}
     let spinVel = 0, tiltVel = 0;
     let gesture = null; // two-finger state: { dist, angle, cx, cy, zoom, az }
     let cameraIsOffset = false;
-    let savedCameraBeforeBuilding = null;
+    let userAdjustedZoom = false;
+    let buildingFocusHasAppliedAutoZoom = false;
 
     const ZOOM_MIN = 0.65, ZOOM_MAX = 5.50, PAN_LIMIT = 11.5;
 
@@ -3761,6 +3762,9 @@ ${threeMinJs}
         // 1. Pinch Zoom
         const zoomRatio = g.dist / gesture.dist;
         targetCam.zoom = clamp(gesture.zoom * zoomRatio, ZOOM_MIN, ZOOM_MAX);
+        if (Math.abs(zoomRatio - 1.0) > 0.01) {
+          userAdjustedZoom = true;
+        }
 
         // 2. Two-Finger Twist / Rotation (natural diorama spin)
         let dAngle = g.angle - gesture.angle;
@@ -3911,6 +3915,7 @@ ${threeMinJs}
     stage.addEventListener("wheel", function (e) {
       noteEnergyInteraction();
       targetCam.zoom = clamp((targetCam.zoom || 1.0) - e.deltaY * 0.0015, ZOOM_MIN, ZOOM_MAX);
+      userAdjustedZoom = true;
       checkCameraOffset();
     }, { passive: true });
     // iOS fires gesturestart/change for pinch on some WebKit paths; swallow them so the
@@ -3940,7 +3945,8 @@ ${threeMinJs}
         targetCam = Object.assign({}, CAM_MODES[currentMode]);
         targetCam.zoom = modeZoom(currentMode);
         spinVel = 0; tiltVel = 0;
-        savedCameraBeforeBuilding = null;
+        userAdjustedZoom = false;
+        buildingFocusHasAppliedAutoZoom = false;
         // Clear any building selection when switching district/mode
         setSelectedBuilding(null);
         checkCameraOffset();
@@ -3955,11 +3961,12 @@ ${threeMinJs}
     window.resetCityView = function (token) {
       function doReset() {
         setSelectedBuilding(null);
-        savedCameraBeforeBuilding = null;
         currentMode = "city";
         targetCam = Object.assign({}, CAM_MODES.city);
         targetCam.zoom = modeZoom("city");
         spinVel = 0; tiltVel = 0;
+        userAdjustedZoom = false;
+        buildingFocusHasAppliedAutoZoom = false;
         checkCameraOffset();
       }
 
@@ -4009,10 +4016,10 @@ ${threeMinJs}
       food_bistro:        { he: ["מסעדות", "ארוחות בחוץ"],                   en: ["Restaurants", "Eating out"] },
       food_coffee:        { he: ["קפה ומאפים", "הרגל הקפה היומי"],           en: ["Coffee", "The daily coffee habit"] },
       food_wolt:          { he: ["משלוחי אוכל", "וולט, תן ביס ומשלוחים"],    en: ["Food delivery", "Delivery apps"] },
-      city_sorting_hub:   { he: ["עמדת המיון והדואר", "הוצאות שעוד לא סווגו"], en: ["Sorting & post", "Transactions not filed yet"] },
+      city_sorting_hub:   { he: ["עסקאות שמחכות לסיווג", "הוצאות שעוד לא סווגו"], en: ["To Categorize", "Transactions not filed yet"] },
       health_pharmacy:    { he: ["בית מרקחת", "תרופות, פארם ובריאות"],       en: ["Pharmacy", "Medicine and everyday health"] },
-      museum_curiosities: { he: ["לימודים וקהילה", "השכלה, ספרים ופנאי מסקרן"], en: ["Learning", "Books, courses and curiosity"] },
-      savings_sanctuary:  { he: ["שמורת הטבע", "קצב הוצאות חודשי"], en: ["Nature Reserve", "Monthly spending pace"] }
+      museum_curiosities: { he: ["שונות", "מתנות, תרומות ושונות"],           en: ["Miscellaneous", "Gifts, donations and other"] },
+      savings_sanctuary:  { he: ["הפארק", "קצב הוצאות וחיסכון"],             en: ["The Park", "Monthly spending pace"] }
     };
 
     let currentLang = "he";
@@ -4059,34 +4066,8 @@ ${threeMinJs}
       selectedBuilding = obj || null;
       if (!selectedBuilding) {
         selectionRing.visible = false;
-        // Smoothly restore previous camera context before building inspection
-        if (savedCameraBeforeBuilding) {
-          targetCam.lookX = savedCameraBeforeBuilding.lookX;
-          targetCam.lookY = savedCameraBeforeBuilding.lookY;
-          targetCam.lookZ = savedCameraBeforeBuilding.lookZ;
-          targetCam.zoom  = savedCameraBeforeBuilding.zoom;
-          targetCam.az    = savedCameraBeforeBuilding.az;
-          targetCam.el    = savedCameraBeforeBuilding.el;
-          savedCameraBeforeBuilding = null;
-        } else {
-          const base = CAM_MODES[currentMode] || CAM_MODES.city;
-          targetCam.lookX = base.lookX;
-          targetCam.lookY = base.lookY;
-          targetCam.lookZ = base.lookZ;
-          targetCam.zoom  = base.zoom;
-        }
         checkCameraOffset();
         return;
-      }
-      if (!savedCameraBeforeBuilding) {
-        savedCameraBeforeBuilding = {
-          lookX: targetCam.lookX,
-          lookY: targetCam.lookY,
-          lookZ: targetCam.lookZ,
-          zoom:  targetCam.zoom,
-          az:    targetCam.az,
-          el:    targetCam.el
-        };
       }
       const w = new THREE.Vector3();
       selectedBuilding.getWorldPosition(w);
@@ -4094,11 +4075,23 @@ ${threeMinJs}
       selectionRing.visible = true;
       selectionRing.material.opacity = 0.0;
       selectionRing.scale.setScalar(1.35);
-      // Drift the camera to centre on the selected building (Google-Maps style)
-      targetCam.lookX = w.x * 0.72;
-      targetCam.lookY = w.y + 0.4;
-      targetCam.lookZ = w.z * 0.72;
-      targetCam.zoom  = Math.min(ZOOM_MAX, (targetCam.zoom || 1.0) * 1.35);
+
+      // Smoothly center near the selected building, offset slightly toward camera (screen bottom)
+      // so the building appears near visual center, slightly above center above the inspector card.
+      const az = targetCam.az;
+      const fx = Math.cos(az);
+      const fz = Math.sin(az);
+      const groundOffset = 1.8;
+      targetCam.lookX = clamp(w.x + groundOffset * fx, -PAN_LIMIT, PAN_LIMIT);
+      targetCam.lookY = Math.max(0.2, (w.y || 0) + 0.35);
+      targetCam.lookZ = clamp(w.z + groundOffset * fz, -PAN_LIMIT, PAN_LIMIT);
+
+      // Hybrid zoom: apply subtle one-time zoom only once and only when untouched at default zoom
+      if (!userAdjustedZoom && !buildingFocusHasAppliedAutoZoom) {
+        const base = modeZoom(currentMode);
+        targetCam.zoom = clamp(base * 1.18, ZOOM_MIN, ZOOM_MAX);
+        buildingFocusHasAppliedAutoZoom = true;
+      }
       checkCameraOffset();
     }
     window.selectDioramaBuilding = function (id) {
@@ -4766,7 +4759,16 @@ ${threeMinJs}
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },
       camModes: CAM_MODES,
-      state: function () { return { mode: currentMode, cam: currentCam, target: targetCam, parkHealth: parkHealthValue }; }
+      state: function () {
+        return {
+          mode: currentMode,
+          cam: currentCam,
+          target: targetCam,
+          userAdjustedZoom: userAdjustedZoom,
+          buildingFocusHasAppliedAutoZoom: buildingFocusHasAppliedAutoZoom,
+          parkHealth: parkHealthValue
+        };
+      }
     };
 
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.dioramaReady) {

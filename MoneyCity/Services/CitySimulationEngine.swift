@@ -237,31 +237,13 @@ public final class CitySimulationEngine: Sendable {
                 everydayBaseline = max(0.0, typicalMonthlySpend - committedAllowance)
             }
         }
-
-        var parkHealth = CitySimulationEngine.healthyParkLevel
-        let expectedByNow = everydayBaseline * accruedFraction
-        if everydayBaseline > 0, expectedByNow > 0, hasActivity {
-            // Realistic day-to-day spending buffer for weekly rhythm (groceries, early lump sums)
-            let earlyGraceBuffer = everydayBaseline * 0.18
-            let effectiveExpected = max(expectedByNow, expectedByNow + earlyGraceBuffer * max(0.0, 1.0 - accruedFraction / 0.30))
-            let pace = everydaySpent / max(effectiveExpected, 1.0)
-            if pace <= 1.0 {
-                // Under pace — flourish gracefully
-                let good = min(1.0, (1.0 - pace) / 0.35)
-                parkHealth = CitySimulationEngine.healthyParkLevel
-                    + (1.0 - CitySimulationEngine.healthyParkLevel) * good
-            }
-        }
-        // First week of the month (accruedFraction < 0.25) settles gently into its verdict
-        let verdictConfidence = min(1.0, pow(accruedFraction / 0.25, 1.4))
-        parkHealth = CitySimulationEngine.healthyParkLevel
-            + (parkHealth - CitySimulationEngine.healthyParkLevel) * verdictConfidence
-
-        // Money actually moved into savings always helps, whatever the spending looked like.
-        if directSavings > 0 {
-            let depositTarget = everydayBaseline > 0 ? everydayBaseline * 0.15 : max(directSavings, 1.0)
-            parkHealth = min(1.0, parkHealth + 0.22 * min(1.0, directSavings / depositTarget))
-        }
+        // Nature Reserve state: Pure monthly spending pace against planned budget
+        let reserveSnapshot = ReserveStateService.computeSnapshot(
+            monthlyBudget: everydayBaseline,
+            monthlySpent: everydaySpent,
+            monthProgressRatio: accruedFraction
+        )
+        let parkHealth = reserveSnapshot.state.visualHealthLevel
         // A full park means roughly a fifth of a month kept back — generous but reachable —
         // rather than an arbitrary fixed figure.
         let savingsTarget = baseline > 0 ? baseline * 0.20 : 0.0

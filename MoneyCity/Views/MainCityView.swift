@@ -946,18 +946,16 @@ public struct MainCityView: View {
         }
     }
     
-    /// Everything the reserve's card needs, taken from the same city model the 3D scene draws,
+    /// Everything the reserve's card needs, taken from the authoritative ReserveStateService,
     /// so the card and the land can never disagree.
     private var reserveSnapshot: ReserveSnapshot {
-        let city = currentCity
+        let budget = effectiveMonthlyBudget
+        let spent = currentCity.totalSpent
         let elapsed = CitySimulationEngine.budgetAccruedFraction(for: currentDate, now: Date())
-        return ReserveSnapshot(
-            savedThisMonth: city.totalSavings,
-            health: city.parkHealth,
-            monthElapsed: elapsed,
-            spentThisMonth: city.everydaySpent,
-            plannedSpending: city.everydayBaseline,
-            budgetedCategoryCount: budgetedEverydayCategories.count
+        return ReserveStateService.computeSnapshot(
+            monthlyBudget: budget,
+            monthlySpent: spent,
+            monthProgressRatio: elapsed
         )
     }
 
@@ -1212,11 +1210,20 @@ public struct MainCityView: View {
     @ViewBuilder
     private var cityActiveCardView: some View {
         if let b = inspectedBuilding, b.id == "savings_sanctuary" {
-            ReserveModalView(snapshot: reserveSnapshot, onClose: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                    inspectedBuilding = nil
+            ReserveModalView(
+                snapshot: reserveSnapshot,
+                onClose: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        inspectedBuilding = nil
+                    }
+                },
+                onOpenBudgetSetup: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        inspectedBuilding = nil
+                        showBudgetSheet = true
+                    }
                 }
-            }, onShowFeed: { showReserveSanctuarySheet = true })
+            )
             .id(b.id)
             .transition(.asymmetric(
                 insertion: .offset(y: 16).combined(with: .opacity),

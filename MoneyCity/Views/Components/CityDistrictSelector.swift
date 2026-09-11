@@ -52,7 +52,7 @@ public struct CityDistrictSelector: View {
             }
             topDistrictPill(
                 id: "savings",
-                title: l10n.language == .hebrew ? "חיסכון" : "Savings",
+                title: l10n.language == .hebrew ? "שמורה" : "Sanctuary",
                 unselectedBg: Color(red: 234/255, green: 248/255, blue: 240/255)
             ) { _ in
                 MoneyIcon(.leaf, size: 24)

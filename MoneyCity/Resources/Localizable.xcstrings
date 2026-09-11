@@ -92,9 +92,6 @@
         }
       }
     },
-    "%@ by month end" : {
-
-    },
     "%@ City is Ready!" : {
 
     },
@@ -120,9 +117,6 @@
 
     },
     "%@ מוסתרים מהחישוב" : {
-
-    },
-    "%@ עד סוף החודש" : {
 
     },
     "%@/mo" : {
@@ -497,9 +491,6 @@
     "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device." : {
 
     },
-    "At this rate:" : {
-
-    },
     "Auto Convert FX" : {
 
     },
@@ -616,9 +607,6 @@
 
     },
     "Close" : {
-
-    },
-    "Condition" : {
 
     },
     "Confirm category" : {
@@ -758,6 +746,9 @@
     "Due to iOS privacy, a quick Shortcuts automation is required to stream tap-to-pay charges directly into your city." : {
 
     },
+    "Edit" : {
+
+    },
     "Edit fixed expense" : {
 
     },
@@ -797,9 +788,6 @@
 
     },
     "Every shekel saved nurtures the lake, grows the trees, and powers your goals." : {
-
-    },
-    "Every shekel that stays put lands here" : {
 
     },
     "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero." : {
@@ -871,9 +859,6 @@
       }
     },
     "How much to deposit?" : {
-
-    },
-    "How this month is going" : {
 
     },
     "I'll explore on my own" : {
@@ -1025,16 +1010,19 @@
     "Monthly Recap" : {
 
     },
+    "Monthly spending pace" : {
+
+    },
     "Move to which district?" : {
 
     },
     "Name" : {
 
     },
-    "Nature & Savings Reserve" : {
+    "Nature & Savings Sanctuary" : {
 
     },
-    "Nature & Savings Sanctuary" : {
+    "Nature Sanctuary" : {
 
     },
     "New fixed expense" : {
@@ -1077,6 +1065,9 @@
 
     },
     "Note / Merchant name (optional)" : {
+
+    },
+    "of %@" : {
 
     },
     "of %@ budget" : {
@@ -1250,6 +1241,9 @@
         }
       }
     },
+    "Remaining" : {
+
+    },
     "Rent" : {
 
     },
@@ -1274,9 +1268,6 @@
     "Reset Filters" : {
 
     },
-    "Resets each month — the land stays" : {
-
-    },
     "Restore" : {
 
     },
@@ -1296,9 +1287,6 @@
 
     },
     "Salary" : {
-
-    },
-    "Sanctuary & Goals" : {
 
     },
     "Save" : {
@@ -1385,6 +1373,9 @@
 
     },
     "Set Goal" : {
+
+    },
+    "Set monthly budget" : {
 
     },
     "Set Up New Savings Goal" : {
@@ -1518,9 +1509,6 @@
     "The current state is snapshotted first, so this can be undone." : {
 
     },
-    "The Nature Sanctuary grows with every shekel saved or deposited into goals. Tap below to manage goals." : {
-
-    },
     "The whole gang is here" : {
 
     },
@@ -1533,6 +1521,9 @@
     "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
 
     },
+    "To have the sanctuary reflect your monthly pace, set your estimated monthly spending." : {
+
+    },
     "Top Categories" : {
 
     },
@@ -1540,9 +1531,6 @@
 
     },
     "Total" : {
-
-    },
-    "Total %@ this month" : {
 
     },
     "Total Saved" : {
@@ -1860,9 +1848,6 @@
     "בצע הפקדה לשמורה" : {
 
     },
-    "בקצב הזה:" : {
-
-    },
     "גיבוי ושחזור" : {
 
     },
@@ -1900,6 +1885,9 @@
 
     },
     "הגדרת קליטת Apple Pay אוטומטית" : {
+
+    },
+    "הגדרת תקציב" : {
 
     },
     "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
@@ -2190,6 +2178,9 @@
     "יש לך הוצאות קבועות?" : {
 
     },
+    "כדי שהשמורה תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
+
+    },
     "כל %lld בחודש" : {
 
     },
@@ -2200,9 +2191,6 @@
 
     },
     "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס." : {
-
-    },
-    "כל שקל שלא יוצא נשאר כאן" : {
 
     },
     "כל שקל שנשמר מזין את האגם, מצמיח את היער ומחזק את המטרות שלך." : {
@@ -2256,6 +2244,9 @@
     "מושהה" : {
 
     },
+    "מחיקה" : {
+
+    },
     "מחק" : {
 
     },
@@ -2304,12 +2295,6 @@
     "מפענח סכום ופרטי עסק מתמונת הקבלה..." : {
 
     },
-    "מצב החודש הזה" : {
-
-    },
-    "מצב השמורה" : {
-
-    },
     "מצטרפים לעיר" : {
 
     },
@@ -2331,7 +2316,7 @@
     "משכורת" : {
 
     },
-    "מתאפס בכל חודש — הקרקע נשארת" : {
+    "מתוך %@" : {
 
     },
     "מתוך %@ תקציב" : {
@@ -2344,6 +2329,9 @@
 
     },
     "נוצר בישראל באהבה 🏙️" : {
+
+    },
+    "נותר להוציא" : {
 
     },
     "נותרו %@ ליעד" : {
@@ -2368,9 +2356,6 @@
 
     },
     "סה״כ" : {
-
-    },
-    "סה״כ %@ החודש" : {
 
     },
     "סה״כ החודש" : {
@@ -2434,6 +2419,9 @@
 
     },
     "ערוך עסקה" : {
+
+    },
+    "עריכה" : {
 
     },
     "עריכת הוצאה" : {
@@ -2500,6 +2488,9 @@
 
     },
     "קטגוריות מובילות" : {
+
+    },
+    "קצב ההוצאות של החודש" : {
 
     },
     "ראש העיר הרשמי: %@" : {
@@ -2578,16 +2569,13 @@
     "שמור על הרצף מחר" : {
 
     },
+    "שמורת הטבע" : {
+
+    },
     "שמורת הטבע והחיסכון" : {
 
     },
-    "שמורת הטבע והחיסכון צומחת עם כל שקל שנשמר או הופקד ליעד. לחץ על התפריט המיוחד לניהול יעדים והפקדות." : {
-
-    },
     "שפת ממשק" : {
-
-    },
-    "תפריט השמורה ויעדים" : {
 
     },
     "תצוגת מפה מלאה" : {

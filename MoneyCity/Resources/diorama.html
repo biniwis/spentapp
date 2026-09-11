@@ -936,10 +936,16 @@
     // Street bench, used on the plaza and in the park
     function addBenchAt(bx, bz, rotY, y) {
       const g = new THREE.Group(); g.position.set(bx, y === undefined ? Y_WALK : y, bz); g.rotation.y = rotY || 0;
-      g.add(mesh(new THREE.BoxGeometry(1.05, 0.07, 0.32), M_WOOD, 0, 0.30, 0, false, false));
-      g.add(mesh(new THREE.BoxGeometry(1.05, 0.28, 0.06), M_WOOD, 0, 0.45, -0.13, false, false));
-      g.add(mesh(new THREE.BoxGeometry(0.07, 0.28, 0.28), M_DARKFRAME, -0.44, 0.15, 0, false, false));
-      g.add(mesh(new THREE.BoxGeometry(0.07, 0.28, 0.28), M_DARKFRAME,  0.44, 0.15, 0, false, false));
+      for (let slat = 0; slat < 3; slat++) {
+        g.add(mesh(new THREE.BoxGeometry(1.05, 0.055, 0.085), M_WOOD, 0, 0.30, -0.105 + slat * 0.105, false, false));
+        g.add(mesh(new THREE.BoxGeometry(1.05, 0.065, 0.045), M_WOOD, 0, 0.41 + slat * 0.08, -0.15, false, false));
+      }
+      [-0.44, 0.44].forEach(function (x) {
+        g.add(mesh(new THREE.BoxGeometry(0.055, 0.54, 0.055), M_DARKFRAME, x, 0.27, -0.15, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.055, 0.29, 0.055), M_DARKFRAME, x, 0.145, 0.12, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.055, 0.045, 0.34), M_DARKFRAME, x, 0.43, 0, false, false));
+      });
+      packRigidModel(g);
       root.add(g);
       return g;
     }
@@ -1649,22 +1655,60 @@
         });
       },
       shop_boutique: function (g, w, d) {
-        // Mannequins behind the glass
-        [-w * 0.22, w * 0.10].forEach(function (mx, i) {
-          const m = new THREE.Group(); m.position.set(mx, 0, d / 2 - 0.18); g.add(m);
-          m.add(mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.03, 10), M_WARM_STONE, 0, 0.02, 0, false, false));
-          m.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.34, 8), M_CREAM, 0, 0.20, 0, false, false));
-          m.add(mesh(roundedBox(0.17, 0.24, 0.11, 0.04), mat(i ? 0xEC4899 : 0x1D4ED8, 0.7), 0, 0.48, 0, false, false));
-          m.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_CREAM, 0, 0.66, 0, false, false));
+        // Luxury Window Showcases with elevated podiums and illuminated mannequins
+        const goldAcc = mat(0xD4AF37, 0.3, 0.7);
+        const bagOrange = mat(0xEA580C, 0.75);
+        const bagBlack = mat(0x18181B, 0.85);
+
+        // Window Showcase Displays (inside behind glass)
+        [-w * 0.28, w * 0.28].forEach(function (mx, i) {
+          const m = new THREE.Group(); m.position.set(mx, 0, d / 2 + 0.18); g.add(m);
+          // Elevated marble display podium
+          m.add(mesh(roundedBox(0.40, 0.12, 0.30, 0.03), M_CREAM, 0, 0.06, 0, false, false));
+          m.add(mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.02, 12), goldAcc, 0, 0.13, 0, false, false));
+          m.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 8), goldAcc, 0, 0.30, 0, false, false));
+          // Mannequin torso (couture gown / tailored suit)
+          const dressMat = mat(i === 0 ? 0x0F766E : 0xBE185D, 0.75);
+          m.add(mesh(roundedBox(0.18, 0.28, 0.12, 0.04), dressMat, 0, 0.58, 0, false, false));
+          m.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_CREAM, 0, 0.78, 0, false, false));
+          // Shaped garments make the display legible at city scale.
+          if (i === 0) {
+            m.add(mesh(new THREE.CylinderGeometry(0.075, 0.17, 0.25, 8), dressMat, 0, 0.38, 0, false, false));
+          } else {
+            [-0.045, 0.045].forEach(function (x) {
+              m.add(mesh(new THREE.BoxGeometry(0.065, 0.24, 0.09), dressMat, x, 0.35, 0, false, false));
+            });
+          }
+          // Designer luxury shopping bags on display beside mannequin
+          const bMat = i === 0 ? bagOrange : bagBlack;
+          m.add(mesh(roundedBox(0.12, 0.16, 0.08, 0.02), bMat, 0.13, 0.20, 0.05, false, false));
+          m.add(mesh(new THREE.TorusGeometry(0.03, 0.007, 4, 8, Math.PI), goldAcc, 0.13, 0.29, 0.05, false, false));
         });
-        // Clothes rail on the pavement
-        const r = new THREE.Group(); r.position.set(w * 0.34, 0, d / 2 + 0.45); g.add(r);
-        r.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.60), M_MULLION, 0, 0.62, 0, false, false));
-        r.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.62, 6), M_MULLION, -0.16, 0.31, 0, false, false));
-        r.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.62, 6), M_MULLION,  0.16, 0.31, 0, false, false));
-        [0xEF4444, 0xFACC15, 0x22C55E, 0x3B82F6].forEach(function (c, i) {
-          r.add(mesh(new THREE.BoxGeometry(0.05, 0.30, 0.10), mat(c, 0.75), 0, 0.46, -0.22 + i * 0.15, false, false));
+
+        // Sidewalk entrance dressing: Twin architectural cube planters
+        [-w * 0.38, w * 0.38].forEach(function (px) {
+          const pl = new THREE.Group(); pl.position.set(px, 0, d / 2 + 0.38); g.add(pl);
+          pl.add(mesh(roundedBox(0.26, 0.30, 0.26, 0.03), mat(0x18181B, 0.8), 0, 0.15, 0, false, false));
+          pl.add(mesh(new THREE.SphereGeometry(0.14, 8, 8), M_STREET_LEAF, 0, 0.38, 0, false, false));
         });
+
+        // Chic brass & black designer A-frame sidewalk stanchion
+        const st = new THREE.Group(); st.position.set(-w * 0.20, 0, d / 2 + 0.65); g.add(st);
+        st.rotation.y = 0.22;
+        st.add(mesh(new THREE.BoxGeometry(0.03, 0.44, 0.03), goldAcc, -0.11, 0.22, 0, false, false));
+        st.add(mesh(new THREE.BoxGeometry(0.03, 0.44, 0.03), goldAcc,  0.11, 0.22, 0, false, false));
+        st.add(mesh(new THREE.BoxGeometry(0.24, 0.32, 0.02), mat(0x18181B, 0.8), 0, 0.25, 0, false, false));
+        st.add(mesh(new THREE.BoxGeometry(0.18, 0.24, 0.025), mat(0xF59E0B, 0.5), 0, 0.25, 0, false, false));
+
+        // Fashion Shopper with branded shopping bags
+        const shopper = makeFigure({ shirt: 0x475569, dark: true });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60);
+        shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.11, 0.15, 0.07, 0.02), bagOrange, 0.22, 0.24, 0.08, false, false));
+        shopper.add(mesh(roundedBox(0.10, 0.14, 0.06, 0.02), bagBlack, -0.22, 0.22, -0.05, false, false));
+        g.add(shopper);
+        packRigidModel(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
       },
       shop_tech: function (g, w, d) {
         // Rooftop antenna mast with calm, slow beacon breathing pulse
@@ -1842,27 +1886,35 @@
         sc.position.set(0.55, 0, 0.10); sc.rotation.y = 0.2; sc.scale.setScalar(0.85); g.add(sc);
       },
 
-      // 5. Shopping - Boutique (Fashion Pop-Up Gazebo)
+      // 5. Shopping - Boutique (Chic Fashion Pop-Up Pavilion)
       shop_boutique: function (g, w, d) {
-        const tentMat = new THREE.MeshStandardMaterial({ map: stripedAwningTex("#EF4444", "#FFFFFF"), roughness: 0.85 });
-        g.add(mesh(roundedBox(1.40, 0.08, 1.20, 0.04), M_CREAM, 0, 0.04, 0));
-        [[-0.60, -0.50], [0.60, -0.50], [-0.60, 0.50], [0.60, 0.50]].forEach(function (p) {
-          g.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.05, 6), M_GOLD, p[0], 0.55, p[1], false, false));
+        const darkRoofMat = mat(0x18181B, 0.85);
+        const goldMat = mat(0xD4AF37, 0.3, 0.7);
+        // Clean white marble display deck
+        g.add(mesh(roundedBox(1.50, 0.08, 1.30, 0.04), mat(0xFAFAF9, 0.8), 0, 0.04, 0));
+        // Four slender gold/brass corner pillars
+        [[-0.64, -0.54], [0.64, -0.54], [-0.64, 0.54], [0.64, 0.54]].forEach(function (p) {
+          g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 1.05, 8), goldMat, p[0], 0.55, p[1], false, false));
         });
-        const roof = mesh(new THREE.ConeGeometry(1.05, 0.40, 4), tentMat, 0, 1.25, 0);
-        roof.rotation.y = Math.PI / 4; g.add(roof);
-        const rk = new THREE.Group(); rk.position.set(-0.15, 0.08, -0.15); g.add(rk);
-        rk.add(mesh(new THREE.BoxGeometry(0.03, 0.03, 0.60), M_GOLD, 0, 0.55, 0, false, false));
-        rk.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 6), M_GOLD, -0.15, 0.28, 0, false, false));
-        rk.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.55, 6), M_GOLD,  0.15, 0.28, 0, false, false));
-        [0xEC4899, 0x3B82F6, 0xFACC15].forEach(function (c, i) {
-          rk.add(mesh(new THREE.BoxGeometry(0.04, 0.28, 0.12), mat(c, 0.75), 0, 0.40, -0.18 + i * 0.18, false, false));
+        // Modern flat architectural canopy with gold fascia
+        g.add(mesh(roundedBox(1.48, 0.10, 1.28, 0.03), darkRoofMat, 0, 1.10, 0));
+        g.add(mesh(new THREE.BoxGeometry(1.50, 0.03, 0.02), goldMat, 0, 1.10, 0.65, false, false));
+        // Polished brass designer clothing rail inside
+        const rk = new THREE.Group(); rk.position.set(-0.20, 0.08, -0.10); g.add(rk);
+        rk.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.65), goldMat, 0, 0.56, 0, false, false));
+        rk.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.56, 6), goldMat, 0, 0.28, -0.30, false, false));
+        rk.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.56, 6), goldMat, 0, 0.28, 0.30, false, false));
+        [0x0F766E, 0xBE185D, 0xD97706, 0x475569].forEach(function (c, i) {
+          rk.add(mesh(new THREE.BoxGeometry(0.035, 0.30, 0.12), mat(c, 0.75), 0, 0.40, -0.22 + i * 0.15, false, false));
         });
-        const man = new THREE.Group(); man.position.set(0.42, 0.08, 0.22); g.add(man);
-        man.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.02, 8), M_WARM_STONE, 0, 0.01, 0, false, false));
-        man.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.35, 6), M_CREAM, 0, 0.18, 0, false, false));
-        man.add(mesh(roundedBox(0.16, 0.22, 0.11, 0.03), mat(0xDC2626, 0.7), 0, 0.44, 0, false, false));
-        man.add(mesh(new THREE.SphereGeometry(0.05, 8, 8), M_CREAM, 0, 0.60, 0, false, false));
+        // Designer mannequin on marble base
+        const man = new THREE.Group(); man.position.set(0.42, 0.08, 0.18); g.add(man);
+        man.add(mesh(new THREE.CylinderGeometry(0.08, 0.10, 0.02, 10), goldMat, 0, 0.01, 0, false, false));
+        man.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.36, 6), goldMat, 0, 0.19, 0, false, false));
+        man.add(mesh(roundedBox(0.16, 0.24, 0.11, 0.03), mat(0xBE185D, 0.75), 0, 0.46, 0, false, false));
+        man.add(mesh(new THREE.SphereGeometry(0.05, 8, 8), M_CREAM, 0, 0.63, 0, false, false));
+        // Luxury shopping bags beside mannequin
+        man.add(mesh(roundedBox(0.10, 0.14, 0.07, 0.02), mat(0xEA580C, 0.8), 0.12, 0.08, 0.08, false, false));
       },
 
       // 6. Shopping - Tech (Minimalist Gadget Kiosk)
@@ -2074,17 +2126,45 @@
         ground.add(mesh(new THREE.BoxGeometry(w - 0.4, 0.10, 0.08), mat(0x00C2E8, 0.5, 0.4), 0, 0.98, d / 2 + 0.04, false, false));
       },
 
-      // 5. Shopping - Boutique (Parisian Classical Arched Portal)
+      // 5. Shopping - Boutique (Modern Luxury Flagship Storefront)
       shop_boutique: function (ground, w, d, cfg, bodyMat) {
-        [-w / 2 + 0.14, w / 2 - 0.14].forEach(function (px) {
-          ground.add(mesh(new THREE.BoxGeometry(0.18, 0.92, 0.12), M_CREAM, px, 0.48, d / 2 + 0.05, false, false));
-          ground.add(mesh(new THREE.BoxGeometry(0.22, 0.06, 0.14), M_GOLD, px, 0.95, d / 2 + 0.05, false, false));
+        const frameMat = mat(0x18181B, 0.85);
+        const goldMat = mat(0xD4AF37, 0.3, 0.7);
+        const warmGlow = mat(0xFEF08A, 0.2, 0, 0xFDE047, 0.8);
+        const gm = glassMaterial(0xBAE6FD); registerGlass(gm);
+
+        // Projected display bays sit in front of the solid building shell.
+        [-w * 0.28, w * 0.28].forEach(function (x) {
+          ground.add(mesh(new THREE.BoxGeometry(0.49, 0.79, 0.035), frameMat, x, 0.48, d / 2 + 0.065, false, false));
+          ground.add(mesh(new THREE.BoxGeometry(0.52, 0.07, 0.36), M_CREAM, x, 0.075, d / 2 + 0.18, false, false));
+          ground.add(mesh(new THREE.BoxGeometry(0.49, 0.78, 0.018), gm, x, 0.49, d / 2 + 0.35, false, false));
+          [-0.25, 0.25].forEach(function (dx) {
+            ground.add(mesh(new THREE.BoxGeometry(0.026, 0.84, 0.33), goldMat, x + dx, 0.49, d / 2 + 0.19, false, false));
+          });
         });
-        const gm = glassMaterial(0xD8ECFB); registerGlass(gm);
-        ground.add(mesh(new THREE.BoxGeometry(w - 0.48, 0.72, 0.05), gm, 0, 0.50, d / 2 + 0.03, false, false));
-        ground.add(mesh(new THREE.BoxGeometry(0.42, 0.72, 0.06), mat(0x1E293B, 0.7), 0, 0.38, d / 2 + 0.04, false, false));
-        ground.add(mesh(new THREE.BoxGeometry(0.04, 0.18, 0.04), M_GOLD, 0.08, 0.42, d / 2 + 0.08, false, false));
-        stripedAwning(ground, w, d, "#EF4444", "#FFFFFF", 0.98);
+
+        // Matte black architectural framing & mullions
+        [-w / 2 + 0.08, w / 2 - 0.08].forEach(function (px) {
+          ground.add(mesh(new THREE.BoxGeometry(0.12, 0.98, 0.10), frameMat, px, 0.50, d / 2 + 0.06, false, false));
+          ground.add(mesh(new THREE.BoxGeometry(0.14, 0.04, 0.12), goldMat, px, 0.98, d / 2 + 0.06, false, false));
+        });
+        // Central entrance framing mullions
+        [-0.26, 0.26].forEach(function (mx) {
+          ground.add(mesh(new THREE.BoxGeometry(0.04, 0.88, 0.06), frameMat, mx, 0.50, d / 2 + 0.05, false, false));
+        });
+        // Recessed double glass doors with tall gold architectural handles
+        ground.add(mesh(new THREE.BoxGeometry(0.48, 0.84, 0.02), mat(0x0F172A, 0.85), 0, 0.44, d / 2 + 0.03, false, false));
+        [-0.04, 0.04].forEach(function (hx) {
+          ground.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.32, 6), goldMat, hx, 0.44, d / 2 + 0.07, false, false));
+        });
+
+        // Sleek razor-thin black & gold architectural canopy with warm recessed illumination
+        ground.add(mesh(new THREE.BoxGeometry(w + 0.06, 0.04, 0.36), frameMat, 0, 0.98, d / 2 + 0.18, false, false));
+        ground.add(mesh(new THREE.BoxGeometry(w + 0.08, 0.015, 0.02), goldMat, 0, 0.98, d / 2 + 0.36, false, false));
+        // Recessed warm spotlights under canopy
+        [-w * 0.28, 0, w * 0.28].forEach(function (lx) {
+          ground.add(mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.015, 8), warmGlow, lx, 0.955, d / 2 + 0.18, false, false));
+        });
       },
 
       // 6. Shopping - Tech (Apple Store Seamless Glass Cube)
@@ -2207,18 +2287,36 @@
     // 🏢 3g. CUSTOM UPPER FLOORS — Bespoke upper-level architecture
     // ────────────────────────────────────────────────────────────────
     const CUSTOM_FLOORS = {
-      // Boutique: French windows with wrought-iron Juliet balconies and flower boxes
+      // Boutique: Modern Luxury Fashion Atelier Upper Storeys
       shop_boutique: function (f, w, d, i, cfg, bodyMat) {
-        f.add(mesh(roundedBox(w - 0.06, FLOOR_H, d - 0.06, 0.08), bodyMat, 0, FLOOR_H / 2, 0));
+        const frameMat = mat(0x18181B, 0.85);
+        const goldMat = mat(0xD4AF37, 0.3, 0.7);
+        f.add(mesh(roundedBox(w - 0.04, FLOOR_H, d - 0.04, 0.06), bodyMat, 0, FLOOR_H / 2, 0));
         const gm = glassMaterial(cfg.glass); registerGlass(gm);
-        [-w * 0.22, w * 0.22].forEach(function (wx) {
-          f.add(mesh(new THREE.BoxGeometry(0.38, 0.65, 0.05), gm, wx, FLOOR_H * 0.50, d / 2 + 0.02, false, false));
-          f.add(mesh(new THREE.BoxGeometry(0.46, 0.22, 0.14), M_DARKFRAME, wx, FLOOR_H * 0.20, d / 2 + 0.08, false, false));
-          f.add(mesh(roundedBox(0.42, 0.10, 0.12, 0.02), M_TERRACOTTA_POT, wx, FLOOR_H * 0.14, d / 2 + 0.12));
-          [-0.12, 0.12].forEach(function (fx) {
-            f.add(mesh(new THREE.SphereGeometry(0.045, 6, 6), mat(0xFB7185, 0.8), wx + fx, FLOOR_H * 0.22, d / 2 + 0.12, false, false));
+        // Floor-to-ceiling modern architectural glass gallery bays
+        [-w * 0.24, w * 0.24].forEach(function (wx) {
+          f.add(mesh(new THREE.BoxGeometry(0.46, 0.74, 0.05), gm, wx, FLOOR_H * 0.50, d / 2 + 0.02, false, false));
+          // Sleek minimalist dark surround frame
+          f.add(mesh(new THREE.BoxGeometry(0.50, 0.04, 0.08), frameMat, wx, FLOOR_H * 0.86, d / 2 + 0.03, false, false));
+          f.add(mesh(new THREE.BoxGeometry(0.50, 0.04, 0.08), frameMat, wx, FLOOR_H * 0.14, d / 2 + 0.03, false, false));
+          // Sleek vertical architectural gold accent fin beside each window
+          f.add(mesh(new THREE.BoxGeometry(0.025, 0.82, 0.07), goldMat, wx + (wx > 0 ? 0.26 : -0.26), FLOOR_H * 0.50, d / 2 + 0.03, false, false));
+          // Minimalist clear glass balustrade with fine gold top rail
+          f.add(mesh(new THREE.BoxGeometry(0.46, 0.22, 0.02), gm, wx, FLOOR_H * 0.24, d / 2 + 0.06, false, false));
+          f.add(mesh(new THREE.BoxGeometry(0.48, 0.02, 0.025), goldMat, wx, FLOOR_H * 0.35, d / 2 + 0.06, false, false));
+        });
+        // Stone cornice and side atelier windows give the visible return wall depth.
+        f.add(mesh(roundedBox(w + 0.09, 0.085, d + 0.09, 0.025), M_CREAM, 0, FLOOR_H - 0.045, 0));
+        [-1, 1].forEach(function (side) {
+          [-d * 0.26, d * 0.26].forEach(function (z) {
+            f.add(mesh(new THREE.BoxGeometry(0.06, 0.66, 0.56), frameMat, side * w / 2, FLOOR_H * 0.50, z, false, false));
+            f.add(mesh(new THREE.BoxGeometry(0.025, 0.56, 0.46), gm, side * (w / 2 + 0.04), FLOOR_H * 0.50, z, false, false));
+            f.add(mesh(new THREE.BoxGeometry(0.11, 0.045, 0.64), M_CREAM, side * (w / 2 + 0.025), FLOOR_H * 0.18, z, false, false));
+            f.add(mesh(new THREE.BoxGeometry(0.03, 0.56, 0.025), goldMat, side * (w / 2 + 0.06), FLOOR_H * 0.50, z, false, false));
           });
         });
+        // Central vertical architectural reveal / gold accent strip
+        f.add(mesh(new THREE.BoxGeometry(0.03, FLOOR_H * 0.90, 0.04), goldMat, 0, FLOOR_H * 0.50, d / 2 + 0.02, false, false));
       },
 
       // Housing Townhouse: Projecting 3-sided bay windows on upper floors
@@ -2396,9 +2494,8 @@
     makeBuilding({
       id: "shop_boutique", district: "shopping", name: "אופנה ובוטיק", trend: "ביגוד, הנעלה ואופנה",
       kind: "shop", x: -9.3, z: -3.3, w: 1.80, d: 2.40, rotY: Math.PI / 2,
-      body: 0xF7E5D0, roof: 0xE47C68, accent: 0xE56F72, glass: 0xCBE3EF, roofStyle: "mansard",
-      awning: ["#E87368", "#FFF8ED"], balcony: true,
-      sign: { text: "BOUTIQUE", bg: "#B65355", fg: "#FFF8ED", size: 24 }
+      body: 0xE8DDCF, roof: 0x18181B, accent: 0xD4AF37, glass: 0xBAE6FD, roofStyle: "deck",
+      sign: { text: "FASHION", bg: "#18181B", fg: "#F59E0B", size: 26 }
     });
     makeBuilding({
       id: "shop_tech", district: "shopping", name: "טכנולוגיה", trend: "מחשבים, גאדג'טים וחשמל",
@@ -2553,13 +2650,21 @@
       u.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.34, 6), M_DARKFRAME, 0.16, 0.31, 0.05, false, false));
       transportUnits.push(u);
     }
+    let parkedTaxi;
     // A bus at the stand and a taxi in the bays, so the corner is never a bare lot
     (function () {
       const bus = createCar(0x2563EB, true, false);
       bus.position.set(-0.5, 0, -0.4); bus.rotation.y = Math.PI / 2; bus.scale.setScalar(1.15);
       transportYard.add(bus);
       const taxi = createCar(0xFACC15, false, true);
-      taxi.position.set(1.6, 0, 1.1); taxi.rotation.y = 0.05;
+      taxi.position.set(1.6, 0, -1.7); taxi.rotation.y = 0;
+      parkedTaxi = taxi;
+      const door = new THREE.Group(); door.position.set(-0.42, 0.27, 0.22);
+      door.userData.rewardJoint = true;
+      door.add(mesh(new THREE.BoxGeometry(0.035, 0.21, 0.46), mat(0xFACC15, 0.5), 0, 0.06, -0.23, false, false));
+      door.add(mesh(new THREE.BoxGeometry(0.027, 0.22, 0.43), M_GLASS_BL, 0, 0.27, -0.23, false, false));
+      door.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.09), M_MULLION, -0.03, 0.10, -0.34, false, false));
+      taxi.add(door); taxi.userData.passengerDoor = door;
       transportYard.add(taxi);
     })();
     transportYard.add(mesh(new THREE.BoxGeometry(0.7, 0.34, 0.06), new THREE.MeshStandardMaterial({ map: signTex("RIDE", "#0F766E", "#FFFFFF", 26) }), 0.55, 0.95, 2.55, false, false));
@@ -2613,6 +2718,13 @@
     // x=9.1, not 8.2: at 8.2 the lake spilled across the eastern road corridor.
     const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.4, Y_GROUND, -9.4); root.add(reserveGroup);
 
+    // Dedicated Reserve Meadow Ground Patch (distinct from the rest of the city)
+    const M_PARK_MEADOW = mat(0x66B63E, 0.90);
+    const meadowGeo = new THREE.CylinderGeometry(4.2, 4.35, 0.05, 32);
+    meadowGeo.scale(0.95, 1, 0.90);
+    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, -0.15, Y_GRASS + 0.004, 0.1, false, true);
+    reserveGroup.add(reserveMeadowMesh);
+
     // Sandy shore so the water reads as a basin in the ground, not a slab laid on the grass
     const shoreGeo = new THREE.CylinderGeometry(3.05, 3.15, 0.10, 26);
     shoreGeo.scale(0.92, 1, 0.68);
@@ -2623,7 +2735,7 @@
     lakeGeo.scale(0.92, 1, 0.68);
     const lakeMesh = mesh(lakeGeo, M_WATER, -0.2, Y_GRASS - 0.01, 0, false, true);
     reserveGroup.add(lakeMesh);
-    lakeMesh.userData = { id: "savings_sanctuary", district: "savings", name: "שמורת הטבע", amount: 0, trend: "יציבות וחיסכון פיננסי" };
+    lakeMesh.userData = { id: "savings_sanctuary", district: "savings", name: "שמורת הטבע", amount: 0, trend: "קצב הוצאות חודשי" };
     interactiveBuildings.push(lakeMesh); buildingRoots["savings_sanctuary"] = reserveGroup;
 
     // Invisible hit volume over the entire reserve area so tapping anywhere selects the sanctuary
@@ -2646,9 +2758,24 @@
 
     // Arched Wooden Footbridge
     const bridge = new THREE.Group(); bridge.position.set(-0.2, Y_GRASS + 0.10, 0); bridge.rotation.y = Math.PI / 5; reserveGroup.add(bridge);
-    bridge.add(mesh(new THREE.BoxGeometry(0.75, 0.06, 2.4), M_WOOD, 0, 0.12, 0));
-    bridge.add(mesh(new THREE.BoxGeometry(0.05, 0.26, 2.4), M_WOOD, -0.35, 0.25, 0));
-    bridge.add(mesh(new THREE.BoxGeometry(0.05, 0.26, 2.4), M_WOOD,  0.35, 0.25, 0));
+    for (let j = 0; j < 12; j++) {
+      const z = -1.1 + j * 0.2;
+      const rise = 0.12 + 0.15 * (1 - Math.pow(z / 1.2, 2));
+      bridge.add(mesh(new THREE.BoxGeometry(0.78, 0.065, 0.185), M_WOOD, 0, rise, z));
+    }
+    [-0.36, 0.36].forEach(function (x) {
+      for (let j = 0; j < 5; j++) {
+        const z = -1.1 + j * 0.55;
+        const rise = 0.12 + 0.15 * (1 - Math.pow(z / 1.2, 2));
+        bridge.add(mesh(new THREE.BoxGeometry(0.055, 0.45, 0.055), M_WOOD, x, rise + 0.20, z));
+        if (j < 4) {
+          const nz = z + 0.55;
+          const nextRise = 0.12 + 0.15 * (1 - Math.pow(nz / 1.2, 2));
+          const rail = mesh(new THREE.BoxGeometry(0.06, 0.055, Math.hypot(0.55, nextRise - rise)), M_WOOD, x, (rise + nextRise) / 2 + 0.42, z + 0.275);
+          rail.rotation.x = -Math.atan2(nextRise - rise, 0.55); bridge.add(rail);
+        }
+      }
+    });
     bridge.traverse(function (child) {
       if (child.isMesh) {
         child.userData = lakeMesh.userData;
@@ -2756,30 +2883,69 @@ function normalizedSlotPlacements(input) {
       packRigidModel(g); root.add(g); plot.quiet = g;
     });
 
-    // Conifer Pine & Deciduous Trees.
-    // Foliage shares two materials so the reserve's health can be expressed as a single
-    // colour lerp instead of walking every tree in the scene each time the data changes.
+    // Conifer Pine & Deciduous Trees for city
     const M_PINE = mat(0x2F874D, 0.88);
     const M_LEAF = mat(0x4EAA50, 0.86);
     const M_LEAF_LIGHT = mat(0x79BF58, 0.88);
-    const PINE_LUSH = C(0x23824A), PINE_BASE = C(0x2F874D);
-    const LEAF_LUSH = C(0x3BA44B), LEAF_BASE = C(0x4EAA50);
-    const LEAF_LIGHT_LUSH = C(0x70C552), LEAF_LIGHT_BASE = C(0x79BF58);
-    // Trees that answer to parkHealth. Each gets a stable rank in 0..1 and is planted only
-    // when the reserve is healthy enough to reach that rank.
+
+    // Dedicated Nature Reserve foliage & blooms (reacts dynamically to monthly spending pace)
+    const M_PARK_PINE = mat(0x2D8048, 0.88);
+    const M_PARK_LEAF = mat(0x4EAA50, 0.86);
+    const M_PARK_LEAF_LIGHT = mat(0x78BF58, 0.88);
+    const M_PARK_BLOOM = mat(0xFACC15, 0.90);
+
+    // Wildflowers scattered around the lake shore and footbridge
+    const parkBloomGroup = new THREE.Group();
+    reserveGroup.add(parkBloomGroup);
+    const bloomGeo = new THREE.DodecahedronGeometry(0.065, 0);
+    const FLOWER_OFFSETS = [
+      [-0.14, 0.12],
+      [0.15, -0.13],
+      [-0.11, -0.15],
+      [0.13, 0.14]
+    ];
+    [[-1.8, 1.1], [-1.2, 1.8], [0.8, 1.8], [1.9, 1.2], [-0.9, -1.8], [0.5, -2.1], [1.8, -1.2], [-2.3, -0.8]].forEach(function (bp) {
+      for (let k = 0; k < 4; k++) {
+        const ox = FLOWER_OFFSETS[k][0], oz = FLOWER_OFFSETS[k][1];
+        const fl = mesh(bloomGeo, M_PARK_BLOOM, bp[0] + ox, Y_GRASS + 0.04, bp[1] + oz);
+        parkBloomGroup.add(fl);
+      }
+    });
+
+    // Shore planting uses the same seasonal materials as the reserve canopy.
+    const shoreDetails = new THREE.Group(); reserveGroup.add(shoreDetails);
+    [[-2.35, -0.65], [1.95, 0.68], [0.95, -1.55], [-1.55, 1.37]].forEach(function (p) {
+      for (let j = 0; j < 5; j++) {
+        const x = p[0] + Math.sin(j * 2.4) * 0.15;
+        const z = p[1] + Math.cos(j * 2.4) * 0.12;
+        const h = 0.24 + (j % 3) * 0.09;
+        shoreDetails.add(mesh(new THREE.CylinderGeometry(0.012, 0.019, h, 5), M_PARK_LEAF, x, Y_GRASS + h / 2, z, false, false));
+        shoreDetails.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.10, 6), M_WOOD, x, Y_GRASS + h, z, false, false));
+      }
+    });
+    [[-1.5, -0.65], [1.15, 0.40], [0.85, -0.85]].forEach(function (p) {
+      const pad = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.014, 10), M_PARK_LEAF, p[0], Y_GRASS + 0.058, p[1], false, false);
+      pad.scale.z = 0.8; shoreDetails.add(pad);
+      shoreDetails.add(mesh(bloomGeo, M_PARK_BLOOM, p[0] + 0.035, Y_GRASS + 0.095, p[1], false, false));
+    });
+    packRigidModel(shoreDetails);
+
     const parkPlantings = [];
 
     function addPine(px, pz, h, group, rank) {
       const g = new THREE.Group(); g.position.set(px, Y_GRASS, pz);
       g.name = "layered-pine";
       g.add(mesh(new THREE.CylinderGeometry(0.035, 0.075, 1.05 * h, 7), M_WOOD, 0, 0.53 * h, 0));
+      const isReserve = (!group || group === reserveGroup);
+      const pineMat = isReserve ? M_PARK_PINE : M_PINE;
+      g.crowns = [];
       [[0.56, 0.78, 0.75], [0.43, 0.76, 1.15], [0.28, 0.71, 1.53]].forEach(function (p, i) {
-        const crown = mesh(new THREE.ConeGeometry(p[0] * h, p[1] * h, 7), M_PINE, i === 1 ? 0.04 : 0, p[2] * h, 0);
-        crown.rotation.y = i * 0.37 + px * 0.1; g.add(crown);
+        const crown = mesh(new THREE.ConeGeometry(p[0] * h, p[1] * h, 7), pineMat, i === 1 ? 0.04 : 0, p[2] * h, 0);
+        crown.rotation.y = i * 0.37 + px * 0.1; g.add(crown); g.crowns.push(crown);
       });
-      packRigidModel(g);
+      if (!isReserve) packRigidModel(g);
       (group || reserveGroup).add(g);
-      if (rank !== undefined) parkPlantings.push({ obj: g, rank: rank });
+      if (rank !== undefined) parkPlantings.push({ obj: g, rank: rank, isReserve: isReserve });
       return g;
     }
     function addDecid(px, pz, s, group, rank) {
@@ -2790,14 +2956,18 @@ function normalizedSlotPlacements(input) {
         const branch = mesh(new THREE.CylinderGeometry(0.022 * s, 0.039 * s, 0.52 * s, 6), M_WOOD, side * 0.13 * s, 0.83 * s, 0);
         branch.rotation.z = -side * 0.65; g.add(branch);
       });
+      const isReserve = (!group || group === reserveGroup);
+      const leafMat = isReserve ? M_PARK_LEAF : M_LEAF;
+      const leafLightMat = isReserve ? M_PARK_LEAF_LIGHT : M_LEAF_LIGHT;
+      g.crowns = [];
       [[0, 1.40, 0, 0.41], [-0.31, 1.13, 0.04, 0.37], [0.32, 1.27, -0.04, 0.36],
        [0.07, 1.13, 0.29, 0.35], [-0.06, 1.26, -0.25, 0.33]].forEach(function (p, i) {
-        const crown = mesh(new THREE.DodecahedronGeometry(p[3] * s, 0), i % 3 ? M_LEAF : M_LEAF_LIGHT, p[0] * s, p[1] * s, p[2] * s);
-        crown.scale.y = 1.12; crown.rotation.y = px * 0.17 + i; g.add(crown);
+        const crown = mesh(new THREE.DodecahedronGeometry(p[3] * s, 0), i % 3 ? leafMat : leafLightMat, p[0] * s, p[1] * s, p[2] * s);
+        crown.scale.y = 1.12; crown.rotation.y = px * 0.17 + i; g.add(crown); g.crowns.push(crown);
       });
-      packRigidModel(g);
+      if (!isReserve) packRigidModel(g);
       (group || reserveGroup).add(g);
-      if (rank !== undefined) parkPlantings.push({ obj: g, rank: rank });
+      if (rank !== undefined) parkPlantings.push({ obj: g, rank: rank, isReserve: isReserve });
       return g;
     }
     // The reserve's own stand is the identity of the place, so it holds the lowest ranks and
@@ -3156,35 +3326,71 @@ function normalizedSlotPlacements(input) {
     }
 
     // ────────────────────────────────────────────────────────────────
-    // 🌱 10d. RESERVE HEALTH
-    // The reserve is part of the city's permanent visual identity. It stays fully planted;
-    // positive behaviour enriches its colour and water instead of removing greenery.
+    // 🌱 10d. NATURE RESERVE: MONTHLY SPENDING PACE DYNAMICS
     // ────────────────────────────────────────────────────────────────
     const HEALTHY_PARK = 0.78;
     let parkHealthValue = HEALTHY_PARK;
 
-    function parkPlantedFraction(h) {
-      return 1;
-    }
-
     function applyParkHealth(h) {
       if (typeof h !== "number" || !isFinite(h)) return;
       parkHealthValue = Math.max(0, Math.min(1, h));
-      const frac = parkPlantedFraction(parkHealthValue);
+
+      // 4 Distinct Visual States based on monthly spending pace:
+      // Calm:     h >= 0.90 (rich deep forest emerald meadow, pure white & soft lilac blossoms, 1.12x full canopy)
+      // Balanced: 0.65 <= h < 0.90 (vibrant natural meadow green, sunny yellow & white wildflowers, 1.0x canopy)
+      // Active:   0.38 <= h < 0.65 (warm summer sunlit yellow-green, marigold/orange flower patches, 0.94x canopy)
+      // Busy:     h < 0.38 (warm golden-ochre autumn prairie, rustic amber oak tones, 0.88x canopy)
+      let targetMeadow, targetPine, targetLeaf, targetLeafLight, targetBloom, crownScale;
+
+      if (parkHealthValue >= 0.90) {
+        // Calm (קצב רגוע)
+        targetMeadow    = C(0x4A9E48);
+        targetPine      = C(0x1B5E34);
+        targetLeaf      = C(0x349946);
+        targetLeafLight = C(0x58B648);
+        targetBloom     = C(0xF8FAFC);
+        crownScale      = 1.12;
+      } else if (parkHealthValue >= 0.65) {
+        // Balanced (קצב מאוזן)
+        targetMeadow    = C(0x66B63E);
+        targetPine      = C(0x2D8048);
+        targetLeaf      = C(0x4EAA50);
+        targetLeafLight = C(0x78BF58);
+        targetBloom     = C(0xFACC15);
+        crownScale      = 1.00;
+      } else if (parkHealthValue >= 0.38) {
+        // Active (קצב מעט גבוה)
+        targetMeadow    = C(0x88BF36);
+        targetPine      = C(0x3E8E42);
+        targetLeaf      = C(0x6EAF3C);
+        targetLeafLight = C(0x94CA4E);
+        targetBloom     = C(0xF59E0B);
+        crownScale      = 0.94;
+      } else {
+        // Busy (קצב מהיר)
+        targetMeadow    = C(0xA2AF42);
+        targetPine      = C(0x5A7A3E);
+        targetLeaf      = C(0xB28628);
+        targetLeafLight = C(0xC69A36);
+        targetBloom     = C(0xD97706);
+        crownScale      = 0.88;
+      }
+
+      M_PARK_MEADOW.color.copy(targetMeadow);
+      M_PARK_PINE.color.copy(targetPine);
+      M_PARK_LEAF.color.copy(targetLeaf);
+      M_PARK_LEAF_LIGHT.color.copy(targetLeafLight);
+      M_PARK_BLOOM.color.copy(targetBloom);
+
       for (let i = 0; i < parkPlantings.length; i++) {
         const p = parkPlantings[i];
-        p.wanted = p.rank <= frac;
-        if (p.wanted && !p.obj.visible) { p.obj.visible = true; p.obj.scale.setScalar(0.01); }
-      }
-      // The baseline is already green; improvement adds a fresher, brighter finish.
-      const t = Math.max(0, (parkHealthValue - HEALTHY_PARK) / (1 - HEALTHY_PARK));
-      M_PINE.color.copy(PINE_BASE).lerp(PINE_LUSH, t);
-      M_LEAF.color.copy(LEAF_BASE).lerp(LEAF_LUSH, t);
-      M_LEAF_LIGHT.color.copy(LEAF_LIGHT_BASE).lerp(LEAF_LIGHT_LUSH, t);
-      M_GRASS_LIME.color.copy(C(0x7DBB45)).lerp(C(0x86C74A), t);
-      if (lakeMesh && lakeMesh.material) {
-        // Water starts clear and becomes a little brighter with positive progress.
-        lakeMesh.material.color.copy(C(0x2EA8DE)).lerp(C(0x27B8E6), t);
+        p.wanted = true;
+        p.obj.visible = true;
+        if (p.isReserve && p.obj.crowns) {
+          for (let j = 0; j < p.obj.crowns.length; j++) {
+            p.obj.crowns[j].scale.setScalar(crownScale);
+          }
+        }
       }
     }
 
@@ -3211,7 +3417,7 @@ function normalizedSlotPlacements(input) {
     parkPlantings.forEach(function (p, i) { p.rank = i / Math.max(1, parkPlantings.length - 1); });
 
     applyParkHealth(HEALTHY_PARK);
-    parkPlantings.forEach(function (p) { p.obj.scale.setScalar(p.wanted ? 1 : 0.01); p.obj.visible = p.wanted; });
+    parkPlantings.forEach(function (p) { p.wanted = true; p.obj.scale.setScalar(1); p.obj.visible = true; });
 
     // ────────────────────────────────────────────────────────────────
     // 🚗 11. ROAD VEHICLES (Two-Way Traffic with Rounded Corners)
@@ -3329,10 +3535,25 @@ function normalizedSlotPlacements(input) {
     }
 
     // Citizens walking lively around plazas, crosswalks, nature reserve and shops:
-    // 1. Central Plaza & Fountain stroller
+    // 1. Central Plaza & Fountain stroller (circles around the fountain on the paved promenade, never through the basin or water)
     addCitizen(0x3B82F6, 0x1E293B, 0xEF4444, [
-      {x: -1.8, z: 0.5}, {x: -1.8, z: 2.2}, {x: 1.8, z: 2.2}, {x: 1.8, z: 0.5}
-    ], ["איזה כיף לשבת ליד המזרקה ⛲", "העיר הזו נראית מעולה! 🏙️"], ["Lovely by the fountain ⛲", "This city looks amazing! 🏙️"], false, 0.35);
+      {x: -1.9, z: 0.8},
+      {x: -1.9, z: 1.7},
+      {x: -1.4, z: 2.3},
+      {x: -0.7, z: 2.8},
+      {x:  0.0, z: 2.9},
+      {x:  0.7, z: 2.8},
+      {x:  1.4, z: 2.3},
+      {x:  1.9, z: 1.7},
+      {x:  1.9, z: 0.8},
+      {x:  2.4, z: 1.4},
+      {x:  2.3, z: 2.5},
+      {x:  1.2, z: 3.4},
+      {x:  0.0, z: 3.6},
+      {x: -1.2, z: 3.4},
+      {x: -2.4, z: 2.5},
+      {x: -2.4, z: 1.4}
+    ], ["איזה כיף להסתובב ליד המזרקה ⛲", "העיר הזו נראית מעולה! 🏙️"], ["Lovely stroll around the fountain ⛲", "This city looks amazing! 🏙️"], false, 0.35);
 
     // 2. Crosswalk Pedestrian crossing the street
     addCitizen(0x10B981, 0x334155, null, [
@@ -3645,6 +3866,7 @@ function placeCrowdWalker(record, route, phase) {
 }
 
 function applyVenueCrowds() {
+  if (typeof cancelCityEncounters === "function") cancelCityEncounters();
   crowdSnapshot = allocateCrowds(venueStates);
   const previous = new Map(crowdWalkers.filter(function (c) { return c.obj.visible; }).map(function (c) { return [c.crowdKey, c]; }));
   const used = new Set(), pending = [];
@@ -3694,6 +3916,110 @@ function applyVenueCrowds() {
   crowdBatches.forEach(function (parts, variant) {
     parts.forEach(function (batch) { batch.count = counts[variant]; batch.visible = batch.count > 0; batch.instanceMatrix.needsUpdate = true; });
   });
+}
+
+    // Ambient encounters borrow existing walkers. No timers, additional population or
+// road stops: the native energy scheduler owns their clock and pauses them too.
+const cityEncounters = [];
+let encounterClock = 0, nextEncounterAt = 6, encounterSequence = 0;
+const encounterMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+
+function resetEncounterPose(c) {
+  ['legL', 'legR', 'kneeL', 'kneeR', 'armL', 'armR'].forEach(function (key) {
+    if (c[key]) c[key].rotation.set(0, 0, 0);
+  });
+  c.obj.position.y = c.baseY;
+}
+function finishEncounter(event) {
+  event.people.forEach(function (saved) {
+    const c = saved.c;
+    c.obj.position.copy(saved.position); c.obj.rotation.y = saved.yaw;
+    c.obj.scale.copy(saved.scale); resetEncounterPose(c);
+    c.encounter = null; c.encounterCooldown = encounterClock + 25;
+  });
+  if (event.kind === 'taxi') parkedTaxi.userData.passengerDoor.rotation.y = 0;
+}
+function cancelCityEncounters() {
+  cityEncounters.forEach(finishEncounter); cityEncounters.length = 0;
+}
+function startEncounter(kind, people) {
+  const event = { kind: kind, age: 0, people: people.map(function (c) {
+    return { c: c, position: c.obj.position.clone(), yaw: c.obj.rotation.y, scale: c.obj.scale.clone() };
+  }) };
+  people.forEach(function (c) { c.encounter = event; resetEncounterPose(c); });
+  if (kind === 'taxi') {
+    // An unobstructed approach along the north edge of the transport forecourt.
+    const origin = event.people[0].position;
+    event.route = [origin.clone(), new THREE.Vector3(10.12, Y_WALK, 6.95),
+      new THREE.Vector3(10.12, Y_WALK, 7.42), new THREE.Vector3(10.58, Y_WALK, 7.42)];
+    event.lengths = event.route.slice(1).map(function (p, i) { return p.distanceTo(event.route[i]); });
+    event.travel = event.lengths.reduce(function (a, b) { return a + b; }, 0) / 0.48;
+  }
+  cityEncounters.push(event);
+}
+function taxiEncounterPose(event, distance) {
+  let index = 0;
+  while (index < event.lengths.length - 1 && distance > event.lengths[index]) distance -= event.lengths[index++];
+  const a = event.route[index], b = event.route[index + 1];
+  const c = event.people[0].c;
+  c.obj.position.copy(a).lerp(b, Math.min(1, distance / Math.max(0.001, event.lengths[index])));
+  c.obj.rotation.y = Math.atan2(b.x - a.x, b.z - a.z) + (event.age > event.travel + 7 ? Math.PI : 0);
+}
+function stepCityEncounters(dt) {
+  encounterClock += dt;
+  if (encounterMotion.matches || energyMode === 'critical') { cancelCityEncounters(); return; }
+  for (let i = cityEncounters.length - 1; i >= 0; i--) {
+    const event = cityEncounters[i]; event.age += dt;
+    if (event.people.some(function (s) { return !s.c.obj.visible; })) {
+      finishEncounter(event); cityEncounters.splice(i, 1); continue;
+    }
+    if (event.kind === 'taxi') {
+      const c = event.people[0].c, t = event.age, travel = event.travel;
+      const boarding = t < travel, seated = t >= travel && t < travel + 7;
+      taxiEncounterPose(event, (boarding ? t : seated ? travel : Math.max(0, travel * 2 + 7 - t)) * 0.48);
+      // Hide only the render scale after reaching the cabin; visibility remains owned by crowd allocation.
+      c.obj.scale.copy(event.people[0].scale).multiplyScalar(seated ? 0 : 1);
+      const nearDoor = boarding ? t > travel - 2 : !seated && t < travel + 9;
+      const target = nearDoor ? -1.15 : 0;
+      const door = parkedTaxi.userData.passengerDoor;
+      door.rotation.y += (target - door.rotation.y) * Math.min(1, dt * 5);
+      const stride = seated ? 0 : Math.sin(t * 8) * 0.32;
+      c.legL.rotation.x = stride; c.legR.rotation.x = -stride;
+      c.armL.rotation.x = -stride; c.armR.rotation.x = stride;
+      if (t >= travel * 2 + 7) { finishEncounter(event); cityEncounters.splice(i, 1); }
+    } else {
+      event.people.forEach(function (saved, j) {
+        const c = saved.c, other = event.people[1 - j].c;
+        c.obj.rotation.y = Math.atan2(other.obj.position.x - c.obj.position.x, other.obj.position.z - c.obj.position.z);
+        const wave = event.kind === 'wave' || event.age < 1.1;
+        c.armR.rotation.x = wave ? -2.1 : -0.45 - Math.sin(event.age * 2.5 + j * Math.PI) * 0.20;
+        c.armR.rotation.z = wave ? 0.18 + Math.sin(event.age * 9 + j) * 0.17 : 0.08;
+        c.obj.position.y = c.baseY + Math.sin(event.age * 2 + j) * 0.005;
+      });
+      if (event.age > (event.kind === 'wave' ? 2.2 : 5.5)) {
+        finishEncounter(event); cityEncounters.splice(i, 1);
+      }
+    }
+  }
+  if (encounterClock < nextEncounterAt || cityEncounters.length >= 2) return;
+  nextEncounterAt = encounterClock + 5;
+  const available = crowdWalkers.filter(function (c) {
+    return c.obj.visible && !c.encounter && encounterClock >= (c.encounterCooldown || 0);
+  });
+  if (available.length < 2) return;
+  const passenger = available.find(function (c) { return c.crowdVenue === 'trans_station'; });
+  if (passenger && encounterClock >= (parkedTaxi.userData.nextPickup || 12) && !cityEncounters.some(function (e) { return e.kind === 'taxi'; })) {
+    startEncounter('taxi', [passenger]); parkedTaxi.userData.nextPickup = encounterClock + 65; return;
+  }
+  for (let i = 0; i < available.length; i++) {
+    for (let j = i + 1; j < available.length; j++) {
+      const a = available[i], b = available[j];
+      if (a.crowdVenue !== b.crowdVenue) continue;
+      const distance = a.obj.position.distanceTo(b.obj.position);
+      if (distance < 0.42 || distance > 1.0) continue;
+      startEncounter(encounterSequence++ % 3 === 0 ? 'wave' : 'chat', [a, b]); return;
+    }
+  }
 }
 
 
@@ -4122,7 +4448,7 @@ function animateCompanions(now, dt) {
     let cameraIsOffset = false;
     let savedCameraBeforeBuilding = null;
 
-    const ZOOM_MIN = 0.65, ZOOM_MAX = 3.20, PAN_LIMIT = 11.5;
+    const ZOOM_MIN = 0.65, ZOOM_MAX = 5.50, PAN_LIMIT = 11.5;
 
     function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
@@ -4557,7 +4883,7 @@ window.dioramaEnergyState = function () {
       city_sorting_hub:   { he: ["עמדת המיון והדואר", "הוצאות שעוד לא סווגו"], en: ["Sorting & post", "Transactions not filed yet"] },
       health_pharmacy:    { he: ["בית מרקחת", "תרופות, פארם ובריאות"],       en: ["Pharmacy", "Medicine and everyday health"] },
       museum_curiosities: { he: ["לימודים וקהילה", "השכלה, ספרים ופנאי מסקרן"], en: ["Learning", "Books, courses and curiosity"] },
-      savings_sanctuary:  { he: ["שמורת הטבע", "יציבות וחיסכון פיננסי"], en: ["Nature reserve", "Savings and stability"] }
+      savings_sanctuary:  { he: ["שמורת הטבע", "קצב הוצאות חודשי"], en: ["Nature Reserve", "Monthly spending pace"] }
     };
 
     let currentLang = "he";
@@ -4931,13 +5257,8 @@ window.dioramaEnergyState = function () {
         // Reserve health drives the planting, the foliage colour and the water.
         applyParkHealth(data.parkHealth !== undefined ? data.parkHealth : HEALTHY_PARK);
 
-        // How full the reserve is against the user's own target, shown as lake area.
-        if (typeof data.savingsTarget === "number" && data.savingsTarget > 0) {
-          const fill = clamp((data.savings || 0) / data.savingsTarget, 0, 1);
-          lakeFillTarget = 0.72 + fill * 0.34;
-        } else {
-          lakeFillTarget = 1.0;
-        }
+        // Lake in the nature reserve stays naturally full and serene
+        lakeFillTarget = 1.0;
 
         // Transport spending puts traffic on the roads.
         if (typeof data.transport === "number") setTrafficLevel(data.transport);
@@ -5100,9 +5421,11 @@ window.dioramaEnergyState = function () {
       lakeFill += (lakeFillTarget - lakeFill) * Math.min(1, dt * 2.0);
       if (lakeMesh) lakeMesh.scale.set(lakeFill, 1, lakeFill);
 
+      stepCityEncounters(dt);
+
       // Step walking citizens
       walkingCitizens.forEach(function (c) {
-        if (!c.obj.visible) return;
+        if (!c.obj.visible || c.encounter) return;
         c.t += dt * (c.speed || 1.0);
         const p1 = c.path[c.pIdx];
         const p2 = c.path[(c.pIdx + 1) % c.path.length];
@@ -5309,7 +5632,7 @@ window.dioramaEnergyState = function () {
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,
-        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, crowdBatches: crowdBatches },
+        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, crowdBatches: crowdBatches },
       slots: slotItems,
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },

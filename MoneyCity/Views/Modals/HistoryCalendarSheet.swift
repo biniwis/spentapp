@@ -23,20 +23,30 @@ public struct HistoryCalendarSheet: View {
     }
 
     public var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             // Header
             HStack {
                 Text(l10n.language == .hebrew ? "לוח שנה ומעבר לתאריך" : "Calendar & Jump to Date")
                     .font(.system(size: 17, weight: .bold, design: .default))
                     .foregroundColor(Color.deepNavy)
+
                 Spacer()
-                Button(action: { showCalendarPicker = false }) {
-                    MoneyIcon(.xmarkCircle, size: 22)
+
+                Button(action: {
+                    Haptics.selection()
+                    showCalendarPicker = false
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color(UIColor.secondarySystemFill))
+                        .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 20)
+            .padding(.top, 16)
 
             // Apple Graphical Calendar
             DatePicker(
@@ -47,7 +57,7 @@ public struct HistoryCalendarSheet: View {
             )
             .datePickerStyle(.graphical)
             .tint(Color.deepNavy)
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
 
             // Action buttons
             VStack(spacing: 10) {
@@ -62,13 +72,13 @@ public struct HistoryCalendarSheet: View {
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
+                    .frame(height: 46)
                     .background(Color.deepNavy)
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Button(action: {
                         Haptics.selection()
                         onShowEntireMonth(calendarPickerDate)
@@ -99,8 +109,10 @@ public struct HistoryCalendarSheet: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.bottom, 16)
         }
-        .presentationDetents([.medium, .large], selection: .constant(.large))
+        .presentationDetents([.height(535)])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
     }
 }

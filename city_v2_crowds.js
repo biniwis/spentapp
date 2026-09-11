@@ -116,6 +116,7 @@ function placeCrowdWalker(record, route, phase) {
 }
 
 function applyVenueCrowds() {
+  if (typeof cancelCityEncounters === "function") cancelCityEncounters();
   crowdSnapshot = allocateCrowds(venueStates);
   const previous = new Map(crowdWalkers.filter(function (c) { return c.obj.visible; }).map(function (c) { return [c.crowdKey, c]; }));
   const used = new Set(), pending = [];

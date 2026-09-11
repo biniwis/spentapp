@@ -47,47 +47,54 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
         envLayoutDirection == .rightToLeft || l10n.isHebrew
     }
 
+    private var isEditActive: Bool {
+        isRTL ? (offset < 0) : (offset > 0)
+    }
+
+    private var isDeleteActive: Bool {
+        isRTL ? (offset > 0) : (offset < 0)
+    }
+
     public var body: some View {
         ZStack {
-            // MARK: - Action Buttons Layer Underneath (Fixed physical LTR coordinates)
-            ZStack {
-                // Physical RIGHT gap (revealed when row moves LEFT, offset < 0)
-                if offset < 0 {
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        if isRTL {
-                            editActionButton(width: max(actionWidth, -offset))
-                        } else {
-                            deleteActionButton(width: max(actionWidth, -offset))
-                        }
-                    }
-                }
+            // MARK: - 1. Action Background Surface (Full row colored plane)
+            if isEditActive {
+                Color.deepNavy
+            } else if isDeleteActive {
+                Color.deleteRed
+            }
 
-                // Physical LEFT gap (revealed when row moves RIGHT, offset > 0)
-                if offset > 0 {
-                    HStack(spacing: 0) {
-                        if isRTL {
-                            deleteActionButton(width: max(actionWidth, offset))
-                        } else {
-                            editActionButton(width: max(actionWidth, offset))
-                        }
-                        Spacer(minLength: 0)
-                    }
+            // MARK: - 2. Action Content (Fixed width, pinned to edge)
+            if isEditActive {
+                HStack(spacing: 0) {
+                    if !isRTL { editActionContent }
+                    Spacer(minLength: 0)
+                    if isRTL { editActionContent }
+                }
+            } else if isDeleteActive {
+                HStack(spacing: 0) {
+                    if isRTL { deleteActionContent }
+                    Spacer(minLength: 0)
+                    if !isRTL { deleteActionContent }
                 }
             }
 
-            // MARK: - Foreground Content Layer
+            // MARK: - 3. Opaque Foreground Transaction Layer
             content()
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity)
                 .background(Color.appBackground)
                 .contentShape(Rectangle())
                 .offset(x: offset)
                 .onTapGesture {
-                    if openSwipeRowID != nil || offset != 0 {
+                    if offset != 0 || openSwipeRowID != nil {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
                             offset = 0
                             openSwipeRowID = nil
                         }
+                    } else {
+                        onEdit()
                     }
                 }
                 .simultaneousGesture(
@@ -250,7 +257,8 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                 )
         }
         .environment(\.layoutDirection, .leftToRight)
-        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity)
+        .clipped()
         .onChange(of: openSwipeRowID) { _, newOpenID in
             if newOpenID != id && offset != 0 {
                 withAnimation(.spring(response: 0.26, dampingFraction: 0.85)) {
@@ -260,8 +268,8 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
         }
     }
 
-    // MARK: - Edit Action Button View
-    private func editActionButton(width: CGFloat) -> some View {
+    // MARK: - Edit Action Content View
+    private var editActionContent: some View {
         Button(action: {
             withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
                 offset = 0
@@ -269,30 +277,25 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
             }
             onEdit()
         }) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.deepNavy)
+            VStack(spacing: 3) {
+                MoneyIcon(.pencil, size: 20, color: .white)
+                    .scaleEffect(isCommitArmed ? 1.14 : 1.0)
+                    .animation(.spring(response: 0.18, dampingFraction: 0.65), value: isCommitArmed)
 
-                VStack(spacing: 3) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: isCommitArmed ? 20 : 17, weight: .bold))
-                        .foregroundColor(.white)
-                        .scaleEffect(isCommitArmed ? 1.14 : 1.0)
-                        .animation(.spring(response: 0.18, dampingFraction: 0.65), value: isCommitArmed)
-
-                    Text(l10n.language == .hebrew ? "עריכה" : "Edit")
-                        .font(.system(size: 11.5, weight: .semibold, design: .default))
-                        .foregroundColor(.white.opacity(isCommitArmed ? 0.0 : 0.95))
-                        .animation(.easeInOut(duration: 0.15), value: isCommitArmed)
-                }
+                Text(l10n.language == .hebrew ? "עריכה" : "Edit")
+                    .font(.system(size: 11.5, weight: .semibold, design: .default))
+                    .foregroundColor(.white.opacity(isCommitArmed ? 0.0 : 0.95))
+                    .animation(.easeInOut(duration: 0.15), value: isCommitArmed)
             }
-            .frame(width: width, height: 50)
+            .frame(width: actionWidth)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Delete Action Button View
-    private func deleteActionButton(width: CGFloat) -> some View {
+    // MARK: - Delete Action Content View
+    private var deleteActionContent: some View {
         Button(action: {
             withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
                 offset = 0
@@ -300,21 +303,16 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
             }
             onDelete()
         }) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(red: 239/255, green: 68/255, blue: 68/255))
+            VStack(spacing: 3) {
+                MoneyIcon(.trash, size: 20, color: .white)
 
-                VStack(spacing: 3) {
-                    Image(systemName: "trash.fill")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.white)
-
-                    Text(l10n.language == .hebrew ? "מחיקה" : "Delete")
-                        .font(.system(size: 11.5, weight: .semibold, design: .default))
-                        .foregroundColor(.white.opacity(0.95))
-                }
+                Text(l10n.language == .hebrew ? "מחיקה" : "Delete")
+                    .font(.system(size: 11.5, weight: .semibold, design: .default))
+                    .foregroundColor(.white.opacity(0.95))
             }
-            .frame(width: width, height: 50)
+            .frame(width: actionWidth)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

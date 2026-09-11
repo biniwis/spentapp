@@ -4086,10 +4086,12 @@ ${threeMinJs}
       targetCam.lookY = Math.max(0.2, (w.y || 0) + 0.35);
       targetCam.lookZ = clamp(w.z + groundOffset * fz, -PAN_LIMIT, PAN_LIMIT);
 
-      // Hybrid zoom: apply subtle one-time zoom only once and only when untouched at default zoom
+      // Hybrid zoom: apply one-time focus zoom only once and only when untouched at default zoom.
+      // For default city camera, tunes to ~1.93 (baseCityZoom * 1.44) for a clear building focus.
       if (!userAdjustedZoom && !buildingFocusHasAppliedAutoZoom) {
         const base = modeZoom(currentMode);
-        targetCam.zoom = clamp(base * 1.18, ZOOM_MIN, ZOOM_MAX);
+        const focusFactor = (currentMode === "city") ? 1.44 : 1.15;
+        targetCam.zoom = clamp(base * focusFactor, ZOOM_MIN, ZOOM_MAX);
         buildingFocusHasAppliedAutoZoom = true;
       }
       checkCameraOffset();

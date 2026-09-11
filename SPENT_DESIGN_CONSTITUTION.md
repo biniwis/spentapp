@@ -847,9 +847,7 @@ The app can have personality without telling the user how to feel.
 
 Hebrew is a first-class layout, not an afterthought.
 
-Every new component must be checked in:
-- Hebrew RTL
-- English LTR
+New components should support Hebrew RTL and English LTR where relevant.
 
 Mirror spatial logic where appropriate.
 
@@ -1010,82 +1008,7 @@ Do not jump straight to #6.
 
 ---
 
-# 36. Rules for Coding Agents
-
-Before changing any UI:
-
-1. Read this document.
-2. Read `MoneyCity/Models/Theme.swift`.
-3. Inspect the existing screen and nearby components.
-4. Reuse project colors, typography, icons, radii, spacing, and interaction patterns.
-5. Do not invent a parallel design system.
-6. Do not redesign unrelated screens.
-7. Do not “modernize” by adding gradient/glass/glow.
-8. Do not interpret minimalism as monochrome.
-9. Preserve business logic unless the task explicitly includes logic.
-10. Respect Hebrew RTL and English LTR.
-11. Preserve accessibility.
-12. Build and visually inspect the result.
-
-If introducing:
-- a new global color
-- a new corner-radius scale
-- a new icon language
-- a new global shadow style
-- a new typography family
-- a new illustration style
-
-stop and treat it as a design-system change, not a local implementation detail.
-
----
-
-# 37. Agent Self-Review Before Finishing
-
-Before declaring a UI task complete, answer:
-
-### Consistency
-- Does this look like SPENT without seeing the logo?
-- Did I reuse existing tokens?
-- Did I accidentally create a second design language?
-
-### Color
-- Is the screen expressive enough?
-- Is color controlled?
-- Did I accidentally make everything sterile?
-- Did I add neon / glow / AI-fintech effects?
-
-### Hierarchy
-- Is there one obvious visual hero?
-- Is the primary action clear?
-- Are secondary elements actually secondary?
-
-### Containers
-- Did I add unnecessary cards?
-- Are there cards inside cards?
-- Could whitespace replace a container?
-
-### Motion
-- Does interaction respond immediately?
-- Is motion helping understanding?
-- Does Reduce Motion still work?
-
-### Accessibility
-- Hebrew RTL?
-- English LTR?
-- Dynamic Type?
-- VoiceOver?
-- Touch targets?
-
-### Product
-- Is the copy descriptive rather than judgmental?
-- Did I accidentally turn this into a mobile game?
-- Does the city metaphor still make sense?
-
-If any answer is weak, revise before finishing.
-
----
-
-# 38. Canonical SPENT Formula
+# 36. Canonical SPENT Formula
 
 When uncertain, use this formula:
 
@@ -1104,7 +1027,7 @@ That is SPENT.
 
 ---
 
-# 39. Final North Star
+# 37. Final North Star
 
 SPENT should feel like:
 

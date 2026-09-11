@@ -1,161 +1,307 @@
 # AGENTS.md — SPENT Repository Instructions
 
-## UI / Visual Design — Mandatory
+## Authority and purpose
 
-Before implementing, refactoring, or reviewing any user-facing UI, read:
+This file controls how coding agents work in this repository:
+scope, inspection, planning, testing, Preview, Simulator, verification and completion behavior.
 
-1. `SPENT_DESIGN_CONSTITUTION.md`
-2. `MoneyCity/Models/Theme.swift`
-3. the existing screen and its nearby reusable components
+`SPENT_DESIGN_CONSTITUTION.md` controls what SPENT should look and feel like.
 
-`SPENT_DESIGN_CONSTITUTION.md` is the canonical source of truth for SPENT's visual language.
+For workflow and verification, `AGENTS.md` wins.
 
-### Non-negotiable rules
+## Core rule
 
-- SPENT is **minimal in structure, expressive in color**.
-- Do **not** interpret minimalism as all-white / gray / sterile.
-- Use the existing SPENT and category/icon colors confidently but intentionally.
-- No generic AI-fintech aesthetic:
-  - no neon purple-blue gradients
-  - no glow
-  - no glassmorphism overload
-  - no luminous gradient blobs
-  - no colored shadow effects
-  - no glossy 3D coins / trophies
-  - no random sparkles / confetti
-- Reuse existing `Theme.swift` tokens before creating new colors, radii, shadows, or typography styles.
-- Use existing `MoneyIcon` / category icon language when available.
-- Avoid cards-inside-cards and unnecessary containers.
-- Functional screens stay calmer; city/story/recap/onboarding surfaces may be more graphic and colorful.
-- Preserve Hebrew RTL, English LTR, Dynamic Type, VoiceOver, and Reduce Motion.
-- Do not change business logic as part of a visual task unless explicitly requested.
-- Do not redesign unrelated screens.
-- Copy must remain descriptive and non-judgmental; avoid shame, praise, XP/level/streak game language.
+Work proportionally to the task.
 
-### Design-system changes require explicit treatment
+Do not turn a narrow request into:
+- an audit
+- a refactor
+- a test campaign
+- a Simulator investigation
+- a design-system review
+- a repository-wide search
 
-Do not casually introduce:
-- a new global palette
-- a new font family
-- new global corner radii
-- a new shadow system
-- a new icon style
-- a new illustration language
+Default workflow:
 
-If the requested design appears to require one, call it out explicitly before treating it as a local implementation detail.
+1. understand the request
+2. inspect only the relevant implementation
+3. make the requested change
+4. perform the minimum relevant check
+5. stop
 
-## Verification should match the task
+Over-verification is a defect when it slows normal iterative work without adding meaningful confidence.
 
-### Small visual change
-Examples:
-- spacing
-- color
-- typography
-- copy
-- corner radius
-- one field treatment
-- small component adjustment
+## Scope discipline
 
-Do:
-- inspect the relevant component
-- make the change
-- one quick sanity check
+The user's requested scope is authoritative.
 
-Do NOT:
-- run the full test suite
-- create screenshots by default
-- inspect unrelated screens
-- do a repository audit
+If the user says:
+- only change this
+- small fix
+- just polish this
+- do not redesign
+- work only on this file/component/screen
 
-A screenshot is NOT required for tiny obvious changes.
-
-### Visual design / illustration change
-Examples:
-- onboarding city illustration
-- layout composition
-- archive card artwork
-- animated visual state
-- a screen where visual output cannot be judged reliably from code alone
-
-Do:
-- implement the change
-- run one final visual check in Simulator or Preview
-- if useful, capture ONE final screenshot or one small set of final states
-
-Do NOT:
-- take screenshots after every edit
-- repeatedly compare many intermediate screenshots
-- rebuild/relaunch after every tiny adjustment
-- create a long visual QA report
-
-The purpose of the visual check is only to confirm the final composition looks correct.
-
-### Interaction / state change
-Examples:
-- text field focus
-- swipe gesture
-- navigation
-- button behavior
-
-Do:
-- one targeted runtime check of the changed behavior
-- one build/compile check if appropriate
-
-Do NOT run unrelated tests.
-
-### Large / risky change
-Only for:
-- persistence
-- data migration
-- transaction ingest
-- Wallet/App Intents
-- backup/restore
-- architecture
-- release audit
-- security-sensitive code
-- explicit comprehensive QA request
-
-Only these should normally trigger broader tests.
-
-## Do not repeat checks
-
-Once a relevant check passes, do not keep repeating it unless later code changes could have broken it.
+treat that scope as strict.
 
 Do not:
-- rerun the same test repeatedly
-- regenerate the same screenshots
-- rebuild unchanged code
-- reread the same large documents
-- reopen unrelated screens
+- refactor unrelated code
+- clean up unrelated issues
+- inspect unrelated features
+- broaden the task
+- redesign adjacent screens
+- perform unsolicited audits
+- continue looking for improvements after the requested task is complete
+
+## Planning behavior
+
+For straightforward small and medium tasks, implement directly.
+
+Do not create:
+- long implementation plans
+- review checkpoints
+- approval documents
+- large verification plans
+
+unless:
+- the user explicitly asks for a plan
+- the task is genuinely ambiguous
+- the task is large/risky
+- a real architecture/design-system decision requires approval
+
+A local UI edit should not become a planning exercise.
 
 ## Design document usage
 
-For small follow-up UI work, do not reread the full `SPENT_DESIGN_CONSTITUTION.md`.
+`SPENT_DESIGN_CONSTITUTION.md` is the canonical visual reference.
 
-Use the design rules already summarized in `AGENTS.md`.
+For NEW or SUBSTANTIAL visual work:
+- read only the relevant sections of the constitution
+- inspect relevant Theme tokens
+- inspect the target component
 
-Read the full constitution only for:
-- new substantial UI
-- a new visual language
-- a broad redesign
-- uncertainty about a design rule
+For SMALL follow-up visual changes:
+- do not reread the full constitution
+- use the existing implementation and the summary below
+- open the constitution only if there is genuine uncertainty
 
-## Default rule
+### SPENT visual summary
 
-For normal iterative design work:
+- minimal in structure, expressive in color
+- modern, young, clean, graphic, warm, intentional
+- native in interaction
+- city-led in personality
+- avoid unnecessary cards and containers
+- no generic AI-fintech aesthetic
+- no glow
+- no glassmorphism overload
+- no luminous gradient blobs
+- no colored shadow effects
+- no glossy finance objects
+- no random sparkles/confetti
+- reuse existing Theme tokens when practical
+- functional screens stay calmer
+- onboarding/city/recap/archive may be more graphic and expressive
+- preserve business logic during visual work unless explicitly requested
+- copy stays descriptive and non-judgmental
 
-1. inspect the target
-2. implement
-3. one relevant final check
-4. stop
+These are working constraints, not a mandatory QA checklist.
 
-Visual task:
-one final visual check is good.
+## Small tasks
 
-Tiny UI task:
-a screenshot is usually unnecessary.
+Examples:
+- spacing/padding
+- color
+- typography/copy
+- corner radius
+- one field treatment
+- one small component
+- one local illustration tweak
+- one local animation tweak
+- one alignment issue
+- one small interaction fix
 
-Risky logic task:
-use deeper verification.
+For small tasks:
 
-Do not turn normal UI iteration into release QA.
+- inspect only the target file/component and directly adjacent code if necessary
+- make the change directly
+- do not run the full test suite
+- do not inspect unrelated screens
+- do not perform repository-wide audits
+- do not create screenshots by default
+- do not open Simulator by default
+- do not repeatedly build/relaunch
+- do not perform broad RTL/accessibility/design audits unless the change directly affects them
+
+Verification:
+- one quick targeted sanity check only if necessary
+- no full app launch unless the requested behavior genuinely requires runtime integration
+
+Then stop.
+
+## Medium tasks
+
+Examples:
+- several related UI components
+- a contained interaction/state change
+- one screen redesign
+- one illustration system
+- one local feature
+
+For medium tasks:
+
+- inspect only the relevant feature files
+- implement the requested change
+- use targeted verification only
+- one compile/build check when appropriate
+- one final visual check only when the result cannot be judged from code/Preview alone
+
+Do not:
+- run unrelated test suites
+- inspect unrelated systems
+- repeatedly relaunch Simulator
+- capture many screenshots
+- create long QA reports
+
+## Large / risky tasks
+
+Broader verification is appropriate only for:
+
+- persistence / SwiftData
+- migrations
+- transaction ingest
+- Wallet / App Intents
+- backup / restore
+- security-sensitive work
+- major architecture changes
+- release audits
+- large cross-feature refactors
+- tasks where the user explicitly requests comprehensive testing
+
+Only these should normally trigger broader tests or repository-wide inspection.
+
+## Visual verification — Preview first
+
+For isolated SwiftUI visual components, use this order:
+
+1. SwiftUI Preview
+2. minimal targeted compile/build check
+3. Simulator only if the requested behavior genuinely depends on full app runtime state
+
+### Tiny visual change
+
+Usually:
+- no Simulator
+- no screenshots
+- no Preview unless it actually helps
+
+### Meaningful illustration / composition change
+
+Examples:
+- onboarding city illustration
+- recap artwork
+- archive city artwork
+- complex SwiftUI visual scene
+
+Default:
+- implement
+- ONE final SwiftUI Preview check when practical
+- stop
+
+Only use Simulator if Preview cannot exercise the behavior being changed.
+
+## Hard rule: no Simulator-state investigation for isolated visual work
+
+For an isolated visual component, do NOT:
+
+- run `simctl get_app_container`
+- inspect Simulator app containers
+- read or modify Simulator `defaults`
+- inspect App Group preferences
+- search for onboarding-completion flags just to make a screen appear
+- reset app state
+- delete/reinstall the app
+- manipulate persisted data to reach the screen
+- repeatedly launch the app to force navigation to the target
+
+If a screen is gated by onboarding, persistence, navigation, or app state:
+verify the isolated component with Preview instead.
+
+Do not turn:
+“I need to see this SwiftUI view”
+
+into:
+“I need to investigate the entire runtime state of the app.”
+
+If Simulator is genuinely necessary:
+- launch it once near the end
+- check only the requested behavior
+- do not manipulate unrelated app state
+- stop
+
+## Interaction verification
+
+For a local interaction change such as:
+- text-field focus
+- swipe
+- button behavior
+- local navigation
+
+perform one targeted runtime check only when needed.
+
+Do not run unrelated tests.
+
+## Accessibility / RTL / Reduce Motion
+
+These remain product requirements.
+
+They are NOT a mandatory full audit for every task.
+
+Check them when:
+- the changed code affects them
+- the user explicitly asks
+- the task introduces a substantial new component where they are relevant
+
+Do not run a full RTL/LTR/VoiceOver/Dynamic Type review for a tiny unrelated visual tweak.
+
+## Do not repeat verification
+
+Once a relevant check passes, do not repeat it unless later edits could invalidate it.
+
+Do not repeatedly:
+- rerun the same test
+- rebuild unchanged targets
+- relaunch the same screen
+- regenerate screenshots
+- reread the same files
+- reread the full design constitution
+- recheck unrelated behavior
+
+One successful relevant check is enough.
+
+## Completion behavior
+
+For small and medium tasks:
+- summarize what changed in 1–3 short bullets
+- mention only the relevant check actually performed
+- stop
+
+Do not:
+- produce a long implementation report
+- list theoretical risks unrelated to the task
+- continue searching after completion
+- run extra checks “just to be safe”
+
+## Default principle
+
+Normal visual iteration is NOT release QA.
+
+Small UI work should stay small.
+
+Medium visual work should get one meaningful final check.
+
+Deep verification is reserved for genuinely risky work.
+
+For isolated visual components:
+Preview first.
+Simulator only when truly required.

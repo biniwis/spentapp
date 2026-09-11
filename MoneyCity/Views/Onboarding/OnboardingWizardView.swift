@@ -87,7 +87,7 @@ public struct OnboardingWizardView: View {
                     mayorName: userNameInput,
                     targetAmountText: budgetInputText,
                     isRTL: isHebrew,
-                    height: (focusedField != nil) ? 120 : 215
+                    height: (focusedField != nil) ? 130 : 230
                 )
                 .animation(.spring(response: 0.35, dampingFraction: 0.82), value: focusedField)
                 .padding(.bottom, focusedField != nil ? 4 : 8)

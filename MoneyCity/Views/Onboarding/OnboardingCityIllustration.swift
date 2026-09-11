@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Onboarding Step definition used across illustration and wizard
+/// Onboarding step definition used by the wizard and illustration.
 public enum OnboardingStep: Int, CaseIterable {
     case concept = 1
     case mayor = 2
@@ -9,16 +9,11 @@ public enum OnboardingStep: Int, CaseIterable {
     case finalReveal = 5
 }
 
-/// Continuous Miniature City Scene for SPENT Onboarding
+/// A single art-directed vector city scene for SPENT onboarding.
 ///
-/// Editorial, architectural illustration adhering to SPENT_DESIGN_CONSTITUTION.md:
-/// - Sits DIRECTLY on canvas, zero enclosing frames or card borders.
-/// - Layered composition with 3 depth levels (Background silhouettes, Main city architecture, Foreground nature/plaza).
-/// - Clear hierarchy: substantial Mid-Rise hero building, warm lower commercial café, secondary vertical wing.
-/// - Natural park & water integrated alongside urban plaza — zero road-through-water collisions.
-/// - Partial street promenade that stops before nature rather than cutting across the screen.
-/// - Authentic, understated civic signpost.
-/// - Restrained SPENT palette: Sky Blue, SPENT Green, Carbon, warm sand/cream, coral/orange accents.
+/// Important implementation rule:
+/// this is one 390×215 illustration with shared coordinates. SwiftUI controls
+/// reveal/motion; the visual design itself lives in the Canvas paths below.
 public struct OnboardingCityScene: View {
     let step: OnboardingStep
     let mayorName: String
@@ -27,11 +22,10 @@ public struct OnboardingCityScene: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Step 1 staged reveals
-    @State private var showTx1: Bool = false
-    @State private var showBuilding1: Bool = false
-    @State private var showTx2: Bool = false
-    @State private var showBuilding2: Bool = false
+    @State private var showTx1 = false
+    @State private var showCommercial = false
+    @State private var showTx2 = false
+    @State private var showHero = false
 
     let height: CGFloat
 
@@ -51,476 +45,749 @@ public struct OnboardingCityScene: View {
 
     public var body: some View {
         GeometryReader { geo in
-            let width = geo.size.width
-            let midX = width / 2
-            let dir: CGFloat = isRTL ? -1.0 : 1.0
+            let widthScale = geo.size.width / VectorCityLayer.designWidth
+            let compact = geo.size.height < 170
+            let compactScale = geo.size.height / 150
+            let sceneScale = compact ? min(widthScale, compactScale) : widthScale
+            let renderedWidth = VectorCityLayer.designWidth * sceneScale
+            let xOffset = (geo.size.width - renderedWidth) / 2
+            let yOffset: CGFloat = compact ? -24 : 0
 
-            ZStack {
-                // 1. Warm base ground tone (soft foundation)
-                groundFoundation(width: width)
+            ZStack(alignment: .topLeading) {
+                artwork
+                    .scaleEffect(x: isRTL ? -1 : 1, y: 1, anchor: .center)
 
-                // 2. Background Layer: Large low-contrast architectural silhouettes (scale & depth)
-                distantArchitecturalMasses(midX: midX, dir: dir)
-
-                // 3. Middle Layer — Main City Architecture:
-                // Building 3: Step 4+ Secondary Vertical Wing (normal architectural expansion)
-                if step.rawValue >= OnboardingStep.automation.rawValue {
-                    secondaryVerticalWing
-                        .position(x: midX + dir * 42, y: 124)
-                        .transition(reduceMotion ? .opacity : .offset(y: 18).combined(with: .opacity))
-                }
-
-                // Building 4: Step 5 Terrace Annex (completes rich urban skyline)
-                if step.rawValue == OnboardingStep.finalReveal.rawValue {
-                    terraceAnnexBuilding
-                        .position(x: midX - dir * 108, y: 135)
-                        .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
-                }
-
-                // Building 1: Main Mid-Rise Hero Building (tall, confident, approaches top edge)
-                if showBuilding2 || step.rawValue > 1 {
-                    mainMidriseHero
-                        .position(x: midX - dir * 6, y: 108)
-                        .transition(reduceMotion ? .opacity : .offset(y: 18).combined(with: .opacity))
-                }
-
-                // Building 2: Lower Commercial Building (Café / Bakery, warm cream & orange canopy)
-                if showBuilding1 || step.rawValue > 1 {
-                    commercialCafeBuilding
-                        .position(x: midX - dir * 56, y: 140)
-                        .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
-                }
-
-                // 4. Foreground Layer — Nature, Plaza & Water:
-                // Partial Paved Promenade (under buildings, stops before park — NO collision!)
-                partialPavedStreet(width: width, midX: midX, dir: dir)
-
-                // Integrated Park & Water Landscape (Step 3+)
-                if step.rawValue >= OnboardingStep.spendingTarget.rawValue {
-                    integratedParkLandscape(midX: midX, dir: dir)
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
-                }
-
-                // Urban Trees along plaza / street edge
-                plazaTreesLayer(midX: midX, dir: dir)
-
-                // 5. Authentic Civic Signpost (Step 2+)
                 if step.rawValue >= OnboardingStep.mayor.rawValue {
-                    civicSignpost
-                        .position(x: midX - dir * 26, y: 156)
-                        .transition(reduceMotion ? .opacity : .offset(y: 8).combined(with: .opacity))
+                    mayorPlaque
+                        .position(x: mirroredX(70), y: 157)
                 }
 
-                // 6. Step 1 Animated transaction tags
                 if step == .concept {
-                    transactionTagsLayer(midX: midX, dir: dir)
+                    transactionLabels
                 }
             }
+            .frame(
+                width: VectorCityLayer.designWidth,
+                height: VectorCityLayer.designHeight,
+                alignment: .topLeading
+            )
+            .scaleEffect(sceneScale, anchor: .topLeading)
+            .offset(x: xOffset, y: yOffset)
         }
         .frame(height: height)
         .clipped()
         .accessibilityHidden(true)
         .allowsHitTesting(false)
         .onAppear {
-            runStep1Sequence()
+            runConceptSequence()
         }
         .onChange(of: step) { _, newStep in
             if newStep == .concept {
-                runStep1Sequence()
+                runConceptSequence()
             }
         }
     }
 
-    // MARK: - 1. Soft Base Foundation
-    private func groundFoundation(width: CGFloat) -> some View {
-        Rectangle()
-            .fill(Color(red: 247/255, green: 245/255, blue: 240/255).opacity(0.8))
-            .frame(width: width + 60, height: 60)
-            .position(x: width / 2, y: 185)
-    }
-
-    // MARK: - 2. Distant Architectural Masses (1-2 large subtle silhouettes, depth & scale)
-    private func distantArchitecturalMasses(midX: CGFloat, dir: CGFloat) -> some View {
-        ZStack {
-            // Silhouette A: Tall, wide primary background mass approaching the upper edge
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Color(red: 232/255, green: 236/255, blue: 242/255))
-                .frame(width: 74, height: 138)
-                .position(x: midX + dir * 18, y: 98)
-
-            // Silhouette B: Stepped secondary volume creating natural setback rhythm
-            RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color(red: 236/255, green: 240/255, blue: 245/255))
-                .frame(width: 52, height: 96)
-                .position(x: midX - dir * 42, y: 119)
-        }
-        .opacity(0.88)
-    }
-
-    // MARK: - 3. Building 1 — Main Mid-Rise Hero Building
-    private var mainMidriseHero: some View {
-        VStack(spacing: 0) {
-            // Rooftop setback volume (approaches top edge)
-            HStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 241/255, green: 245/255, blue: 252/255))
-                    .frame(width: 44, height: 20)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 2)
-                            .stroke(Color.primaryBlue.opacity(0.2), lineWidth: 1)
-                    )
-                Spacer(minLength: 0)
-            }
-            .frame(width: 66)
-
-            // Primary architectural block
-            ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 2.5)
-                    .fill(Color(red: 248/255, green: 250/255, blue: 254/255))
-                    .frame(width: 66, height: 95)
-
-                // Bold SPENT Primary Blue architectural cornice / band
-                Rectangle()
-                    .fill(Color.primaryBlue)
-                    .frame(width: 66, height: 4.5)
-
-                // Fenestration grid: 3 columns x 4 rows
-                VStack(spacing: 6) {
-                    ForEach(0..<4, id: \.self) { _ in
-                        HStack(spacing: 7) {
-                            windowPane
-                            windowPane
-                            windowPane
-                        }
-                    }
-                }
-                .offset(y: 14)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.045), radius: 4, y: 2)
-    }
-
-    private var windowPane: some View {
-        RoundedRectangle(cornerRadius: 1.5)
-            .fill(Color(red: 219/255, green: 234/255, blue: 254/255))
-            .frame(width: 10, height: 10)
-    }
-
-    // MARK: - 4. Building 2 — Lower Commercial Building (Café / Retail)
-    private var commercialCafeBuilding: some View {
-        VStack(spacing: 0) {
-            // Cantilevered flat canopy with warm orange/coral accent stripe
-            HStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.themeOrange)
-                    .frame(width: 74, height: 4.5)
-                Spacer(minLength: 0)
-            }
-            .frame(width: 76)
-
-            // Facade body: warm cream / sand with expansive storefront glass
-            ZStack(alignment: .bottomLeading) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 254/255, green: 246/255, blue: 236/255))
-                    .frame(width: 72, height: 49)
-
-                HStack(spacing: 5) {
-                    // Large display window 1
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 254/255, green: 228/255, blue: 198/255).opacity(0.85))
-                        .frame(width: 20, height: 28)
-
-                    // Large display window 2
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 254/255, green: 228/255, blue: 198/255).opacity(0.85))
-                        .frame(width: 20, height: 28)
-
-                    // Warm timber entrance doorway
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 154/255, green: 52/255, blue: 18/255))
-                        .frame(width: 14, height: 34)
-                }
-                .padding(.horizontal, 5)
-                .padding(.bottom, 3)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
-    }
-
-    // MARK: - 5. Building 3 — Secondary Vertical Wing (Step 4+)
-    private var secondaryVerticalWing: some View {
-        VStack(spacing: 0) {
-            // Calm SPENT Green top band
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color.spentGreen)
-                .frame(width: 46, height: 4)
-
-            // Crisp architectural body
-            ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 243/255, green: 247/255, blue: 251/255))
-                    .frame(width: 46, height: 82)
-
-                // Vertical architectural fenestration
-                HStack(spacing: 6) {
-                    VStack(spacing: 6) {
-                        verticalWindowSlot
-                        verticalWindowSlot
-                        verticalWindowSlot
-                    }
-                    VStack(spacing: 6) {
-                        verticalWindowSlot
-                        verticalWindowSlot
-                        verticalWindowSlot
-                    }
-                }
-                .offset(y: 12)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
-    }
-
-    private var verticalWindowSlot: some View {
-        RoundedRectangle(cornerRadius: 1)
-            .fill(Color(red: 204/255, green: 225/255, blue: 245/255))
-            .frame(width: 9, height: 14)
-    }
-
-    // MARK: - 6. Building 4 — Terrace Annex (Step 5)
-    private var terraceAnnexBuilding: some View {
-        VStack(spacing: 0) {
-            // Minimal wooden pergola / roofline
-            HStack(spacing: 3) {
-                ForEach(0..<4, id: \.self) { _ in
-                    Rectangle()
-                        .fill(Color(red: 180/255, green: 145/255, blue: 115/255))
-                        .frame(width: 6, height: 3)
-                }
-            }
-            .frame(width: 48, height: 4)
-
-            ZStack(alignment: .bottom) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 250/255, green: 248/255, blue: 244/255))
-                    .frame(width: 48, height: 58)
-
-                HStack(spacing: 6) {
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 225/255, green: 236/255, blue: 248/255))
-                        .frame(width: 14, height: 22)
-                    RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 225/255, green: 236/255, blue: 248/255))
-                        .frame(width: 14, height: 22)
-                }
-                .padding(.bottom, 6)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.035), radius: 3, y: 1.5)
-    }
-
-    // MARK: - 7. Partial Paved Street / Promenade (Under buildings only — stops before nature!)
-    private func partialPavedStreet(width: CGFloat, midX: CGFloat, dir: CGFloat) -> some View {
-        let streetStartX: CGFloat = isRTL ? (width + 30) : -30
-        let streetEndX: CGFloat = midX + dir * 20
-        let streetWidth = abs(streetStartX - streetEndX)
-        let streetCenterX = (streetStartX + streetEndX) / 2
-
-        return ZStack(alignment: .top) {
-            // Paved asphalt / promenade surface
-            Rectangle()
-                .fill(Color(red: 232/255, green: 235/255, blue: 240/255))
-                .frame(width: streetWidth, height: 18)
-
-            // Thin curb / sidewalk separator
-            Rectangle()
-                .fill(Color(red: 215/255, green: 219/255, blue: 226/255))
-                .frame(width: streetWidth, height: 1.5)
-        }
-        .position(x: streetCenterX, y: 167)
-    }
-
-    // MARK: - 8. Integrated Park & Water (Step 3+ — wider organic shape, nestled pond, no road collision)
-    private func integratedParkLandscape(midX: CGFloat, dir: CGFloat) -> some View {
-        let parkCenterX = midX + dir * 105
+    private var artwork: some View {
+        let concept = step == .concept
+        let commercialVisible = !concept || showCommercial
+        let heroVisible = !concept || showHero
+        let parkVisible = step.rawValue >= OnboardingStep.spendingTarget.rawValue
+        let secondaryVisible = step.rawValue >= OnboardingStep.automation.rawValue
+        let finalVisible = step == .finalReveal
+        let motion: Animation = reduceMotion
+            ? .linear(duration: 0.01)
+            : .spring(response: 0.36, dampingFraction: 0.88)
 
         return ZStack {
-            // Sweeping organic green lawn
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(red: 220/255, green: 248/255, blue: 234/255))
-                .frame(width: 155, height: 52)
-                .position(x: parkCenterX, y: 172)
+            VectorCityLayer(kind: .background)
+            VectorCityLayer(kind: .plaza)
 
-            // Miniature nestled lake / water shape
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(red: 186/255, green: 230/255, blue: 253/255))
-                .frame(width: 70, height: 22)
-                .position(x: parkCenterX + dir * 12, y: 175)
+            VectorCityLayer(kind: .park)
+                .opacity(parkVisible ? 1 : 0)
+                .scaleEffect(
+                    x: parkVisible ? 1 : 0.88,
+                    y: parkVisible ? 1 : 0.92,
+                    anchor: .bottomTrailing
+                )
 
-            // Natural park trees nestled in the landscape
-            stretchedCanopyTree(color: Color.spentGreen)
-                .position(x: parkCenterX - dir * 42, y: 150)
+            VectorCityLayer(kind: .secondary)
+                .opacity(secondaryVisible ? 1 : 0)
+                .offset(y: secondaryVisible ? 0 : 16)
 
-            pencilCypressTree(color: Color(red: 4/255, green: 120/255, blue: 87/255))
-                .position(x: parkCenterX + dir * 48, y: 154)
+            VectorCityLayer(kind: .hero)
+                .opacity(heroVisible ? 1 : 0)
+                .scaleEffect(x: 1, y: heroVisible ? 1 : 0.02, anchor: .bottom)
 
-            overlappingCanopyTree(c1: Color.spentGreen, c2: Color(red: 16/255, green: 185/255, blue: 129/255))
-                .position(x: parkCenterX + dir * 10, y: 144)
+            VectorCityLayer(kind: .annex)
+                .opacity(finalVisible ? 1 : 0)
+                .offset(y: finalVisible ? 0 : 14)
+
+            VectorCityLayer(kind: .commercial)
+                .opacity(commercialVisible ? 1 : 0)
+                .scaleEffect(x: 1, y: commercialVisible ? 1 : 0.02, anchor: .bottom)
+
+            VectorCityLayer(kind: .urbanTree)
+                .opacity(heroVisible ? 1 : 0)
+                .scaleEffect(heroVisible ? 1 : 0.1, anchor: .bottom)
+
+            VectorCityLayer(kind: .parkTrees)
+                .opacity(parkVisible ? 1 : 0)
+                .scaleEffect(parkVisible ? 1 : 0.2, anchor: .bottom)
+
+            VectorCityLayer(kind: .finalFoliage)
+                .opacity(finalVisible ? 1 : 0)
+                .scaleEffect(finalVisible ? 1 : 0.2, anchor: .bottom)
         }
+        .frame(width: VectorCityLayer.designWidth, height: VectorCityLayer.designHeight)
+        .animation(motion, value: commercialVisible)
+        .animation(motion, value: heroVisible)
+        .animation(motion, value: parkVisible)
+        .animation(motion, value: secondaryVisible)
+        .animation(motion, value: finalVisible)
     }
 
-    // MARK: - 9. Urban Trees Layer (Along plaza & street edge)
-    private func plazaTreesLayer(midX: CGFloat, dir: CGFloat) -> some View {
-        ZStack {
-            // Tree near commercial café edge
-            stretchedCanopyTree(color: Color.spentGreen)
-                .position(x: midX - dir * 98, y: 146)
-
-            // Slender cypress between commercial café and mid-rise hero
-            if showBuilding2 || step.rawValue > 1 {
-                pencilCypressTree(color: Color(red: 5/255, green: 150/255, blue: 105/255))
-                    .position(x: midX - dir * 28, y: 142)
-            }
-        }
-    }
-
-    // Tree Type 1: Stretched rounded canopy
-    private func stretchedCanopyTree(color: Color) -> some View {
-        VStack(spacing: 0) {
-            Capsule()
-                .fill(color)
-                .frame(width: 18, height: 26)
-            Rectangle()
-                .fill(Color(red: 130/255, green: 100/255, blue: 80/255))
-                .frame(width: 2.5, height: 6)
-        }
-    }
-
-    // Tree Type 2: Overlapping canopy
-    private func overlappingCanopyTree(c1: Color, c2: Color) -> some View {
-        VStack(spacing: 0) {
-            ZStack {
-                Circle().fill(c2).frame(width: 15, height: 15).offset(x: -3, y: 2)
-                Circle().fill(c1).frame(width: 17, height: 17).offset(x: 2, y: -2)
-            }
-            Rectangle()
-                .fill(Color(red: 130/255, green: 100/255, blue: 80/255))
-                .frame(width: 2.5, height: 5)
-        }
-    }
-
-    // Tree Type 3: Narrow architectural cypress
-    private func pencilCypressTree(color: Color) -> some View {
-        VStack(spacing: 0) {
-            Capsule()
-                .fill(color)
-                .frame(width: 9, height: 28)
-            Rectangle()
-                .fill(Color(red: 130/255, green: 100/255, blue: 80/255))
-                .frame(width: 2, height: 5)
-        }
-    }
-
-    // MARK: - 10. Civic Signpost (Step 2+)
-    private var civicSignpost: some View {
+    private var mayorPlaque: some View {
         let cleanName = mayorName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return VStack(spacing: 0) {
-            VStack(spacing: 1.5) {
-                if cleanName.isEmpty {
-                    Text(isRTL ? "ראש העיר" : "MAYOR")
-                        .font(.system(size: 9, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                } else {
-                    Text(isRTL ? "ראש העיר" : "MAYOR")
-                        .font(.system(size: 7, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                    Text(cleanName)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3.5)
-            .background(Color(red: 254/255, green: 252/255, blue: 246/255))
-            .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
-                    .stroke(Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.3), lineWidth: 0.75)
-            )
-            .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
+        return VStack(spacing: 0.5) {
+            Text(isRTL ? "ראש העיר" : "MAYOR")
+                .font(.system(size: 6.7, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.textMuted)
 
-            Rectangle()
-                .fill(Color(red: 140/255, green: 120/255, blue: 100/255))
-                .frame(width: 2, height: 10)
+            if !cleanName.isEmpty {
+                Text(cleanName)
+                    .font(.system(size: 8.8, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
         }
+        .frame(width: 42, height: 22)
     }
 
-    // MARK: - 11. Transaction Badges (Step 1)
-    private func transactionTagsLayer(midX: CGFloat, dir: CGFloat) -> some View {
-        ZStack {
+    private var transactionLabels: some View {
+        ZStack(alignment: .topLeading) {
             if showTx1 {
-                subtleTransactionBadge(amount: "₪28", label: isRTL ? "קפה" : "Coffee")
-                    .position(x: midX - dir * 56, y: showBuilding1 ? 100 : 70)
-                    .opacity(showBuilding1 ? 0.95 : 1.0)
-                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                transactionBadge(amount: "₪28", label: isRTL ? "קפה" : "Coffee")
+                    .position(x: mirroredX(74), y: 102)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: -6)))
             }
 
             if showTx2 {
-                subtleTransactionBadge(amount: "₪86", label: isRTL ? "אוכל" : "Dining")
-                    .position(x: midX - dir * 6, y: showBuilding2 ? 55 : 30)
-                    .opacity(showBuilding2 ? 0.95 : 1.0)
-                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                transactionBadge(amount: "₪86", label: isRTL ? "אוכל" : "Dining")
+                    .position(x: mirroredX(178), y: 39)
+                    .transition(reduceMotion ? .opacity : .opacity.combined(with: .offset(y: -6)))
             }
         }
     }
 
-    private func subtleTransactionBadge(amount: String, label: String) -> some View {
+    private func transactionBadge(amount: String, label: String) -> some View {
         Text("\(amount) · \(label)")
-            .font(.system(size: 9.5, weight: .bold, design: .rounded))
+            .font(.system(size: 9, weight: .bold, design: .rounded))
             .foregroundColor(Color.deepNavy)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background(Color.white)
+            .background(Color.white.opacity(0.94))
             .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .stroke(Color.borderSubtle, lineWidth: 1)
+                    .stroke(Color.borderSubtle, lineWidth: 0.8)
             )
-            .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
     }
 
-    // MARK: - Motion Sequences (High Damping)
-    private func runStep1Sequence() {
+    private func mirroredX(_ x: CGFloat) -> CGFloat {
+        isRTL ? VectorCityLayer.designWidth - x : x
+    }
+
+    private func runConceptSequence() {
         if reduceMotion {
             showTx1 = true
-            showBuilding1 = true
+            showCommercial = true
             showTx2 = true
-            showBuilding2 = true
+            showHero = true
             return
         }
 
+        showTx1 = false
+        showCommercial = false
+        showTx2 = false
+        showHero = false
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+            withAnimation(.easeOut(duration: 0.18)) {
                 showTx1 = true
             }
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.38) {
             Haptics.selection()
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.85)) {
-                showBuilding1 = true
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+                showCommercial = true
             }
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+            withAnimation(.easeOut(duration: 0.18)) {
                 showTx2 = true
             }
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.88) {
             Haptics.selection()
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.85)) {
-                showBuilding2 = true
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.88)) {
+                showHero = true
             }
         }
+    }
+}
+
+// MARK: - Single vector artwork system
+
+private struct VectorCityLayer: View {
+    enum Kind {
+        case background
+        case plaza
+        case park
+        case secondary
+        case hero
+        case commercial
+        case annex
+        case urbanTree
+        case parkTrees
+        case finalFoliage
+    }
+
+    static let designWidth: CGFloat = 390
+    static let designHeight: CGFloat = 215
+
+    let kind: Kind
+
+    var body: some View {
+        Canvas { context, size in
+            context.scaleBy(
+                x: size.width / Self.designWidth,
+                y: size.height / Self.designHeight
+            )
+
+            switch kind {
+            case .background: drawBackground(in: &context)
+            case .plaza: drawPlaza(in: &context)
+            case .park: drawPark(in: &context)
+            case .secondary: drawSecondaryBuilding(in: &context)
+            case .hero: drawHeroBuilding(in: &context)
+            case .commercial: drawCommercialBuilding(in: &context)
+            case .annex: drawAnnex(in: &context)
+            case .urbanTree: drawUrbanTree(in: &context)
+            case .parkTrees: drawParkTrees(in: &context)
+            case .finalFoliage: drawFinalFoliage(in: &context)
+            }
+        }
+    }
+
+    private var blue: Color { .primaryBlue }
+    private var green: Color { .spentGreen }
+    private var orange: Color { .themeOrange }
+
+    private var facade: Color {
+        Color(red: 0.969, green: 0.980, blue: 0.995)
+    }
+
+    private var facadeSide: Color {
+        Color(red: 0.885, green: 0.925, blue: 0.978)
+    }
+
+    private var warmFacade: Color {
+        Color(red: 0.995, green: 0.968, blue: 0.920)
+    }
+
+    private var warmSide: Color {
+        Color(red: 0.936, green: 0.875, blue: 0.775)
+    }
+
+    private var glass: Color {
+        Color(red: 0.705, green: 0.855, blue: 0.972)
+    }
+
+    private var paleGlass: Color {
+        Color(red: 0.817, green: 0.910, blue: 0.985)
+    }
+
+    private var stone: Color {
+        Color(red: 0.955, green: 0.944, blue: 0.918)
+    }
+
+    private var parkGreen: Color {
+        Color(red: 0.795, green: 0.945, blue: 0.842)
+    }
+
+    private var parkGreenBack: Color {
+        Color(red: 0.681, green: 0.895, blue: 0.735)
+    }
+
+    private var deepGreen: Color {
+        Color(red: 0.035, green: 0.470, blue: 0.345)
+    }
+
+    private var aquaGreen: Color {
+        Color(red: 0.048, green: 0.620, blue: 0.500)
+    }
+
+    private var water: Color {
+        Color(red: 0.635, green: 0.865, blue: 0.988)
+    }
+
+    private var trunk: Color {
+        Color(red: 0.470, green: 0.315, blue: 0.210)
+    }
+
+    private func drawBackground(in context: inout GraphicsContext) {
+        var left = Path()
+        left.move(to: CGPoint(x: -20, y: 178))
+        left.addLine(to: CGPoint(x: -20, y: 102))
+        left.addLine(to: CGPoint(x: 18, y: 88))
+        left.addLine(to: CGPoint(x: 48, y: 98))
+        left.addLine(to: CGPoint(x: 48, y: 178))
+        left.closeSubpath()
+        context.fill(left, with: .color(Color(red: 0.930, green: 0.952, blue: 0.980)))
+
+        var center = Path()
+        center.move(to: CGPoint(x: 196, y: 178))
+        center.addLine(to: CGPoint(x: 196, y: 58))
+        center.addLine(to: CGPoint(x: 226, y: 48))
+        center.addLine(to: CGPoint(x: 226, y: 70))
+        center.addLine(to: CGPoint(x: 250, y: 63))
+        center.addLine(to: CGPoint(x: 250, y: 178))
+        center.closeSubpath()
+        context.fill(center, with: .color(Color(red: 0.920, green: 0.945, blue: 0.982)))
+
+        var right = Path()
+        right.move(to: CGPoint(x: 315, y: 178))
+        right.addLine(to: CGPoint(x: 315, y: 95))
+        right.addLine(to: CGPoint(x: 345, y: 84))
+        right.addLine(to: CGPoint(x: 345, y: 178))
+        right.closeSubpath()
+        context.fill(right, with: .color(Color(red: 0.952, green: 0.965, blue: 0.987)))
+    }
+
+    private func drawPlaza(in context: inout GraphicsContext) {
+        var plaza = Path()
+        plaza.move(to: CGPoint(x: -24, y: 174))
+        plaza.addLine(to: CGPoint(x: 208, y: 174))
+        plaza.addCurve(
+            to: CGPoint(x: 245, y: 198),
+            control1: CGPoint(x: 223, y: 176),
+            control2: CGPoint(x: 239, y: 187)
+        )
+        plaza.addLine(to: CGPoint(x: 222, y: 220))
+        plaza.addLine(to: CGPoint(x: -24, y: 220))
+        plaza.closeSubpath()
+        context.fill(plaza, with: .color(stone))
+
+        var seam = Path()
+        seam.move(to: CGPoint(x: -10, y: 190))
+        seam.addCurve(
+            to: CGPoint(x: 218, y: 190),
+            control1: CGPoint(x: 64, y: 186),
+            control2: CGPoint(x: 159, y: 187)
+        )
+        context.stroke(seam, with: .color(Color.white.opacity(0.62)), lineWidth: 1.2)
+    }
+
+    private func drawPark(in context: inout GraphicsContext) {
+        var back = Path()
+        back.move(to: CGPoint(x: 222, y: 163))
+        back.addCurve(
+            to: CGPoint(x: 300, y: 141),
+            control1: CGPoint(x: 245, y: 146),
+            control2: CGPoint(x: 270, y: 139)
+        )
+        back.addCurve(
+            to: CGPoint(x: 420, y: 157),
+            control1: CGPoint(x: 342, y: 140),
+            control2: CGPoint(x: 382, y: 146)
+        )
+        back.addLine(to: CGPoint(x: 420, y: 183))
+        back.addCurve(
+            to: CGPoint(x: 217, y: 184),
+            control1: CGPoint(x: 352, y: 167),
+            control2: CGPoint(x: 278, y: 169)
+        )
+        back.closeSubpath()
+        context.fill(back, with: .color(parkGreenBack))
+
+        var land = Path()
+        land.move(to: CGPoint(x: 206, y: 176))
+        land.addCurve(
+            to: CGPoint(x: 258, y: 154),
+            control1: CGPoint(x: 220, y: 168),
+            control2: CGPoint(x: 238, y: 158)
+        )
+        land.addCurve(
+            to: CGPoint(x: 331, y: 155),
+            control1: CGPoint(x: 281, y: 148),
+            control2: CGPoint(x: 306, y: 149)
+        )
+        land.addCurve(
+            to: CGPoint(x: 420, y: 170),
+            control1: CGPoint(x: 360, y: 158),
+            control2: CGPoint(x: 392, y: 160)
+        )
+        land.addLine(to: CGPoint(x: 420, y: 228))
+        land.addLine(to: CGPoint(x: 190, y: 228))
+        land.closeSubpath()
+        context.fill(land, with: .color(parkGreen))
+
+        var pond = Path()
+        pond.move(to: CGPoint(x: 277, y: 184))
+        pond.addCurve(
+            to: CGPoint(x: 347, y: 176),
+            control1: CGPoint(x: 294, y: 173),
+            control2: CGPoint(x: 326, y: 171)
+        )
+        pond.addCurve(
+            to: CGPoint(x: 371, y: 189),
+            control1: CGPoint(x: 358, y: 178),
+            control2: CGPoint(x: 367, y: 183)
+        )
+        pond.addCurve(
+            to: CGPoint(x: 289, y: 205),
+            control1: CGPoint(x: 349, y: 203),
+            control2: CGPoint(x: 314, y: 207)
+        )
+        pond.addCurve(
+            to: CGPoint(x: 277, y: 184),
+            control1: CGPoint(x: 280, y: 201),
+            control2: CGPoint(x: 272, y: 192)
+        )
+        pond.closeSubpath()
+        context.fill(pond, with: .color(water))
+
+        var reflection = Path()
+        reflection.move(to: CGPoint(x: 311, y: 188))
+        reflection.addCurve(
+            to: CGPoint(x: 341, y: 187),
+            control1: CGPoint(x: 322, y: 186),
+            control2: CGPoint(x: 333, y: 186)
+        )
+        context.stroke(reflection, with: .color(Color.white.opacity(0.92)), lineWidth: 1.5)
+    }
+
+    private func drawHeroBuilding(in context: inout GraphicsContext) {
+        var spine = Path()
+        spine.move(to: CGPoint(x: 108, y: -24))
+        spine.addLine(to: CGPoint(x: 141, y: -24))
+        spine.addLine(to: CGPoint(x: 141, y: 181))
+        spine.addLine(to: CGPoint(x: 108, y: 181))
+        spine.closeSubpath()
+        context.fill(spine, with: .color(blue))
+
+        var spineSide = Path()
+        spineSide.move(to: CGPoint(x: 141, y: -24))
+        spineSide.addLine(to: CGPoint(x: 153, y: -14))
+        spineSide.addLine(to: CGPoint(x: 153, y: 181))
+        spineSide.addLine(to: CGPoint(x: 141, y: 181))
+        spineSide.closeSubpath()
+        context.fill(spineSide, with: .color(Color(red: 0.195, green: 0.390, blue: 0.900)))
+
+        var body = Path()
+        body.move(to: CGPoint(x: 153, y: 27))
+        body.addLine(to: CGPoint(x: 205, y: 27))
+        body.addLine(to: CGPoint(x: 205, y: 39))
+        body.addLine(to: CGPoint(x: 223, y: 39))
+        body.addLine(to: CGPoint(x: 223, y: 181))
+        body.addLine(to: CGPoint(x: 153, y: 181))
+        body.closeSubpath()
+        context.fill(body, with: .color(facade))
+
+        var side = Path()
+        side.move(to: CGPoint(x: 223, y: 39))
+        side.addLine(to: CGPoint(x: 236, y: 48))
+        side.addLine(to: CGPoint(x: 236, y: 181))
+        side.addLine(to: CGPoint(x: 223, y: 181))
+        side.closeSubpath()
+        context.fill(side, with: .color(facadeSide))
+
+        drawWindowBand(in: &context, rect: CGRect(x: 166, y: 57, width: 42, height: 16))
+        drawWindowBand(in: &context, rect: CGRect(x: 166, y: 95, width: 42, height: 16))
+        drawWindowBand(in: &context, rect: CGRect(x: 166, y: 133, width: 42, height: 16))
+
+        var reveal = Path()
+        reveal.move(to: CGPoint(x: 159, y: 44))
+        reveal.addLine(to: CGPoint(x: 159, y: 168))
+        context.stroke(reveal, with: .color(Color(red: 0.835, green: 0.885, blue: 0.953)), lineWidth: 2)
+
+        var roofPlanter = Path()
+        roofPlanter.addRect(CGRect(x: 183, y: 21, width: 22, height: 6))
+        context.fill(roofPlanter, with: .color(Color(red: 0.810, green: 0.765, blue: 0.650)))
+
+        var roofGreen = Path()
+        roofGreen.addEllipse(in: CGRect(x: 187, y: 14, width: 9, height: 9))
+        roofGreen.addEllipse(in: CGRect(x: 194, y: 12, width: 10, height: 11))
+        context.fill(roofGreen, with: .color(green))
+    }
+
+    private func drawWindowBand(in context: inout GraphicsContext, rect: CGRect) {
+        var band = Path()
+        band.addRect(rect)
+        context.fill(band, with: .color(glass))
+
+        var mullion = Path()
+        mullion.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        mullion.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        context.stroke(mullion, with: .color(Color.white.opacity(0.82)), lineWidth: 1)
+    }
+
+    private func drawSecondaryBuilding(in context: inout GraphicsContext) {
+        var body = Path()
+        body.move(to: CGPoint(x: 219, y: 72))
+        body.addLine(to: CGPoint(x: 265, y: 62))
+        body.addLine(to: CGPoint(x: 265, y: 181))
+        body.addLine(to: CGPoint(x: 219, y: 181))
+        body.closeSubpath()
+        context.fill(body, with: .color(Color(red: 0.944, green: 0.966, blue: 0.990)))
+
+        var side = Path()
+        side.move(to: CGPoint(x: 265, y: 62))
+        side.addLine(to: CGPoint(x: 276, y: 69))
+        side.addLine(to: CGPoint(x: 276, y: 181))
+        side.addLine(to: CGPoint(x: 265, y: 181))
+        side.closeSubpath()
+        context.fill(side, with: .color(Color(red: 0.860, green: 0.915, blue: 0.965)))
+
+        var greenLine = Path()
+        greenLine.move(to: CGPoint(x: 221, y: 75))
+        greenLine.addLine(to: CGPoint(x: 263, y: 66))
+        context.stroke(greenLine, with: .color(green), lineWidth: 4)
+
+        for y in [92.0, 121.0, 150.0] {
+            var band = Path()
+            band.addRect(CGRect(x: 228, y: y, width: 27, height: 12))
+            context.fill(band, with: .color(paleGlass))
+        }
+    }
+
+    private func drawCommercialBuilding(in context: inout GraphicsContext) {
+        var body = Path()
+        body.move(to: CGPoint(x: 14, y: 122))
+        body.addLine(to: CGPoint(x: 115, y: 122))
+        body.addLine(to: CGPoint(x: 115, y: 183))
+        body.addLine(to: CGPoint(x: 14, y: 183))
+        body.closeSubpath()
+        context.fill(body, with: .color(warmFacade))
+
+        var side = Path()
+        side.move(to: CGPoint(x: 115, y: 122))
+        side.addLine(to: CGPoint(x: 126, y: 129))
+        side.addLine(to: CGPoint(x: 126, y: 183))
+        side.addLine(to: CGPoint(x: 115, y: 183))
+        side.closeSubpath()
+        context.fill(side, with: .color(warmSide))
+
+        var canopy = Path()
+        canopy.move(to: CGPoint(x: 7, y: 116))
+        canopy.addLine(to: CGPoint(x: 117, y: 116))
+        canopy.addLine(to: CGPoint(x: 124, y: 121))
+        canopy.addLine(to: CGPoint(x: 7, y: 121))
+        canopy.closeSubpath()
+        context.fill(canopy, with: .color(orange))
+
+        var glazing = Path()
+        glazing.addRect(CGRect(x: 26, y: 137, width: 29, height: 34))
+        glazing.addRect(CGRect(x: 60, y: 137, width: 27, height: 34))
+        context.fill(glazing, with: .color(Color(red: 0.940, green: 0.820, blue: 0.676)))
+
+        var glassHighlight = Path()
+        glassHighlight.move(to: CGPoint(x: 32, y: 143))
+        glassHighlight.addLine(to: CGPoint(x: 49, y: 143))
+        glassHighlight.move(to: CGPoint(x: 66, y: 143))
+        glassHighlight.addLine(to: CGPoint(x: 81, y: 143))
+        context.stroke(glassHighlight, with: .color(Color.white.opacity(0.74)), lineWidth: 1.2)
+
+        var door = Path()
+        door.addRect(CGRect(x: 95, y: 135, width: 12, height: 48))
+        context.fill(door, with: .color(Color(red: 0.520, green: 0.260, blue: 0.125)))
+
+        var plaque = Path()
+        plaque.addRect(CGRect(x: 49, y: 145, width: 42, height: 24))
+        context.fill(plaque, with: .color(Color.white.opacity(0.88)))
+        context.stroke(plaque, with: .color(Color(red: 0.820, green: 0.825, blue: 0.835)), lineWidth: 0.7)
+    }
+
+    private func drawAnnex(in context: inout GraphicsContext) {
+        var body = Path()
+        body.move(to: CGPoint(x: -28, y: 137))
+        body.addLine(to: CGPoint(x: 42, y: 137))
+        body.addLine(to: CGPoint(x: 42, y: 184))
+        body.addLine(to: CGPoint(x: -28, y: 184))
+        body.closeSubpath()
+        context.fill(body, with: .color(Color(red: 0.976, green: 0.956, blue: 0.918)))
+
+        var terrace = Path()
+        terrace.addRect(CGRect(x: -7, y: 132, width: 46, height: 5))
+        context.fill(terrace, with: .color(Color(red: 0.645, green: 0.815, blue: 0.565)))
+
+        var glazing = Path()
+        glazing.addRect(CGRect(x: 9, y: 151, width: 19, height: 21))
+        context.fill(glazing, with: .color(paleGlass))
+    }
+
+    private func drawUrbanTree(in context: inout GraphicsContext) {
+        drawBroadTree(
+            in: &context,
+            x: 132,
+            groundY: 174,
+            scale: 0.88,
+            canopyColor: green
+        )
+    }
+
+    private func drawParkTrees(in context: inout GraphicsContext) {
+        drawCypress(
+            in: &context,
+            x: 249,
+            groundY: 174,
+            scale: 0.92,
+            canopyColor: deepGreen
+        )
+
+        drawBroadTree(
+            in: &context,
+            x: 305,
+            groundY: 173,
+            scale: 1.03,
+            canopyColor: green
+        )
+
+        drawBroadTree(
+            in: &context,
+            x: 373,
+            groundY: 171,
+            scale: 1.12,
+            canopyColor: aquaGreen
+        )
+    }
+
+    private func drawFinalFoliage(in context: inout GraphicsContext) {
+        drawShrub(in: &context, x: 218, groundY: 184, scale: 0.86)
+    }
+
+    private func drawBroadTree(
+        in context: inout GraphicsContext,
+        x: CGFloat,
+        groundY: CGFloat,
+        scale: CGFloat,
+        canopyColor: Color
+    ) {
+        var trunkPath = Path()
+        trunkPath.addRect(
+            CGRect(
+                x: x - 1.5 * scale,
+                y: groundY - 14 * scale,
+                width: 3 * scale,
+                height: 14 * scale
+            )
+        )
+        context.fill(trunkPath, with: .color(trunk))
+
+        var canopy = Path()
+        canopy.addEllipse(
+            in: CGRect(
+                x: x - 16 * scale,
+                y: groundY - 38 * scale,
+                width: 24 * scale,
+                height: 24 * scale
+            )
+        )
+        canopy.addEllipse(
+            in: CGRect(
+                x: x - 5 * scale,
+                y: groundY - 42 * scale,
+                width: 24 * scale,
+                height: 27 * scale
+            )
+        )
+        canopy.addEllipse(
+            in: CGRect(
+                x: x - 11 * scale,
+                y: groundY - 31 * scale,
+                width: 31 * scale,
+                height: 20 * scale
+            )
+        )
+        context.fill(canopy, with: .color(canopyColor))
+    }
+
+    private func drawCypress(
+        in context: inout GraphicsContext,
+        x: CGFloat,
+        groundY: CGFloat,
+        scale: CGFloat,
+        canopyColor: Color
+    ) {
+        var trunkPath = Path()
+        trunkPath.addRect(
+            CGRect(
+                x: x - 1.2 * scale,
+                y: groundY - 12 * scale,
+                width: 2.4 * scale,
+                height: 12 * scale
+            )
+        )
+        context.fill(trunkPath, with: .color(trunk))
+
+        var canopy = Path()
+        canopy.move(to: CGPoint(x: x, y: groundY - 52 * scale))
+        canopy.addCurve(
+            to: CGPoint(x: x + 8 * scale, y: groundY - 13 * scale),
+            control1: CGPoint(x: x + 7 * scale, y: groundY - 44 * scale),
+            control2: CGPoint(x: x + 9 * scale, y: groundY - 23 * scale)
+        )
+        canopy.addCurve(
+            to: CGPoint(x: x - 8 * scale, y: groundY - 13 * scale),
+            control1: CGPoint(x: x + 4 * scale, y: groundY - 7 * scale),
+            control2: CGPoint(x: x - 4 * scale, y: groundY - 7 * scale)
+        )
+        canopy.addCurve(
+            to: CGPoint(x: x, y: groundY - 52 * scale),
+            control1: CGPoint(x: x - 9 * scale, y: groundY - 23 * scale),
+            control2: CGPoint(x: x - 7 * scale, y: groundY - 44 * scale)
+        )
+        canopy.closeSubpath()
+        context.fill(canopy, with: .color(canopyColor))
+    }
+
+    private func drawShrub(
+        in context: inout GraphicsContext,
+        x: CGFloat,
+        groundY: CGFloat,
+        scale: CGFloat
+    ) {
+        var shrub = Path()
+        shrub.addEllipse(
+            in: CGRect(
+                x: x - 14 * scale,
+                y: groundY - 11 * scale,
+                width: 18 * scale,
+                height: 13 * scale
+            )
+        )
+        shrub.addEllipse(
+            in: CGRect(
+                x: x - 3 * scale,
+                y: groundY - 14 * scale,
+                width: 19 * scale,
+                height: 16 * scale
+            )
+        )
+        shrub.addEllipse(
+            in: CGRect(
+                x: x + 9 * scale,
+                y: groundY - 10 * scale,
+                width: 15 * scale,
+                height: 12 * scale
+            )
+        )
+        context.fill(shrub, with: .color(deepGreen))
     }
 }

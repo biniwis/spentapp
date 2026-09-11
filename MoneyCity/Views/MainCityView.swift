@@ -613,8 +613,10 @@ public struct MainCityView: View {
                 companionsStartedAt = min(previousStart ?? Date(), Date()).timeIntervalSince1970
             }
             companionNow = Date()
-            if !hasCompletedOnboarding && allTransactions.isEmpty {
-                showOnboarding = true
+            if !hasCompletedOnboarding {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    showOnboarding = true
+                }
             }
             syncWidgetData()
             checkWeeklyEnrichmentPrompt()

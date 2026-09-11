@@ -190,7 +190,7 @@
             <span>🏙️</span> SPENT
         </div>
         <h1 id="title">מדיניות פרטיות</h1>
-        <p class="subtitle" id="subtitle">עדכון אחרון: מרץ 2026 | Last updated: March 2026</p>
+        <p class="subtitle" id="subtitle">עדכון אחרון: ספטמבר 2026 | Last updated: September 2026</p>
         
         <div class="lang-switch">
             <button class="lang-btn active" onclick="setLang('he')">עברית</button>
@@ -312,6 +312,7 @@
             document.documentElement.dir = 'ltr';
             document.documentElement.lang = 'en';
             title.textContent = 'Privacy Policy';
+            document.getElementById('subtitle').textContent = 'Last updated: September 2026';
             btns[0].classList.remove('active');
             btns[1].classList.add('active');
         } else {
@@ -320,6 +321,7 @@
             document.documentElement.dir = 'rtl';
             document.documentElement.lang = 'he';
             title.textContent = 'מדיניות פרטיות';
+            document.getElementById('subtitle').textContent = 'עדכון אחרון: ספטמבר 2026';
             btns[0].classList.add('active');
             btns[1].classList.remove('active');
         }

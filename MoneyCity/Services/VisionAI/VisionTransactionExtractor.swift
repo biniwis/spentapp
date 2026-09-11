@@ -160,3 +160,32 @@ public struct ExtractedTransactionValidator: Sendable {
         }
     }
 }
+
+// MARK: - Vision Extraction Errors
+
+public enum VisionExtractionError: Error, LocalizedError, Equatable {
+    case missingCredentials
+    case invalidImageData
+    case emptyResults
+    case networkFailure(String)
+    case invalidResponseCode(Int, String)
+    case jsonParsingFailed(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .missingCredentials:
+            return "Vision extractor credentials are not configured."
+        case .invalidImageData:
+            return "Failed to process image data into a valid format."
+        case .networkFailure(let msg):
+            return "Vision extraction network request failed: \(msg)"
+        case .invalidResponseCode(let code, let body):
+            return "Vision extraction returned HTTP \(code): \(body)"
+        case .jsonParsingFailed(let raw):
+            return "Failed to parse structured JSON from Vision extraction response: \(raw)"
+        case .emptyResults:
+            return "Vision extractor did not detect any valid transactions in the image."
+        }
+    }
+}
+

@@ -43,7 +43,7 @@ public final class ExpenseExtractionService: Sendable {
         allowFallback: Bool = false
     ) async throws -> ProcessedExpenseExtraction {
         guard let data = image.jpegData(compressionQuality: 0.85) else {
-            throw GeminiTransactionExtractor.ExtractionError.invalidImageData
+            throw VisionExtractionError.invalidImageData
         }
         return try await processImageData(data, mimeType: "image/jpeg", rules: rules, allowFallback: allowFallback)
     }
@@ -69,7 +69,7 @@ public final class ExpenseExtractionService: Sendable {
                     usedFallback: true
                 )
             }
-            throw GeminiTransactionExtractor.ExtractionError.missingCredentials
+            throw VisionExtractionError.missingCredentials
         }
 
         do {
@@ -86,7 +86,7 @@ public final class ExpenseExtractionService: Sendable {
             let validTransactions = ExtractedTransactionValidator.filterValidTransactions(aiResult.transactions)
             
             guard !validTransactions.isEmpty else {
-                throw GeminiTransactionExtractor.ExtractionError.emptyResults
+                throw VisionExtractionError.emptyResults
             }
 
             let candidates = validTransactions.map { raw -> ParsedTransactionCandidate in

@@ -3,7 +3,9 @@ import Foundation
 import UIKit
 #endif
 
+#if DEBUG
 public final class GeminiTransactionExtractor: VisionTransactionExtractor, @unchecked Sendable {
+    public typealias ExtractionError = VisionExtractionError
     public let modelIdentifier: String
     private let apiKey: String?
     private let customEndpointURL: URL?
@@ -103,32 +105,6 @@ public final class GeminiTransactionExtractor: VisionTransactionExtractor, @unch
       ]
     }
     """
-
-    public enum ExtractionError: Error, LocalizedError, Equatable {
-        case missingCredentials
-        case invalidImageData
-        case networkFailure(String)
-        case invalidResponseCode(Int, String)
-        case jsonParsingFailed(String)
-        case emptyResults
-
-        public var errorDescription: String? {
-            switch self {
-            case .missingCredentials:
-                return "Gemini API key is not configured. For POC testing, set GEMINI_API_KEY environment variable or pass it to the constructor."
-            case .invalidImageData:
-                return "Failed to process image data into a valid format."
-            case .networkFailure(let msg):
-                return "Vision AI network request failed: \(msg)"
-            case .invalidResponseCode(let code, let body):
-                return "Vision AI returned HTTP \(code): \(body)"
-            case .jsonParsingFailed(let raw):
-                return "Failed to parse structured JSON from Vision AI response: \(raw)"
-            case .emptyResults:
-                return "Vision AI did not detect any valid transactions in the image."
-            }
-        }
-    }
 
     public init(
         modelIdentifier: String = "gemini-2.0-flash",
@@ -285,3 +261,5 @@ public final class GeminiTransactionExtractor: VisionTransactionExtractor, @unch
 private struct GeminiTransactionsEnvelope: Codable {
     let transactions: [ExtractedTransaction]
 }
+#endif
+

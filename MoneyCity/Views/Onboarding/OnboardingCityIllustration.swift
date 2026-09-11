@@ -11,14 +11,14 @@ public enum OnboardingStep: Int, CaseIterable {
 
 /// Continuous Miniature City Scene for SPENT Onboarding
 ///
-/// Editorial, architectural 2D/2.5D illustration adhering to SPENT_DESIGN_CONSTITUTION.md:
+/// Editorial, architectural illustration adhering to SPENT_DESIGN_CONSTITUTION.md:
 /// - Sits DIRECTLY on canvas, zero enclosing frames or card borders.
-/// - Architectural building language: flat canopies, stepped mid-rises, asymmetric pavilions.
-/// - Diverse landscaped tree forms (stretched ovals, overlapping circles, pencil cypresses).
-/// - Subtly toned, narrower roadway that bleeds off-screen without dominating.
-/// - Authentic civic signpost integrated into the urban ground.
-/// - Restrained, confident SPENT palette: Sky Blue, SPENT Green, Carbon, warm sand/cream, coral/orange accents.
-/// - High damping, mature motion settling. Full Reduce Motion support.
+/// - Layered composition with 3 depth levels (Background silhouettes, Main city architecture, Foreground nature/plaza).
+/// - Clear hierarchy: substantial Mid-Rise hero building, warm lower commercial café, secondary vertical wing.
+/// - Natural park & water integrated alongside urban plaza — zero road-through-water collisions.
+/// - Partial street promenade that stops before nature rather than cutting across the screen.
+/// - Authentic, understated civic signpost.
+/// - Restrained SPENT palette: Sky Blue, SPENT Green, Carbon, warm sand/cream, coral/orange accents.
 public struct OnboardingCityScene: View {
     let step: OnboardingStep
     let mayorName: String
@@ -33,9 +33,6 @@ public struct OnboardingCityScene: View {
     @State private var showTx2: Bool = false
     @State private var showBuilding2: Bool = false
 
-    // Step 5 car animation
-    @State private var carDriveOffset: CGFloat = -180
-
     let height: CGFloat
 
     public init(
@@ -43,7 +40,7 @@ public struct OnboardingCityScene: View {
         mayorName: String,
         targetAmountText: String,
         isRTL: Bool = false,
-        height: CGFloat = 180
+        height: CGFloat = 215
     ) {
         self.step = step
         self.mayorName = mayorName
@@ -56,72 +53,67 @@ public struct OnboardingCityScene: View {
         GeometryReader { geo in
             let width = geo.size.width
             let midX = width / 2
+            let dir: CGFloat = isRTL ? -1.0 : 1.0
 
             ZStack {
-                // 1. Warm ground plane tint (edge-to-edge)
-                groundPlane(width: width)
+                // 1. Warm base ground tone (soft foundation)
+                groundFoundation(width: width)
 
-                // 2. Distant architectural silhouette skyline (depth & scale contrast)
-                distantSkyline(midX: midX)
+                // 2. Background Layer: Large low-contrast architectural silhouettes (scale & depth)
+                distantArchitecturalMasses(midX: midX, dir: dir)
 
-                // 3. Step 5 Landmark Spire (architectural highlight rising in background)
-                if step.rawValue == OnboardingStep.finalReveal.rawValue {
-                    landmarkSpire
-                        .position(x: midX + (isRTL ? -112 : 112), y: 68)
-                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-                }
-
-                // 4. Step 3+ Landscaped Park & Pond (organic lawn, pond, architectural tree clusters)
-                if step.rawValue >= OnboardingStep.spendingTarget.rawValue {
-                    parkLandscapingArea
-                        .position(x: midX + (isRTL ? -68 : 68), y: 136)
-                        .transition(reduceMotion ? .opacity : .scale(scale: 0.9).combined(with: .opacity))
-                }
-
-                // 5. Buildings:
-                // Building A: Retail / Café (horizontal pavilion, flat cantilever canopy, storefront glass)
-                if showBuilding1 || step.rawValue > 1 {
-                    cafeRetailPavilion
-                        .position(x: midX + (isRTL ? 72 : -72), y: 98)
-                        .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
-                }
-
-                // Building B: Mid-rise Commercial (stepped masses, azure accent, rhythmic fenestration)
-                if showBuilding2 || step.rawValue > 1 {
-                    midriseBuilding
-                        .position(x: midX + (isRTL ? 12 : -12), y: 84)
-                        .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
-                }
-
-                // Building D: Automation Pavilion (Step 4+ angled modernist geometry, green roof)
+                // 3. Middle Layer — Main City Architecture:
+                // Building 3: Step 4+ Secondary Vertical Wing (normal architectural expansion)
                 if step.rawValue >= OnboardingStep.automation.rawValue {
-                    automationPavilion
-                        .position(x: midX + (isRTL ? -52 : 52), y: 94)
+                    secondaryVerticalWing
+                        .position(x: midX + dir * 42, y: 124)
+                        .transition(reduceMotion ? .opacity : .offset(y: 18).combined(with: .opacity))
+                }
+
+                // Building 4: Step 5 Terrace Annex (completes rich urban skyline)
+                if step.rawValue == OnboardingStep.finalReveal.rawValue {
+                    terraceAnnexBuilding
+                        .position(x: midX - dir * 108, y: 135)
                         .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
                 }
 
-                // 6. Street trees with distinct silhouettes
-                streetTreesLayer(midX: midX)
+                // Building 1: Main Mid-Rise Hero Building (tall, confident, approaches top edge)
+                if showBuilding2 || step.rawValue > 1 {
+                    mainMidriseHero
+                        .position(x: midX - dir * 6, y: 108)
+                        .transition(reduceMotion ? .opacity : .offset(y: 18).combined(with: .opacity))
+                }
 
-                // 7. Subtle Narrower Roadway (edge-to-edge bleed, softer tone)
-                roadway(width: width, midX: midX)
+                // Building 2: Lower Commercial Building (Café / Bakery, warm cream & orange canopy)
+                if showBuilding1 || step.rawValue > 1 {
+                    commercialCafeBuilding
+                        .position(x: midX - dir * 56, y: 140)
+                        .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
+                }
 
-                // 8. Step 2+ Civic Signpost (authentic urban signage, no floating pill)
+                // 4. Foreground Layer — Nature, Plaza & Water:
+                // Partial Paved Promenade (under buildings, stops before park — NO collision!)
+                partialPavedStreet(width: width, midX: midX, dir: dir)
+
+                // Integrated Park & Water Landscape (Step 3+)
+                if step.rawValue >= OnboardingStep.spendingTarget.rawValue {
+                    integratedParkLandscape(midX: midX, dir: dir)
+                        .transition(reduceMotion ? .opacity : .scale(scale: 0.92).combined(with: .opacity))
+                }
+
+                // Urban Trees along plaza / street edge
+                plazaTreesLayer(midX: midX, dir: dir)
+
+                // 5. Authentic Civic Signpost (Step 2+)
                 if step.rawValue >= OnboardingStep.mayor.rawValue {
                     civicSignpost
-                        .position(x: midX + (isRTL ? -84 : 84), y: 48)
+                        .position(x: midX - dir * 26, y: 156)
                         .transition(reduceMotion ? .opacity : .offset(y: 8).combined(with: .opacity))
                 }
 
-                // 9. Step 1 Animated transaction tags (subtle tags, mature typography)
+                // 6. Step 1 Animated transaction tags
                 if step == .concept {
-                    transactionTagsLayer(midX: midX)
-                }
-
-                // 10. Step 5 Small city vehicle
-                if step == .finalReveal {
-                    smallCityVehicle
-                        .position(x: midX + carDriveOffset, y: 126)
+                    transactionTagsLayer(midX: midX, dir: dir)
                 }
             }
         }
@@ -131,320 +123,300 @@ public struct OnboardingCityScene: View {
         .allowsHitTesting(false)
         .onAppear {
             runStep1Sequence()
-            runStep5Car()
         }
         .onChange(of: step) { _, newStep in
             if newStep == .concept {
                 runStep1Sequence()
             }
-            if newStep == .finalReveal {
-                runStep5Car()
-            }
         }
     }
 
-    // MARK: - 1. Ground Plane
-    private func groundPlane(width: CGFloat) -> some View {
+    // MARK: - 1. Soft Base Foundation
+    private func groundFoundation(width: CGFloat) -> some View {
         Rectangle()
-            .fill(Color(red: 243/255, green: 241/255, blue: 236/255).opacity(0.65))
-            .frame(width: width + 60, height: 68)
-            .position(x: width / 2, y: 146)
+            .fill(Color(red: 247/255, green: 245/255, blue: 240/255).opacity(0.8))
+            .frame(width: width + 60, height: 60)
+            .position(x: width / 2, y: 185)
     }
 
-    // MARK: - 2. Distant Skyline (Depth & Layering)
-    private func distantSkyline(midX: CGFloat) -> some View {
-        HStack(alignment: .bottom, spacing: 16) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(red: 228/255, green: 232/255, blue: 238/255))
-                .frame(width: 34, height: 50)
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(red: 232/255, green: 236/255, blue: 242/255))
-                .frame(width: 26, height: 68)
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(red: 226/255, green: 230/255, blue: 236/255))
-                .frame(width: 38, height: 44)
-            RoundedRectangle(cornerRadius: 2)
-                .fill(Color(red: 230/255, green: 234/255, blue: 240/255))
-                .frame(width: 30, height: 58)
-        }
-        .position(x: midX, y: 90)
-        .opacity(0.8)
-    }
-
-    // MARK: - 3. Roadway (Narrower, Softer)
-    private func roadway(width: CGFloat, midX: CGFloat) -> some View {
+    // MARK: - 2. Distant Architectural Masses (1-2 large subtle silhouettes, depth & scale)
+    private func distantArchitecturalMasses(midX: CGFloat, dir: CGFloat) -> some View {
         ZStack {
-            // Soft roadway asphalt
-            Rectangle()
-                .fill(Color(red: 224/255, green: 227/255, blue: 232/255))
-                .frame(width: width + 60, height: 20)
-                .position(x: midX, y: 126)
+            // Silhouette A: Tall, wide primary background mass approaching the upper edge
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color(red: 232/255, green: 236/255, blue: 242/255))
+                .frame(width: 74, height: 138)
+                .position(x: midX + dir * 18, y: 98)
 
-            // Minimal center dash
-            Path { path in
-                path.move(to: CGPoint(x: -20, y: 126))
-                path.addLine(to: CGPoint(x: width + 20, y: 126))
+            // Silhouette B: Stepped secondary volume creating natural setback rhythm
+            RoundedRectangle(cornerRadius: 2.5)
+                .fill(Color(red: 236/255, green: 240/255, blue: 245/255))
+                .frame(width: 52, height: 96)
+                .position(x: midX - dir * 42, y: 119)
+        }
+        .opacity(0.88)
+    }
+
+    // MARK: - 3. Building 1 — Main Mid-Rise Hero Building
+    private var mainMidriseHero: some View {
+        VStack(spacing: 0) {
+            // Rooftop setback volume (approaches top edge)
+            HStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 241/255, green: 245/255, blue: 252/255))
+                    .frame(width: 44, height: 20)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 2)
+                            .stroke(Color.primaryBlue.opacity(0.2), lineWidth: 1)
+                    )
+                Spacer(minLength: 0)
             }
-            .stroke(Color.white.opacity(0.85), style: StrokeStyle(lineWidth: 1.5, dash: [6, 8]))
+            .frame(width: 66)
 
-            // Crosswalk zebra marking
+            // Primary architectural block
+            ZStack(alignment: .top) {
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(Color(red: 248/255, green: 250/255, blue: 254/255))
+                    .frame(width: 66, height: 95)
+
+                // Bold SPENT Primary Blue architectural cornice / band
+                Rectangle()
+                    .fill(Color.primaryBlue)
+                    .frame(width: 66, height: 4.5)
+
+                // Fenestration grid: 3 columns x 4 rows
+                VStack(spacing: 6) {
+                    ForEach(0..<4, id: \.self) { _ in
+                        HStack(spacing: 7) {
+                            windowPane
+                            windowPane
+                            windowPane
+                        }
+                    }
+                }
+                .offset(y: 14)
+            }
+        }
+        .shadow(color: Color.black.opacity(0.045), radius: 4, y: 2)
+    }
+
+    private var windowPane: some View {
+        RoundedRectangle(cornerRadius: 1.5)
+            .fill(Color(red: 219/255, green: 234/255, blue: 254/255))
+            .frame(width: 10, height: 10)
+    }
+
+    // MARK: - 4. Building 2 — Lower Commercial Building (Café / Retail)
+    private var commercialCafeBuilding: some View {
+        VStack(spacing: 0) {
+            // Cantilevered flat canopy with warm orange/coral accent stripe
+            HStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.themeOrange)
+                    .frame(width: 74, height: 4.5)
+                Spacer(minLength: 0)
+            }
+            .frame(width: 76)
+
+            // Facade body: warm cream / sand with expansive storefront glass
+            ZStack(alignment: .bottomLeading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 254/255, green: 246/255, blue: 236/255))
+                    .frame(width: 72, height: 49)
+
+                HStack(spacing: 5) {
+                    // Large display window 1
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color(red: 254/255, green: 228/255, blue: 198/255).opacity(0.85))
+                        .frame(width: 20, height: 28)
+
+                    // Large display window 2
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color(red: 254/255, green: 228/255, blue: 198/255).opacity(0.85))
+                        .frame(width: 20, height: 28)
+
+                    // Warm timber entrance doorway
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(Color(red: 154/255, green: 52/255, blue: 18/255))
+                        .frame(width: 14, height: 34)
+                }
+                .padding(.horizontal, 5)
+                .padding(.bottom, 3)
+            }
+        }
+        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
+    }
+
+    // MARK: - 5. Building 3 — Secondary Vertical Wing (Step 4+)
+    private var secondaryVerticalWing: some View {
+        VStack(spacing: 0) {
+            // Calm SPENT Green top band
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.spentGreen)
+                .frame(width: 46, height: 4)
+
+            // Crisp architectural body
+            ZStack(alignment: .top) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(red: 243/255, green: 247/255, blue: 251/255))
+                    .frame(width: 46, height: 82)
+
+                // Vertical architectural fenestration
+                HStack(spacing: 6) {
+                    VStack(spacing: 6) {
+                        verticalWindowSlot
+                        verticalWindowSlot
+                        verticalWindowSlot
+                    }
+                    VStack(spacing: 6) {
+                        verticalWindowSlot
+                        verticalWindowSlot
+                        verticalWindowSlot
+                    }
+                }
+                .offset(y: 12)
+            }
+        }
+        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
+    }
+
+    private var verticalWindowSlot: some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(Color(red: 204/255, green: 225/255, blue: 245/255))
+            .frame(width: 9, height: 14)
+    }
+
+    // MARK: - 6. Building 4 — Terrace Annex (Step 5)
+    private var terraceAnnexBuilding: some View {
+        VStack(spacing: 0) {
+            // Minimal wooden pergola / roofline
             HStack(spacing: 3) {
                 ForEach(0..<4, id: \.self) { _ in
                     Rectangle()
-                        .fill(Color.white.opacity(0.85))
-                        .frame(width: 2, height: 14)
+                        .fill(Color(red: 180/255, green: 145/255, blue: 115/255))
+                        .frame(width: 6, height: 3)
                 }
             }
-            .position(x: midX + (isRTL ? 44 : -44), y: 126)
-        }
-    }
+            .frame(width: 48, height: 4)
 
-    // MARK: - 4. Building A — Café / Retail Pavilion
-    private var cafeRetailPavilion: some View {
-        VStack(spacing: 0) {
-            // Flat cantilever canopy with thin warm orange accent
-            HStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color.themeOrange)
-                    .frame(width: 58, height: 4)
-                Spacer(minLength: 0)
-            }
-            .frame(width: 60)
-
-            // Facade body (sand/cream tone with large storefront glass)
-            ZStack(alignment: .bottomLeading) {
+            ZStack(alignment: .bottom) {
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 254/255, green: 243/255, blue: 232/255))
-                    .frame(width: 54, height: 32)
+                    .fill(Color(red: 250/255, green: 248/255, blue: 244/255))
+                    .frame(width: 48, height: 58)
 
-                HStack(spacing: 4) {
-                    // Glass storefront display pane 1
+                HStack(spacing: 6) {
                     RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 254/255, green: 215/255, blue: 170/255).opacity(0.8))
-                        .frame(width: 14, height: 18)
-
-                    // Glass storefront display pane 2
+                        .fill(Color(red: 225/255, green: 236/255, blue: 248/255))
+                        .frame(width: 14, height: 22)
                     RoundedRectangle(cornerRadius: 1.5)
-                        .fill(Color(red: 254/255, green: 215/255, blue: 170/255).opacity(0.8))
-                        .frame(width: 14, height: 18)
-
-                    // Entry opening
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color(red: 154/255, green: 52/255, blue: 18/255))
-                        .frame(width: 10, height: 22)
+                        .fill(Color(red: 225/255, green: 236/255, blue: 248/255))
+                        .frame(width: 14, height: 22)
                 }
-                .padding(.horizontal, 4)
-                .padding(.bottom, 2)
+                .padding(.bottom, 6)
             }
         }
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
+        .shadow(color: Color.black.opacity(0.035), radius: 3, y: 1.5)
     }
 
-    // MARK: - 5. Building B — Mid-Rise Commercial
-    private var midriseBuilding: some View {
-        VStack(spacing: 0) {
-            // Offset upper penthouse floor
-            HStack(spacing: 0) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 239/255, green: 246/255, blue: 255/255))
-                    .frame(width: 36, height: 18)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 2)
-                            .stroke(Color.primaryBlue.opacity(0.15), lineWidth: 1)
-                    )
-                Spacer(minLength: 0)
-            }
-            .frame(width: 48)
+    // MARK: - 7. Partial Paved Street / Promenade (Under buildings only — stops before nature!)
+    private func partialPavedStreet(width: CGFloat, midX: CGFloat, dir: CGFloat) -> some View {
+        let streetStartX: CGFloat = isRTL ? (width + 30) : -30
+        let streetEndX: CGFloat = midX + dir * 20
+        let streetWidth = abs(streetStartX - streetEndX)
+        let streetCenterX = (streetStartX + streetEndX) / 2
 
-            // Primary facade block
-            ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 245/255, green: 248/255, blue: 254/255))
-                    .frame(width: 48, height: 44)
-
-                // Architectural Sky Blue accent lintel
-                Rectangle()
-                    .fill(Color(red: 37/255, green: 99/255, blue: 235/255))
-                    .frame(width: 48, height: 3.5)
-
-                // Fenestration array
-                VStack(spacing: 4) {
-                    HStack(spacing: 5) {
-                        windowSquare
-                        windowSquare
-                        windowSquare
-                    }
-                    HStack(spacing: 5) {
-                        windowSquare
-                        windowSquare
-                        windowSquare
-                    }
-                }
-                .offset(y: 10)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
-    }
-
-    private var windowSquare: some View {
-        RoundedRectangle(cornerRadius: 1)
-            .fill(Color(red: 191/255, green: 219/255, blue: 254/255))
-            .frame(width: 7, height: 7)
-    }
-
-    // MARK: - 6. Building D — Automation Pavilion
-    private var automationPavilion: some View {
-        VStack(spacing: 0) {
-            // Modern angled roofline
-            HStack(spacing: 0) {
-                Spacer()
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color.spentGreen)
-                    .frame(width: 42, height: 4)
-            }
-            .frame(width: 46)
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 240/255, green: 253/255, blue: 244/255))
-                    .frame(width: 44, height: 38)
-
-                // Vertical architectural louvers
-                HStack(spacing: 4) {
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color(red: 187/255, green: 247/255, blue: 208/255))
-                        .frame(width: 5, height: 24)
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color(red: 187/255, green: 247/255, blue: 208/255))
-                        .frame(width: 5, height: 24)
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(Color(red: 187/255, green: 247/255, blue: 208/255))
-                        .frame(width: 5, height: 24)
-                }
-
-                // Minimal lightning badge
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 13, height: 13)
-                    .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
-                    .overlay(
-                        MoneyIcon(.lightning, size: 8, color: Color.spentGreen)
-                    )
-                    .offset(y: 10)
-            }
-        }
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
-    }
-
-    // MARK: - 7. Building C — Landmark Spire (Step 5)
-    private var landmarkSpire: some View {
-        VStack(spacing: 0) {
-            // Architectural needle
+        return ZStack(alignment: .top) {
+            // Paved asphalt / promenade surface
             Rectangle()
-                .fill(Color.deepNavy)
-                .frame(width: 1.5, height: 16)
+                .fill(Color(red: 232/255, green: 235/255, blue: 240/255))
+                .frame(width: streetWidth, height: 18)
 
-            // Stepped purple crown
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(Color(red: 147/255, green: 51/255, blue: 234/255))
-                .frame(width: 22, height: 8)
-
-            // Tower stem
+            // Thin curb / sidewalk separator
             Rectangle()
-                .fill(Color(red: 245/255, green: 243/255, blue: 252/255))
-                .frame(width: 18, height: 56)
-                .overlay(
-                    VStack(spacing: 4) {
-                        ForEach(0..<4, id: \.self) { _ in
-                            Rectangle()
-                                .fill(Color(red: 221/255, green: 204/255, blue: 253/255))
-                                .frame(width: 8, height: 2.5)
-                        }
-                    }
-                )
+                .fill(Color(red: 215/255, green: 219/255, blue: 226/255))
+                .frame(width: streetWidth, height: 1.5)
         }
-        .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
+        .position(x: streetCenterX, y: 167)
     }
 
-    // MARK: - 8. Landscaped Park & Pond (Step 3+)
-    private var parkLandscapingArea: some View {
-        ZStack {
-            // Organic curved lawn
-            Ellipse()
-                .fill(Color(red: 209/255, green: 250/255, blue: 229/255))
-                .frame(width: 92, height: 42)
+    // MARK: - 8. Integrated Park & Water (Step 3+ — wider organic shape, nestled pond, no road collision)
+    private func integratedParkLandscape(midX: CGFloat, dir: CGFloat) -> some View {
+        let parkCenterX = midX + dir * 105
 
-            // Miniature lake
-            Ellipse()
+        return ZStack {
+            // Sweeping organic green lawn
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(red: 220/255, green: 248/255, blue: 234/255))
+                .frame(width: 155, height: 52)
+                .position(x: parkCenterX, y: 172)
+
+            // Miniature nestled lake / water shape
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(red: 186/255, green: 230/255, blue: 253/255))
-                .frame(width: 38, height: 16)
-                .offset(x: 6, y: 1)
+                .frame(width: 70, height: 22)
+                .position(x: parkCenterX + dir * 12, y: 175)
 
-            // Diverse tree types
+            // Natural park trees nestled in the landscape
             stretchedCanopyTree(color: Color.spentGreen)
-                .offset(x: -24, y: -6)
-            overlappingCanopyTree(c1: Color(red: 16/255, green: 185/255, blue: 129/255), c2: Color(red: 5/255, green: 150/255, blue: 105/255))
-                .offset(x: 26, y: -2)
+                .position(x: parkCenterX - dir * 42, y: 150)
+
             pencilCypressTree(color: Color(red: 4/255, green: 120/255, blue: 87/255))
-                .offset(x: -6, y: 8)
+                .position(x: parkCenterX + dir * 48, y: 154)
+
+            overlappingCanopyTree(c1: Color.spentGreen, c2: Color(red: 16/255, green: 185/255, blue: 129/255))
+                .position(x: parkCenterX + dir * 10, y: 144)
         }
     }
 
-    // MARK: - 9. Street Trees Layer (Diverse Architectural Silhouettes)
-    private func streetTreesLayer(midX: CGFloat) -> some View {
+    // MARK: - 9. Urban Trees Layer (Along plaza & street edge)
+    private func plazaTreesLayer(midX: CGFloat, dir: CGFloat) -> some View {
         ZStack {
-            // Type 1: Stretched rounded canopy near café
+            // Tree near commercial café edge
             stretchedCanopyTree(color: Color.spentGreen)
-                .position(x: midX + (isRTL ? 116 : -116), y: 106)
+                .position(x: midX - dir * 98, y: 146)
 
-            // Type 3: Pencil cypress near mid-rise
+            // Slender cypress between commercial café and mid-rise hero
             if showBuilding2 || step.rawValue > 1 {
                 pencilCypressTree(color: Color(red: 5/255, green: 150/255, blue: 105/255))
-                    .position(x: midX + (isRTL ? -22 : 22), y: 102)
-            }
-
-            // Type 2: Overlapping canopy tree along avenue (Step 4+)
-            if step.rawValue >= OnboardingStep.automation.rawValue {
-                overlappingCanopyTree(c1: Color.spentGreen, c2: Color(red: 16/255, green: 185/255, blue: 129/255))
-                    .position(x: midX + (isRTL ? 34 : -34), y: 112)
+                    .position(x: midX - dir * 28, y: 142)
             }
         }
     }
 
-    // Tree Type 1: Vertically stretched rounded canopy
+    // Tree Type 1: Stretched rounded canopy
     private func stretchedCanopyTree(color: Color) -> some View {
         VStack(spacing: 0) {
             Capsule()
                 .fill(color)
-                .frame(width: 16, height: 24)
+                .frame(width: 18, height: 26)
             Rectangle()
-                .fill(Color(red: 120/255, green: 90/255, blue: 70/255))
+                .fill(Color(red: 130/255, green: 100/255, blue: 80/255))
                 .frame(width: 2.5, height: 6)
         }
     }
 
-    // Tree Type 2: Two overlapping organic circles
+    // Tree Type 2: Overlapping canopy
     private func overlappingCanopyTree(c1: Color, c2: Color) -> some View {
         VStack(spacing: 0) {
             ZStack {
-                Circle().fill(c2).frame(width: 14, height: 14).offset(x: -3, y: 2)
-                Circle().fill(c1).frame(width: 16, height: 16).offset(x: 2, y: -2)
+                Circle().fill(c2).frame(width: 15, height: 15).offset(x: -3, y: 2)
+                Circle().fill(c1).frame(width: 17, height: 17).offset(x: 2, y: -2)
             }
             Rectangle()
-                .fill(Color(red: 120/255, green: 90/255, blue: 70/255))
+                .fill(Color(red: 130/255, green: 100/255, blue: 80/255))
                 .frame(width: 2.5, height: 5)
         }
     }
 
-    // Tree Type 3: Small narrow cypress-like form
+    // Tree Type 3: Narrow architectural cypress
     private func pencilCypressTree(color: Color) -> some View {
         VStack(spacing: 0) {
             Capsule()
                 .fill(color)
-                .frame(width: 8, height: 26)
+                .frame(width: 9, height: 28)
             Rectangle()
-                .fill(Color(red: 120/255, green: 90/255, blue: 70/255))
-                .frame(width: 2, height: 4)
+                .fill(Color(red: 130/255, green: 100/255, blue: 80/255))
+                .frame(width: 2, height: 5)
         }
     }
 
@@ -453,18 +425,17 @@ public struct OnboardingCityScene: View {
         let cleanName = mayorName.trimmingCharacters(in: .whitespacesAndNewlines)
 
         return VStack(spacing: 0) {
-            // Elegant civic board
-            VStack(spacing: 1) {
+            VStack(spacing: 1.5) {
                 if cleanName.isEmpty {
                     Text(isRTL ? "ראש העיר" : "MAYOR")
-                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 9, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                 } else {
                     Text(isRTL ? "ראש העיר" : "MAYOR")
-                        .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 7, weight: .bold, design: .rounded))
                         .foregroundColor(Color.textMuted)
                     Text(cleanName)
-                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                         .lineLimit(1)
                 }
@@ -472,33 +443,32 @@ public struct OnboardingCityScene: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3.5)
             .background(Color(red: 254/255, green: 252/255, blue: 246/255))
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .stroke(Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.35), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                    .stroke(Color(red: 217/255, green: 119/255, blue: 6/255).opacity(0.3), lineWidth: 0.75)
             )
             .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
 
-            // Post planting sign firmly into the ground
             Rectangle()
                 .fill(Color(red: 140/255, green: 120/255, blue: 100/255))
-                .frame(width: 2, height: 12)
+                .frame(width: 2, height: 10)
         }
     }
 
-    // MARK: - 11. Transaction Tags (Step 1)
-    private func transactionTagsLayer(midX: CGFloat) -> some View {
+    // MARK: - 11. Transaction Badges (Step 1)
+    private func transactionTagsLayer(midX: CGFloat, dir: CGFloat) -> some View {
         ZStack {
             if showTx1 {
                 subtleTransactionBadge(amount: "₪28", label: isRTL ? "קפה" : "Coffee")
-                    .position(x: midX + (isRTL ? 72 : -72), y: showBuilding1 ? 54 : 34)
+                    .position(x: midX - dir * 56, y: showBuilding1 ? 100 : 70)
                     .opacity(showBuilding1 ? 0.95 : 1.0)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
 
             if showTx2 {
                 subtleTransactionBadge(amount: "₪86", label: isRTL ? "אוכל" : "Dining")
-                    .position(x: midX + (isRTL ? 12 : -12), y: showBuilding2 ? 44 : 24)
+                    .position(x: midX - dir * 6, y: showBuilding2 ? 55 : 30)
                     .opacity(showBuilding2 ? 0.95 : 1.0)
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
             }
@@ -520,32 +490,7 @@ public struct OnboardingCityScene: View {
             .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
     }
 
-    // MARK: - 12. Small City Vehicle (Step 5)
-    private var smallCityVehicle: some View {
-        HStack(spacing: 0) {
-            ZStack {
-                // Window canopy
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(Color.white)
-                    .frame(width: 12, height: 5)
-                    .offset(y: -2.5)
-
-                // Compact chassis
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color(red: 239/255, green: 68/255, blue: 68/255))
-                    .frame(width: 18, height: 6)
-
-                // Wheels
-                HStack(spacing: 8) {
-                    Circle().fill(Color.deepNavy).frame(width: 3, height: 3)
-                    Circle().fill(Color.deepNavy).frame(width: 3, height: 3)
-                }
-                .offset(y: 3)
-            }
-        }
-    }
-
-    // MARK: - Motion Sequences (High Damping, Polished)
+    // MARK: - Motion Sequences (High Damping)
     private func runStep1Sequence() {
         if reduceMotion {
             showTx1 = true
@@ -576,18 +521,6 @@ public struct OnboardingCityScene: View {
             withAnimation(.spring(response: 0.34, dampingFraction: 0.85)) {
                 showBuilding2 = true
             }
-        }
-    }
-
-    private func runStep5Car() {
-        if reduceMotion {
-            carDriveOffset = isRTL ? -15 : 15
-            return
-        }
-
-        carDriveOffset = isRTL ? 160 : -160
-        withAnimation(.easeInOut(duration: 2.8).repeatForever(autoreverses: false)) {
-            carDriveOffset = isRTL ? -160 : 160
         }
     }
 }

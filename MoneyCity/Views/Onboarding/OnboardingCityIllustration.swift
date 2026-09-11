@@ -451,18 +451,23 @@ public struct OnboardingCityScene: View {
     // MARK: - 10. Civic Signpost (Step 2+)
     private var civicSignpost: some View {
         let cleanName = mayorName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let displayName = cleanName.isEmpty ? (isRTL ? "ראש העיר" : "Mayor") : cleanName
 
         return VStack(spacing: 0) {
             // Elegant civic board
             VStack(spacing: 1) {
-                Text(isRTL ? "ראש העיר" : "MAYOR")
-                    .font(.system(size: 8, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-                Text(displayName)
-                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .lineLimit(1)
+                if cleanName.isEmpty {
+                    Text(isRTL ? "ראש העיר" : "MAYOR")
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                } else {
+                    Text(isRTL ? "ראש העיר" : "MAYOR")
+                        .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                    Text(cleanName)
+                        .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                        .lineLimit(1)
+                }
             }
             .padding(.horizontal, 7)
             .padding(.vertical, 3.5)

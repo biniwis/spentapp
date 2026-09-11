@@ -31,8 +31,33 @@ public struct Transaction {
         check(engine.allCatalogOptions.allSatisfy { $0.type == .resident || $0.type == .pet }, "No furniture or infrastructure rewards")
         let first = engine.availableWeeklyOptions(unlockedItemIds: [])
         check(first.count == 3, "At most three choices for one gift")
+        
+        // Rotation stability: repeated queries with same state return exact same candidates
+        let firstRepeat = engine.availableWeeklyOptions(unlockedItemIds: [])
+        check(first.map(\.id) == firstRepeat.map(\.id), "Selection is strictly stable while a reward is pending")
+        
+        // Deterministic rotation on progress: unlocking shifts candidate pool
+        let claimedFirstId = first[0].id
+        let nextWeekOptions = engine.availableWeeklyOptions(unlockedItemIds: [claimedFirstId])
+        check(nextWeekOptions.count == 3, "Rotated choices provide up to 3 candidates")
+        check(first.map(\.id) != nextWeekOptions.map(\.id), "Candidates rotate over time instead of remaining static")
+        check(!nextWeekOptions.contains(where: { $0.id == claimedFirstId }), "Claimed companion is not re-offered")
+        
+        // Non-companion / legacy enrichment immunity
+        let withNonCompanion = engine.availableWeeklyOptions(unlockedItemIds: ["tree_oak", "repair_bench", "fountain_marble"])
+        check(first.map(\.id) == withNonCompanion.map(\.id), "Non-companion enrichments do not affect companion candidate selection")
+
         let later = engine.availableWeeklyOptions(unlockedItemIds: Set(first.map(\.id)))
         check(later.count == 3 && !later.contains(where: { first.map(\.id).contains($0.id) }), "Previously earned friends are not offered twice")
         check(engine.availableWeeklyOptions(unlockedItemIds: CityCompanions.ids).isEmpty, "Completed collection has no invalid choice")
+
+        // Companion-only cadence check
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Jerusalem")!
+        let t0 = cal.date(from: DateComponents(year: 2026, month: 9, day: 1))!
+        let t7 = cal.date(byAdding: .day, value: 7, to: t0)!
+        let t14 = cal.date(byAdding: .day, value: 14, to: t0)!
+        check(CityCompanions.nextDate(firstUse: t0, lastReward: nil, calendar: cal) == t7, "First companion eligibility after 7 days")
+        check(CityCompanions.nextDate(firstUse: t0, lastReward: t7, calendar: cal) == t14, "Cooldown advances 7 days after companion claim")
     }
 }

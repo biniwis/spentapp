@@ -4,6 +4,7 @@ import SwiftUI
 public struct CityProgressSheet: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     public let options: [ProgressRewardOption]
     public let unlockedEnrichments: [CityEnrichment]
     public let nextDate: Date
@@ -13,6 +14,7 @@ public struct CityProgressSheet: View {
     @State private var joined: ProgressRewardOption?
     @State private var saveFailed = false
     @State private var isClaiming = false
+    @State private var hasAppeared = false
 
     private var he: Bool { l10n.isHebrew }
     private var complete: Bool {
@@ -44,15 +46,18 @@ public struct CityProgressSheet: View {
                 MoneyIcon(joined == nil ? .gift : .checkCircle, size: 46)
                     .padding(20).background(Color.themeMint.opacity(0.13), in: Circle())
                 if let friend = joined {
-                    Text(he ? "\(title(friend)) — איזה כיף שבאת!" : "\(title(friend)) joined your city!")
-                        .font(.title2.bold()).multilineTextAlignment(.center)
-                    Text(he ? "החבר החדש כבר בעיר ויישאר בה. בלי הצבה או ניהול — רק לפגוש אותו מדי פעם." : "Already in the city, here to stay. No placing or managing — just a familiar face to spot.")
-                        .multilineTextAlignment(.center).foregroundStyle(Color.textSecondary)
-                    Button { dismiss() } label: {
-                        Text(he ? "בואו נראה בעיר" : "Meet in the city")
-                            .font(.headline).frame(maxWidth: .infinity).padding(16)
-                            .background(Color.themeMint, in: RoundedRectangle(cornerRadius: 16))
+                    VStack(spacing: 22) {
+                        Text(he ? "\(title(friend)) — איזה כיף שבאת!" : "\(title(friend)) joined your city!")
+                            .font(.title2.bold()).multilineTextAlignment(.center)
+                        Text(he ? "החבר החדש כבר בעיר ויישאר בה. בלי הצבה או ניהול — רק לפגוש אותו מדי פעם." : "Already in the city, here to stay. No placing or managing — just a familiar face to spot.")
+                            .multilineTextAlignment(.center).foregroundStyle(Color.textSecondary)
+                        Button { dismiss() } label: {
+                            Text(he ? "בואו נראה בעיר" : "Meet in the city")
+                                .font(.headline).frame(maxWidth: .infinity).padding(16)
+                                .background(Color.themeMint, in: RoundedRectangle(cornerRadius: 16))
+                        }
                     }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {
                     Text(he ? "מצטרפים לעיר" : "City companions").font(.title2.bold())
                     if !options.isEmpty {
@@ -60,11 +65,17 @@ public struct CityProgressSheet: View {
                             .font(.headline).multilineTextAlignment(.center)
                         Text(he ? "ב־7 הימים האחרונים ההוצאות היומיומיות היו נמוכות ב־\(l10n.format(amount: savedAmount)) מב־7 הימים שלפניהם. אפשר לבחור חבר אחד שיישאר בעיר." : "Your everyday spending in the last 7 days was \(l10n.format(amount: savedAmount)) lower than in the previous 7 days. Choose one companion to stay in your city.")
                             .font(.subheadline).foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
-                        ForEach(options) { option in
+                        ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
                             Button {
                                 guard !isClaiming else { return }
                                 isClaiming = true
-                                if onSelectOption(option) { joined = option } else { saveFailed = true }
+                                if onSelectOption(option) {
+                                    withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.82)) {
+                                        joined = option
+                                    }
+                                } else {
+                                    saveFailed = true
+                                }
                                 isClaiming = false
                             } label: {
                                 HStack(spacing: 14) {
@@ -81,7 +92,11 @@ public struct CityProgressSheet: View {
                                 .padding(16).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(Color.white, in: RoundedRectangle(cornerRadius: 18))
                             }
-                            .buttonStyle(.plain).disabled(isClaiming)
+                            .buttonStyle(.plain)
+                            .disabled(isClaiming)
+                            .opacity(hasAppeared || reduceMotion ? 1 : 0)
+                            .offset(y: hasAppeared || reduceMotion ? 0 : 12)
+                            .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.82).delay(Double(index) * 0.05), value: hasAppeared)
                         }
                     } else if complete {
                         Text(he ? "כל החבורה כבר בעיר שלך" : "The whole gang is here").font(.headline)
@@ -112,6 +127,9 @@ public struct CityProgressSheet: View {
             Button(he ? "אישור" : "OK", role: .cancel) {}
         } message: {
             Text(he ? "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : "Saving failed or the choice is no longer available. Please try again.")
+        }
+        .onAppear {
+            hasAppeared = true
         }
     }
 }

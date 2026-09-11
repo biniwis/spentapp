@@ -258,8 +258,14 @@ public struct MainCityView: View {
     }
     
     private var companionFirstUse: Date { Date(timeIntervalSince1970: companionsStartedAt > 0 ? companionsStartedAt : companionNow.timeIntervalSince1970) }
+    private var lastCompanionRewardDate: Date? {
+        allEnrichments
+            .filter { CityCompanions.ids.contains($0.itemId) }
+            .map(\.unlockedDate)
+            .max()
+    }
     private var nextCompanionDate: Date {
-        CityCompanions.nextDate(firstUse: companionFirstUse, lastReward: allEnrichments.map(\.unlockedDate).max())
+        CityCompanions.nextDate(firstUse: companionFirstUse, lastReward: lastCompanionRewardDate)
     }
     
     private var weeklyRewardOptions: [ProgressRewardOption] {

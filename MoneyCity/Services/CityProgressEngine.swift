@@ -239,7 +239,7 @@ public final class CityProgressEngine: Sendable {
         }
 
         let diff = prevTotal - currentTotal
-        let hasProgress = diff > 10.0 // At least ₪10 real reduction
+        let hasProgress = diff > 10.0 // More than ₪10 real reduction (diff strictly > 10.0)
         let saved = max(0.0, diff)
 
         let tier: String
@@ -262,7 +262,7 @@ public final class CityProgressEngine: Sendable {
             return false
         }
 
-        let available = Array(tierFiltered.prefix(3))
+        let available = stableWeeklySelection(from: tierFiltered, unlockedItemIds: unlockedItemIds)
 
         return WeeklyProgressReport(
             currentWeekTotal: currentTotal,
@@ -278,7 +278,19 @@ public final class CityProgressEngine: Sendable {
     /// Always supplies up to 3 diverse options so user can add something to their city.
     public func availableWeeklyOptions(unlockedItemIds: Set<String>) -> [ProgressRewardOption] {
         let remaining = allCatalogOptions.filter { !unlockedItemIds.contains($0.id) }
-        guard !remaining.isEmpty else { return [] }
-        return Array(remaining.prefix(3))
+        return stableWeeklySelection(from: remaining, unlockedItemIds: unlockedItemIds)
+    }
+
+    private func stableWeeklySelection(
+        from options: [ProgressRewardOption],
+        unlockedItemIds: Set<String>
+    ) -> [ProgressRewardOption] {
+        guard !options.isEmpty else { return [] }
+        let unlockedCompanionCount = unlockedItemIds.intersection(CityCompanions.ids).count
+        let offset = unlockedCompanionCount % options.count
+        let ordered = (0..<options.count).map {
+            options[(offset + $0) % options.count]
+        }
+        return Array(ordered.prefix(3))
     }
 }

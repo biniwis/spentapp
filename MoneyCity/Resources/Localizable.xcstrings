@@ -119,6 +119,26 @@
     "%@ מוסתרים מהחישוב" : {
 
     },
+    "%@, %@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, %3$@"
+          }
+        }
+      }
+    },
+    "%@, %@, %@ %@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, %3$@ %4$@, %5$@"
+          }
+        }
+      }
+    },
     "%@/mo" : {
 
     },
@@ -149,9 +169,6 @@
 
     },
     "%lld txs" : {
-
-    },
-    "%lld visits" : {
 
     },
     "%lld visits (%@ total) • View Details" : {
@@ -597,9 +614,6 @@
     "City companions — weekly addition" : {
 
     },
-    "City is still growing... Recap arrives at month end 🏙️" : {
-
-    },
     "City routine" : {
 
     },
@@ -721,6 +735,9 @@
 
     },
     "Done" : {
+
+    },
+    "Double tap to open monthly recap" : {
 
     },
     "Drag the shortcut input into this single field. The app extracts the amount and merchant automatically." : {
@@ -896,9 +913,6 @@
 
     },
     "In All Goals" : {
-
-    },
-    "In progress" : {
 
     },
     "Included" : {
@@ -2007,9 +2021,6 @@
     "העיר מחכה לסיפור שלך" : {
 
     },
-    "העיר עדיין נבנית... הסיכום יהיה זמין בסוף החודש 🏙️" : {
-
-    },
     "העיר של %@ מוכנה לסיכום!" : {
 
     },
@@ -2071,6 +2082,9 @@
 
     },
     "הקש על הבניין המסומן בעיר כדי לגלות אילו הוצאות בנו אותו." : {
+
+    },
+    "הקש פעמיים לפתיחת סיכום חודשי" : {
 
     },
     "הקשה להמשך" : {
@@ -2299,9 +2313,6 @@
 
     },
     "נא להזין סכום תקין" : {
-
-    },
-    "נבנה כעת" : {
 
     },
     "נוצר בישראל באהבה 🏙️" : {

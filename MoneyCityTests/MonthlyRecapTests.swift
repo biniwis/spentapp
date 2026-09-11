@@ -1,5 +1,6 @@
 import XCTest
 import SwiftUI
+import SwiftData
 @testable import MoneyCity
 
 final class MonthlyRecapTests: XCTestCase {
@@ -416,5 +417,81 @@ final class MonthlyRecapPortraitTests: XCTestCase {
             XCTAssertEqual(cgImage.height, 1950)
             XCTAssertNotNil(image.pngData())
         }
+    }
+}
+
+final class MonthlyRecapArchiveVisualTests: XCTestCase {
+    @MainActor
+    func testMonthlyRecapArchiveRendersPostcardsAndSavesVisuals() throws {
+        let schema = Schema([Transaction.self, CategoryBudget.self])
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let context = container.mainContext
+        
+        let cal = Calendar(identifier: .gregorian)
+        func makeDate(year: Int, month: Int, day: Int) -> Date {
+            cal.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
+        }
+        
+        // Current month: September 2026
+        context.insert(Transaction(amount: 50, merchant: "Aroma", category: .food, timestamp: makeDate(year: 2026, month: 9, day: 5)))
+        context.insert(Transaction(amount: 120, merchant: "Super", category: .food, timestamp: makeDate(year: 2026, month: 9, day: 8)))
+        
+        // August 2026
+        context.insert(Transaction(amount: 3200, merchant: "Rent", category: .housing, timestamp: makeDate(year: 2026, month: 8, day: 1)))
+        context.insert(Transaction(amount: 450, merchant: "Zara", category: .shopping, timestamp: makeDate(year: 2026, month: 8, day: 14)))
+        
+        // July 2026
+        context.insert(Transaction(amount: 2200, merchant: "Hotels", category: .entertainment, timestamp: makeDate(year: 2026, month: 7, day: 10)))
+        context.insert(Transaction(amount: 600, merchant: "Dinner", category: .food, timestamp: makeDate(year: 2026, month: 7, day: 20)))
+        
+        // June 2026
+        context.insert(Transaction(amount: 8500, merchant: "Agency", category: .finance, timestamp: makeDate(year: 2026, month: 6, day: 15)))
+        
+        // May 2026
+        context.insert(Transaction(amount: 300, merchant: "Books", category: .shopping, timestamp: makeDate(year: 2026, month: 5, day: 12)))
+
+        try context.save()
+        
+        func renderToDisk(view: some View, filename: String) {
+            let hosting = UIHostingController(rootView: view)
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 393, height: 852))
+            window.rootViewController = hosting
+            window.makeKeyAndVisible()
+            hosting.view.frame = window.bounds
+            
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
+            hosting.view.layoutIfNeeded()
+            
+            let renderer = UIGraphicsImageRenderer(bounds: hosting.view.bounds)
+            let image = renderer.image { ctx in
+                hosting.view.drawHierarchy(in: hosting.view.bounds, afterScreenUpdates: true)
+            }
+            if let data = image.pngData() {
+                let path = "/Users/bnymynwysmn/.gemini/antigravity/brain/0b66d33b-b50a-4abf-bf18-87bef410dacc/\(filename)"
+                try? data.write(to: URL(fileURLWithPath: path))
+            }
+            window.isHidden = true
+        }
+
+        let l10n = LocalizationManager.shared
+        
+        // Render Hebrew RTL
+        l10n.language = .hebrew
+        let hebrewView = MonthlyRecapArchiveView()
+            .environmentObject(l10n)
+            .environment(\.layoutDirection, .rightToLeft)
+            .modelContainer(container)
+        renderToDisk(view: hebrewView, filename: "archive_hebrew.png")
+        
+        // Render English LTR
+        l10n.language = .english
+        let englishView = MonthlyRecapArchiveView()
+            .environmentObject(l10n)
+            .environment(\.layoutDirection, .leftToRight)
+            .modelContainer(container)
+        renderToDisk(view: englishView, filename: "archive_english.png")
+        
+        // Restore language
+        l10n.language = .hebrew
     }
 }

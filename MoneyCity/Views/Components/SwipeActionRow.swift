@@ -93,6 +93,8 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                             offset = 0
                             openSwipeRowID = nil
                         }
+                    } else {
+                        onEdit()
                     }
                 }
                 .simultaneousGesture(
@@ -114,6 +116,11 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                                         }
                                     } else {
                                         gestureDirectionLocked = .vertical
+                                        if openSwipeRowID != nil {
+                                            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                                openSwipeRowID = nil
+                                            }
+                                        }
                                         return
                                     }
                                 } else {

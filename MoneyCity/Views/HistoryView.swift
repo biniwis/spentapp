@@ -167,16 +167,6 @@ public struct HistoryView: View {
                         }
                         .padding(.top, 8)
                     }
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 10)
-                            .onChanged { val in
-                                if abs(val.translation.height) > 10 && openSwipeRowID != nil {
-                                    withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-                                        openSwipeRowID = nil
-                                    }
-                                }
-                            }
-                    )
                 }
             }
 
@@ -185,6 +175,7 @@ public struct HistoryView: View {
                 Spacer()
                 undoBanner
             }
+            .allowsHitTesting(lastDeleted != nil)
         }
         .sheet(item: $editingTx) { tx in
             EditTransactionSheet(transaction: tx)

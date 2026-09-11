@@ -139,4 +139,16 @@ final class BudgetServiceTests: XCTestCase {
     func testForecastIsNilWithNoSpending() {
         XCTAssertNil(BudgetService.projectedMonthEnd(spentSoFar: 0))
     }
+
+    func testMonthlySpendingBudgetDoesNotDependOnIncomeSource() {
+        // Income is real earnings; overallBudget is the user's spending ceiling.
+        let spendingTarget = BudgetService.monthlySpendingBudget(categoryBudgets: [], overallBudget: 8000)
+        XCTAssertEqual(spendingTarget, 8000, "Spending budget must strictly derive from category budgets or overall budget")
+
+        let incomeSources = [IncomeSource(name: "משכורת", amount: 15000)]
+        let expectedIncome = BudgetService.expectedMonthlyIncome(incomeSources)
+        XCTAssertEqual(expectedIncome, 15000)
+        XCTAssertNotEqual(spendingTarget, expectedIncome, "Spending target and real income are fundamentally separate")
+    }
 }
+

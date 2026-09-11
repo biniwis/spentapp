@@ -2,29 +2,35 @@ import SwiftUI
 import SwiftData
 
 /// Onboarding Wizard:
-/// 1. Concept: Living 3D City & Green Nature Park
-/// 2. Mayor: Personalizing the city
-/// 3. Budget Target: Anchoring the monthly spending budget
-/// 4. Shortcuts: Apple Pay silent background ingestion
-/// 5. City Born: First seed transaction celebration
-///
-/// Fully adhering to SPENT_VISUAL_LANGUAGE.md (no glowing neon halos, calm editorial craftsmanship,
-/// authentic Apple HIG design, responsive spring animations, and tactile haptic feedback).
+/// A mature, modern, architectural first-run experience adhering to SPENT_DESIGN_CONSTITUTION.md:
+/// - Young, modern, editorial, architectural, confident, and premium.
+/// - Borderless, direct-on-canvas hierarchy: zero cards, frames, or pill stacks.
+/// - SF Rounded used selectively for hero numbers, city titles, and key amounts; standard SF Pro for body/instructions.
+/// - Real, directly-editable hero spending amount with keyboard support.
+/// - Precise, non-judgmental copy accurately explaining Apple Shortcuts automation without misleading Wallet/bank claims.
+/// - Refined 18pt corner radius CTA buttons without colored glow.
 public struct OnboardingWizardView: View {
     public let onComplete: () -> Void
     public let onTriggerSampleTransaction: () -> Void
 
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @AppStorage("userName") private var storedUserName: String = ""
     @AppStorage("monthly_budget") private var storedMonthlyBudget: Double = 0
 
-    @State private var currentStep: Int = 1
+    // Persistent state across scene lifecycle (e.g. switching to Shortcuts and back)
+    @SceneStorage("spent.onboarding.currentStep") private var currentStep: Int = 1
+    @SceneStorage("spent.onboarding.shortcutPhase") private var shortcutPhase: String = "intro" // "intro" (4A) or "guide" (4B)
+
     @State private var slideDirection: Int = 1 // 1 = forward, -1 = backward
     @State private var userNameInput: String = ""
     @State private var budgetInputText: String = "8000"
-    @State private var isContentVisible: Bool = false
+    @State private var hasOpenedShortcuts: Bool = false
+
+    private let initialStepOverride: Int?
+    private let initialPhaseOverride: String?
 
     private var parsedBudget: Double? {
         guard let val = TransactionIngest.normalizedAmount(nil, budgetInputText), val > 0 else { return nil }
@@ -35,10 +41,18 @@ public struct OnboardingWizardView: View {
         l10n.isHebrew
     }
 
+    private var activeOnboardingStep: OnboardingStep {
+        OnboardingStep(rawValue: currentStep) ?? .concept
+    }
+
     public init(
+        initialStep: Int? = nil,
+        initialPhase: String? = nil,
         onComplete: @escaping () -> Void,
         onTriggerSampleTransaction: @escaping () -> Void
     ) {
+        self.initialStepOverride = initialStep
+        self.initialPhaseOverride = initialPhase
         self.onComplete = onComplete
         self.onTriggerSampleTransaction = onTriggerSampleTransaction
     }
@@ -48,128 +62,134 @@ public struct OnboardingWizardView: View {
             Color.appBackground.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Top Navigation Row (Back + Dots + Skip)
+                // Top Navigation (Back button + quiet progress indicators)
                 topNavigationRow
                     .padding(.horizontal, 24)
-                    .padding(.top, 16)
-                    .padding(.bottom, 12)
+                    .padding(.top, 14)
+                    .padding(.bottom, 6)
 
-                // Step Dots Progress Indicator
+                // 5 Dots Progress Indicator (Quiet, subtle)
                 stepProgressIndicator
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 6)
 
-                // Scrollable Animated Content
+                // Continuous Miniature City Scene (Direct on canvas, zero frames)
+                OnboardingCityScene(
+                    step: activeOnboardingStep,
+                    mayorName: userNameInput,
+                    targetAmountText: budgetInputText,
+                    isRTL: isHebrew
+                )
+                .padding(.bottom, 10)
+
+                // Scrollable Step Body (Direct on canvas, intentional whitespace)
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 22) {
-                        // Hero Icon Badge (Clean pastel circle, no neon glows)
-                        stepHeroBadge
-
-                        // Title & Subtitle
+                    VStack(spacing: 16) {
+                        // Title & Subtitle Section
                         stepTitleSection
 
-                        // Step Body Content (Clean white cards, editorial layout)
+                        // Interactive Step Form Content
                         stepBodyContent
 
-                        Spacer(minLength: 24)
+                        Spacer(minLength: 20)
                     }
-                    .padding(.horizontal, 24)
-                    .id(currentStep)
+                    .padding(.horizontal, 26)
+                    .id("\(currentStep)_\(shortcutPhase)")
                     .transition(
-                        .asymmetric(
-                            insertion: .offset(x: CGFloat(slideDirection) * 36).combined(with: .opacity),
-                            removal: .offset(x: CGFloat(-slideDirection) * 36).combined(with: .opacity)
-                        )
+                        reduceMotion
+                            ? .opacity
+                            : .asymmetric(
+                                insertion: .offset(x: CGFloat(slideDirection) * 24).combined(with: .opacity),
+                                removal: .offset(x: CGFloat(-slideDirection) * 24).combined(with: .opacity)
+                            )
                     )
                 }
 
-                // Sticky Bottom Action Button
+                // Sticky Bottom Action Bar
                 bottomActionBar
                     .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 14)
                     .background(Color.appBackground)
             }
         }
         .onAppear {
-            userNameInput = storedUserName
+            if let initialStep = initialStepOverride {
+                currentStep = initialStep
+            }
+            if let initialPhase = initialPhaseOverride {
+                shortcutPhase = initialPhase
+            }
+            if !storedUserName.isEmpty && userNameInput.isEmpty {
+                userNameInput = storedUserName
+            }
             if storedMonthlyBudget > 0 {
                 budgetInputText = String(format: "%.0f", storedMonthlyBudget)
             }
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                isContentVisible = true
-            }
         }
+        .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
 
     // MARK: - Top Navigation Row
     private var topNavigationRow: some View {
         HStack {
-            if currentStep > 1 {
-                Button(action: {
-                    Haptics.selection()
-                    slideDirection = -1
-                    withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
-                        currentStep -= 1
-                    }
-                }) {
+            if currentStep > 1 || (currentStep == 4 && shortcutPhase == "guide") {
+                Button(action: handleBackNavigation) {
                     HStack(spacing: 4) {
                         Image(systemName: isHebrew ? "chevron.right" : "chevron.left")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(.system(size: 13, weight: .semibold))
                         Text(isHebrew ? "חזרה" : "Back")
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .font(.system(size: 14, weight: .medium, design: .default))
                     }
                     .foregroundColor(Color.textSecondary)
                 }
-                .bouncyPress(scale: 0.95)
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.96)
             }
 
             Spacer()
+        }
+        .frame(height: 28)
+    }
 
-            Button(action: {
-                Haptics.selection()
-                saveAllAndFinish()
-            }) {
-                Text(isHebrew ? "דלג" : "Skip")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
+    private func handleBackNavigation() {
+        Haptics.selection()
+        if currentStep == 4 && shortcutPhase == "guide" {
+            slideDirection = -1
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                shortcutPhase = "intro"
             }
-            .bouncyPress(scale: 0.95)
+        } else if currentStep > 1 {
+            slideDirection = -1
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                currentStep -= 1
+                if currentStep == 4 {
+                    shortcutPhase = "intro"
+                }
+            }
         }
     }
 
-    // MARK: - Step Progress Indicator
+    // MARK: - 5 Dots Progress Indicator (Quiet, mature)
     private var stepProgressIndicator: some View {
-        HStack(spacing: 8) {
-            ForEach(1...5, id: \.self) { step in
+        HStack(spacing: 6) {
+            ForEach(1...5, id: \.self) { stepNumber in
                 Capsule()
-                    .fill(step == currentStep ? Color.deepNavy : Color.borderSubtle)
-                    .frame(width: step == currentStep ? 24 : 7, height: 7)
-                    .animation(.spring(response: 0.32, dampingFraction: 0.75), value: currentStep)
+                    .fill(stepNumber == currentStep ? Color.deepNavy : Color.borderSubtle.opacity(0.8))
+                    .frame(width: stepNumber == currentStep ? 18 : 5, height: 5)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.82), value: currentStep)
             }
         }
-    }
-
-    // MARK: - Hero Badge (Editorial Pastel Circle)
-    private var stepHeroBadge: some View {
-        ZStack {
-            Circle()
-                .fill(stepBadgeBg)
-                .frame(width: 76, height: 76)
-
-            MoneyIcon(stepBadgeIcon, size: 36, color: stepBadgeColor)
-        }
-        .padding(.top, 4)
     }
 
     // MARK: - Title Section
     private var stepTitleSection: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Text(stepTitleText)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(Color.deepNavy)
                 .multilineTextAlignment(.center)
 
             Text(stepSubtitleText)
-                .font(.system(size: 14, weight: .regular, design: .default))
+                .font(.system(size: 13.5, weight: .regular, design: .default))
                 .foregroundColor(Color.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
@@ -182,341 +202,311 @@ public struct OnboardingWizardView: View {
     private var stepBodyContent: some View {
         switch currentStep {
         case 1:
-            step1ConceptCards
+            step1ConceptBody
         case 2:
             step2MayorInput
         case 3:
             step3BudgetConfig
         case 4:
-            step4AutomationGuide
+            if shortcutPhase == "guide" {
+                step4BGuideContent
+            } else {
+                step4AIntroContent
+            }
         default:
             step5LaunchSummary
         }
     }
 
-    // MARK: Step 1 - Concept Cards
-    private var step1ConceptCards: some View {
-        VStack(spacing: 12) {
-            conceptCardRow(
-                icon: .citySkyline,
-                color: Color.primaryBlue,
-                bgColor: Color.primaryBlue.opacity(0.10),
-                title: isHebrew ? "כל קנייה בונה מבנה" : "Every Spend Builds A Building",
-                desc: isHebrew ? "סופר, מסעדה או טיסות — כל הוצאה מקימה מבנה תלת-ממדי מסוגנן בעיר שלך." : "Groceries, dining or flights — each payment spawns an isometric structure."
+    // MARK: Step 1 - Concept Body (Clean typographic narrative, subtle colored dots)
+    private var step1ConceptBody: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            editorialFactRow(
+                dotColor: Color.themeOrange,
+                text: isHebrew ? "הוצאות משנות את העיר" : "Spending shapes the city"
             )
 
-            conceptCardRow(
-                icon: .leaf,
-                color: Color.spentGreen,
-                bgColor: Color.spentGreenSoft,
-                title: isHebrew ? "החיסכון מייצר פארק ירוק" : "Savings Grow Green Parks",
-                desc: isHebrew ? "התקציב שלא בוזבז מטפח פארקים מלבלבים, עצים ואגמים ככל שאתה חוסך." : "Unspent money blossoms into vibrant parks, trees, and serene lakes."
+            editorialFactRow(
+                dotColor: Color.spentGreen,
+                text: isHebrew ? "הפארק משקף איך החודש מתקדם מול היעד" : "The park reflects month progress against target"
             )
 
-            conceptCardRow(
-                icon: .lock,
-                color: Color.themeLavender,
-                bgColor: Color.themeLavenderSoft,
-                title: isHebrew ? "פרטיות מוחלטת — ללא בנקים" : "Pure Privacy — Zero Bank Logins",
-                desc: isHebrew ? "המידע נשמר רק על מכשירך. אפס סיסמאות או חיבורי בנק חיצוניים." : "All data stays strictly on device. No bank credentials needed."
+            editorialFactRow(
+                dotColor: Color.primaryBlue,
+                text: isHebrew ? "המידע נשאר על המכשיר" : "Data stays strictly on your device"
             )
         }
-        .padding(.top, 4)
+        .padding(.top, 14)
+        .padding(.horizontal, 12)
     }
 
-    private func conceptCardRow(
-        icon: MoneyIconType,
-        color: Color,
-        bgColor: Color,
-        title: String,
-        desc: String
-    ) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(bgColor)
-                    .frame(width: 44, height: 44)
-                MoneyIcon(icon, size: 20, color: color)
-            }
+    private func editorialFactRow(dotColor: Color, text: String) -> some View {
+        HStack(spacing: 12) {
+            Circle()
+                .fill(dotColor)
+                .frame(width: 6, height: 6)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                Text(desc)
-                    .font(.system(size: 12, weight: .regular, design: .default))
-                    .foregroundColor(Color.textSecondary)
-                    .lineSpacing(2)
-            }
-            Spacer(minLength: 0)
+            Text(text)
+                .font(.system(size: 14, weight: .medium, design: .default))
+                .foregroundColor(Color.deepNavy)
+
+            Spacer()
         }
-        .padding(14)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
     }
 
-    // MARK: Step 2 - Mayor Input
+    // MARK: Step 2 - Mayor Input (The name itself is the hero; no underline, no card, no duplicate pill)
     private var step2MayorInput: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 12) {
-                MoneyIcon(.user, size: 20, color: Color.primaryBlue)
+        VStack(spacing: 6) {
+            Text(isHebrew ? "השם שלך" : "Your Name")
+                .font(.system(size: 12.5, weight: .medium, design: .default))
+                .foregroundColor(Color.textMuted)
 
-                TextField(isHebrew ? "הכנס את שמך (למשל: בנימין)" : "Enter your name (e.g. Benjamin)", text: $userNameInput)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
-
-            let trimmed = userNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty {
-                HStack(spacing: 8) {
-                    Text("🏛️")
-                        .font(.system(size: 15))
-                    Text(isHebrew ? "ראש העיר הרשמי: \(trimmed)" : "Official Mayor: \(trimmed)")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color.themeYellowSoft)
-                .clipShape(Capsule())
-                .transition(.scale.combined(with: .opacity))
-            }
+            TextField(
+                isHebrew ? "השם שלך" : "Your name",
+                text: $userNameInput
+            )
+            .font(.system(size: 34, weight: .bold, design: .rounded))
+            .foregroundColor(Color.deepNavy)
+            .multilineTextAlignment(.center)
+            .padding(.vertical, 8)
+            .accessibilityLabel(isHebrew ? "השם שלך" : "Your name")
         }
-        .padding(.top, 8)
+        .padding(.top, 22)
     }
 
-    // MARK: Step 3 - Budget Config
+    // MARK: Step 3 - Monthly Spending Target (Real editable TextField, clean suggestions, BUDGET ≠ INCOME)
     private var step3BudgetConfig: some View {
-        VStack(spacing: 18) {
-            // Main Amount Card
-            HStack(spacing: 8) {
+        VStack(spacing: 16) {
+            // Visual Hero: Real editable amount with keyboard support
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(l10n.baseCurrency.symbol)
-                    .font(.system(size: 26, weight: .black, design: .rounded))
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundColor(Color.spentGreen)
 
                 #if os(iOS)
                 TextField("0", text: $budgetInputText)
-                    .font(.system(size: 32, weight: .black, design: .rounded))
+                    .font(.system(size: 42, weight: .heavy, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
                 #else
                 TextField("0", text: $budgetInputText)
-                    .font(.system(size: 32, weight: .black, design: .rounded))
+                    .font(.system(size: 42, weight: .heavy, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
                 #endif
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
+            .padding(.top, 4)
 
-            // Preset Quick Selection Chips
-            VStack(alignment: .leading, spacing: 8) {
-                Text(isHebrew ? "או בחר סכום:" : "Or choose an amount:")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-
-                HStack(spacing: 8) {
-                    budgetChip(amount: "5000")
-                    budgetChip(amount: "8000")
-                    budgetChip(amount: "12000")
-                    budgetChip(amount: "15000")
-                }
+            // Preset Quick Suggestions (Quiet suggestions, not heavy buttons)
+            HStack(spacing: 8) {
+                budgetPresetOption(amount: "5000")
+                budgetPresetOption(amount: "8000")
+                budgetPresetOption(amount: "12000")
+                budgetPresetOption(amount: "15000")
             }
+
+            // Quiet supporting label
+            Text(isHebrew ? "יעד הוצאה חודשי · אפשר לשנות אחר כך" : "Monthly spending target · can be changed later")
+                .font(.system(size: 12, weight: .medium, design: .default))
+                .foregroundColor(Color.textMuted)
         }
-        .padding(.top, 4)
+        .padding(.top, 6)
     }
 
-    private func budgetChip(amount: String) -> some View {
+    private func budgetPresetOption(amount: String) -> some View {
         let isSelected = budgetInputText == amount
         return Button(action: {
             Haptics.selection()
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.75)) {
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
                 budgetInputText = amount
             }
         }) {
             Text("₪\(amount)")
-                .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                .font(.system(size: 12.5, weight: isSelected ? .bold : .regular, design: .rounded))
                 .foregroundColor(isSelected ? Color.white : Color.deepNavy)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 7)
                 .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(isSelected ? Color.deepNavy : Color.white)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(isSelected ? Color.clear : Color.borderSubtle, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(isSelected ? Color.deepNavy : Color.black.opacity(0.04))
                 )
         }
         .buttonStyle(.plain)
-        .bouncyPress(scale: 0.94)
+        .bouncyPress(scale: 0.96)
     }
 
-    // MARK: Step 4 - Automation Guide
-    private var step4AutomationGuide: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            automationStepRow(
-                num: "1",
-                title: isHebrew ? "פתח אוטומציה באייפון" : "Open Automation in iPhone",
-                desc: isHebrew
-                    ? "באפליקציית 'קיצורים' > לשונית 'אוטומציה' > לחץ + > בחר 'עסקה' (Transaction) וסמן 'הפעל מיד'."
-                    : "In Shortcuts app > Automation tab > tap + > choose 'Transaction' and select 'Run Immediately'."
-            )
-
-            automationStepRow(
-                num: "2",
-                title: isHebrew ? "בחר בפעולה של SPENT" : "Choose SPENT Action",
-                desc: isHebrew
-                    ? "בחר 'אוטומציה ריקה חדשה' > 'הוסף פעולה' > חפש SPENT ובחר 'הקלטת עסקת Apple Pay'."
-                    : "Choose 'New Blank Automation' > 'Add Action' > search SPENT and select 'Record Apple Pay Transaction'."
-            )
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.spentGreen)
-                            .frame(width: 22, height: 22)
-                        Text("3")
-                            .font(.system(size: 12, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(isHebrew ? "חבר את הקלט (חשוב! 💡)" : "Connect Input (Important! 💡)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        Text(isHebrew ? "לחץ על השדות הכחולים וחבר אותם ל'קלט הקיצור':" : "Tap blue fields and attach to Shortcut Input:")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                    }
+    // MARK: Step 4A - Shortcuts Intro (Flatter, mature typographic flow)
+    private var step4AIntroContent: some View {
+        VStack(spacing: 20) {
+            // Mature 3-node flow: Payment → Shortcuts → SPENT
+            HStack(spacing: 16) {
+                if isHebrew {
+                    // RTL reading: תשלום (Right) → קיצורים (Center) → SPENT (Left)
+                    flowConceptNode(label: "תשלום", sublabel: "Apple Pay")
+                    flowArrowIndicator
+                    flowConceptNode(label: "קיצורים", sublabel: "אוטומציה")
+                    flowArrowIndicator
+                    flowConceptNode(label: "SPENT", sublabel: "בניית העיר")
+                } else {
+                    // LTR reading: Payment (Left) → Shortcuts (Center) → SPENT (Right)
+                    flowConceptNode(label: "Payment", sublabel: "Apple Pay")
+                    flowArrowIndicator
+                    flowConceptNode(label: "Shortcuts", sublabel: "Automation")
+                    flowArrowIndicator
+                    flowConceptNode(label: "SPENT", sublabel: "Builds City")
                 }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 4) {
-                        Text(isHebrew ? "• לחץ" : "• Tap")
-                            .font(.system(size: 11, weight: .medium))
-                        Text(isHebrew ? "[סכום העסקה]" : "[Transaction Amount]")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.primaryBlue)
-                        Text("➔")
-                            .font(.system(size: 11, weight: .medium))
-                        Text(isHebrew ? "[קלט הקיצור]" : "[Shortcut Input]")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.spentGreen)
-                        Text(isHebrew ? "(סכום)" : "(Amount)")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    HStack(spacing: 4) {
-                        Text(isHebrew ? "• לחץ" : "• Tap")
-                            .font(.system(size: 11, weight: .medium))
-                        Text(isHebrew ? "[שם בית העסק]" : "[Merchant Name]")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.primaryBlue)
-                        Text("➔")
-                            .font(.system(size: 11, weight: .medium))
-                        Text(isHebrew ? "[קלט הקיצור]" : "[Shortcut Input]")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.spentGreen)
-                        Text(isHebrew ? "(שם העסק)" : "(Merchant)")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    Text(isHebrew ? "• לחץ 'סיום' (Done) למעלה — וזהו! 🎉" : "• Tap 'Done' at the top — and you're set! 🎉")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color.spentGreen)
-                        .padding(.top, 2)
-                }
-                .padding(.leading, 34)
             }
-        }
-        .padding(16)
-        .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
-    }
+            .padding(.top, 12)
 
-    private func automationStepRow(num: String, title: String, desc: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.spentGreen)
-                    .frame(width: 22, height: 22)
-                Text(num)
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                Text(desc)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
-            }
-        }
-    }
-
-    // MARK: Step 5 - Launch Summary
-    private var step5LaunchSummary: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 12) {
-                let mayorName = userNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
-                summaryRow(
-                    label: isHebrew ? "ראש עיר" : "Mayor",
-                    value: mayorName.isEmpty ? (isHebrew ? "ראש העיר" : "Mayor") : mayorName
-                )
-                Divider()
-                summaryRow(
-                    label: isHebrew ? "יעד תקציב חודשי" : "Monthly Budget",
-                    value: "₪\(budgetInputText)"
-                )
-                Divider()
-                summaryRow(
-                    label: isHebrew ? "אוטומציה שקטה" : "Automation",
-                    value: isHebrew ? "מוכנה לפעולה" : "Ready"
-                )
-            }
-            .padding(18)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.borderSubtle, lineWidth: 1))
-            .shadow(color: Color.black.opacity(0.02), radius: 6, y: 2)
-
-            Text(isHebrew ? "בלחיצה למטה תיכנס לעיר שלך — כל תשלום שתבצע דרך Apple Pay או ידנית יקים את המבנים הראשונים! 🏙️" : "Tap below to step into your city — every payment builds your very first landmarks! 🏙️")
-                .font(.system(size: 12.5, weight: .medium, design: .rounded))
-                .foregroundColor(Color.textSecondary)
+            // Technical accuracy & privacy clarification directly on canvas
+            Text(isHebrew
+                ? "\u{200F}SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות."
+                : "SPENT never connects to your bank or reads Wallet directly.")
+                .font(.system(size: 12, weight: .regular, design: .default))
+                .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 16)
         }
         .padding(.top, 4)
     }
 
-    private func summaryRow(label: String, value: String) -> some View {
-        HStack {
+    private func flowConceptNode(label: String, sublabel: String) -> some View {
+        VStack(spacing: 3) {
             Text(label)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundColor(Color.textMuted)
-            Spacer()
-            Text(value)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundColor(Color.deepNavy)
+            Text(sublabel)
+                .font(.system(size: 10.5, weight: .regular, design: .default))
+                .foregroundColor(Color.textSecondary)
         }
-        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var flowArrowIndicator: some View {
+        Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundColor(Color.textMuted.opacity(0.8))
+    }
+
+    // MARK: Step 4B - Shortcuts Setup Guide (Direct-on-canvas editorial numbered flow: 01 / 02 / 03)
+    private var step4BGuideContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Step 01
+            editorialNumberedStep(
+                number: "01",
+                title: isHebrew ? "צור אוטומציה מסוג עסקה" : "Create Transaction Automation",
+                instruction: isHebrew
+                    ? "בקיצורים: אוטומציה ← + ← עסקה (Transaction) ← הפעל מיד."
+                    : "In Shortcuts: Automation → + → Transaction → Run Immediately."
+            )
+
+            Divider().overlay(Color.borderSubtle.opacity(0.6))
+
+            // Step 02
+            editorialNumberedStep(
+                number: "02",
+                title: isHebrew ? "בחר את הפעולה של SPENT" : "Select SPENT Action",
+                instruction: isHebrew
+                    ? "אוטומציה חדשה ← הוסף פעולה ← חפש SPENT ← הקלטת עסקת Apple Pay."
+                    : "New Action → Search SPENT → Record Apple Pay Transaction."
+            )
+
+            Divider().overlay(Color.borderSubtle.opacity(0.6))
+
+            // Step 03 with compact field mapping
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text("03")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(isHebrew ? "חבר את השדות" : "Connect the Fields")
+                            .font(.system(size: 13.5, weight: .semibold, design: .default))
+                            .foregroundColor(Color.deepNavy)
+
+                        Text(isHebrew ? "התאם את השדות לקלט הקיצור:" : "Map the fields to Shortcut Input:")
+                            .font(.system(size: 11.5, weight: .regular, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                }
+
+                // Compact inline mapping
+                VStack(alignment: .leading, spacing: 4) {
+                    compactMappingRow(
+                        source: isHebrew ? "סכום העסקה" : "Transaction Amount",
+                        dest: isHebrew ? "סכום" : "Amount"
+                    )
+                    compactMappingRow(
+                        source: isHebrew ? "שם בית העסק" : "Merchant Name",
+                        dest: isHebrew ? "שם העסק" : "Merchant"
+                    )
+                }
+                .padding(.leading, 32)
+            }
+        }
+        .padding(.top, 4)
+        .padding(.horizontal, 4)
+    }
+
+    private func editorialNumberedStep(number: String, title: String, instruction: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(number)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 13.5, weight: .semibold, design: .default))
+                    .foregroundColor(Color.deepNavy)
+
+                Text(instruction)
+                    .font(.system(size: 11.5, weight: .regular, design: .default))
+                    .foregroundColor(Color.textSecondary)
+                    .lineSpacing(2)
+            }
+        }
+    }
+
+    private func compactMappingRow(source: String, dest: String) -> some View {
+        HStack(spacing: 5) {
+            Text(source)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.primaryBlue)
+
+            Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
+                .font(.system(size: 8.5, weight: .bold))
+                .foregroundColor(Color.textMuted)
+
+            Text(dest)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.spentGreen)
+        }
+    }
+
+    // MARK: Step 5 - Final City Reveal (Cinematic city payoff, minimal copy)
+    private var step5LaunchSummary: some View {
+        VStack(spacing: 8) {
+            let name = userNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let mayorDisplayName = name.isEmpty ? (isHebrew ? "ראש העיר" : "Mayor") : name
+            let amount = parsedBudget ?? (storedMonthlyBudget > 0 ? storedMonthlyBudget : 8000)
+            let formattedBudget: String = {
+                let formatter = NumberFormatter()
+                formatter.numberStyle = .decimal
+                return formatter.string(from: NSNumber(value: amount)) ?? budgetInputText
+            }()
+
+            // Quiet metadata line directly on canvas
+            Text(isHebrew ? "\(mayorDisplayName) · יעד חודשי ₪\(formattedBudget)" : "\(mayorDisplayName) · Monthly Target ₪\(formattedBudget)")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+                .padding(.top, 14)
+        }
     }
 
     // MARK: - Bottom Action Bar
@@ -524,11 +514,11 @@ public struct OnboardingWizardView: View {
     private var bottomActionBar: some View {
         switch currentStep {
         case 1:
-            primaryActionButton(title: isHebrew ? "בוא נתחיל" : "Let's Get Started") {
+            primaryActionButton(title: isHebrew ? "בוא נבנה" : "Let's Build") {
                 nextStep()
             }
         case 2:
-            primaryActionButton(title: isHebrew ? "המשך לתקציב" : "Continue to Budget") {
+            primaryActionButton(title: isHebrew ? "המשך ליעד" : "Continue to Target") {
                 saveMayor()
                 nextStep()
             }
@@ -538,52 +528,99 @@ public struct OnboardingWizardView: View {
                 nextStep()
             }
         case 4:
-            step4ActionButtons
+            if shortcutPhase == "guide" {
+                step4BActionButtons
+            } else {
+                step4AActionButtons
+            }
         default:
-            primaryActionButton(title: isHebrew ? "בוא נתחיל לבנות את העיר" : "Enter Your City") {
+            primaryActionButton(title: isHebrew ? "כניסה לעיר" : "Enter City") {
                 Haptics.notify(.success)
                 saveAllAndFinish()
             }
         }
     }
 
-    private var step4ActionButtons: some View {
-        VStack(spacing: 10) {
+    // Step 4A Actions
+    private var step4AActionButtons: some View {
+        VStack(spacing: 8) {
+            primaryActionButton(title: isHebrew ? "יאללה, בוא נגדיר" : "Let's Set It Up") {
+                slideDirection = 1
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                    shortcutPhase = "guide"
+                }
+            }
+
+            Button(action: {
+                Haptics.selection()
+                slideDirection = 1
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                    currentStep = 5
+                }
+            }) {
+                Text(isHebrew ? "אעשה את זה אחר כך" : "I'll do this later")
+                    .font(.system(size: 13.5, weight: .medium, design: .default))
+                    .foregroundColor(Color.textSecondary)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // Step 4B Actions: Open Shortcuts link + Continue
+    private var step4BActionButtons: some View {
+        VStack(spacing: 8) {
             #if os(iOS)
             if let url = URL(string: "shortcuts://") {
-                Link(destination: url) {
-                    HStack(spacing: 8) {
-                        MoneyIcon(.lightning, size: 18, color: .white)
-                        Text(isHebrew ? "פתח את אפליקציית 'קיצורים'" : "Open Shortcuts App")
+                Button(action: {
+                    hasOpenedShortcuts = true
+                    Haptics.impact(.medium)
+                    UIApplication.shared.open(url)
+                }) {
+                    HStack(spacing: 6) {
+                        MoneyIcon(.lightning, size: 15, color: .white)
+                        Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(Capsule().fill(Color.themeOrange))
+                    .frame(height: 52)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color.themeOrange)
+                    )
                 }
+                .buttonStyle(.plain)
                 .bouncyPress(scale: 0.97)
             }
             #endif
 
-            primaryActionButton(title: isHebrew ? "המשך לסיום" : "Continue") {
+            primaryActionButton(
+                title: hasOpenedShortcuts
+                    ? (isHebrew ? "סיימתי, המשך" : "Done, Continue")
+                    : (isHebrew ? "אמשיך בלי לפתוח כרגע" : "Continue without opening")
+            ) {
                 nextStep()
             }
         }
     }
 
+    // Refined, mature primary CTA: 54pt height, 18pt corner radius, flat with subtle neutral depth
     private func primaryActionButton(title: String, action: @escaping () -> Void) -> some View {
         Button(action: {
             Haptics.impact(.medium)
             action()
         }) {
             Text(title)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 15.5, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(Capsule().fill(Color.spentGreen))
-                .shadow(color: Color.spentGreen.opacity(0.25), radius: 6, y: 2)
+                .frame(height: 52)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.spentGreen)
+                )
+                .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
         }
         .buttonStyle(.plain)
         .bouncyPress(scale: 0.97)
@@ -591,8 +628,11 @@ public struct OnboardingWizardView: View {
 
     private func nextStep() {
         slideDirection = 1
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.82)) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
             currentStep += 1
+            if currentStep == 4 {
+                shortcutPhase = "intro"
+            }
         }
     }
 
@@ -603,15 +643,24 @@ public struct OnboardingWizardView: View {
         }
     }
 
+    /// BUDGET ≠ INCOME:
+    /// Monthly budget is strictly a spending target, persisted via @AppStorage("monthly_budget").
+    /// It must NOT create or update any IncomeSource record.
     private func saveBudget() {
         if let b = parsedBudget {
             storedMonthlyBudget = b
-            modelContext.insert(IncomeSource(
-                name: isHebrew ? "יעד חודשי" : "Monthly Target",
-                amount: b,
-                currency: l10n.baseCurrency.symbol
-            ))
-            try? modelContext.save()
+        }
+        // Remove legacy onboarding IncomeSource entries if any exist
+        let descriptor = FetchDescriptor<IncomeSource>()
+        if let items = try? modelContext.fetch(descriptor) {
+            var didDelete = false
+            for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
+                modelContext.delete(item)
+                didDelete = true
+            }
+            if didDelete {
+                try? modelContext.save()
+            }
         }
     }
 
@@ -622,49 +671,23 @@ public struct OnboardingWizardView: View {
         onComplete()
     }
 
-    // MARK: - Dynamic Step Helpers
-    private var stepBadgeIcon: MoneyIconName {
-        switch currentStep {
-        case 1: return .citySkyline
-        case 2: return .user
-        case 3: return .target
-        case 4: return .lightning
-        default: return .star
-        }
-    }
-
-    private var stepBadgeColor: Color {
-        switch currentStep {
-        case 1: return Color.primaryBlue
-        case 2: return Color.themeTurquoise
-        case 3: return Color.spentGreen
-        case 4: return Color.themeOrange
-        default: return Color.spentGreen
-        }
-    }
-
-    private var stepBadgeBg: Color {
-        switch currentStep {
-        case 1: return Color.primaryBlue.opacity(0.10)
-        case 2: return Color.themeTurquoiseSoft
-        case 3: return Color.spentGreenSoft
-        case 4: return Color.themeOrangeSoft
-        default: return Color.spentGreenSoft
-        }
-    }
-
+    // MARK: - Dynamic Step Titles & Subtitles (Final Approved Reference Copy)
     private var stepTitleText: String {
         switch currentStep {
         case 1:
-            return isHebrew ? "ההוצאות שלך בונות עיר חיה" : "Your Spending Builds A Living City"
+            return isHebrew ? "ההוצאות שלך בונות עיר" : "Your Spending Builds a City"
         case 2:
-            return isHebrew ? "מי ראש העיר החדש?" : "Who is the New Mayor?"
+            return isHebrew ? "מי ראש העיר?" : "Who's the Mayor?"
         case 3:
-            return isHebrew ? "מה התקציב החודשי שלך?" : "What's Your Monthly Budget?"
+            return isHebrew ? "כמה היית רוצה להוציא החודש?" : "How much would you like to spend?"
         case 4:
-            return isHebrew ? "מעקב אוטומטי עם קיצורי דרך" : "Automatic Tracking with Shortcuts"
+            if shortcutPhase == "guide" {
+                return isHebrew ? "הגדרת האוטומציה" : "Configure Automation"
+            } else {
+                return isHebrew ? "רוצה שהעיר תתעדכן לבד?" : "Want your city to update automatically?"
+            }
         default:
-            return isHebrew ? "העיר שלך מוכנה!" : "Your City Is Ready!"
+            return isHebrew ? "העיר שלך מוכנה" : "Your City Is Ready"
         }
     }
 
@@ -672,24 +695,30 @@ public struct OnboardingWizardView: View {
         switch currentStep {
         case 1:
             return isHebrew
-                ? "כל תשלום שאתה מבצע מקים מבנה תלת-ממדי מסוגנן, וכסף שלא הוצאת מייצר פארקים ירוקים ואגמים."
-                : "Every payment constructs a stylish 3D building, and unspent money grows vibrant green parks and lakes."
+                ? "כל תשלום משאיר משהו בעיר. לאורך החודש היא משתנה ומקבלת צורה."
+                : "Every payment leaves something in the city. Over the month it takes shape."
         case 2:
             return isHebrew
-                ? "העיר תפנה אליך בתואר ראש העיר בכל סיכום חודשי והישג שתפתח."
-                : "Personalize your city. You'll be addressed as Mayor across recaps and achievements."
+                ? "רק שם קטן כדי שהעיר תדע למי היא שייכת."
+                : "Just a name so the city knows who it belongs to."
         case 3:
             return isHebrew
-                ? "זהו העוגן של העיר. ככל שתשמור על התקציב, שטחי הטבע והחיסכון בעיר ישגשגו."
-                : "This is the anchor for your city. Remaining within budget expands your lush savings parks."
+                ? "זה יעד להוצאות, לא הכנסה. הוא נותן לחודש שלך מסגרת בלי לשפוט אותך."
+                : "A spending target, not income. It gives your month context without judgment."
         case 4:
-            return isHebrew
-                ? "באמצעות אוטומציה אישית של Apple Pay, תשלומים בחנות נתפסים ברקע ישירות מהמכשיר."
-                : "With Apple Pay Personal Automation, in-store payments are ingested silently in the background."
+            if shortcutPhase == "guide" {
+                return isHebrew
+                    ? "שלושה שלבים ב״קיצורים״, ואז העסקאות יכולות להגיע ל־SPENT אוטומטית."
+                    : "Three steps in Shortcuts, then transactions can reach SPENT automatically."
+            } else {
+                return isHebrew
+                    ? "אפשר להגדיר אוטומציה ב״קיצורים״ שמופעלת אחרי תשלום ומעבירה ל־SPENT את פרטי העסקה שהאייפון מספק."
+                    : "You can set up a Shortcuts automation that runs after payment and passes the transaction details iOS provides to SPENT."
+            }
         default:
             return isHebrew
-                ? "הכל מוגדר ומכוון! לחץ למטה לכניסה לעיר שלך — היא תצמח ותתפתח עם כל פעולה והוצאה שתבצע."
-                : "Everything is set! Tap below to enter your city — it will grow and evolve with every expense you make."
+                ? "מכאן היא תשתנה יחד עם החודש שלך."
+                : "From here, it will grow and change alongside your month."
         }
     }
 }

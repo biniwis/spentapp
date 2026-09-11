@@ -1,5 +1,32 @@
 import SwiftUI
 
+public enum SwipeGestureIntent: Equatable {
+    case horizontal
+    case vertical
+    case undecided
+}
+
+public struct SwipeGestureClassifier {
+    public static let horizontalDominanceRatio: CGFloat = 1.25
+    public static let minimumThreshold: CGFloat = 18.0
+
+    public static func classify(deltaX: CGFloat, deltaY: CGFloat) -> SwipeGestureIntent {
+        let absX = abs(deltaX)
+        let absY = abs(deltaY)
+
+        if absX < minimumThreshold && absY < minimumThreshold {
+            return .undecided
+        }
+
+        // Horizontal requires clear dominance: absX > absY * 1.25
+        if absX > absY * horizontalDominanceRatio {
+            return .horizontal
+        } else {
+            return .vertical
+        }
+    }
+}
+
 public struct SwipeActionRow<ID: Hashable, Content: View>: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.layoutDirection) private var envLayoutDirection
@@ -17,12 +44,7 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
     @State private var isCommitArmed: Bool = false
     @State private var didFireCommitHaptic: Bool = false
     @State private var didFireOpenHaptic: Bool = false
-    @State private var gestureDirectionLocked: SwipeGestureDirection? = nil
-
-    private enum SwipeGestureDirection {
-        case horizontal
-        case vertical
-    }
+    @State private var gestureDirectionLocked: SwipeGestureIntent? = nil
 
     private let actionWidth: CGFloat = 76
     private let openThreshold: CGFloat = 42
@@ -93,38 +115,39 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                             offset = 0
                             openSwipeRowID = nil
                         }
-                    } else {
-                        onEdit()
                     }
                 }
                 .simultaneousGesture(
-                    DragGesture(minimumDistance: 8, coordinateSpace: .local)
+                    DragGesture(minimumDistance: 18, coordinateSpace: .local)
                         .onChanged { value in
                             let transX = value.translation.width
                             let transY = value.translation.height
 
                             if gestureDirectionLocked == nil {
-                                let absX = abs(transX)
-                                let absY = abs(transY)
-                                if absX > 8 || absY > 8 {
-                                    if absX > absY * 1.15 {
-                                        gestureDirectionLocked = .horizontal
-                                        isDragging = true
-                                        startOffset = offset
-                                        if openSwipeRowID != id {
+                                let intent = SwipeGestureClassifier.classify(deltaX: transX, deltaY: transY)
+                                switch intent {
+                                case .undecided:
+                                    return
+                                case .vertical:
+                                    gestureDirectionLocked = .vertical
+                                    if offset != 0 {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                                            offset = 0
+                                        }
+                                    }
+                                    if openSwipeRowID != nil {
+                                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
                                             openSwipeRowID = nil
                                         }
-                                    } else {
-                                        gestureDirectionLocked = .vertical
-                                        if openSwipeRowID != nil {
-                                            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-                                                openSwipeRowID = nil
-                                            }
-                                        }
-                                        return
                                     }
-                                } else {
                                     return
+                                case .horizontal:
+                                    gestureDirectionLocked = .horizontal
+                                    isDragging = true
+                                    startOffset = offset
+                                    if openSwipeRowID != id {
+                                        openSwipeRowID = nil
+                                    }
                                 }
                             }
 

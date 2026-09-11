@@ -93,6 +93,7 @@
 		E9316EC4B34D4F04895B2434 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 34DF0FA6F25244B380E01C8E; };
 		86DBD27EA8014611B9986B6E /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 0B60DA3DDE084B2BBBA27835; };
 		FA17B7B48A4048988A862ECF /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 08C4B7DCFF7845A4BEBC6098; };
+		A1000030B2C3D4E5F6000030 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000031B2C3D4E5F6000031; };
 		66D7B1EC32FA4BEEAD0880AE /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = ACD15C4D66204A80B2C408CA; };
 		7C1A2B3C4D5E6F708192A0B1 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 7C1A2B3C4D5E6F708192A0B2; };
 		5EA1CEC88F7940ACB2151DD9 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3584BA8D453C4E9195C51A7A; };
@@ -127,6 +128,7 @@
 		3E8C361253554C2A8C0BF0CB /* PrivacyInfo in spent fastExtension */ = {isa = PBXBuildFile; fileRef = F168858C77C947D89C8A4DA9; };
 		C1BBE086E50CAA810632A3C0 = {isa = PBXBuildFile; fileRef = A6D6DAC99E25F61D0EEBA899; };
 		B25AB9A470966166DBBEB816 = {isa = PBXBuildFile; fileRef = 812AA25EB770AA5A12EB0D90; };
+		B1000032B2C3D4E5F6000032 = {isa = PBXBuildFile; fileRef = A1000032B2C3D4E5F6000032; };
 		B1000028B2C3D4E5F6000028 = {isa = PBXBuildFile; fileRef = A1000028B2C3D4E5F6000028; };
 		D50289DCC48AF52C63E65356 = {isa = PBXBuildFile; fileRef = A3A0FBD724F1834D0AE1FF7E; };
 		A35A333E17ACFBFC8F2ECEF8 = {isa = PBXBuildFile; fileRef = AFD4AC61703C6708D133095B; };
@@ -262,6 +264,7 @@
 		34DF0FA6F25244B380E01C8E /* ShimmerLoading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ShimmerLoading.swift"; path = "MoneyCity/Views/Components/ShimmerLoading.swift"; sourceTree = "<group>"; };
 		0B60DA3DDE084B2BBBA27835 /* StorageHealthBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StorageHealthBanner.swift"; path = "MoneyCity/Views/Components/StorageHealthBanner.swift"; sourceTree = "<group>"; };
 		08C4B7DCFF7845A4BEBC6098 /* OnboardingWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingWizardView.swift"; path = "MoneyCity/Views/Onboarding/OnboardingWizardView.swift"; sourceTree = "<group>"; };
+		A1000031B2C3D4E5F6000031 /* OnboardingCityIllustration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "OnboardingCityIllustration.swift"; path = "MoneyCity/Views/Onboarding/OnboardingCityIllustration.swift"; sourceTree = "<group>"; };
 		ACD15C4D66204A80B2C408CA /* BudgetService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BudgetService.swift"; path = "MoneyCity/Services/BudgetService.swift"; sourceTree = "<group>"; };
 		A1000027B2C3D4E5F6000027 /* ReserveStateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ReserveStateService.swift"; path = "MoneyCity/Services/ReserveStateService.swift"; sourceTree = "<group>"; };
 		A1000029B2C3D4E5F6000029 /* SwipeActionRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SwipeActionRow.swift"; path = "MoneyCity/Views/Components/SwipeActionRow.swift"; sourceTree = "<group>"; };
@@ -299,6 +302,7 @@
 		F168858C77C947D89C8A4DB0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info.plist"; path = "MoneyCity/Info.plist"; sourceTree = "<group>"; };
 		A6D6DAC99E25F61D0EEBA899 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BackupTests.swift"; sourceTree = "<group>"; };
 		812AA25EB770AA5A12EB0D90 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BudgetServiceTests.swift"; sourceTree = "<group>"; };
+		A1000032B2C3D4E5F6000032 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwipeGestureTests.swift"; sourceTree = "<group>"; };
 		A1000028B2C3D4E5F6000028 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReserveStateServiceTests.swift"; sourceTree = "<group>"; };
 		A3A0FBD724F1834D0AE1FF7E = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CategorizationEngineTests.swift"; sourceTree = "<group>"; };
 		AFD4AC61703C6708D133095B = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CityDistrictStateTests.swift"; sourceTree = "<group>"; };
@@ -428,6 +432,7 @@
 				34DF0FA6F25244B380E01C8E /* ShimmerLoading.swift */,
 				0B60DA3DDE084B2BBBA27835 /* StorageHealthBanner.swift */,
 				08C4B7DCFF7845A4BEBC6098 /* OnboardingWizardView.swift */,
+				A1000031B2C3D4E5F6000031 /* OnboardingCityIllustration.swift */,
 				ACD15C4D66204A80B2C408CA /* BudgetService.swift */,
 				A1000027B2C3D4E5F6000027 /* ReserveStateService.swift */,
 				7C1A2B3C4D5E6F708192A0B2 /* SubcategoryBreakdownService.swift */,
@@ -477,7 +482,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		54CA73502A42DDEADEAAE764 = {isa = PBXGroup; children = (A6D6DAC99E25F61D0EEBA899,812AA25EB770AA5A12EB0D90,A1000028B2C3D4E5F6000028,A3A0FBD724F1834D0AE1FF7E,AFD4AC61703C6708D133095B,3363D11BCF07C2282139328C,54B813209ABA95695325783A,0514DD20C153FC99C102AABA,02F07D7A29E9726EA0F2788E,486270466A72197B7682EA85,0E5BB538AFB6F673B4BA24DD,C99C86634638301BC4E5E350,085700DD5AA169854BC62CB4,CE5AC91893AE5F5289557FD2,2407CB5B9FBF38B4735DBF74,1F7AA212E6A4140DD7559B5F,1D158C97601388626E06600A,5AA635C3BF7E81DED78952D0,9C2E806A681D7E1D5F5C9539,91C4335FCD9490427BB05C91,5AC141236FC48C41E5582044,); path = MoneyCityTests; sourceTree = "<group>"; };
+		54CA73502A42DDEADEAAE764 = {isa = PBXGroup; children = (A6D6DAC99E25F61D0EEBA899,812AA25EB770AA5A12EB0D90,A1000032B2C3D4E5F6000032,A1000028B2C3D4E5F6000028,A3A0FBD724F1834D0AE1FF7E,AFD4AC61703C6708D133095B,3363D11BCF07C2282139328C,54B813209ABA95695325783A,0514DD20C153FC99C102AABA,02F07D7A29E9726EA0F2788E,486270466A72197B7682EA85,0E5BB538AFB6F673B4BA24DD,C99C86634638301BC4E5E350,085700DD5AA169854BC62CB4,CE5AC91893AE5F5289557FD2,2407CB5B9FBF38B4735DBF74,1F7AA212E6A4140DD7559B5F,1D158C97601388626E06600A,5AA635C3BF7E81DED78952D0,9C2E806A681D7E1D5F5C9539,91C4335FCD9490427BB05C91,5AC141236FC48C41E5582044,); path = MoneyCityTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -645,6 +650,7 @@
 				E9316EC4B34D4F04895B2434 /* Sources */,
 				86DBD27EA8014611B9986B6E /* Sources */,
 				FA17B7B48A4048988A862ECF /* Sources */,
+				A1000030B2C3D4E5F6000030 /* Sources */,
 				66D7B1EC32FA4BEEAD0880AE /* Sources */,
 				7C1A2B3C4D5E6F708192A0B1 /* Sources */,
 				5EA1CEC88F7940ACB2151DD9 /* Sources */,
@@ -710,7 +716,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		E8751535E2602D32F2EF8382 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1BBE086E50CAA810632A3C0,B25AB9A470966166DBBEB816,B1000028B2C3D4E5F6000028,D50289DCC48AF52C63E65356,A35A333E17ACFBFC8F2ECEF8,289436770CEB5658078FEF9C,8A1874F4FE2263344A67090B,F26DA2FE95A3E00B13D6E01B,6E9C726B4EEEECA7D3AC4E96,340BE1526620B9C4F2E72EA9,242A3D9E3568703E41752317,810BA085A0205DE5871BC3A2,D67913940EF202311AA9536B,BCEE548C914DE1EBF294536C,F083E1A409AA1CC0D0AACA30,B1A15D8934E3F6E73FB3FED4,12968A4927D731876AAE0FF9,096EEF053248DEB1601AF50C,7F020069E4680C1F9B1BD614,3F53B25034B05E8BE10F8D75,ABB633D59B4EF1BF131CACB0,); runOnlyForDeploymentPostprocessing = 0; };
+		E8751535E2602D32F2EF8382 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C1BBE086E50CAA810632A3C0,B25AB9A470966166DBBEB816,B1000032B2C3D4E5F6000032,B1000028B2C3D4E5F6000028,D50289DCC48AF52C63E65356,A35A333E17ACFBFC8F2ECEF8,289436770CEB5658078FEF9C,8A1874F4FE2263344A67090B,F26DA2FE95A3E00B13D6E01B,6E9C726B4EEEECA7D3AC4E96,340BE1526620B9C4F2E72EA9,242A3D9E3568703E41752317,810BA085A0205DE5871BC3A2,D67913940EF202311AA9536B,BCEE548C914DE1EBF294536C,F083E1A409AA1CC0D0AACA30,B1A15D8934E3F6E73FB3FED4,12968A4927D731876AAE0FF9,096EEF053248DEB1601AF50C,7F020069E4680C1F9B1BD614,3F53B25034B05E8BE10F8D75,ABB633D59B4EF1BF131CACB0,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

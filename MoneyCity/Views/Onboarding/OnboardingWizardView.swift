@@ -24,6 +24,12 @@ public struct OnboardingWizardView: View {
     @SceneStorage("spent.onboarding.currentStep") private var currentStep: Int = 1
     @SceneStorage("spent.onboarding.shortcutPhase") private var shortcutPhase: String = "intro" // "intro" (4A) or "guide" (4B)
 
+    private enum OnboardingField: Hashable {
+        case mayorName
+        case budget
+    }
+    @FocusState private var focusedField: OnboardingField?
+
     @State private var slideDirection: Int = 1 // 1 = forward, -1 = backward
     @State private var userNameInput: String = ""
     @State private var budgetInputText: String = "8000"
@@ -31,6 +37,7 @@ public struct OnboardingWizardView: View {
 
     private let initialStepOverride: Int?
     private let initialPhaseOverride: String?
+    private let canDismiss: Bool
 
     private var parsedBudget: Double? {
         guard let val = TransactionIngest.normalizedAmount(nil, budgetInputText), val > 0 else { return nil }
@@ -48,11 +55,13 @@ public struct OnboardingWizardView: View {
     public init(
         initialStep: Int? = nil,
         initialPhase: String? = nil,
+        canDismiss: Bool = false,
         onComplete: @escaping () -> Void,
         onTriggerSampleTransaction: @escaping () -> Void
     ) {
         self.initialStepOverride = initialStep
         self.initialPhaseOverride = initialPhase
+        self.canDismiss = canDismiss
         self.onComplete = onComplete
         self.onTriggerSampleTransaction = onTriggerSampleTransaction
     }
@@ -77,9 +86,11 @@ public struct OnboardingWizardView: View {
                     step: activeOnboardingStep,
                     mayorName: userNameInput,
                     targetAmountText: budgetInputText,
-                    isRTL: isHebrew
+                    isRTL: isHebrew,
+                    height: (focusedField != nil) ? 110 : 180
                 )
-                .padding(.bottom, 10)
+                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: focusedField)
+                .padding(.bottom, focusedField != nil ? 4 : 10)
 
                 // Scrollable Step Body (Direct on canvas, intentional whitespace)
                 ScrollView(showsIndicators: false) {
@@ -93,6 +104,11 @@ public struct OnboardingWizardView: View {
                         Spacer(minLength: 20)
                     }
                     .padding(.horizontal, 26)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        // Tapping background dismisses keyboard
+                        focusedField = nil
+                    }
                     .id("\(currentStep)_\(shortcutPhase)")
                     .transition(
                         reduceMotion
@@ -124,6 +140,25 @@ public struct OnboardingWizardView: View {
             if storedMonthlyBudget > 0 {
                 budgetInputText = String(format: "%.0f", storedMonthlyBudget)
             }
+            // Auto-focus active input field on appearance
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                if currentStep == 2 {
+                    focusedField = .mayorName
+                } else if currentStep == 3 {
+                    focusedField = .budget
+                }
+            }
+        }
+        .onChange(of: currentStep) { _, newStep in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                if newStep == 2 {
+                    focusedField = .mayorName
+                } else if newStep == 3 {
+                    focusedField = .budget
+                } else {
+                    focusedField = nil
+                }
+            }
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
@@ -146,6 +181,19 @@ public struct OnboardingWizardView: View {
             }
 
             Spacer()
+
+            if canDismiss {
+                Button(action: onComplete) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(Color.black.opacity(0.05))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.94)
+            }
         }
         .frame(height: 28)
     }
@@ -254,51 +302,65 @@ public struct OnboardingWizardView: View {
         }
     }
 
-    // MARK: Step 2 - Mayor Input (The name itself is the hero; no underline, no card, no duplicate pill)
+    // MARK: Step 2 - Mayor Input (The name itself is the hero; direct keyboard interaction)
     private var step2MayorInput: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             Text(isHebrew ? "השם שלך" : "Your Name")
-                .font(.system(size: 12.5, weight: .medium, design: .default))
+                .font(.system(size: 13, weight: .medium, design: .default))
                 .foregroundColor(Color.textMuted)
 
-            TextField(
-                isHebrew ? "השם שלך" : "Your name",
-                text: $userNameInput
-            )
-            .font(.system(size: 34, weight: .bold, design: .rounded))
-            .foregroundColor(Color.deepNavy)
-            .multilineTextAlignment(.center)
+            ZStack {
+                if userNameInput.isEmpty && focusedField != .mayorName {
+                    Text(isHebrew ? "הקלד את שמך כאן..." : "Type your name here...")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.textMuted.opacity(0.35))
+                }
+
+                TextField("", text: $userNameInput)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .multilineTextAlignment(.center)
+                    .focused($focusedField, equals: .mayorName)
+                    .textInputAutocapitalization(.words)
+                    .disableAutocorrection(true)
+                    .submitLabel(.next)
+                    .onSubmit {
+                        saveMayor()
+                        nextStep()
+                    }
+                    .accessibilityLabel(isHebrew ? "השם שלך" : "Your name")
+            }
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .accessibilityLabel(isHebrew ? "השם שלך" : "Your name")
+            .contentShape(Rectangle())
+            .onTapGesture {
+                focusedField = .mayorName
+            }
         }
-        .padding(.top, 22)
+        .padding(.top, 14)
     }
 
     // MARK: Step 3 - Monthly Spending Target (Real editable TextField, clean suggestions, BUDGET ≠ INCOME)
     private var step3BudgetConfig: some View {
         VStack(spacing: 16) {
             // Visual Hero: Real editable amount with keyboard support
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            HStack(spacing: 6) {
                 Text(l10n.baseCurrency.symbol)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(Color.spentGreen)
 
-                #if os(iOS)
                 TextField("0", text: $budgetInputText)
-                    .font(.system(size: 42, weight: .heavy, design: .rounded))
+                    .font(.system(size: 40, weight: .heavy, design: .rounded))
                     .foregroundColor(Color.deepNavy)
-                    .keyboardType(.decimalPad)
+                    .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: true, vertical: false)
+                    .focused($focusedField, equals: .budget)
                     .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
-                #else
-                TextField("0", text: $budgetInputText)
-                    .font(.system(size: 42, weight: .heavy, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
-                #endif
+            }
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                focusedField = .budget
             }
             .padding(.top, 4)
 

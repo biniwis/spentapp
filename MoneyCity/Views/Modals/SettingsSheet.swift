@@ -16,6 +16,7 @@ public struct SettingsSheet: View {
     @State private var showResetConfirmation = false
     @State private var showPrivacySheet = false
     @State private var showAboutSheet = false
+    @State private var showOnboardingSheet = false
 
     public var body: some View {
         NavigationStack {
@@ -217,6 +218,27 @@ public struct SettingsSheet: View {
                                 .padding(.vertical, 6)
                             }
                             .buttonStyle(.plain)
+
+                            Divider().background(Color.borderSubtle).padding(.vertical, 4)
+
+                            // Onboarding Replay
+                            Button(action: { showOnboardingSheet = true }) {
+                                HStack(spacing: 10) {
+                                    MoneyIcon(.citySkyline, size: 18, color: Color.spentGreen)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(l10n.language == .hebrew ? "הדרכת פתיחה והיכרות" : "Welcome & Onboarding")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                        Text(l10n.language == .hebrew ? "צפייה מחדש בסיור העיר וההגדרות" : "Replay city tour and setup")
+                                            .font(.system(size: 11, design: .rounded))
+                                            .foregroundColor(Color.textMuted)
+                                    }
+                                    Spacer()
+                                    MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 12, color: Color.textMuted)
+                                }
+                                .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.plain)
                         }
 
                         // 4. Danger Zone (Data Management)
@@ -265,6 +287,18 @@ public struct SettingsSheet: View {
             .sheet(isPresented: $showAboutSheet) {
                 AboutSpentSheet()
                     .environmentObject(l10n)
+            }
+            .sheet(isPresented: $showOnboardingSheet) {
+                OnboardingWizardView(
+                    initialStep: 1,
+                    initialPhase: "intro",
+                    canDismiss: true,
+                    onComplete: {
+                        showOnboardingSheet = false
+                    },
+                    onTriggerSampleTransaction: {}
+                )
+                .environmentObject(l10n)
             }
             .confirmationDialog(
                 l10n.language == .hebrew ? "האם אתה בטוח שברצונך לאפס את כל הנתונים?" : "Are you sure you want to reset all data?",

@@ -26,6 +26,7 @@ public struct ProfileView: View {
     @State private var showApplePayGuideSheet = false
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
+    @State private var showOnboardingSheet = false
     @State private var selectedMonth: String? = nil
     @State private var showDetailedYear = false
     @State private var showDetailedTransactions = false
@@ -257,6 +258,18 @@ public struct ProfileView: View {
         .sheet(isPresented: $showBackupSheet) {
             BackupSheet()
                 .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showOnboardingSheet) {
+            OnboardingWizardView(
+                initialStep: 1,
+                initialPhase: "intro",
+                canDismiss: true,
+                onComplete: {
+                    showOnboardingSheet = false
+                },
+                onTriggerSampleTransaction: {}
+            )
+            .environmentObject(l10n)
         }
     }
 
@@ -829,6 +842,20 @@ public struct ProfileView: View {
                 MoneyIcon(.cloud, size: 24)
             } action: {
                 showBackupSheet = true
+            }
+
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
+
+            menuRow(
+                title: l10n.language == .hebrew ? "הדרכת פתיחה והיכרות" : "Welcome & Onboarding",
+                subtitle: l10n.language == .hebrew
+                    ? "סיור היכרות בעיר, הגדרת יעד והאוטומציה"
+                    : "City tour, spending target, and automation guide",
+                iconBg: Color(red: 236/255, green: 253/255, blue: 245/255)
+            ) {
+                MoneyIcon(.citySkyline, size: 24)
+            } action: {
+                showOnboardingSheet = true
             }
         }
         .background(Color.white)

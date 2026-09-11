@@ -52,6 +52,36 @@
     "%@ — איזה כיף שבאת!" : {
 
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · Monthly Target ₪%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Monthly Target ₪%2$@"
+          }
+        }
+      }
+    },
+    "%@ · יעד חודשי ₪%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · יעד חודשי ₪%2$@"
+          }
+        }
+      }
+    },
     "%@ / %@" : {
       "localizations" : {
         "en" : {
@@ -231,9 +261,6 @@
     "• Tap 'Done' — and you are all set! 🎉" : {
 
     },
-    "• Tap 'Done' at the top — and you're set! 🎉" : {
-
-    },
     "• unverified" : {
 
     },
@@ -241,9 +268,6 @@
 
     },
     "• לחץ 'סיום' (Done) — מעכשיו הכל יקלט אוטומטית! 🎉" : {
-
-    },
-    "• לחץ 'סיום' (Done) למעלה — וזהו! 🎉" : {
 
     },
     "• סיווג לא ודאי" : {
@@ -283,16 +307,10 @@
     "✦ סיכום חודשי" : {
 
     },
-    "➔" : {
-
-    },
     "➔ select" : {
 
     },
     "➔ בחר" : {
-
-    },
-    "🏛️" : {
 
     },
     "$" : {
@@ -333,7 +351,7 @@
     "1x" : {
 
     },
-    "3" : {
+    "03" : {
 
     },
     "4" : {
@@ -629,10 +647,10 @@
     "Confirming will deduct this amount from your monthly spending" : {
 
     },
-    "Connect Input (Important! 💡)" : {
+    "Connect Shortcut Input (💡)" : {
 
     },
-    "Connect Shortcut Input (💡)" : {
+    "Connect the Fields" : {
 
     },
     "Couldn't create the portrait" : {
@@ -795,9 +813,6 @@
     "Enter Payment Amount" : {
 
     },
-    "Enter your name (e.g. Benjamin)" : {
-
-    },
     "Every building has a story" : {
 
     },
@@ -870,6 +885,9 @@
       }
     },
     "How much to deposit?" : {
+
+    },
+    "I'll do this later" : {
 
     },
     "I'll explore on my own" : {
@@ -945,7 +963,13 @@
     "Main Category" : {
 
     },
+    "Map the fields to Shortcut Input:" : {
+
+    },
     "Maybe later" : {
+
+    },
+    "MAYOR" : {
 
     },
     "Mayor Name" : {
@@ -1018,6 +1042,12 @@
     "Monthly spending pace" : {
 
     },
+    "Monthly spending target" : {
+
+    },
+    "Monthly spending target · can be changed later" : {
+
+    },
     "Name" : {
 
     },
@@ -1075,9 +1105,6 @@
     "of %@ budget" : {
 
     },
-    "Official Mayor: %@" : {
-
-    },
     "OK" : {
 
     },
@@ -1087,7 +1114,7 @@
     "One choice every seven days when everyday spending decreases by more than ₪10 compared with the previous week. Existing companions always stay." : {
 
     },
-    "Open Shortcuts App" : {
+    "Open Shortcuts" : {
 
     },
     "Open Shortcuts App Now" : {
@@ -1111,9 +1138,6 @@
       }
     },
     "Or break it down by category — any ceiling you fill in here replaces the overall figure." : {
-
-    },
-    "Or choose an amount:" : {
 
     },
     "Over" : {
@@ -1258,6 +1282,9 @@
     "Replace deletes everything here first. Export a copy before you do." : {
 
     },
+    "Replay city tour and setup" : {
+
+    },
     "Reset" : {
 
     },
@@ -1398,9 +1425,6 @@
     "Show Less" : {
 
     },
-    "Skip" : {
-
-    },
     "Spending Breakdown" : {
 
     },
@@ -1446,16 +1470,16 @@
     "SPENT Month" : {
 
     },
+    "SPENT never connects to your bank or reads Wallet directly." : {
+
+    },
+    "‏SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות." : {
+
+    },
     "Start Today! ✨" : {
 
     },
     "Status:" : {
-
-    },
-    "Tap below to step into your city — every payment builds your very first landmarks! 🏙️" : {
-
-    },
-    "Tap blue fields and attach to Shortcut Input:" : {
 
     },
     "Tap for Quick Add +" : {
@@ -1645,6 +1669,9 @@
     "Welcome" : {
 
     },
+    "Welcome & Onboarding" : {
+
+    },
     "Welcome to the city" : {
 
     },
@@ -1729,10 +1756,13 @@
     "Your first recap will appear at the end of the month" : {
 
     },
-    "אגלה בעצמי" : {
+    "Your name" : {
 
     },
-    "או בחר סכום:" : {
+    "Your Name" : {
+
+    },
+    "אגלה בעצמי" : {
 
     },
     "או פרט לפי קטגוריה — כל תקרה שתמלא כאן מחליפה את הסכום הכולל." : {
@@ -1778,6 +1808,9 @@
 
     },
     "אנא הזן סכום תקין" : {
+
+    },
+    "אעשה את זה אחר כך" : {
 
     },
     "אפשר לחזור לחודש הנוכחי ולהמשיך לבנות את העיר שלך." : {
@@ -1835,9 +1868,6 @@
     "בלחיצה אחת +" : {
 
     },
-    "בלחיצה למטה תיכנס לעיר שלך — כל תשלום שתבצע דרך Apple Pay או ידנית יקים את המבנים הראשונים! 🏙️" : {
-
-    },
     "בלי הכנסה, כל חישוב החיסכון נשען על מספר שהאפליקציה המציאה." : {
 
     },
@@ -1854,9 +1884,6 @@
 
     },
     "דיווח על באגים, שאלות והצעות" : {
-
-    },
-    "דלג" : {
 
     },
     "האם אתה בטוח שברצונך לאפס את כל הנתונים?" : {
@@ -1887,6 +1914,9 @@
 
     },
     "הגדרת תקציב" : {
+
+    },
+    "הדרכת פתיחה והיכרות" : {
 
     },
     "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
@@ -1989,9 +2019,6 @@
 
     },
     "הכל" : {
-
-    },
-    "הכנס את שמך (למשל: בנימין)" : {
 
     },
     "המבנה הראשון שלך לחודש זה" : {
@@ -2099,7 +2126,13 @@
     "השוואה חצי שנתית" : {
 
     },
+    "השם שלך" : {
+
+    },
     "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : {
+
+    },
+    "התאם את השדות לקלט הקיצור:" : {
 
     },
     "התוספת הבאה תיבדק החל מ־" : {
@@ -2126,10 +2159,10 @@
     "זמין לזמן מוגבל" : {
 
     },
-    "חבר את הקלט (חשוב! 💡)" : {
+    "חבר את הקלט (סכום ובית עסק 💡)" : {
 
     },
-    "חבר את הקלט (סכום ובית עסק 💡)" : {
+    "חבר את השדות" : {
 
     },
     "חזרה" : {
@@ -2157,6 +2190,12 @@
 
     },
     "טרם נרשמו הוצאות החודש" : {
+
+    },
+    "יעד הוצאה חודשי" : {
+
+    },
+    "יעד הוצאה חודשי · אפשר לשנות אחר כך" : {
 
     },
     "יעד חדש" : {
@@ -2453,10 +2492,10 @@
     "פריסה לתשלומים" : {
 
     },
-    "פתח את אפליקציית 'קיצורים'" : {
+    "פתח את אפליקציית 'קיצורים' עכשיו" : {
 
     },
-    "פתח את אפליקציית 'קיצורים' עכשיו" : {
+    "פתח את קיצורים" : {
 
     },
     "צור" : {
@@ -2466,6 +2505,9 @@
 
     },
     "צפה ✨" : {
+
+    },
+    "צפייה מחדש בסיור העיר וההגדרות" : {
 
     },
     "קבלת פוש מיידי כשרכישה נקלטת בהצלחה בעיר" : {
@@ -2489,7 +2531,7 @@
     "קצב ההוצאות של החודש" : {
 
     },
-    "ראש העיר הרשמי: %@" : {
+    "ראש העיר" : {
 
     },
     "רצף ימים פעיל" : {

@@ -36,16 +36,20 @@ public struct OnboardingCityScene: View {
     // Step 5 car animation
     @State private var carDriveOffset: CGFloat = -180
 
+    let height: CGFloat
+
     public init(
         step: OnboardingStep,
         mayorName: String,
         targetAmountText: String,
-        isRTL: Bool = false
+        isRTL: Bool = false,
+        height: CGFloat = 180
     ) {
         self.step = step
         self.mayorName = mayorName
         self.targetAmountText = targetAmountText
         self.isRTL = isRTL
+        self.height = height
     }
 
     public var body: some View {
@@ -121,7 +125,7 @@ public struct OnboardingCityScene: View {
                 }
             }
         }
-        .frame(height: 180)
+        .frame(height: height)
         .clipped()
         .accessibilityHidden(true)
         .allowsHitTesting(false)

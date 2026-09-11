@@ -478,10 +478,10 @@ public struct OnboardingWizardView: View {
             // Step 01
             editorialNumberedStep(
                 number: "01",
-                title: isHebrew ? "צור אוטומציה מסוג עסקה" : "Create Transaction Automation",
+                title: isHebrew ? "צור אוטומציה מסוג ״עסקה״" : "Create Transaction Automation",
                 instruction: isHebrew
-                    ? "בקיצורים: אוטומציה ← + ← עסקה (Transaction) ← הפעל מיד."
-                    : "In Shortcuts: Automation → + → Transaction → Run Immediately."
+                    ? "בקיצורים: אוטומציה ← + ← עסקה ← סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
+                    : "In Shortcuts: Automation → + → Transaction → choose \"Run Immediately\" and turn off \"Notify When Run\"."
             )
 
             Divider().overlay(Color.borderSubtle.opacity(0.6))
@@ -491,13 +491,13 @@ public struct OnboardingWizardView: View {
                 number: "02",
                 title: isHebrew ? "בחר את הפעולה של SPENT" : "Select SPENT Action",
                 instruction: isHebrew
-                    ? "אוטומציה חדשה ← הוסף פעולה ← חפש SPENT ← הקלטת עסקת Apple Pay."
-                    : "New Action → Search SPENT → Record Apple Pay Transaction."
+                    ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״."
+                    : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\"."
             )
 
             Divider().overlay(Color.borderSubtle.opacity(0.6))
 
-            // Step 03 with compact field mapping
+            // Step 03 with explicit 2-step field mapping
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("03")
@@ -505,25 +505,25 @@ public struct OnboardingWizardView: View {
                         .foregroundColor(Color.deepNavy)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(isHebrew ? "חבר את השדות" : "Connect the Fields")
+                        Text(isHebrew ? "חבר את נתוני העסקה" : "Connect Transaction Data")
                             .font(.system(size: 13.5, weight: .semibold, design: .default))
                             .foregroundColor(Color.deepNavy)
 
-                        Text(isHebrew ? "התאם את השדות לקלט הקיצור:" : "Map the fields to Shortcut Input:")
+                        Text(isHebrew ? "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : "Tap each field, select \"Shortcut Input\" then the attribute:")
                             .font(.system(size: 11.5, weight: .regular, design: .default))
                             .foregroundColor(Color.textSecondary)
                     }
                 }
 
                 // Compact inline mapping
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     compactMappingRow(
-                        source: isHebrew ? "סכום העסקה" : "Transaction Amount",
-                        dest: isHebrew ? "סכום" : "Amount"
+                        source: isHebrew ? "שדה הסכום" : "Amount field",
+                        dest: isHebrew ? "כמות" : "Amount"
                     )
                     compactMappingRow(
-                        source: isHebrew ? "שם בית העסק" : "Merchant Name",
-                        dest: isHebrew ? "שם העסק" : "Merchant"
+                        source: isHebrew ? "שדה בית העסק" : "Merchant field",
+                        dest: isHebrew ? "בית העסק" : "Merchant"
                     )
                 }
                 .padding(.leading, 32)
@@ -559,12 +559,24 @@ public struct OnboardingWizardView: View {
                 .foregroundColor(Color.primaryBlue)
 
             Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
-                .font(.system(size: 8.5, weight: .bold))
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(Color.textMuted)
+
+            Text(isHebrew ? "קלט הקיצור" : "Shortcut Input")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1.5)
+                .background(Color.spentGreenSoft)
+                .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
+                .foregroundColor(Color.spentGreen)
+
+            Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
+                .font(.system(size: 8, weight: .bold))
                 .foregroundColor(Color.textMuted)
 
             Text(dest)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundColor(Color.spentGreen)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
         }
     }
 

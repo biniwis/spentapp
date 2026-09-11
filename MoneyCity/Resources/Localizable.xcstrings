@@ -16,34 +16,22 @@
     "(%lld%%)" : {
 
     },
-    "(Amount)" : {
+    "[Amount field]" : {
 
     },
-    "(Merchant)" : {
-
-    },
-    "(סכום)" : {
-
-    },
-    "(שם העסק)" : {
-
-    },
-    "[Merchant Name]" : {
+    "[Merchant field]" : {
 
     },
     "[Shortcut Input]" : {
 
     },
-    "[Transaction Amount]" : {
-
-    },
-    "[סכום העסקה]" : {
-
-    },
     "[קלט הקיצור]" : {
 
     },
-    "[שם בית העסק]" : {
+    "[שדה בית העסק]" : {
+
+    },
+    "[שדה הסכום]" : {
 
     },
     "%@" : {
@@ -307,10 +295,22 @@
     "✦ סיכום חודשי" : {
 
     },
+    "➔ choose (Amount)" : {
+
+    },
+    "➔ choose (Merchant)" : {
+
+    },
     "➔ select" : {
 
     },
     "➔ בחר" : {
+
+    },
+    "➔ סמן (בית העסק)" : {
+
+    },
+    "➔ סמן (כמות)" : {
 
     },
     "$" : {
@@ -647,10 +647,10 @@
     "Confirming will deduct this amount from your monthly spending" : {
 
     },
-    "Connect Shortcut Input (💡)" : {
+    "Connect Transaction Data" : {
 
     },
-    "Connect the Fields" : {
+    "Connect Transaction Data (💡)" : {
 
     },
     "Couldn't create the portrait" : {
@@ -961,9 +961,6 @@
 
     },
     "Main Category" : {
-
-    },
-    "Map the fields to Shortcut Input:" : {
 
     },
     "Maybe later" : {
@@ -1413,6 +1410,9 @@
     "Share" : {
 
     },
+    "Shortcut Input" : {
+
+    },
     "Shortcuts Guide" : {
 
     },
@@ -1482,10 +1482,13 @@
     "Status:" : {
 
     },
-    "Tap for Quick Add +" : {
+    "Tap each blue field, select 'Shortcut Input' then the attribute:" : {
 
     },
-    "Tap the blue fields to attach 'Shortcut Input':" : {
+    "Tap each field, select \"Shortcut Input\" then the attribute:" : {
+
+    },
+    "Tap for Quick Add +" : {
 
     },
     "Tap the marked building to discover the expenses behind it." : {
@@ -2132,9 +2135,6 @@
     "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : {
 
     },
-    "התאם את השדות לקלט הקיצור:" : {
-
-    },
     "התוספת הבאה תיבדק החל מ־" : {
 
     },
@@ -2159,10 +2159,10 @@
     "זמין לזמן מוגבל" : {
 
     },
-    "חבר את הקלט (סכום ובית עסק 💡)" : {
+    "חבר את נתוני העסקה" : {
 
     },
-    "חבר את השדות" : {
+    "חבר את נתוני העסקה (כמות ובית עסק 💡)" : {
 
     },
     "חזרה" : {
@@ -2255,7 +2255,10 @@
     "לוח שנה ומעבר לתאריך" : {
 
     },
-    "לחץ על השדות הכחולים וחבר אותם ל'קלט הקיצור':" : {
+    "לחץ על כל שדה כחול, בחר 'קלט הקיצור' ואז את המאפיין:" : {
+
+    },
+    "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : {
 
     },
     "לכל בניין יש סיפור" : {
@@ -2526,6 +2529,9 @@
 
     },
     "קטגוריות מובילות" : {
+
+    },
+    "קלט הקיצור" : {
 
     },
     "קצב ההוצאות של החודש" : {

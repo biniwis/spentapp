@@ -73,7 +73,7 @@ public struct ApplePayGuideSheet: View {
                         stepRow(
                             number: "2",
                             title: isHebrew ? "בחר בטריגר 'עסקה' (Transaction)" : "Select 'Transaction' Trigger",
-                            desc: isHebrew ? "ודא שמסומן 'כרטיס כלשהו', ובחר 'הפעל מיד' (ללא אישור ידני)." : "Select 'Any Card' and choose 'Run Immediately' (without confirmation)."
+                            desc: isHebrew ? "סמן 'כרטיס כלשהו', בחר 'הפעלה מיידית', וכבה את 'קבלת עדכון כאשר פועל'." : "Select 'Any Card', choose 'Run Immediately', and turn off 'Notify When Run'."
                         )
                         
                         stepRow(
@@ -94,10 +94,10 @@ public struct ApplePayGuideSheet: View {
                                 }
                                 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(isHebrew ? "חבר את הקלט (סכום ובית עסק 💡)" : "Connect Shortcut Input (💡)")
+                                    Text(isHebrew ? "חבר את נתוני העסקה (כמות ובית עסק 💡)" : "Connect Transaction Data (💡)")
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.deepNavy)
-                                    Text(isHebrew ? "לחץ על השדות הכחולים וחבר אותם ל'קלט הקיצור':" : "Tap the blue fields to attach 'Shortcut Input':")
+                                    Text(isHebrew ? "לחץ על כל שדה כחול, בחר 'קלט הקיצור' ואז את המאפיין:" : "Tap each blue field, select 'Shortcut Input' then the attribute:")
                                         .font(.system(size: 12, weight: .medium, design: .rounded))
                                         .foregroundColor(Color.textMuted)
                                 }
@@ -107,7 +107,7 @@ public struct ApplePayGuideSheet: View {
                                 HStack(spacing: 4) {
                                     Text(isHebrew ? "• לחץ" : "• Tap")
                                         .font(.system(size: 11.5, weight: .medium))
-                                    Text(isHebrew ? "[סכום העסקה]" : "[Transaction Amount]")
+                                    Text(isHebrew ? "[שדה הסכום]" : "[Amount field]")
                                         .font(.system(size: 11.5, weight: .bold))
                                         .foregroundColor(Color.primaryBlue)
                                     Text(isHebrew ? "➔ בחר" : "➔ select")
@@ -115,13 +115,13 @@ public struct ApplePayGuideSheet: View {
                                     Text(isHebrew ? "[קלט הקיצור]" : "[Shortcut Input]")
                                         .font(.system(size: 11.5, weight: .bold))
                                         .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                    Text(isHebrew ? "(סכום)" : "(Amount)")
+                                    Text(isHebrew ? "➔ סמן (כמות)" : "➔ choose (Amount)")
                                         .font(.system(size: 11.5, weight: .semibold))
                                 }
                                 HStack(spacing: 4) {
                                     Text(isHebrew ? "• לחץ" : "• Tap")
                                         .font(.system(size: 11.5, weight: .medium))
-                                    Text(isHebrew ? "[שם בית העסק]" : "[Merchant Name]")
+                                    Text(isHebrew ? "[שדה בית העסק]" : "[Merchant field]")
                                         .font(.system(size: 11.5, weight: .bold))
                                         .foregroundColor(Color.primaryBlue)
                                     Text(isHebrew ? "➔ בחר" : "➔ select")
@@ -129,7 +129,7 @@ public struct ApplePayGuideSheet: View {
                                     Text(isHebrew ? "[קלט הקיצור]" : "[Shortcut Input]")
                                         .font(.system(size: 11.5, weight: .bold))
                                         .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                    Text(isHebrew ? "(שם העסק)" : "(Merchant)")
+                                    Text(isHebrew ? "➔ סמן (בית העסק)" : "➔ choose (Merchant)")
                                         .font(.system(size: 11.5, weight: .semibold))
                                 }
                                 Text(isHebrew ? "• לחץ 'סיום' (Done) — מעכשיו הכל יקלט אוטומטית! 🎉" : "• Tap 'Done' — and you are all set! 🎉")

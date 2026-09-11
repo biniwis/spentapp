@@ -93,8 +93,6 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                             offset = 0
                             openSwipeRowID = nil
                         }
-                    } else {
-                        onEdit()
                     }
                 }
                 .simultaneousGesture(

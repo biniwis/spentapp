@@ -295,7 +295,7 @@ public struct OnboardingWizardView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.primaryBlue.opacity(focusedField == .mayorName ? 0.075 : 0.04))
+                    .fill(Color.spentGreen.opacity(focusedField == .mayorName ? 0.08 : 0.045))
                     .frame(height: 64)
                     .contentShape(Rectangle())
                     .onTapGesture {

@@ -197,8 +197,13 @@ public final class CityNarrativeEngine: @unchecked Sendable {
         }
 
         let content = UNMutableNotificationContent()
-        content.title = "לא ראיתי עסקאות Apple Pay כבר זמן מה"
-        content.body = "אם כן קנית לאחרונה, אולי כדאי לבדוק שהאוטומציה עדיין פעילה."
+        let isHebrew = LocalizationManager.shared.language == .hebrew
+        content.title = isHebrew
+            ? "לא ראיתי עסקאות Apple Pay כבר זמן מה"
+            : "No Apple Pay transactions detected in a while"
+        content.body = isHebrew
+            ? "אם כן קנית לאחרונה, אולי כדאי לבדוק שהאוטומציה עדיין פעילה."
+            : "If you made recent purchases, check that your Shortcut automation is still active."
         content.sound = .default
         content.userInfo = ["type": "health_watchdog"]
 
@@ -260,10 +265,15 @@ public final class CityNarrativeEngine: @unchecked Sendable {
         let center = UNUserNotificationCenter.current()
         let content = UNMutableNotificationContent()
         let lang = LocalizationManager.shared.language
+        let isHebrew = lang == .hebrew
         let categoryName = triggeredCategory.displayName(for: lang)
 
-        content.title = "האזור של \(categoryName) נהיה די צפוף השבוע 🏙️"
-        content.body = "הוצאת שם בערך פי 2 מהרגיל (\(currency)\(Int(last7DaysSpent)) השבוע)."
+        content.title = isHebrew
+            ? "האזור של \(categoryName) נהיה די צפוף השבוע 🏙️"
+            : "\(categoryName) had a busy week in your city 🏙️"
+        content.body = isHebrew
+            ? "הוצאת שם בערך פי 2 מהרגיל (\(currency)\(Int(last7DaysSpent)) השבוע)."
+            : "Spending here was about 2x your usual pace (\(currency)\(Int(last7DaysSpent)) this week)."
         content.sound = .default
         content.userInfo = ["type": "category_surge"]
 
@@ -332,10 +342,15 @@ public final class CityNarrativeEngine: @unchecked Sendable {
         let topCategoryRaw = categoryTotals.max(by: { $0.value < $1.value })?.key ?? "shopping"
         let topCategory = SpendingCategory(rawValue: topCategoryRaw) ?? .shopping
         let lang = LocalizationManager.shared.language
+        let isHebrew = lang == .hebrew
 
         let content = UNMutableNotificationContent()
-        content.title = "השבוע בעיר: \(currency)\(Int(totalSpent)) · \(count) רכישות"
-        content.body = "האזור הכי פעיל: \(topCategory.displayName(for: lang))."
+        content.title = isHebrew
+            ? "השבוע בעיר: \(currency)\(Int(totalSpent)) · \(count) רכישות"
+            : "This week in your city: \(currency)\(Int(totalSpent)) · \(count) purchases"
+        content.body = isHebrew
+            ? "האזור הכי פעיל: \(topCategory.displayName(for: lang))."
+            : "Most active category: \(topCategory.displayName(for: lang))."
         content.sound = .default
         content.userInfo = ["type": "weekly_digest"]
 

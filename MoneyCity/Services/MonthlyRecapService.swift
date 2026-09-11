@@ -427,10 +427,10 @@ public enum MonthlyRecapService {
         } else if isRecordHigh {
             cityVibe = MonthlyRecap.CityVibe(
                 type: .recordMetropolis,
-                titleHe: "המטרופולין הגדול ביותר",
-                titleEn: "Biggest Metropolis Yet",
-                subtitleHe: "חודש שיא עם הפעילות האדריכלית הענפה ביותר",
-                subtitleEn: "Record month with the highest architectural activity",
+                titleHe: "העיר הכי גדולה שלך עד עכשיו",
+                titleEn: "Your Biggest City Yet",
+                subtitleHe: "זה היה החודש הכי פעיל בעיר שלך עד עכשיו",
+                subtitleEn: "This was your city's busiest month yet",
                 badgeIcon: "building.2.fill"
             )
         } else if let comp = comparisonVsPrevMonth, comp.isDecrease && comp.percentChange >= 20 {

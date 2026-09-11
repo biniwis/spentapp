@@ -324,7 +324,7 @@ public struct OnboardingWizardView: View {
 
             // Preset Quick Selection Chips
             VStack(alignment: .leading, spacing: 8) {
-                Text(isHebrew ? "או בחר יעד מהיר:" : "Or select a quick target:")
+                Text(isHebrew ? "או בחר סכום:" : "Or choose an amount:")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(Color.textMuted)
 
@@ -660,11 +660,11 @@ public struct OnboardingWizardView: View {
         case 2:
             return isHebrew ? "מי ראש העיר החדש?" : "Who is the New Mayor?"
         case 3:
-            return isHebrew ? "מה יעד ההוצאות החודשי שלך?" : "What's Your Monthly Budget Target?"
+            return isHebrew ? "מה התקציב החודשי שלך?" : "What's Your Monthly Budget?"
         case 4:
-            return isHebrew ? "מעקב אוטומטי שקט — בלי בנקים" : "Silent Apple Pay Tracking — No Banks"
+            return isHebrew ? "מעקב אוטומטי עם קיצורי דרך" : "Automatic Tracking with Shortcuts"
         default:
-            return isHebrew ? "העיר שלך מוכנה להיוולד!" : "Your City Is Ready To Be Born!"
+            return isHebrew ? "העיר שלך מוכנה!" : "Your City Is Ready!"
         }
     }
 

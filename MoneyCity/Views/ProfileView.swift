@@ -274,7 +274,7 @@ public struct ProfileView: View {
                 // ── Top Mini Celebration Tag ──
                 HStack(spacing: 6) {
                     HStack(spacing: 4) {
-                        Text(isHe ? "✦ אירוע סוף חודש" : "✦ MONTHLY CELEBRATION")
+                        Text(isHe ? "✦ סיכום חודשי" : "✦ MONTHLY RECAP")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .tracking(0.5)
                             .foregroundColor(Color.deepNavy)
@@ -303,7 +303,7 @@ public struct ProfileView: View {
 
                     // Titles
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(isHe ? "הסיכום של \(monthName) מוכן!" : "\(monthName) City Story is Ready!")
+                        Text(isHe ? "הסיכום של \(monthName) מוכן!" : "\(monthName) Recap is Ready")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
@@ -772,8 +772,8 @@ public struct ProfileView: View {
             Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
-                title: l10n.language == .hebrew ? "תקציבים ויעדים חודשיים" : "Budgets & Monthly Targets",
-                subtitle: l10n.language == .hebrew ? "ניהול תקרות הוצאה לפי רובע" : "Manage spending caps by district",
+                title: l10n.language == .hebrew ? "תקציב חודשי" : "Monthly Budget",
+                subtitle: l10n.language == .hebrew ? "ניהול תקרות הוצאה לפי קטגוריה" : "Manage spending limits by category",
                 iconBg: Color(red: 243/255, green: 232/255, blue: 255/255)
             ) {
                 MoneyIcon(.barChart, size: 24)
@@ -784,8 +784,8 @@ public struct ProfileView: View {
             Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
-                title: l10n.language == .hebrew ? "יעדי חיסכון והשקעה" : "Savings & Growth Goals",
-                subtitle: l10n.language == .hebrew ? "מעקב אחר חסכונות ושמורת הפארק" : "Track nature park savings reserves",
+                title: l10n.language == .hebrew ? "יעדי חיסכון" : "Savings Goals",
+                subtitle: l10n.language == .hebrew ? "מעקב אחר התקדמות החיסכון שלך" : "Track your savings progress",
                 iconBg: Color(red: 209/255, green: 250/255, blue: 229/255)
             ) {
                 MoneyIcon(.coins, size: 24)

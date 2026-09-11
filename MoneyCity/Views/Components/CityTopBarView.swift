@@ -38,7 +38,7 @@ public struct CityTopBarView: View {
                         }
                     }
             }
-            .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — הפרס השבועי" : "City companions — weekly reward")
+            .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — תוספת שבועית" : "City companions — weekly addition")
 
             Button(action: {
                 withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {

@@ -51,7 +51,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .finance: return "עמלות ובנקים"
         case .savings: return "חיסכון והשקעות"
         case .miscellaneous, .misc: return "שונות"
-        case .other: return "אחר (למיון)"
+        case .other: return "לא מסווג"
         }
     }
 
@@ -74,7 +74,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .finance: return "Bank & Fees"
         case .savings: return "Savings & Investments"
         case .miscellaneous, .misc: return "Miscellaneous"
-        case .other: return "Unsorted (Post Office)"
+        case .other: return "Uncategorized"
         }
     }
     
@@ -94,7 +94,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .finance: return "בנק ועמלות"
         case .savings: return "חיסכון"
         case .miscellaneous, .misc: return "שונות"
-        case .other: return "דואר"
+        case .other: return "לא מסווג"
         }
     }
 
@@ -111,13 +111,13 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .food, .groceries, .coffee: return "Food"
         case .transport: return "Transport"
         case .shopping: return "Shopping"
-        case .entertainment: return "Fun"
+        case .entertainment: return "Entertainment"
         case .health: return "Health"
-        case .subscriptions: return "Bills"
+        case .subscriptions: return "Subscriptions"
         case .finance: return "Bank"
         case .savings: return "Savings"
         case .miscellaneous, .misc: return "Misc"
-        case .other: return "Unsorted"
+        case .other: return "Uncategorized"
         }
     }
     
@@ -153,8 +153,8 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .subscriptions: return "SUBSCRIPTIONS"
         case .finance: return "FINANCE"
         case .savings: return "SAVINGS PARK"
-        case .miscellaneous, .misc: return "MUSEUM OF CURIOSITIES"
-        case .other: return "POST OFFICE"
+        case .miscellaneous, .misc: return "MISCELLANEOUS"
+        case .other: return "UNCATEGORIZED"
         }
     }
     

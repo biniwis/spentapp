@@ -222,7 +222,7 @@ public final class LocalizationManager: ObservableObject {
         case "mayor_name": return isHebrew ? "שם ראש העיר:" : "Mayor Name:"
         case "base_currency": return isHebrew ? "מטבע ראשי:" : "Base Currency:"
         case "language_pref": return isHebrew ? "שפת הממשק:" : "App Language:"
-        case "fx_auto_convert": return isHebrew ? "חישוב והמרת מט״ח אוטומטית" : "Auto Foreign Currency (FX) Conversion"
+        case "fx_auto_convert": return isHebrew ? "המרת מטבע אוטומטית" : "Automatic Currency Conversion"
         case "fx_explanation": return isHebrew ? "עסקאות במטבע זר ($, €, £) יומרו אוטומטית לפי שער יציג." : "Foreign purchases ($, €, £) are automatically converted using current exchange rates."
         case "sync_and_automation": return isHebrew ? "סנכרון ואוטומציות" : "Sync & Automations"
         case "apple_pay_sync": return isHebrew ? "קיצור דרך Apple Pay" : "Apple Pay Shortcut"
@@ -231,7 +231,7 @@ public final class LocalizationManager: ObservableObject {
         case "apple_pay_setup_hint": return isHebrew ? "עדיין לא נקלטה עסקה אוטומטית. הגדר את האוטומציה ב-Shortcuts." : "No automatic transaction captured yet. Set up the Shortcuts automation."
         case "apple_pay_info": return isHebrew ? "תשלום בחנות (הצמדת הטלפון) נקלט אוטומטית, משויך לקטגוריה ובונה את השכונה המתאימה. רכישות אונליין יש להזין ידנית — iOS לא מאפשר לקלוט אותן." : "In-store tap payments are logged automatically, categorized, and shape their district. Online purchases must be added manually — iOS does not expose them."
         case "notifications": return isHebrew ? "התראות ותזכורות שבועיות" : "Weekly Notifications & Status"
-        case "haptics": return isHebrew ? "משוב רטט ומגע (Haptics)" : "Haptic & Tactile Feedback"
+        case "haptics": return isHebrew ? "משוב במגע" : "Haptic Feedback"
         case "data_management": return isHebrew ? "ניהול נתונים וייצוא" : "Data Management & Export"
         case "ingest_log": return isHebrew ? "יומן קליטה (אבחון)" : "Ingest Log (diagnostics)"
         case "ingest_log_hint": return isHebrew ? "מה בדיוק Wallet העביר בכל הפעלה של האוטומציה." : "Exactly what Wallet passed on each automation run."
@@ -265,9 +265,9 @@ public extension SpendingCategory {
             case .health: return "Health & Wellness"
             case .subscriptions: return "Subscriptions"
             case .finance: return "Finance & Fees"
-            case .savings: return "Savings & Reserve"
+            case .savings: return "Savings & Investments"
             case .miscellaneous, .misc: return "Miscellaneous"
-            case .other: return "Unsorted (Post Office)"
+            case .other: return "Uncategorized"
             }
         } else {
             // `self.displayName` is the no-argument property, which decides the language for
@@ -286,13 +286,13 @@ public extension SpendingCategory {
             case .food, .groceries, .coffee: return "Food"
             case .transport: return "Transport"
             case .shopping: return "Shopping"
-            case .entertainment: return "Fun"
+            case .entertainment: return "Entertainment"
             case .health: return "Health"
-            case .subscriptions: return "Subs"
+            case .subscriptions: return "Subscriptions"
             case .finance: return "Finance"
             case .savings: return "Savings"
             case .miscellaneous, .misc: return "Misc"
-            case .other: return "Unsorted"
+            case .other: return "Uncategorized"
             }
         } else {
             // Same as above: honour the argument rather than re-reading global state.

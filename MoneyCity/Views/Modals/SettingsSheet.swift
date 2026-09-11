@@ -65,7 +65,7 @@ public struct SettingsSheet: View {
 
                             Toggle(isOn: $l10n.autoConvertForeign) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(l10n.language == .hebrew ? "המרה אוטומטית לעסקאות מט״ח" : "Auto Convert FX")
+                                    Text(l10n.language == .hebrew ? "המרת מטבע אוטומטית" : "Automatic Currency Conversion")
                                         .font(.system(size: 13, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.deepNavy)
                                     Text(l10n.language == .hebrew ? "עדכון שערי יציג חי של בנק ישראל" : "Live Bank of Israel rates")
@@ -93,7 +93,7 @@ public struct SettingsSheet: View {
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
 
                             HStack(spacing: 12) {
-                                Text(l10n.language == .hebrew ? "יעד תקציב חודשי" : "Monthly Budget Target")
+                                Text(l10n.language == .hebrew ? "תקציב חודשי" : "Monthly Budget")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
@@ -107,7 +107,7 @@ public struct SettingsSheet: View {
                         // 2. Preferences & Notifications
                         settingsGroup(title: l10n.language == .hebrew ? "העדפות ממשק והתראות" : "Preferences & Notifications") {
                             Toggle(isOn: $notificationsEnabled) {
-                                Text(l10n.language == .hebrew ? "התראות מערכת" : "System Notifications")
+                                Text(l10n.language == .hebrew ? "התראות" : "Notifications")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                             }
@@ -140,7 +140,7 @@ public struct SettingsSheet: View {
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
 
                             Toggle(isOn: $hapticsEnabled) {
-                                Text(l10n.language == .hebrew ? "רטט פידבק (Haptics)" : "Haptic Feedback")
+                                Text(l10n.language == .hebrew ? "משוב במגע" : "Haptic Feedback")
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                             }
@@ -186,7 +186,7 @@ public struct SettingsSheet: View {
                                         Text(l10n.language == .hebrew ? "מדיניות פרטיות" : "Privacy Policy")
                                             .font(.system(size: 13, weight: .bold, design: .rounded))
                                             .foregroundColor(Color.deepNavy)
-                                        Text(l10n.language == .hebrew ? "100% מקומי על המכשיר שלך · ללא שרתים" : "100% On-Device · Zero Remote Servers")
+                                        Text(l10n.language == .hebrew ? "המידע הפיננסי נשמר במכשיר שלך" : "Your financial data stays on your device")
                                             .font(.system(size: 11, design: .rounded))
                                             .foregroundColor(Color.textMuted)
                                     }

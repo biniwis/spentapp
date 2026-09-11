@@ -101,7 +101,7 @@ public struct DistrictDeepDiveCard: View {
         case "food":     return isHebrew ? "רובע האוכל" : "Food District"
         case "shopping": return isHebrew ? "שדרת הקניות" : "Shopping District"
         case "housing":  return isHebrew ? "מתחם המגורים" : "Housing District"
-        case "savings":  return isHebrew ? "שמורת הטבע" : "Savings Sanctuary"
+        case "savings":  return isHebrew ? "הפארק" : "The Park"
         case "transport": return isHebrew ? "מרכז התחבורה" : "Transport Hub"
         default:         return isHebrew ? "רובע בעיר" : "City District"
         }

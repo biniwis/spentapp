@@ -304,7 +304,7 @@ public struct AnalyticsView: View {
 
     private var topNavigationBar: some View {
         HStack(alignment: .center) {
-            Text(l10n.language == .hebrew ? "ניתוח נתונים" : "Analytics")
+            Text(l10n.language == .hebrew ? "ניתוח הוצאות" : "Analytics")
                 .font(.system(size: 26, weight: .bold, design: .default))
                 .foregroundColor(Color.deepNavy)
 
@@ -608,7 +608,7 @@ public struct AnalyticsView: View {
         return HStack(alignment: .top, spacing: 0) {
             // 1. Daily Average
             VStack(alignment: .leading, spacing: 2) {
-                Text(isHe ? "ממוצע ליום" : "Daily Avg")
+                Text(isHe ? "ממוצע ליום" : "Daily Average")
                     .font(.system(size: 11, weight: .medium, design: .default))
                     .foregroundColor(Color.textMuted)
 

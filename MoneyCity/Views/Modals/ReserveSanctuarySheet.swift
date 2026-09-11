@@ -85,7 +85,7 @@ public struct ReserveSanctuarySheet: View {
                     .padding(.bottom, 32)
                 }
             }
-            .navigationTitle(isHebrew ? "שמורת הטבע והחיסכון" : "Nature & Savings Sanctuary")
+            .navigationTitle(isHebrew ? "הפארק" : "The Park")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -119,7 +119,7 @@ public struct ReserveSanctuarySheet: View {
             }
             .sheet(isPresented: $showSavingsFeed) {
                 TransactionFeedSheet(
-                    title: isHebrew ? "הפקדות וחיסכון בשמורה" : "Sanctuary Savings & Deposits",
+                    title: isHebrew ? "היסטוריית חיסכון" : "Savings History",
                     transactions: allTransactions.filter { $0.category == .savings || $0.savingsGoalId != nil }
                 )
             }
@@ -154,13 +154,13 @@ public struct ReserveSanctuarySheet: View {
                     Spacer()
                 }
 
-                Text(isHebrew ? "אי החוסן והעתיד של העיר" : "The City's Future & Stability Sanctuary")
+                Text(isHebrew ? "הפארק" : "The Park")
                     .font(.system(size: 17, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 
                 Text(isHebrew
-                     ? "כל שקל שנשמר מזין את האגם, מצמיח את היער ומחזק את המטרות שלך."
-                     : "Every shekel saved nurtures the lake, grows the trees, and powers your goals.")
+                     ? "הפארק משתנה לפי התקציב והחיסכון שלך."
+                     : "The park changes with your budget and savings.")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
                     .lineSpacing(2)
@@ -217,7 +217,7 @@ public struct ReserveSanctuarySheet: View {
             } label: {
                 HStack(spacing: 6) {
                     MoneyIcon(.plusCircle, size: 16)
-                    Text(isHebrew ? "הפקדה ליעד חיסכון" : "Deposit to Goal")
+                    Text(isHebrew ? "הפקדה ליעד" : "Deposit to Goal")
                         .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 }
                 .foregroundColor(.white)
@@ -234,7 +234,7 @@ public struct ReserveSanctuarySheet: View {
             } label: {
                 HStack(spacing: 6) {
                     MoneyIcon(.clock, size: 16)
-                    Text(isHebrew ? "היסטוריית חסכונות" : "Savings History")
+                    Text(isHebrew ? "היסטוריית חיסכון" : "Savings History")
                         .font(.system(size: 12.5, weight: .bold, design: .rounded))
                 }
                 .foregroundColor(Color.deepNavy)
@@ -251,7 +251,7 @@ public struct ReserveSanctuarySheet: View {
     private var savingsGoalsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(isHebrew ? "יעדי החיסכון שלך" : "Your Savings Goals")
+                Text(isHebrew ? "יעדי חיסכון" : "Savings Goals")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 

@@ -76,7 +76,7 @@ public struct CitySortingHubSheet: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 6) {
                         MoneyIcon(.shoppingBag, size: 16)
-                        Text(isHebrew ? "מרכז המיון והדואר" : "City Sorting Hub")
+                        Text(isHebrew ? "עסקאות לא מסווגות" : "Uncategorized Transactions")
                             .font(.system(size: 15, weight: .black, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                     }
@@ -96,13 +96,13 @@ public struct CitySortingHubSheet: View {
             }
             
             VStack(alignment: .leading, spacing: 3) {
-                Text(isHebrew ? "חבילות והוצאות שממתינות למיון" : "Packages Waiting for Sorting")
+                Text(isHebrew ? "עסקאות שמחכות לסיווג" : "Transactions to Categorize")
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 
                 Text(isHebrew
-                     ? "סווג כל חבילה למבנה הנכון בעיר בלחיצה אחת כדי לפנות את המרכז."
-                     : "Assign each package to its city district with a single tap to clear the hub.")
+                     ? "סווג כל עסקה לקטגוריה הנכונה בלחיצה אחת."
+                     : "Assign each transaction to a category with a single tap.")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
                     .lineLimit(2)
@@ -160,7 +160,7 @@ public struct CitySortingHubSheet: View {
             
             // 1-Tap Category Pills Scroll / Grid
             VStack(alignment: .leading, spacing: 6) {
-                Text(isHebrew ? "לאיזה רובע ומבנה להעביר?" : "Move to which district?")
+                Text(isHebrew ? "לאיזו קטגוריה להעביר?" : "Choose a Category")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
                 
@@ -169,12 +169,12 @@ public struct CitySortingHubSheet: View {
                         categoryQuickButton(tx: tx, cat: .food, label: isHebrew ? "אוכל" : "Food", color: Color.themeTurquoise)
                         categoryQuickButton(tx: tx, cat: .shopping, label: isHebrew ? "קניות" : "Shop", color: Color.themeLavender)
                         categoryQuickButton(tx: tx, cat: .housing, label: isHebrew ? "בית" : "Home", color: Color.primaryBlue)
-                        categoryQuickButton(tx: tx, cat: .transport, label: isHebrew ? "תחבורה" : "Transit", color: Color.themeOrange)
-                        categoryQuickButton(tx: tx, cat: .entertainment, label: isHebrew ? "בילויים" : "Fun", color: Color.themeOrange)
+                        categoryQuickButton(tx: tx, cat: .transport, label: isHebrew ? "תחבורה" : "Transport", color: Color.themeOrange)
+                        categoryQuickButton(tx: tx, cat: .entertainment, label: isHebrew ? "בילויים" : "Entertainment", color: Color.themeOrange)
                         categoryQuickButton(tx: tx, cat: .health, label: isHebrew ? "בריאות" : "Health", color: Color.themeMint)
-                        categoryQuickButton(tx: tx, cat: .subscriptions, label: isHebrew ? "מנויים" : "Subs", color: Color.themeLavender)
+                        categoryQuickButton(tx: tx, cat: .subscriptions, label: isHebrew ? "מנויים" : "Subscriptions", color: Color.themeLavender)
                         categoryQuickButton(tx: tx, cat: .finance, label: isHebrew ? "פיננסים" : "Finance", color: Color.deepNavy)
-                        categoryQuickButton(tx: tx, cat: .miscellaneous, label: isHebrew ? "שונות (מוזיאון)" : "Museum", color: Color(red: 139/255, green: 92/255, blue: 246/255))
+                        categoryQuickButton(tx: tx, cat: .miscellaneous, label: isHebrew ? "שונות" : "Misc", color: Color(red: 139/255, green: 92/255, blue: 246/255))
                     }
                     .padding(.vertical, 2)
                 }
@@ -226,13 +226,13 @@ public struct CitySortingHubSheet: View {
             }
             
             VStack(spacing: 8) {
-                Text(isHebrew ? "מרכז המיון נקי ומסודר!" : "Sorting Hub is Spotless!")
+                Text(isHebrew ? "הכול מסווג" : "You're All Caught Up")
                     .font(.system(size: 24, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                 
                 Text(isHebrew
-                     ? "כל ההוצאות חולקו בהצלחה למבנים הנכונים בעיר. אין חבילות שממתינות למיון."
-                     : "All expenses are assigned to their proper city buildings. No packages waiting.")
+                     ? "כל העסקאות שויכו לקטגוריות מתאימות. אין עסקאות שממתינות לסיווג."
+                     : "All transactions have been categorized. You're completely caught up.")
                     .font(.system(size: 14, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textSecondary)
                     .multilineTextAlignment(.center)

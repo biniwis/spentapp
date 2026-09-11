@@ -56,7 +56,7 @@ public struct CityProgressSheet: View {
                 } else {
                     Text(he ? "מצטרפים לעיר" : "City companions").font(.title2.bold())
                     if !options.isEmpty {
-                        Text(he ? "פרס קטן על ההתקדמות השבועית שלך" : "A little reward for your weekly progress")
+                        Text(he ? "תוספת קטנה על ההתקדמות השבועית שלך" : "A little addition for your weekly progress")
                             .font(.headline).multilineTextAlignment(.center)
                         Text(he ? "ב־7 הימים האחרונים ההוצאות היומיומיות היו נמוכות ב־\(l10n.format(amount: savedAmount)) מב־7 הימים שלפניהם. אפשר לבחור חבר אחד שיישאר בעיר." : "Your everyday spending in the last 7 days was \(l10n.format(amount: savedAmount)) lower than in the previous 7 days. Choose one companion to stay in your city.")
                             .font(.subheadline).foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
@@ -88,12 +88,12 @@ public struct CityProgressSheet: View {
                         Text(he ? "החברים שהצטרפו נשארים בעיר. כרגע אין חברים נוספים לבחירה." : "Your companions are here to stay. There are no more companions to choose right now.")
                             .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
                     } else if nextDate > Date() {
-                        Text(he ? "הפרס הבא ייבדק החל מ־" : "Next reward check from")
+                        Text(he ? "התוספת הבאה תיבדק החל מ־" : "Next addition check from")
                         Text(nextDate, style: .date).font(.headline)
                         Text(he ? "בחירה אחת בכל שבעה ימים, כשההוצאות היומיומיות יורדות ביותר מ־10 ₪ לעומת השבוע הקודם. החברים שכבר הצטרפו נשארים תמיד." : "One choice every seven days when everyday spending decreases by more than ₪10 compared with the previous week. Existing companions always stay.")
                             .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
                     } else {
-                        Text(he ? (hasBaseline ? "השבוע עדיין אין פרס חדש לבחירה" : "קודם נכיר את השבועות שלך") : (hasBaseline ? "No new reward to choose this week yet" : "Let's get to know your weeks first"))
+                        Text(he ? (hasBaseline ? "השבוע עדיין אין תוספת חדשה לבחירה" : "קודם נכיר את השבועות שלך") : (hasBaseline ? "No new addition to choose this week yet" : "Let's get to know your weeks first"))
                             .font(.headline).multilineTextAlignment(.center)
                         Text(he ? "משווים שני שבועות של הוצאות יומיומיות, בלי דיור, מנויים, בריאות, בנק וחיסכון. ירידה של יותר מ־10 ₪ יכולה לפתוח בחירה של חבר חדש. אין צורך לוותר על דברים שאתה צריך." : "We compare two weeks of everyday spending, excluding housing, subscriptions, health, finance and savings. A decrease of more than ₪10 can unlock a new companion. There's no need to skip things you need.")
                             .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
@@ -111,7 +111,7 @@ public struct CityProgressSheet: View {
         .alert(he ? "החבר עדיין לא נוסף" : "Your companion wasn't added", isPresented: $saveFailed) {
             Button(he ? "אישור" : "OK", role: .cancel) {}
         } message: {
-            Text(he ? "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. כשל בשמירה לא מנצל את הפרס. אפשר לנסות שוב." : "Saving failed or the choice is no longer available. A failed save does not consume your reward. Please try again.")
+            Text(he ? "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : "Saving failed or the choice is no longer available. Please try again.")
         }
     }
 }

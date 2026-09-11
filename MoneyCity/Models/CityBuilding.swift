@@ -94,7 +94,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                     id: "food_wolt",
                     category: .food,
                     nameHe: "משלוחי אוכל",
-                    nameEn: "Food Delivery (Wolt)",
+                    nameEn: "Food Delivery",
                     emoji: "🛵",
                     sfSymbol: "bicycle",
                     descriptionHe: "Wolt, תן ביס ומשלוחי אוכל",
@@ -117,7 +117,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                     id: "shop_boutique",
                     category: .shopping,
                     nameHe: "ביגוד ואופנה",
-                    nameEn: "Fashion & Boutique",
+                    nameEn: "Clothing & Fashion",
                     emoji: "👗",
                     sfSymbol: "tshirt.fill",
                     descriptionHe: "בגדים, הנעלה וסטייל",
@@ -150,7 +150,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                     id: "shop_arcade",
                     category: .entertainment,
                     nameHe: "ארקייד, קולנוע ובידור",
-                    nameEn: "Arcade & Entertainment",
+                    nameEn: "Entertainment",
                     emoji: "🎮",
                     sfSymbol: "gamecontroller.fill",
                     descriptionHe: "קולנוע, הופעות, גיימינג ובילויים",
@@ -163,7 +163,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                     id: "house_tower",
                     category: .housing,
                     nameHe: "שכירות ודיור",
-                    nameEn: "Residential Tower",
+                    nameEn: "Housing",
                     emoji: "🏢",
                     sfSymbol: "building.2.fill",
                     descriptionHe: "שכירות, משכנתא ודיור",
@@ -224,12 +224,12 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "savings_sanctuary",
                     category: .savings,
-                    nameHe: "שמורת חיסכון והשקעות",
-                    nameEn: "Savings Sanctuary",
+                    nameHe: "חיסכון והשקעות",
+                    nameEn: "Savings & Investments",
                     emoji: "🌳",
                     sfSymbol: "leaf.fill",
                     descriptionHe: "קרנות, השקעות וחיסכון חודשי",
-                    descriptionEn: "Investments & savings funds"
+                    descriptionEn: "Savings goals, funds & investments"
                 )
             ]
         case .finance:
@@ -250,12 +250,12 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "museum_curiosities",
                     category: .miscellaneous,
-                    nameHe: "מוזיאון הדברים המשונים",
-                    nameEn: "Museum of Curiosities",
+                    nameHe: "שונות",
+                    nameEn: "Miscellaneous",
                     emoji: "🏛️",
                     sfSymbol: "building.columns.fill",
-                    descriptionHe: "מתנות, תרומות, פריטים מיוחדים והוצאות שלא מצאו שכונה משלהן",
-                    descriptionEn: "Gifts, donations, oddities & special one-off expenses"
+                    descriptionHe: "מתנות, תרומות, פריטים מיוחדים ושונות",
+                    descriptionEn: "Gifts, donations and one-off miscellaneous expenses"
                 )
             ]
         case .other:
@@ -263,12 +263,12 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "city_sorting_hub",
                     category: .other,
-                    nameHe: "בית הדואר ומרכז המיון",
-                    nameEn: "Post Office & Sorting Hub",
+                    nameHe: "לא מסווג",
+                    nameEn: "Uncategorized",
                     emoji: "📮",
                     sfSymbol: "shippingbox.fill",
-                    descriptionHe: "עסקאות לא מזוהות הממתינות למיון וחלוקה לשכונות",
-                    descriptionEn: "Unrecognized expenses waiting to be sorted into districts"
+                    descriptionHe: "עסקאות שממתינות לסיווג",
+                    descriptionEn: "Transactions waiting to be categorized"
                 )
             ]
         case .groceries, .coffee:

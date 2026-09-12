@@ -40,22 +40,22 @@
     "%@ — איזה כיף שבאת!" : {
 
     },
-    "%@ · Monthly Target ₪%@" : {
+    "%@ · Monthly Target %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ · Monthly Target ₪%2$@"
+            "value" : "%1$@ · Monthly Target %2$@"
           }
         }
       }
     },
-    "%@ · יעד חודשי ₪%@" : {
+    "%@ · יעד חודשי %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ · יעד חודשי ₪%2$@"
+            "value" : "%1$@ · יעד חודשי %2$@"
           }
         }
       }
@@ -345,6 +345,9 @@
 
     },
     "6-Month Overview" : {
+
+    },
+    "8,000" : {
 
     },
     "12-Month Overview" : {

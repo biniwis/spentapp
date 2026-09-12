@@ -27,26 +27,30 @@ public struct DonutArcShape: Shape {
     }
 }
 
-/// A crisp radial separator line between donut slices
+/// A crisp radial separator line between donut slices, dynamically scaling with rect geometry
 public struct DonutRadialSeparator: Shape {
     public var angle: Double
-    public var innerRadius: CGFloat
-    public var outerRadius: CGFloat
+    public var customInnerRadius: CGFloat?
+    public var customOuterRadius: CGFloat?
 
     public var animatableData: Double {
         get { angle }
         set { angle = newValue }
     }
 
-    public init(angle: Double, innerRadius: CGFloat = 63, outerRadius: CGFloat = 93) {
+    public init(angle: Double, innerRadius: CGFloat? = nil, outerRadius: CGFloat? = nil) {
         self.angle = angle
-        self.innerRadius = innerRadius
-        self.outerRadius = outerRadius
+        self.customInnerRadius = innerRadius
+        self.customOuterRadius = outerRadius
     }
 
     public func path(in rect: CGRect) -> Path {
         var path = Path()
         let center = CGPoint(x: rect.midX, y: rect.midY)
+        let midRadius = max((min(rect.width, rect.height) - 30) / 2, 10)
+        let innerRadius = customInnerRadius ?? max(midRadius - 14.5, 0)
+        let outerRadius = customOuterRadius ?? (midRadius + 14.5)
+
         let rad = CGFloat(angle) * .pi / 180.0
         let p1 = CGPoint(
             x: center.x + innerRadius * cos(rad),

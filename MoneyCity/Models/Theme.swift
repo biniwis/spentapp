@@ -16,15 +16,15 @@ public struct MoneyCityTheme {
 
     // ── Curated Category Palette (Tonally unified for data distinction) ──
     public struct CategoryPalette {
-        public static let food           = Color(red: 255/255, green: 100/255, blue: 70/255)  // #FF6446 Orange Red
-        public static let shopping       = Color(red: 86/255,  green: 83/255,  blue: 232/255) // #5653E8 Violet Blue
+        public static let food           = MoneyCityTheme.orangeRed                            // Canonical Orange Red
+        public static let shopping       = MoneyCityTheme.violetBlue                           // Canonical Violet Blue
         public static let transport      = Color(red: 63/255,  green: 134/255, blue: 199/255) // #3F86C7 City Blue
         public static let housing        = Color(red: 201/255, green: 145/255, blue: 63/255)  // #C9913F Warm Ochre
         public static let entertainment  = Color(red: 122/255, green: 95/255,  blue: 199/255) // #7A5FC7 Soft Purple
         public static let health         = Color(red: 216/255, green: 95/255,  blue: 115/255) // #D85F73 Dusty Coral
         public static let subscriptions  = Color(red: 102/255, green: 121/255, blue: 200/255) // #6679C8 Periwinkle
         public static let finance        = Color(red: 83/255,  green: 96/255,  blue: 107/255) // #53606B Graphite Blue
-        public static let savings        = Color(red: 45/255,  green: 158/255, blue: 101/255) // #2D9E65 Lucky Green
+        public static let savings        = MoneyCityTheme.luckyGreen                           // Canonical Lucky Green
         public static let miscellaneous  = Color(red: 166/255, green: 169/255, blue: 86/255)  // #A6A956 Olive Lime
         public static let other          = Color(red: 146/255, green: 153/255, blue: 161/255) // #9299A1 Neutral Slate
     }

@@ -83,24 +83,35 @@ public struct OnboardingCityScene: View {
         return value.isEmpty ? (isRTL ? "העיר שלך" : "YOUR CITY") : value
     }
 
+    private enum IllustrationTextSlot {
+        static let conceptStoreSign = CGRect(x: 186, y: 150, width: 122, height: 26)
+        static let mayorBillboard = CGRect(x: 57, y: 34, width: 258, height: 89)
+        static let targetPanel = CGRect(x: 147, y: 181, width: 176, height: 70)
+        static let automationCardLabelCenter = CGPoint(x: 94, y: 71)
+        static let automationShopSign = CGRect(x: 253, y: 190, width: 77, height: 26)
+        static let revealMayorSign = CGRect(x: 31, y: 39, width: 158, height: 45)
+        static let revealShopSign = CGRect(x: 205, y: 169, width: 87, height: 26)
+    }
+
     @ViewBuilder private var lettering: some View {
         switch step {
         case .concept:
-            posterLabel("SPENT", size: 14, width: 104)
-                .position(x: 250, y: 160)
+            illustrationLabel("SPENT", in: IllustrationTextSlot.conceptStoreSign, fontSize: 13)
         case .mayor:
-            VStack(spacing: 5) {
+            VStack(spacing: 4) {
                 Text(isRTL ? "ברוכים הבאים לעיר של" : "WELCOME TO THE CITY OF")
                     .font(.system(size: 9, weight: .semibold))
                 Text(name)
-                    .font(.system(size: 29, weight: .heavy))
+                    .font(.system(size: 28, weight: .heavy))
                     .lineLimit(1)
                     .minimumScaleFactor(0.45)
             }
             .foregroundStyle(Color.jetBlack)
-            .frame(width: 224, height: 76)
+            .frame(width: IllustrationTextSlot.mayorBillboard.width - 24,
+                   height: IllustrationTextSlot.mayorBillboard.height - 14)
             .scaleEffect(x: isRTL ? -1 : 1, y: 1)
-            .position(x: 188, y: 83)
+            .position(x: IllustrationTextSlot.mayorBillboard.midX,
+                      y: IllustrationTextSlot.mayorBillboard.midY)
         case .spendingTarget:
             VStack(spacing: 4) {
                 Text(isRTL ? "המסגרת של החודש" : "THIS MONTH’S TARGET")
@@ -111,31 +122,49 @@ public struct OnboardingCityScene: View {
                     .minimumScaleFactor(0.5)
             }
             .foregroundStyle(Color.jetBlack)
-            .frame(width: 162, height: 59)
+            .frame(width: IllustrationTextSlot.targetPanel.width - 16,
+                   height: IllustrationTextSlot.targetPanel.height - 12)
             .scaleEffect(x: isRTL ? -1 : 1, y: 1)
-            .position(x: 235, y: 216)
+            .position(x: IllustrationTextSlot.targetPanel.midX,
+                      y: IllustrationTextSlot.targetPanel.midY)
         case .automation:
-            posterLabel("SPENT", size: 12, width: 80)
-                .position(x: 291, y: 210)
-            posterLabel(isRTL ? "תשלום" : "PAYMENT", size: 10, width: 90)
-                .position(x: 87, y: 126)
+            // Tilted label directly printed on the orange-red card surface
+            Text(isRTL ? "תשלום" : "PAYMENT")
+                .font(.system(size: 10, weight: .heavy))
+                .foregroundStyle(Color.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .frame(width: 68, height: 18)
+                .rotationEffect(.degrees(isRTL ? 9 : -9))
+                .scaleEffect(x: isRTL ? -1 : 1, y: 1)
+                .position(IllustrationTextSlot.automationCardLabelCenter)
+
+            illustrationLabel("SPENT", in: IllustrationTextSlot.automationShopSign, fontSize: 12)
         case .finalReveal:
-            posterLabel(name, size: 17, width: 139)
-                .position(x: 110, y: 61)
-            posterLabel("SPENT", size: 11, width: 90)
-                .position(x: 252, y: 188)
+            illustrationLabel(name, in: IllustrationTextSlot.revealMayorSign, fontSize: 17)
+            illustrationLabel("SPENT", in: IllustrationTextSlot.revealShopSign, fontSize: 11)
         }
     }
 
-    private func posterLabel(_ text: String, size: CGFloat, width: CGFloat) -> some View {
+    private func illustrationLabel(
+        _ text: String,
+        in rect: CGRect,
+        fontSize: CGFloat,
+        weight: Font.Weight = .heavy,
+        design: Font.Design = .default,
+        color: Color = .jetBlack,
+        rotation: Angle = .zero
+    ) -> some View {
         Text(text)
-            .font(.system(size: size, weight: .heavy))
-            .foregroundStyle(Color.jetBlack)
+            .font(.system(size: fontSize, weight: weight, design: design))
+            .foregroundStyle(color)
             .lineLimit(1)
-            .minimumScaleFactor(0.5)
-            .frame(width: width)
+            .minimumScaleFactor(0.4)
+            .frame(width: rect.width - 8, height: rect.height - 4)
+            .rotationEffect(rotation)
             // Counter-mirror the glyphs locally, preserving their position in the artwork.
             .scaleEffect(x: isRTL ? -1 : 1, y: 1)
+            .position(x: rect.midX, y: rect.midY)
     }
 }
 

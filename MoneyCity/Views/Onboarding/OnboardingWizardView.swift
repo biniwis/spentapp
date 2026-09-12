@@ -27,8 +27,9 @@ public struct OnboardingWizardView: View {
     @FocusState private var focusedField: OnboardingField?
 
     @State private var slideDirection: Int = 1 // 1 = forward, -1 = backward
+    @State private var didInitializeInputs: Bool = false
     @State private var userNameInput: String = ""
-    @State private var budgetInputText: String = "8000"
+    @State private var budgetInputText: String = "8,000"
     @State private var hasOpenedShortcuts: Bool = false
 
     private let initialStepOverride: Int?
@@ -36,8 +37,22 @@ public struct OnboardingWizardView: View {
     private let canDismiss: Bool
 
     private var parsedBudget: Double? {
-        guard let val = TransactionIngest.normalizedAmount(nil, budgetInputText), val > 0 else { return nil }
+        let digits = budgetInputText.filter { $0.isNumber }
+        guard let val = Double(digits), val > 0 else { return nil }
         return val
+    }
+
+    private func formatBudgetValue(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.0f", value)
+    }
+
+    private func formatBudgetString(_ text: String) -> String {
+        let digits = text.filter { $0.isNumber }
+        guard let val = Double(digits), val > 0 else { return text }
+        return formatBudgetValue(val)
     }
 
     private var isHebrew: Bool {
@@ -73,54 +88,45 @@ public struct OnboardingWizardView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 12)
 
-                    ScrollViewReader { scroll in
-                        ScrollView(showsIndicators: false) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                stepTitleSection
-                                    .padding(.horizontal, 26)
-
-                                OnboardingCityScene(
-                                    step: activeOnboardingStep,
-                                    mayorName: userNameInput,
-                                    targetAmountText: formattedBudgetText,
-                                    isRTL: isHebrew,
-                                    height: heroHeight(availableHeight: geometry.size.height)
-                                )
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, focusedField == nil ? 16 : 8)
-
-                                VStack(alignment: .leading, spacing: 18) {
-                                    Text(stepSubtitleText)
-                                        .font(.system(.body, design: .default))
-                                        .foregroundStyle(posterInk.opacity(0.75))
-                                        .multilineTextAlignment(.leading)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                        .lineSpacing(3)
-
-                                    stepBodyContent
-                                        .id("onboardingInput")
-                                }
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            stepTitleSection
                                 .padding(.horizontal, 26)
 
-                                Spacer(minLength: 20)
+                            OnboardingCityScene(
+                                step: activeOnboardingStep,
+                                mayorName: userNameInput,
+                                targetAmountText: formatBudgetString(budgetInputText),
+                                isRTL: isHebrew,
+                                height: heroHeight(availableHeight: geometry.size.height)
+                            )
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 14)
+
+                            VStack(alignment: .leading, spacing: 18) {
+                                Text(stepSubtitleText)
+                                    .font(.system(.body, design: .default))
+                                    .foregroundStyle(posterInk.opacity(0.75))
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .lineSpacing(3)
+
+                                stepBodyContent
+                                    .id("onboardingInput")
                             }
-                            .frame(maxWidth: 560, alignment: .leading)
-                            .frame(maxWidth: .infinity)
-                            .id("\(currentStep)_\(shortcutPhase)")
-                            .transition(reduceMotion ? .opacity : .asymmetric(
-                                insertion: .offset(x: transitionDirection * 30).combined(with: .opacity),
-                                removal: .offset(x: -transitionDirection * 20).combined(with: .opacity)
-                            ))
+                            .padding(.horizontal, 26)
+
+                            Spacer(minLength: 20)
                         }
-                        .scrollDismissesKeyboard(.interactively)
-                        .onChange(of: focusedField) { _, field in
-                            if field != nil {
-                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
-                                    scroll.scrollTo("onboardingInput", anchor: .bottom)
-                                }
-                            }
-                        }
+                        .frame(maxWidth: 560, alignment: .leading)
+                        .frame(maxWidth: .infinity)
+                        .id("\(currentStep)_\(shortcutPhase)")
+                        .transition(reduceMotion ? .opacity : .asymmetric(
+                            insertion: .offset(x: transitionDirection * 30).combined(with: .opacity),
+                            removal: .offset(x: -transitionDirection * 20).combined(with: .opacity)
+                        ))
                     }
+                    .scrollDismissesKeyboard(.interactively)
 
                     bottomActionBar
                         .frame(maxWidth: 508)
@@ -133,6 +139,8 @@ public struct OnboardingWizardView: View {
             }
         }
         .onAppear {
+            guard !didInitializeInputs else { return }
+            didInitializeInputs = true
             if let initialStep = initialStepOverride {
                 currentStep = initialStep
             }
@@ -143,11 +151,20 @@ public struct OnboardingWizardView: View {
                 userNameInput = storedUserName
             }
             if storedMonthlyBudget > 0 {
-                budgetInputText = String(format: "%.0f", storedMonthlyBudget)
+                budgetInputText = formatBudgetValue(storedMonthlyBudget)
+            } else {
+                budgetInputText = formatBudgetValue(8000)
             }
         }
         .onChange(of: currentStep) { _, _ in
             focusedField = nil
+        }
+        .onChange(of: focusedField) { oldField, newField in
+            if oldField == .budget && newField != .budget {
+                budgetInputText = formatBudgetString(budgetInputText)
+            } else if newField == .budget {
+                budgetInputText = budgetInputText.filter { $0.isNumber }
+            }
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
@@ -162,8 +179,8 @@ public struct OnboardingWizardView: View {
 
     private func heroHeight(availableHeight: CGFloat) -> CGFloat {
         if currentStep == 4 && shortcutPhase == "guide" { return 170 }
-        if focusedField != nil || dynamicTypeSize.isAccessibilitySize { return 190 }
-        return min(320, max(230, availableHeight * 0.39))
+        if dynamicTypeSize.isAccessibilitySize { return 210 }
+        return min(290, max(240, availableHeight * 0.36))
     }
 
     // MARK: - Stable navigation and five editorial progress rules
@@ -306,36 +323,19 @@ public struct OnboardingWizardView: View {
     }
 
     // MARK: Step 3 - Monthly Spending Target (Tonal editable surface, clean presets, BUDGET ≠ INCOME)
-    private var formattedBudgetText: String {
-        let digits = budgetInputText.filter { $0.isNumber }
-        guard let val = Double(digits), val > 0 else {
-            return budgetInputText.isEmpty ? "0" : budgetInputText
-        }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = ","
-        return formatter.string(from: NSNumber(value: val)) ?? budgetInputText
-    }
-
     private var step3BudgetConfig: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(l10n.baseCurrency.symbol)
                     .font(.system(size: inputSize * 0.8, weight: .medium))
-                ZStack(alignment: .leading) {
-                    if focusedField != .budget {
-                        Text(formattedBudgetText)
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                    }
-                    TextField("", text: $budgetInputText)
-                        .foregroundStyle(focusedField == .budget ? Color.jetBlack : .clear)
-                        .keyboardType(.numberPad)
-                        .focused($focusedField, equals: .budget)
-                        .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
-                }
-                .font(.system(size: inputSize * 1.4, weight: .heavy, design: .rounded))
-                .tint(.jetBlack)
+
+                TextField("", text: $budgetInputText)
+                    .font(.system(size: inputSize * 1.4, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.jetBlack)
+                    .tint(.jetBlack)
+                    .keyboardType(.numberPad)
+                    .focused($focusedField, equals: .budget)
+                    .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
             }
             .foregroundStyle(Color.jetBlack)
             .environment(\.layoutDirection, .leftToRight)
@@ -365,13 +365,13 @@ public struct OnboardingWizardView: View {
     }
 
     private func budgetPresetOption(amount: String) -> some View {
-        let isSelected = budgetInputText == amount
+        let isSelected = budgetInputText.filter { $0.isNumber } == amount
         return Button(action: {
             Haptics.selection()
-            budgetInputText = amount
+            budgetInputText = formatBudgetString(amount)
             focusedField = nil
         }) {
-            Text("\(l10n.baseCurrency.symbol)\(amount)")
+            Text("\(l10n.baseCurrency.symbol)\(formatBudgetString(amount))")
                 .font(.system(.subheadline, design: .rounded, weight: isSelected ? .bold : .regular))
                 .fixedSize()
                 .foregroundStyle(Color.jetBlack)

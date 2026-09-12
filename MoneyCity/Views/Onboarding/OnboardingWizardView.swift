@@ -38,8 +38,13 @@ public struct OnboardingWizardView: View {
     private let initialPhaseOverride: String?
     private let canDismiss: Bool
 
+    public static func sanitizedBudgetDigits(_ text: String) -> String {
+        let beforeDecimal = text.components(separatedBy: ".").first ?? text
+        return String(beforeDecimal.filter { $0 >= "0" && $0 <= "9" }.prefix(9))
+    }
+
     private func sanitizedBudgetDigits(_ text: String) -> String {
-        String(text.filter { $0 >= "0" && $0 <= "9" }.prefix(9))
+        Self.sanitizedBudgetDigits(text)
     }
 
     private var parsedBudget: Double? {

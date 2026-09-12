@@ -104,22 +104,20 @@ final class P0StabilityTests: XCTestCase {
     // MARK: - Pre-Release Onboarding Hardening Tests
 
     func testBudgetSanitizationRemovesNonASCIIDigitsAndClamps() {
-        func sanitize(_ text: String) -> String {
-            String(text.filter { $0 >= "0" && $0 <= "9" }.prefix(9))
-        }
-
-        XCTAssertEqual(sanitize("₪8,000"), "8000")
-        XCTAssertEqual(sanitize("8,000"), "8000")
-        XCTAssertEqual(sanitize("$12,500.00"), "1250000")
-        XCTAssertEqual(sanitize("abc8000def"), "8000")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("12,500.00"), "12500")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("8000.50"), "8000")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("₪8,000"), "8000")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("8,000"), "8000")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("$12,500.00"), "12500")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("abc8000def"), "8000")
         // Unicode numerals (Arabic-Indic digits ٠١٢) should be excluded
-        XCTAssertEqual(sanitize("١٢٣45"), "45")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("١٢٣45"), "45")
         // Max 9 digits clamping
-        XCTAssertEqual(sanitize("123456789012345"), "123456789")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("123456789012345"), "123456789")
         // Empty string
-        XCTAssertEqual(sanitize(""), "")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits(""), "")
         // Only symbols
-        XCTAssertEqual(sanitize("₪$€,.-"), "")
+        XCTAssertEqual(OnboardingWizardView.sanitizedBudgetDigits("₪$€,.-"), "")
     }
 
     @MainActor
@@ -137,17 +135,18 @@ final class P0StabilityTests: XCTestCase {
         context.insert(salary)
         try context.save()
 
-        // Perform migration
-        let descriptor = FetchDescriptor<IncomeSource>()
-        let items = try context.fetch(descriptor)
-        for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
-            context.delete(item)
-        }
-        try context.save()
+        // Call production migration directly
+        let didDelete = try LegacyTargetIncomeMigration.migrate(in: context)
+        XCTAssertTrue(didDelete)
 
+        let descriptor = FetchDescriptor<IncomeSource>()
         let remaining = try context.fetch(descriptor)
         XCTAssertEqual(remaining.count, 1)
         XCTAssertEqual(remaining.first?.name, "משכורת")
+
+        // Second run: nothing to delete
+        let secondRunDeleted = try LegacyTargetIncomeMigration.migrate(in: context)
+        XCTAssertFalse(secondRunDeleted)
     }
 
     func testOnboardingV2RoutingLogicMatrix() {

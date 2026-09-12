@@ -96,18 +96,29 @@ struct AppRootView: View {
 
     private func migrateLegacyMonthlyTargetIncomeIfNeeded() {
         guard !didMigrateLegacyMonthlyTargetIncome else { return }
-        let descriptor = FetchDescriptor<IncomeSource>()
-        if let items = try? modelContext.fetch(descriptor) {
-            var didDelete = false
-            for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
-                modelContext.delete(item)
-                didDelete = true
-            }
-            if didDelete {
-                try? modelContext.save()
-            }
+        do {
+            _ = try LegacyTargetIncomeMigration.migrate(in: modelContext)
+            didMigrateLegacyMonthlyTargetIncome = true
+        } catch {
+            print("[Migration] Failed to migrate legacy income sources: \(error)")
         }
-        didMigrateLegacyMonthlyTargetIncome = true
+    }
+}
+
+enum LegacyTargetIncomeMigration {
+    @discardableResult
+    static func migrate(in context: ModelContext) throws -> Bool {
+        let descriptor = FetchDescriptor<IncomeSource>()
+        let items = try context.fetch(descriptor)
+        var didDelete = false
+        for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
+            context.delete(item)
+            didDelete = true
+        }
+        if didDelete {
+            try context.save()
+        }
+        return didDelete
     }
 }
 

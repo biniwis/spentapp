@@ -134,7 +134,7 @@ public struct OnboardingWizardView: View {
 
                             VStack(alignment: .leading, spacing: 18) {
                                 Text(stepSubtitleText)
-                                    .font(.system(.body, design: .default))
+                                    .font(.system(.body, design: .rounded))
                                     .foregroundStyle(posterInk.opacity(0.75))
                                     .multilineTextAlignment(.leading)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -291,7 +291,7 @@ public struct OnboardingWizardView: View {
 
     private var stepTitleSection: some View {
         Text(stepTitleText)
-            .font(.system(size: headlineSize, weight: .heavy, design: .default))
+            .font(.system(size: headlineSize, weight: .heavy, design: .rounded))
             .tracking(isHebrew ? -1 : -1.8)
             .foregroundStyle(posterInk)
             .multilineTextAlignment(.leading)
@@ -325,7 +325,7 @@ public struct OnboardingWizardView: View {
     private var step1ConceptBody: some View {
         Label(isHebrew ? "המידע נשאר על המכשיר" : "Your data stays on your device",
               systemImage: "lock")
-            .font(.system(.footnote, design: .default))
+            .font(.system(.footnote, design: .rounded))
             .foregroundStyle(posterInk.opacity(0.7))
             .padding(.top, 4)
     }
@@ -334,11 +334,11 @@ public struct OnboardingWizardView: View {
     private var step2MayorInput: some View {
         VStack(alignment: .leading, spacing: 9) {
             Text(isHebrew ? "השם שלך" : "Your name")
-                .font(.system(.subheadline, design: .default))
+                .font(.system(.subheadline, design: .rounded))
                 .foregroundStyle(Color.jetBlack.opacity(0.7))
 
             TextField(isHebrew ? "איך קוראים לך?" : "What’s your name?", text: $userNameInput)
-                .font(.system(size: inputSize, weight: .bold))
+                .font(.system(size: inputSize, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.jetBlack)
                 .tint(.jetBlack)
                 .multilineTextAlignment(.leading)
@@ -400,7 +400,7 @@ public struct OnboardingWizardView: View {
             }
 
             Text(isHebrew ? "אפשר לשנות את היעד אחר כך" : "You can change your target later")
-                .font(.system(.footnote, design: .default))
+                .font(.system(.footnote, design: .rounded))
                 .foregroundStyle(Color.jetBlack.opacity(0.7))
         }
     }
@@ -438,7 +438,7 @@ public struct OnboardingWizardView: View {
         Text(isHebrew
             ? "\u{200F}SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות."
             : "SPENT never connects to your bank or reads Wallet directly.")
-            .font(.system(.footnote, design: .default))
+            .font(.system(.footnote, design: .rounded))
             .foregroundStyle(Color.jetBlack.opacity(0.7))
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
@@ -478,11 +478,11 @@ public struct OnboardingWizardView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(isHebrew ? "חבר את נתוני העסקה" : "Connect Transaction Data")
-                            .font(.system(.subheadline, design: .default, weight: .semibold))
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundColor(Color.deepNavy)
 
                         Text(isHebrew ? "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : "Tap each field, select \"Shortcut Input\" then the attribute:")
-                            .font(.system(.footnote, design: .default))
+                            .font(.system(.footnote, design: .rounded))
                             .foregroundColor(Color.textSecondary)
                     }
                 }
@@ -513,11 +513,11 @@ public struct OnboardingWizardView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(.subheadline, design: .default, weight: .semibold))
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundColor(Color.deepNavy)
 
                 Text(instruction)
-                    .font(.system(.footnote, design: .default))
+                    .font(.system(.footnote, design: .rounded))
                     .foregroundColor(Color.textSecondary)
                     .lineSpacing(2)
             }
@@ -637,7 +637,7 @@ public struct OnboardingWizardView: View {
                 }
             }) {
                 Text(isHebrew ? "אעשה את זה אחר כך" : "I'll do this later")
-                    .font(.system(.subheadline, design: .default, weight: .medium))
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
                     .foregroundColor(Color.textSecondary)
                     .frame(minHeight: 44)
             }
@@ -658,7 +658,7 @@ public struct OnboardingWizardView: View {
                     HStack(spacing: 6) {
                         MoneyIcon(.lightning, size: 18, color: .jetBlack)
                         Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
-                            .font(.system(.body, design: .default, weight: .semibold))
+                            .font(.system(.body, design: .rounded, weight: .semibold))
                     }
                     .foregroundColor(.jetBlack)
                     .frame(maxWidth: .infinity)
@@ -696,7 +696,7 @@ public struct OnboardingWizardView: View {
             action()
         }) {
             Text(title)
-                .font(.system(.body, design: .default, weight: .semibold))
+                .font(.system(.body, design: .rounded, weight: .semibold))
                 .foregroundColor(currentStep == 5 ? .jetBlack : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 17)

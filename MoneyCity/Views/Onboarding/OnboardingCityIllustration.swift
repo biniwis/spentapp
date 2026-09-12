@@ -119,10 +119,10 @@ public struct OnboardingCityScene: View {
             let boardRect = rtlSafeRect(IllustrationTextSlot.mayorBillboard)
             VStack(spacing: 4) {
                 Text(isRTL ? "ברוכים הבאים לעיר של" : "WELCOME TO THE CITY OF")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.jetBlack.opacity(0.8))
                 Text(name)
-                    .font(.system(size: 28, weight: .heavy))
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color.jetBlack)
                     .lineLimit(1)
                     .minimumScaleFactor(0.45)
@@ -143,7 +143,7 @@ public struct OnboardingCityScene: View {
 
             VStack(spacing: 3) {
                 Text(isRTL ? "המסגרת של החודש" : "THIS MONTH’S TARGET")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.jetBlack.opacity(0.8))
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -166,7 +166,7 @@ public struct OnboardingCityScene: View {
                                              y: IllustrationTextSlot.automationCardCenter.y)
                                    : IllustrationTextSlot.automationCardCenter
             Text(isRTL ? "תשלום" : "PAYMENT")
-                .font(.system(size: 10, weight: .heavy))
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
                 .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)

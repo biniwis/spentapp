@@ -1070,3 +1070,7 @@ Never gate companions, cosmetic items, monuments, or visual unlocks behind spend
 ### 6. Empty States Never Prompt Purchases
 Empty states inform the user that no expenses were recorded yet. They never encourage, prompt, or invite the user to buy or spend money.
 
+### 7. Cute Visuals, Deadpan Tone
+The illustration can be cute. The animation can be cute. The text does not try to be cute.
+Avoid childish rhymes, pets with nursery-book baby names, and cartoon storybook phrasing. Copy stays urban, observational, slightly deadpan, and respectful of an adult user.
+

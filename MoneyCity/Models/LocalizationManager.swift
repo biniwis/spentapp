@@ -204,12 +204,12 @@ public final class LocalizationManager: ObservableObject {
         case "total_this_month": return isHebrew ? "סה״כ החודש" : "Total This Month"
         case "total_this_year": return isHebrew ? "הוצאות השנה" : "Spent This Year"
         case "transactions_count": return isHebrew ? "עסקאות" : "Transactions"
-        case "enrichments_count": return isHebrew ? "חברים בעיר" : "City Companions"
+        case "enrichments_count": return isHebrew ? "תוספות" : "Additions"
         case "weekly_expenses": return isHebrew ? "הוצאות שבועיות" : "Weekly Expenses"
         case "by_category": return isHebrew ? "לפי קטגוריה" : "By Category"
         case "quick_settings": return isHebrew ? "הגדרות מהירות" : "Quick Settings"
         case "all_settings": return isHebrew ? "כל ההגדרות" : "All Settings"
-        case "city_upgrades": return isHebrew ? "חברים בעיר שלך" : "Your City Companions"
+        case "city_upgrades": return isHebrew ? "תוספות לעיר" : "City Additions"
         case "yearly_breakdown": return isHebrew ? "שבירת הוצאות השנה" : "Yearly Spending Breakdown"
 
         // Quick Add

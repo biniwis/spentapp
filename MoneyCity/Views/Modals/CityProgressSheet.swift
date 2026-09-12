@@ -20,19 +20,18 @@ public struct CityProgressSheet: View {
     private var he: Bool { l10n.isHebrew }
     private func title(_ option: ProgressRewardOption) -> String {
         if he { return option.title }
-        return ["pet_cat_rooftop": "Milo the cat", "pet_golden_dog": "Archie the dog",
-                "resident_artist": "Noga the artist", "resident_skater": "Gal and the skate",
-                "resident_musician": "Lenny (guitar)", "resident_balloon": "Ori in the park"][option.id] ?? option.title
+        return ["pet_cat_rooftop": "Rooftop cat", "pet_golden_dog": "Lakeside dog",
+                "resident_artist": "Street artist", "resident_skater": "The skater",
+                "resident_musician": "Street musician", "resident_balloon": "Balloon in the park"][option.id] ?? option.title
     }
     private func description(_ option: ProgressRewardOption) -> String {
         if he { return option.subtitle }
-        return ["pet_cat_rooftop": "Found a spot by the shops. It's his now.", "pet_golden_dog": "Came for a lakeside walk. Stayed for the company.",
-                "resident_artist": "Painting the city at her own pace.", "resident_skater": "Just one more little lap.",
-                "resident_musician": "A tiny street concert. No tickets needed.", "resident_balloon": "Going for a walk. The balloon insisted on coming."][option.id] ?? ""
-    }
-
-    private func firstName(_ option: ProgressRewardOption) -> String {
-        String(title(option).split(separator: " ").first ?? "")
+        return ["pet_cat_rooftop": "Usually seen around the shops.",
+                "pet_golden_dog": "Usually wandering by the lake.",
+                "resident_artist": "Paints occasionally in the square.",
+                "resident_skater": "Cruising through the commercial district.",
+                "resident_musician": "Plays now and then in the city center.",
+                "resident_balloon": "A regular walk through the park."][option.id] ?? ""
     }
 
     private func hero(_ option: ProgressRewardOption, size: CGFloat) -> some View {
@@ -72,17 +71,17 @@ public struct CityProgressSheet: View {
                 if let friend = joined {
                     VStack(spacing: 24) {
                         hero(friend, size: 120).padding(.vertical, 20)
-                        Text(he ? "\(firstName(friend)) \(friend.id == "resident_artist" ? "הצטרפה" : "הצטרף") לעיר" : "\(firstName(friend)) joined the city")
+                        Text(he ? "\(title(friend)) \(friend.id == "resident_artist" ? "נוספה" : "נוסף") לעיר" : "\(title(friend)) added to the city")
                             .font(.largeTitle.bold()).multilineTextAlignment(.center)
                         Text(description(friend)).font(.body).foregroundStyle(Color.textSecondary)
                             .multilineTextAlignment(.center)
-                        action(he ? "למצוא אותו בעיר" : "Find them in the city") { dismiss() }
+                        action(he ? "לראות בעיר" : "View in city") { dismiss() }
                     }
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.94)))
                 } else if !options.isEmpty {
                     VStack(spacing: 10) {
                         Text(he ? "משהו חדש בעיר" : "Something new in the city").font(.subheadline.weight(.medium))
-                        Text(he ? "מי מצטרף הפעם?" : "Who’s joining this time?").font(.largeTitle.bold())
+                        Text(he ? "מה נוסף לעיר?" : "What's added to the city?").font(.largeTitle.bold())
                         Text(reason).font(.subheadline).foregroundStyle(Color.textSecondary)
                     }.multilineTextAlignment(.center)
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -93,7 +92,7 @@ public struct CityProgressSheet: View {
                         }.padding(.horizontal, 6).padding(.vertical, 12)
                     }
                     if let selected {
-                        action(he ? "לצרף את \(firstName(selected)) לעיר" : "Welcome \(firstName(selected))") {
+                        action(he ? "להוסיף לעיר" : "Add to city") {
                             guard !isClaiming else { return }
                             isClaiming = true
                             if onSelectOption(selected) {
@@ -107,7 +106,7 @@ public struct CityProgressSheet: View {
                         .disabled(isClaiming)
                     }
                 } else {
-                    Text(he ? "החברים בעיר" : "Friends in the city").font(.largeTitle.bold())
+                    Text(he ? "תוספות לעיר" : "City additions").font(.largeTitle.bold())
                     Text(he ? "מדי פעם תופיע כאן תוספת חדשה." : "From time to time, someone new will arrive here.")
                         .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
                     ForEach(CityProgressEngine.shared.allCatalogOptions.filter { option in

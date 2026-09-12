@@ -1084,7 +1084,7 @@ public struct DesignLabView: View {
 
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
-                                Text(isHe ? "טקס בחירת חבר שבועי" : "Weekly Companion Ceremony")
+                                Text(isHe ? "טקס תוספת שבועית לעיר" : "Weekly Addition Ceremony")
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
@@ -1127,7 +1127,7 @@ public struct DesignLabView: View {
 
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
-                                Text(isHe ? "מצב סיום: כל החברים כבר בעיר" : "All Companions Unlocked State")
+                                Text(isHe ? "מצב סיום: כל התוספות כבר בעיר" : "All Additions Unlocked State")
                                     .font(.system(size: 15, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
@@ -1141,8 +1141,8 @@ public struct DesignLabView: View {
                             }
 
                             Text(isHe
-                                ? "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 החברים בעיר"
-                                : "Check state when all 6 companions have already joined the city")
+                                ? "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 התוספות בעיר"
+                                : "Check state when all 6 additions have already joined the city")
                                 .font(.system(size: 12, weight: .regular, design: .default))
                                 .foregroundColor(Color.textSecondary)
                         }

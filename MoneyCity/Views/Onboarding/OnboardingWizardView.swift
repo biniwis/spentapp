@@ -29,7 +29,7 @@ public struct OnboardingWizardView: View {
     @State private var slideDirection: Int = 1 // 1 = forward, -1 = backward
     @State private var didInitializeInputs: Bool = false
     @State private var userNameInput: String = ""
-    @State private var budgetInputText: String = "8,000"
+    @State private var budgetInputText: String = "8000"
     @State private var hasOpenedShortcuts: Bool = false
 
     private let initialStepOverride: Int?
@@ -57,6 +57,23 @@ public struct OnboardingWizardView: View {
 
     private var isHebrew: Bool {
         l10n.isHebrew
+    }
+
+    private struct NumericLTRTextFieldModifier: ViewModifier {
+        @ViewBuilder
+        func body(content: Content) -> some View {
+            if #available(iOS 26.0, *) {
+                content
+                    .environment(\.layoutDirection, .leftToRight)
+                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(strategy: .layoutBased)
+                    .writingDirection(strategy: .layoutBased)
+            } else {
+                content
+                    .environment(\.layoutDirection, .leftToRight)
+                    .multilineTextAlignment(.leading)
+            }
+        }
     }
 
     private var activeOnboardingStep: OnboardingStep {
@@ -100,6 +117,7 @@ public struct OnboardingWizardView: View {
                                 isRTL: isHebrew,
                                 height: heroHeight(availableHeight: geometry.size.height)
                             )
+                            .environment(\.layoutDirection, .leftToRight)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 14)
 
@@ -151,19 +169,19 @@ public struct OnboardingWizardView: View {
                 userNameInput = storedUserName
             }
             if storedMonthlyBudget > 0 {
-                budgetInputText = formatBudgetValue(storedMonthlyBudget)
+                budgetInputText = String(format: "%.0f", storedMonthlyBudget)
             } else {
-                budgetInputText = formatBudgetValue(8000)
+                budgetInputText = "8000"
             }
         }
         .onChange(of: currentStep) { _, _ in
             focusedField = nil
         }
-        .onChange(of: focusedField) { oldField, newField in
-            if oldField == .budget && newField != .budget {
-                budgetInputText = formatBudgetString(budgetInputText)
-            } else if newField == .budget {
-                budgetInputText = budgetInputText.filter { $0.isNumber }
+        .onChange(of: budgetInputText) { _, newValue in
+            let digitsOnly = newValue.filter { $0.isNumber }
+            let clamped = String(digitsOnly.prefix(9))
+            if clamped != newValue {
+                budgetInputText = clamped
             }
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
@@ -333,16 +351,14 @@ public struct OnboardingWizardView: View {
                 TextField("0", text: $budgetInputText)
                     .font(.system(size: 36, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color.jetBlack)
-                    .foregroundColor(Color.jetBlack)
                     .tint(Color.jetBlack)
-                    .multilineTextAlignment(.leading)
-                    .keyboardType(.numberPad)
+                    .keyboardType(.asciiCapableNumberPad)
                     .focused($focusedField, equals: .budget)
+                    .modifier(NumericLTRTextFieldModifier())
                     .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.layoutDirection, .leftToRight)
-            .flipsForRightToLeftLayoutDirection(false)
             .padding(.vertical, 6)
 
             Rectangle()
@@ -367,13 +383,14 @@ public struct OnboardingWizardView: View {
     }
 
     private func budgetPresetOption(amount: String) -> some View {
-        let isSelected = budgetInputText.filter { $0.isNumber } == amount
+        let isSelected = budgetInputText == amount
         return Button(action: {
             Haptics.selection()
-            budgetInputText = formatBudgetString(amount)
+            budgetInputText = amount
             focusedField = nil
         }) {
-            Text("\(l10n.baseCurrency.symbol)\(formatBudgetString(amount))")
+            let displayAmount = formatBudgetString(amount)
+            Text("\(l10n.baseCurrency.symbol)\(displayAmount)")
                 .font(.system(.subheadline, design: .rounded, weight: isSelected ? .bold : .regular))
                 .fixedSize()
                 .foregroundStyle(Color.jetBlack)

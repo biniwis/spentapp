@@ -60,6 +60,7 @@ public struct OnboardingCityScene: View {
             .offset(x: (geometry.size.width - 380 * scale) / 2,
                     y: (geometry.size.height - 300 * scale) / 2)
         }
+        .environment(\.layoutDirection, .leftToRight)
         .frame(height: height)
         .accessibilityHidden(true)
         .allowsHitTesting(false)
@@ -136,15 +137,19 @@ public struct OnboardingCityScene: View {
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(Color.jetBlack.opacity(0.8))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                 Text(displayAmount)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.jetBlack)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.5)
+                    .minimumScaleFactor(0.4)
+                    .allowsTightening(true)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .environment(\.layoutDirection, .leftToRight)
             }
             .frame(width: cardRect.width - 16, height: cardRect.height - 12)
+            .clipped()
             .position(x: cardRect.midX, y: cardRect.midY)
         case .automation:
             // Tilted label directly printed on the orange-red card surface

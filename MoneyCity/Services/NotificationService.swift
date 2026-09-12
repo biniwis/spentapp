@@ -165,7 +165,7 @@ public enum NotificationService {
             content.title = AppLanguage.localized("זוהה זיכוי ע״ס \(formattedAmount) 💰", "Refund of \(formattedAmount) detected 💰")
             content.body = AppLanguage.localized("\(merchant) • ממתין לבדיקתך ב-SPENT", "\(merchant) • Ready for review in SPENT")
         } else {
-            content.title = AppLanguage.localized("\(formattedAmount) · \(merchant) נוספו לעיר ✓", "\(formattedAmount) · \(merchant) added to your city ✓")
+            content.title = AppLanguage.localized("הוצאה נקלטה · \(formattedAmount) · \(merchant)", "Expense recorded · \(formattedAmount) · \(merchant)")
             content.body = AppLanguage.localized("\(categoryName) התעדכן בתקציב", "\(categoryName) updated in your budget")
         }
         content.sound = .default

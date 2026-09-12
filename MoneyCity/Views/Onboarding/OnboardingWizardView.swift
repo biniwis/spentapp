@@ -760,7 +760,7 @@ public struct OnboardingWizardView: View {
     private var stepTitleText: String {
         switch currentStep {
         case 1:
-            return isHebrew ? "ההוצאות שלך\nבונות עיר" : "Your spending.\nA city in the making."
+            return isHebrew ? "ההוצאות שלך\nמקבלות צורה בעיר" : "Your spending\ntakes shape in the city."
         case 2:
             return isHebrew ? "עיר עם\nהשם שלך" : "A city with\nyour name."
         case 3:
@@ -769,7 +769,7 @@ public struct OnboardingWizardView: View {
             if shortcutPhase == "guide" {
                 return isHebrew ? "מחברים\nאת הקיצורים" : "Set up\nShortcuts."
             } else {
-                return isHebrew ? "משלמים.\nהעיר מתעדכנת." : "Make a payment.\nShape your city."
+                return isHebrew ? "ההוצאות שלך\nמקבלות צורה בעיר." : "Your spending\ntakes shape in the city."
             }
         default:
             return isHebrew ? "העיר שלך\nמוכנה" : "Your city\nis ready."
@@ -780,8 +780,8 @@ public struct OnboardingWizardView: View {
         switch currentStep {
         case 1:
             return isHebrew
-                ? "כל תשלום משאיר משהו בעיר. לאורך החודש היא משתנה ומקבלת צורה."
-                : "Every payment leaves something in the city. Over the month it takes shape."
+                ? "כשנרשמת הוצאה, העיר משתנה ומשקפת אותה. לאורך החודש נוצרת תמונה של ההרגלים שלך."
+                : "When an expense is recorded, the city reflects it. Over the month, your patterns take shape."
         case 2:
             return isHebrew
                 ? "רק שם קטן כדי שהעיר תדע למי היא שייכת."

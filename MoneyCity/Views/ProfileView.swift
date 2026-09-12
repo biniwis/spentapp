@@ -39,10 +39,11 @@ public struct ProfileView: View {
     private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus)? {
         let status = MonthlyRecapService.checkRecapWindow()
         guard status.isActive, let targetDate = status.targetMonthDate else { return nil }
-        let recap = MonthlyRecapService.generateRecap(
+        let recap = MonthlyRecapService.timelineRecap(
             for: targetDate,
             allTransactions: allTransactions,
-            monthlyBudget: effectiveBudgetLimit > 0 ? effectiveBudgetLimit : nil
+            monthlyBudget: effectiveBudgetLimit > 0 ? effectiveBudgetLimit : nil,
+            context: modelContext
         )
         guard recap.transactionCount > 0 else { return nil }
         return (recap, status)
@@ -111,30 +112,9 @@ public struct ProfileView: View {
         monthlyTotals.reduce(0) { $0 + $1.amount }
     }
 
-    /// Real consecutive daily transaction streak
+    /// Real consecutive daily tracking streak
     private var activeStreakDays: Int {
-        guard !allTransactions.isEmpty else { return 0 }
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let daysWithTx = Set(allTransactions.map { cal.startOfDay(for: $0.timestamp) })
-        
-        var streak = 0
-        var checkDate = today
-        
-        if !daysWithTx.contains(checkDate) {
-            guard let yesterday = cal.date(byAdding: .day, value: -1, to: today),
-                  daysWithTx.contains(yesterday) else {
-                return 0
-            }
-            checkDate = yesterday
-        }
-        
-        while daysWithTx.contains(checkDate) {
-            streak += 1
-            guard let prevDay = cal.date(byAdding: .day, value: -1, to: checkDate) else { break }
-            checkDate = prevDay
-        }
-        return streak
+        TrackingActivityService.shared.currentStreakDays()
     }
 
     /// Effective budget limit across category caps or global budget
@@ -312,7 +292,7 @@ public struct ProfileView: View {
                         RoundedRectangle(cornerRadius: 16)
                             .fill(MoneyCityTheme.babyBlue)
                             .frame(width: 48, height: 48)
-                        MoneyIcon(.trophy, size: 22)
+                        MoneyIcon(.calendar, size: 22)
                     }
 
                     // Titles
@@ -322,7 +302,7 @@ public struct ProfileView: View {
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
 
-                        Text(isHe ? "בוא לראות איך העיר שלך נראית ומה היו השיאים" : "See your skyline growth and spending highlights")
+                        Text(isHe ? "בוא לראות איך החודש קיבל צורה בעיר" : "See how the month took shape in your city")
                             .font(.system(size: 12, weight: .medium, design: .default))
                             .foregroundColor(Color.textSecondary)
                             .lineLimit(1)
@@ -561,7 +541,7 @@ public struct ProfileView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     if showDetailedStreak {
-                        Text(activeStreakDays > 0 ? (l10n.language == .hebrew ? "פעיל היום! 🔥" : "Active Today! 🔥") : (l10n.language == .hebrew ? "התחל היום! ✨" : "Start Today! ✨"))
+                        Text(TrackingActivityService.shared.isActiveToday() ? (l10n.language == .hebrew ? "פעיל היום! 🔥" : "Active Today! 🔥") : (l10n.language == .hebrew ? "עקוב היום! ✨" : "Track Today! ✨"))
                             .font(.system(size: 16.5, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
@@ -626,9 +606,10 @@ public struct ProfileView: View {
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                     } else if showDetailedBudget {
-                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "חריגה" : "Over") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.format(amount: remaining, showDecimals: false))")
+                        let overAmount = totalThisMonth - limit
+                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "מעל היעד ב־\(l10n.format(amount: overAmount, showDecimals: false))" : "Over target by \(l10n.format(amount: overAmount, showDecimals: false))") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.format(amount: remaining, showDecimals: false))")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(totalThisMonth > limit ? Color.deleteRed : Color.deepNavy)
+                            .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
                             .minimumScaleFactor(0.75)
                     } else {
@@ -640,7 +621,7 @@ public struct ProfileView: View {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
-                            Capsule().fill(totalThisMonth > limit && limit > 0 ? Color.deleteRed : Color(red: 16/255, green: 185/255, blue: 129/255))
+                            Capsule().fill(MoneyCityTheme.brandPrimary)
                                 .frame(width: geo.size.width * CGFloat(fraction))
                         }
                     }

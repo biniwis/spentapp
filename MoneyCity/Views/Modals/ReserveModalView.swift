@@ -27,7 +27,7 @@ public struct ReserveModalView: View {
         case .calm:      return Color(red: 16/255, green: 185/255, blue: 129/255)
         case .balanced:  return Color(red: 34/255, green: 197/255, blue: 94/255)
         case .active:    return Color(red: 245/255, green: 158/255, blue: 11/255)
-        case .busy:      return Color(red: 239/255, green: 68/255, blue: 68/255)
+        case .busy:      return Color.deepNavy
         }
     }
 
@@ -135,7 +135,7 @@ public struct ReserveModalView: View {
 
                 if snapshot.remainingBudget > 0 {
                     VStack(alignment: .trailing, spacing: 1) {
-                        Text(isHebrew ? "נותר להוציא" : "Remaining")
+                        Text(isHebrew ? "נותר בתקציב" : "Remaining in budget")
                             .font(.system(size: 11, weight: .medium, design: .default))
                             .foregroundColor(Color.textSecondary)
                         Text(l10n.format(amount: snapshot.remainingBudget))

@@ -31,7 +31,7 @@ public struct AboutSpentSheet: View {
                                 .foregroundColor(Color.deepNavy)
                                 .tracking(1)
 
-                            Text(isHebrew ? "מעקב הוצאות ובניית עיר חכמה" : "Mindful Spending & City Builder")
+                            Text(isHebrew ? "מעקב הוצאות שמקבל צורה בעיר" : "Spending awareness, visualized as a city")
                                 .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.textMuted)
                         }

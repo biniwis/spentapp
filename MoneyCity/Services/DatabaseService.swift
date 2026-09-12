@@ -46,7 +46,7 @@ public final class DatabaseService {
     public var isEphemeral: Bool { storageMode == .memoryOnly }
 
     private init() {
-        let schema = Schema(versionedSchema: MoneyCitySchemaV1.self)
+        let schema = Schema(versionedSchema: MoneyCitySchemaV2.self)
         let outcome: (container: ModelContainer, mode: StorageMode, failure: String?)
         do {
             let support = Self.authoritativeStoreDirectoryURL()
@@ -155,7 +155,8 @@ public final class DatabaseService {
                     MerchantRule.self,
                     InstallmentPlan.self,
                     SavingsGoal.self,
-                    IngestLogEntry.self
+                    IngestLogEntry.self,
+                    RecapSnapshot.self
                 ])
                 let config = ModelConfiguration(schema: bareSchema, url: storeURL)
                 let container = try ModelContainer(for: bareSchema, configurations: [config])
@@ -578,6 +579,11 @@ public final class DatabaseService {
         let ruleDescriptor = FetchDescriptor<MerchantRule>()
         if let rules = try? context.fetch(ruleDescriptor) {
             for r in rules { context.delete(r) }
+        }
+
+        let snapshotDescriptor = FetchDescriptor<RecapSnapshot>()
+        if let snapshots = try? context.fetch(snapshotDescriptor) {
+            for s in snapshots { context.delete(s) }
         }
 
         try context.save()

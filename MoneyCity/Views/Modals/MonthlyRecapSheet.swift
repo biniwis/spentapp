@@ -4,7 +4,7 @@ import UIKit
 // MARK: - Story model and authored timing
 
 enum RecapEditorialShot: Equatable, Identifiable {
-    case opening, total, activity, district, insight(MonthlyRecapDynamicInsight), portrait
+    case opening, total, activity, district, insight(MonthlyRecapDynamicInsight), noticed([MonthlyRecapDynamicInsight]), portrait
     var id: String {
         switch self {
         case .opening: "opening"
@@ -12,6 +12,7 @@ enum RecapEditorialShot: Equatable, Identifiable {
         case .activity: "activity"
         case .district: "district"
         case .insight(let insight): insight.id
+        case .noticed: "noticed"
         case .portrait: "portrait"
         }
     }
@@ -22,11 +23,15 @@ enum RecapEditorialShot: Equatable, Identifiable {
         case .activity: 4.2
         case .district: 5.0
         case .insight: 5.4
+        case .noticed: 6.8
         case .portrait: 8.0
         }
     }
     static func sequence(for recap: MonthlyRecap) -> [Self] {
-        [.opening, .total, .activity, .district] + recap.dynamicInsights.prefix(2).map { .insight($0) } + [.portrait]
+        [.opening, .total, .activity, .district] +
+            recap.dynamicInsights.prefix(4).map { .insight($0) } +
+            (recap.noticedInsights.isEmpty ? [] : [.noticed(recap.noticedInsights)]) +
+            [.portrait]
     }
 }
 
@@ -311,31 +316,41 @@ struct RecapEditorialCopy {
                 return f.string(from: insight.date ?? recap.date)
             case .monthChange, .categoryChange: return (insight.primaryValue < 0 ? "−" : "+") + String(Int(abs(insight.primaryValue).rounded())) + "%"
             case .weekendRhythm: return he ? "סוף\nהשבוע." : "The\nweekend."
+            case .curated:
+                if let v = he ? insight.valueHe : insight.valueEn, !v.isEmpty { return v }
+                if let m = insight.merchant, !m.isEmpty { return m }
+                if let c = insight.category { return he ? c.shortName(for: .hebrew) : c.shortNameEn }
+                return ""
             }
+        case .noticed: return ""
         }
     }
     var statement: String {
         switch shot {
         case .opening: return he ? "החודש שלך ב־SPENT" : "YOUR MONTH IN SPENT"
         case .total: return he ? "זה הסכום שעבר בעיר החודש." : "What passed through your city this month."
-        case .activity: return he ? (recap.transactionCount == 1 ? "רכישה אחת החודש" : "רכישות החודש") : (recap.transactionCount == 1 ? "purchase this month" : "purchases this month")
-        case .district: return recap.biggestDistrict == nil ? (he ? "העיר הייתה שקטה החודש." : "A quiet month in your city.") : (he ? "הרובע הכי גדול שלך" : "YOUR BIGGEST DISTRICT")
-        case .portrait: return money(recap.totalSpent) + " · " + String(recap.transactionCount) + (he ? (recap.transactionCount == 1 ? " רכישה" : " רכישות") : (recap.transactionCount == 1 ? " purchase" : " purchases"))
+        case .activity: return he ? (recap.transactionCount == 1 ? "עסקה אחת החודש" : "עסקאות החודש") : (recap.transactionCount == 1 ? "transaction this month" : "transactions this month")
+        case .district: return recap.biggestDistrict == nil ? (he ? "העיר הייתה שקטה החודש." : "A quiet month in your city.") : (he ? "הרובע הבולט" : "YOUR TOP DISTRICT")
+        case .portrait: return money(recap.totalSpent) + " · " + String(recap.transactionCount) + (he ? (recap.transactionCount == 1 ? " עסקה" : " עסקאות") : (recap.transactionCount == 1 ? " transaction" : " transactions"))
         case .insight(let i):
             switch i.type {
             case .merchantRepeat: return he ? "יש מקום שחזרת אליו\nשוב ושוב." : "One place kept\ncalling you back."
             case .biggestPurchase: return he ? "רכישה אחת בלטה\nמעל כולן." : "One purchase stood\nabove the rest."
             case .biggestDay: return he ? "יום אחד שינה\nאת הקצב." : "One day picked\nup the pace."
-            case .monthChange: return he ? (i.primaryValue < 0 ? "החודש עבר בעיר\nפחות כסף." : "החודש עבר בעיר\nיותר כסף.") : (i.primaryValue < 0 ? "Less spending.\nA little more space." : "More spending.\nA fuller skyline.")
+            case .monthChange: return he ? (i.primaryValue < 0 ? "החודש עבר בעיר\nפחות כסף." : "החודש עבר בעיר\nיותר כסף.") : (i.primaryValue < 0 ? "Less spending.\nA little more space." : "More spending moved through the city.")
             case .categoryChange: return (he ? i.category?.shortName(for: .hebrew) : i.category?.shortNameEn).map { name in he ? "\(name).\n\(i.primaryValue < 0 ? "פחות" : "יותר") מקום החודש." : "\(name) took up\n\(i.primaryValue < 0 ? "less" : "more") space." } ?? ""
             case .weekendRhythm: return he ? "העיר התעוררה בעיקר ב…" : "The city came alive on…"
+            case .curated:
+                if let h = he ? i.headlineHe : i.headlineEn, !h.isEmpty { return h }
+                return he ? "כך עבר החודש." : "Here's how your month went."
             }
+        case .noticed: return he ? "דברים ששמנו לב אליהם" : "THINGS WE NOTICED"
         }
     }
     var detail: String {
         switch shot {
         case .opening: return year
-        case .activity: return he ? "כל רכישה הוסיפה אור." : "Every purchase added a little light."
+        case .activity: return he ? "\(recap.transactionCount) עסקאות נרשמו החודש." : "\(recap.transactionCount) transactions recorded this month."
         case .district:
             guard let d = recap.biggestDistrict, recap.totalSpent > 0 else { return "" }
             return money(d.amount) + " · " + String(Int((d.amount / recap.totalSpent * 100).rounded())) + (he ? "% מהחודש" : "% of the month")
@@ -366,10 +381,23 @@ struct RecapEditorialCopy {
                 let f = DateFormatter(); f.locale = Locale(identifier: he ? "he_IL" : "en_US"); f.dateFormat = "MMMM"
                 return (he ? "לעומת " : "Compared with ") + f.string(from: i.date ?? recap.date)
             case .weekendRhythm: return "\(Int(i.primaryValue.rounded()))% " + (he ? "מהרכישות היו בשישי ובשבת." : "of purchases fell on Friday and Saturday.")
+            case .curated: return (he ? i.supportHe : i.supportEn) ?? ""
             }
+        case .noticed: return ""
         }
     }
-    var accessible: String { [hero, statement, detail].filter { !$0.isEmpty }.joined(separator: ". ") }
+    var accessible: String {
+        if case .noticed(let rows) = shot {
+            var parts = [statement]
+            for row in rows {
+                let head = (he ? row.headlineHe : row.headlineEn) ?? ""
+                let val = (he ? row.valueHe : row.valueEn) ?? ""
+                parts.append([head, val].filter { !$0.isEmpty }.joined(separator: " — "))
+            }
+            return parts.filter { !$0.isEmpty }.joined(separator: ". ")
+        }
+        return [hero, statement, detail].filter { !$0.isEmpty }.joined(separator: ". ")
+    }
 }
 
 // MARK: - Poster compositions, deliberately distinct from one another
@@ -393,7 +421,14 @@ struct RecapSceneFrame: View {
             case .merchantRepeat, .biggestPurchase: .orangeRed
             case .biggestDay, .monthChange: .babyBlue
             case .categoryChange, .weekendRhythm: .luckyGreen
+            case .curated:
+                switch insight.visualTheme {
+                case .storefronts, .tower: .orangeRed
+                case .street, .skylines: .babyBlue
+                case .road, .park: .luckyGreen
+                }
             }
+        case .noticed: .luckyGreen
         default: .babyBlue
         }
     }
@@ -422,7 +457,15 @@ struct RecapSceneFrame: View {
             case .biggestPurchase: .babyBlue
             case .monthChange: .warmCream
             case .categoryChange, .weekendRhythm: .neonLime
+            case .curated:
+                switch insight.visualTheme {
+                case .tower: .babyBlue
+                case .storefronts, .street: .white
+                case .skylines: .warmCream
+                case .road, .park: .neonLime
+                }
             }
+        case .noticed: .white
         }
     }
     private var canvas: some View {
@@ -434,6 +477,7 @@ struct RecapSceneFrame: View {
             case .activity: activity
             case .district: district
             case .insight(let insight): dynamic(insight)
+            case .noticed(let rows): noticed(rows)
             case .portrait: portrait
             }
             if export {
@@ -615,7 +659,82 @@ struct RecapSceneFrame: View {
                 .frame(width: 338, alignment: alignment)
                 .offset(x: 26, y: 110)
             }
+        case .curated:
+            ZStack(alignment: .topLeading) {
+                backdrop(for: insight)
+                VStack(alignment: hAlignment, spacing: 10) {
+                    text(copy.statement, size: 24, at: 2.0)
+                    text(copy.hero, size: he ? 56 : 66, at: 2.6, hero: true)
+                    text(copy.detail, size: 18, at: 3.3, width: 338)
+                }
+                .frame(width: 338, alignment: alignment)
+                .offset(x: 26, y: 110)
+            }
         }
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+
+    /// The curated hero/noticed shots borrow only existing primitive compositions, picked
+    /// by the insight's visual theme. No new drawing and no new motion: the same beats,
+    /// entrances and easing used by the authored shots.
+    @ViewBuilder private func backdrop(for insight: MonthlyRecapDynamicInsight) -> some View {
+        switch insight.visualTheme {
+        case .storefronts:
+            RecapRoad(progress: beat.ease(0.1), color: .deepNavy).frame(width: 450, height: 3).offset(x: -20, y: 652)
+            ForEach(0..<4) { item in
+                RecapStorefront(accent: accent, sign: "", beat: beat, start: 0.6 + [0, 0.5, 0.8, 1.0][item])
+                    .frame(width: 125, height: 140)
+                    .offset(x: CGFloat(item) * 115 - 40 + (1 - beat.ease(0.6 + [0, 0.5, 0.8, 1.0][item])) * 200, y: 510)
+            }
+        case .tower:
+            RecapSkyline(beat: beat, start: 0.2, lights: 4.5, accent: accent, quiet: false)
+                .frame(width: 260, height: 120).offset(x: -8, y: 540)
+            RecapBuilding(accent: accent, rows: 9, beat: beat, lights: 4.5)
+                .frame(width: 96, height: 320 * beat.ease(1.0, 1.5))
+                .position(x: 320, y: 670 - 320 * beat.ease(1, 1.5) / 2)
+        case .street:
+            RecapStreet(beat: beat, accent: accent).frame(width: W, height: 180).offset(y: 490)
+        case .skylines:
+            RecapSkyline(beat: beat, start: 1.3, lights: 4.5, accent: accent, quiet: false)
+                .frame(width: 350, height: 180).offset(x: 26, y: 490)
+        case .road:
+            RecapRoad(progress: beat.ease(0.3, 1.5), color: accent)
+                .frame(width: 480, height: 40).rotationEffect(.degrees(-24)).offset(x: -40, y: 550)
+            RecapTree(accent: accent).frame(width: 80, height: 120).offset(x: 250, y: 430)
+                .opacity(Double(beat.ease(0.4)))
+        case .park:
+            RecapPark(beat: beat, start: 0.5).frame(width: 330, height: 200).offset(x: 44, y: 470)
+        }
+    }
+
+    private func rowLine(for row: MonthlyRecapDynamicInsight) -> String {
+        let head = (he ? row.headlineHe : row.headlineEn) ?? ""
+        let val = (he ? row.valueHe : row.valueEn) ?? ""
+        if head.isEmpty { return val }
+        if val.isEmpty { return head }
+        return head + (he ? " — " : " · ") + val
+    }
+
+    /// Things We Noticed: rows reveal one after the other, calm and light. Not a
+    /// dashboard — a sentence and a number per row.
+    private func noticed(_ rows: [MonthlyRecapDynamicInsight]) -> some View {
+        ZStack(alignment: .topLeading) {
+            RecapSkyline(beat: beat, start: 0.4, lights: 3.2, accent: accent, quiet: true)
+                .frame(width: 390, height: 170).offset(x: 0, y: 600)
+            VStack(alignment: hAlignment, spacing: 16) {
+                text(copy.statement, size: 16, at: 1.2)
+                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                    HStack(alignment: .top, spacing: 11) {
+                        Text("·")
+                            .font(.appFont(18, weight: .black))
+                            .opacity(Double(beat.ease(0.9 + Double(index) * 0.7)))
+                        text(rowLine(for: row), size: 18, at: 0.9 + Double(index) * 0.7, width: 302)
+                    }
+                    .frame(width: 338, alignment: alignment)
+                }
+            }
+            .frame(width: 338, alignment: alignment)
+            .offset(x: 26, y: 130)
         }.frame(width: W, height: H, alignment: .topLeading)
     }
     private var portrait: some View {
@@ -695,6 +814,16 @@ struct RecapSceneFrame: View {
                         ? "הכי פעיל: \(b.nameHe) · \(b.transactionCount) עסקאות"
                         : "Most active: \(b.nameEn) · \(b.transactionCount) transactions"
                     text(line, size: 14, at: 5.5, width: 280)
+                }
+
+                // ── Row 6: Micro Fact (Phase 8) ──
+                if let fact = recap.microFactInsight {
+                    let microHead = (he ? fact.headlineHe : fact.headlineEn) ?? ""
+                    let microVal = (he ? fact.valueHe : fact.valueEn) ?? ""
+                    let micro = [microHead, microVal].filter { !$0.isEmpty }.joined(separator: he ? " — " : " · ")
+                    if !micro.isEmpty {
+                        text("· " + micro, size: 13, at: 6.1, width: 280)
+                    }
                 }
             }
             .frame(width: 290, alignment: alignment)

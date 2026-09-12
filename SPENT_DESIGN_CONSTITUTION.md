@@ -1043,3 +1043,30 @@ But it must always be:
 - calm where information matters
 - expressive where story matters
 - unmistakably SPENT.
+
+---
+
+# 38. Behavioral Product Alignment (Spending vs. Awareness)
+
+SPENT encourages tracking, awareness, and understanding of expenses — never spending money.
+
+The app must never judge the user for spending, but also never treat purchases, transaction counts, or outgoing money as achievements, unlocks, or city upgrades.
+
+### 1. Spending is Descriptive, Never Progression
+Spending is data that the city visualizes. It is not an achievement, score, or game progression. Avoid phrases like "you built", "first building unlocked", or "+₪" on city additions.
+
+### 2. Tracking is Interactive & Rewarded
+Engagement, reflection, and habit formation are what SPENT celebrates. Streaks measure consecutive active tracking/review days, not consecutive purchase days.
+
+### 3. No Moral Traffic Lights
+Do not use moral green/red signaling on spending pace or budgets. Red is reserved strictly for errors and destructive actions. Over-budget or fast pace states are presented descriptively with brand ink colors, never as punishment or shame.
+
+### 4. City Density is Not City Quality
+A quiet city with few expenses is just as complete and beautiful as a dense city with many expenses. An empty district or quiet month is a valid state, not an underperforming one.
+
+### 5. No Spending-to-Unlock
+Never gate companions, cosmetic items, monuments, or visual unlocks behind spending money or logging transactions. Savings goals and milestone reviews may celebrate financial discipline, but spending does not unlock rewards.
+
+### 6. Empty States Never Prompt Purchases
+Empty states inform the user that no expenses were recorded yet. They never encourage, prompt, or invite the user to buy or spend money.
+

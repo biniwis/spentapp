@@ -23,6 +23,8 @@ public struct MonthlyRecap: Identifiable, Sendable, Equatable {
     public let oneThingToKnow: String
     public let highlights: [Insight]
     public var dynamicInsights: [MonthlyRecapDynamicInsight] = []
+    public var noticedInsights: [MonthlyRecapDynamicInsight] = []
+    public var microFactInsight: MonthlyRecapDynamicInsight?
     public let city: CitySnapshot
     
     public struct DistrictHighlight: Sendable, Equatable {
@@ -205,6 +207,56 @@ public enum MonthlyRecapService {
         formatter.locale = Locale(identifier: localeId)
         formatter.dateFormat = "LLLL"
         return formatter.string(from: date)
+    }
+
+    /// Whether a month's recap is frozen in time and may no longer be regenerated.
+    ///
+    /// A month is closed as soon as it is entirely in the past, or on the final day of the
+    /// current month when the recap window opens and the recap is first shown. An in-progress
+    /// month (any earlier day of the current month) stays open and regenerates normally.
+    public static func isMonthClosed(
+        _ monthDate: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard let targetStart = calendar.dateInterval(of: .month, for: monthDate)?.start,
+              let nowStart = calendar.dateInterval(of: .month, for: now)?.start else {
+            return true
+        }
+        if targetStart < nowStart { return true }
+        guard calendar.isDate(targetStart, inSameDayAs: nowStart) else { return false }
+        let lastDay = calendar.range(of: .day, in: .month, for: now)?.count ?? 31
+        return calendar.component(.day, from: now) == lastDay
+    }
+
+    /// The snapshot-aware recap accessor every user-facing recap path uses.
+    ///
+    /// Open months keep regenerating normally. A closed month that already has a frozen story
+    /// reads it back exactly — no re-curation with newer engine logic — and a closed month
+    /// seen for the first time is frozen now. The store only ever keeps the first freeze.
+    @MainActor
+    public static func timelineRecap(
+        for monthDate: Date,
+        allTransactions: [Transaction],
+        monthlyBudget: Double? = nil,
+        context: ModelContext,
+        now: Date = Date()
+    ) -> MonthlyRecap {
+        let generated = generateRecap(
+            for: monthDate,
+            allTransactions: allTransactions,
+            monthlyBudget: monthlyBudget
+        )
+        guard isMonthClosed(monthDate, now: now) else { return generated }
+        let monthId = generated.monthId
+        if let stored = RecapSnapshotService.storedStory(for: monthId, context: context) {
+            return RecapSnapshotService.applied(to: generated, story: stored)
+        }
+        let story = RecapSnapshotService.story(from: generated)
+        if RecapSnapshotService.freeze(story, for: monthId, context: context) {
+            return RecapSnapshotService.applied(to: generated, story: story)
+        }
+        return generated
     }
 
     /// Convenience overload accepting `transactions:` parameter name
@@ -509,6 +561,20 @@ public enum MonthlyRecapService {
             ))
         }
         
+        // Phase 6: the curated engine story becomes the recap's content. The Moment
+        // (biggest non-recurring purchase) is the fixed backbone shot; the Heroes ride
+        // the existing `.insight` shots; the noticed rows (Phase 7) fill one grouped
+        // shot; the Micro Fact (Phase 8) is a small closing note on the Final Portrait.
+        let curatedStory = RecapInsightCurator.curate(for: monthDate, allTransactions: allTransactions)
+        var dynamic: [MonthlyRecapDynamicInsight] = []
+        if spendingTxs.count >= 4, let tallest = tallestBuilding {
+            dynamic.append(MonthlyRecapDynamicInsight(momentFrom: tallest))
+        }
+        if let hero1 = curatedStory.hero1 { dynamic.append(MonthlyRecapDynamicInsight(curated: hero1)) }
+        if let hero2 = curatedStory.hero2 { dynamic.append(MonthlyRecapDynamicInsight(curated: hero2)) }
+        let noticedRows = curatedStory.noticed.map { MonthlyRecapDynamicInsight(curated: $0) }
+        let microFactRow = curatedStory.microFact.map { MonthlyRecapDynamicInsight(curated: $0) }
+
         return MonthlyRecap(
             monthId: monthId,
             date: startOfMonth,
@@ -526,7 +592,9 @@ public enum MonthlyRecapService {
             cityVibe: cityVibe,
             oneThingToKnow: oneThingToKnow,
             highlights: highlights,
-            dynamicInsights: MonthlyRecapInsightSelector.select(for: monthDate, transactions: allTransactions),
+            dynamicInsights: dynamic,
+            noticedInsights: noticedRows,
+            microFactInsight: microFactRow,
             city: citySnapshot
         )
     }
@@ -600,10 +668,12 @@ public enum MonthlyRecapService {
 
 // MARK: - Editorial selection (data, never animation or view state)
 
-public struct MonthlyRecapDynamicInsight: Sendable, Equatable, Identifiable {
-    public enum Kind: String, Sendable { case merchantRepeat, biggestPurchase, biggestDay, monthChange, categoryChange, weekendRhythm }
-    public enum VisualTheme: String, Sendable { case storefronts, tower, street, skylines, road, park }
-    public var id: String { type.rawValue + (category?.rawValue ?? "") }
+public struct MonthlyRecapDynamicInsight: Sendable, Equatable, Identifiable, Codable {
+    public enum Kind: String, Sendable, Codable {
+        case merchantRepeat, biggestPurchase, biggestDay, monthChange, categoryChange, weekendRhythm, curated
+    }
+    public enum VisualTheme: String, Sendable, Codable { case storefronts, tower, street, skylines, road, park }
+    public var id: String { type.rawValue + (family ?? "") + (category?.rawValue ?? "") }
     public let type: Kind
     public let primaryValue: Double
     public let secondaryValue: Double
@@ -613,6 +683,15 @@ public struct MonthlyRecapDynamicInsight: Sendable, Equatable, Identifiable {
     public let date: Date?
     public let score: Double
     public let copyVariant: String
+    // Curated engine copy (Phase 6–8). Only used by `.curated` insights; legacy kinds
+    // keep rendering from the numeric fields above.
+    public var family: String? = nil
+    public var headlineHe: String? = nil
+    public var headlineEn: String? = nil
+    public var valueHe: String? = nil
+    public var valueEn: String? = nil
+    public var supportHe: String? = nil
+    public var supportEn: String? = nil
     public var visualTheme: VisualTheme {
         switch type {
         case .merchantRepeat: .storefronts
@@ -621,7 +700,58 @@ public struct MonthlyRecapDynamicInsight: Sendable, Equatable, Identifiable {
         case .monthChange: .skylines
         case .categoryChange: .road
         case .weekendRhythm: .park
+        case .curated:
+            switch family {
+            case "merchant", "repetition": .storefronts
+            case "outlier", "concentration": .tower
+            case "timing", "streak": .street
+            case "comparison", "diversity", "trend": .skylines
+            case "category": .road
+            case "accumulation": .park
+            default: .skylines
+            }
         }
+    }
+}
+
+extension MonthlyRecapDynamicInsight {
+    /// A curated engine insight prepared for the existing shot surface. The engine wrote
+    /// the copy; the views render it through the existing `.insight` shot.
+    init(curated insight: RecapInsight) {
+        self.init(
+            type: .curated,
+            primaryValue: insight.totalAmount ?? 0,
+            secondaryValue: insight.ratio ?? 0,
+            count: insight.count ?? 0,
+            category: insight.category,
+            merchant: insight.merchant,
+            date: insight.date,
+            score: insight.scores.total,
+            copyVariant: "curated",
+            family: insight.family.rawValue,
+            headlineHe: insight.headlineHe,
+            headlineEn: insight.headlineEn,
+            valueHe: insight.valueHe,
+            valueEn: insight.valueEn,
+            supportHe: insight.supportHe,
+            supportEn: insight.supportEn
+        )
+    }
+
+    /// The fixed "biggest meaningful moment" backbone slot, reusing the existing
+    /// biggest-purchase presentation.
+    init(momentFrom building: MonthlyRecap.BuildingHighlight) {
+        self.init(
+            type: .biggestPurchase,
+            primaryValue: building.amount,
+            secondaryValue: 0,
+            count: 0,
+            category: building.category,
+            merchant: building.merchantName,
+            date: building.date,
+            score: 1,
+            copyVariant: "moment"
+        )
     }
 }
 

@@ -80,13 +80,22 @@ final class MoneyCitySchemaTests: XCTestCase {
         XCTAssertEqual(MoneyCitySchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
     }
 
-    func testMigrationPlanStartsFromV1() {
+    func testSchemaV2IsTheLatestAndAddsRecapSnapshot() {
+        XCTAssertEqual(MoneyCitySchemaV2.versionIdentifier, Schema.Version(2, 0, 0))
+        let v1Names = MoneyCitySchemaV1.models.map { String(describing: $0) }
+        let v2Names = MoneyCitySchemaV2.models.map { String(describing: $0) }
+        XCTAssertEqual(Set(v1Names).subtracting(Set(v2Names)), [])
+        XCTAssertEqual(Set(v2Names).subtracting(Set(v1Names)), ["RecapSnapshot"])
+    }
+
+    func testMigrationPlanListsEveryVersionInOrder() {
         // Compared by name rather than by metatype: existential metatype equality is
         // fragile across toolchains, and the name is what actually has to stay stable.
         XCTAssertEqual(
             MoneyCityMigrationPlan.schemas.map { String(describing: $0) },
-            ["MoneyCitySchemaV1"]
+            ["MoneyCitySchemaV1", "MoneyCitySchemaV2"]
         )
+        XCTAssertEqual(MoneyCityMigrationPlan.stages.count, 1)
     }
 
     func testEveryPersistedModelIsListedExactlyOnce() {

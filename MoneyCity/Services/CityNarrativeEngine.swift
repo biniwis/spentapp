@@ -349,8 +349,8 @@ public final class CityNarrativeEngine: @unchecked Sendable {
             ? "השבוע בעיר: \(currency)\(Int(totalSpent)) · \(count) רכישות"
             : "This week in your city: \(currency)\(Int(totalSpent)) · \(count) purchases"
         content.body = isHebrew
-            ? "האזור הכי פעיל: \(topCategory.displayName(for: lang))."
-            : "Most active category: \(topCategory.displayName(for: lang))."
+            ? "הכי הרבה כסף עבר בקטגוריית \(topCategory.displayName(for: lang)) השבוע."
+            : "Most spending this week was in \(topCategory.displayName(for: lang))."
         content.sound = .default
         content.userInfo = ["type": "weekly_digest"]
 

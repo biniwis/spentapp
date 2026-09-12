@@ -46,6 +46,7 @@ public struct MainCityView: View {
     @Environment(\.scenePhase) private var companionScenePhase
     @AppStorage("cityCompanionsStartedAt") private var companionsStartedAt: Double = 0
     @State private var companionNow = Date()
+    @State private var rewardEngine = CityRewardEngine()
 
     // ── Budget HUD Pace & Progress Metrics (Item 3B) ──
     private var daysRemainingInMonth: Int {
@@ -156,6 +157,10 @@ public struct MainCityView: View {
             && visibleConfirmationBanner == nil && !showRecurringExpensesSheet
     }
     
+    private var canPresentReward: Bool {
+        canPresentCityLesson && !showBudgetSheet && !isQuickActionActive
+    }
+
     private var currentCity: MonthlyCity {
         var hasher = Hasher()
         hasher.combine(transactionsDigest)
@@ -237,23 +242,6 @@ public struct MainCityView: View {
         return (mean(everydayByMonth), mean(committedByMonth))
     }
 
-    private var progressReport: WeeklyProgressReport {
-        var hasher = Hasher()
-        hasher.combine(transactionsDigest)
-        hasher.combine(allEnrichments.count)
-        hasher.combine(Int(companionNow.timeIntervalSince1970 / 60))
-        return derived.report(key: hasher.finalize()) {
-            let unlockedIds = Set(allEnrichments.map { $0.itemId })
-            // The engine does its own 7/14-day windowing, so it needs the full history —
-            // month-filtered rows leave the previous week empty for the first half of a month.
-            return CityProgressEngine.shared.evaluateProgress(
-                transactions: allTransactions,
-                unlockedItemIds: unlockedIds,
-                referenceDate: companionNow
-            )
-        }
-    }
-    
     private var activeEnrichmentIds: [String] {
         allEnrichments.filter { $0.isApplied }.map { $0.itemId }
     }
@@ -265,22 +253,10 @@ public struct MainCityView: View {
             .map(\.unlockedDate)
             .max()
     }
-    private var nextCompanionDate: Date {
-        CityCompanions.nextDate(firstUse: companionFirstUse, lastReward: lastCompanionRewardDate)
-    }
-    
     private var weeklyRewardOptions: [ProgressRewardOption] {
-        guard hasCompletedOnboarding, companionsStartedAt > 0, companionNow >= nextCompanionDate,
-              progressReport.hasPositiveProgress else { return [] }
+        guard hasCompletedOnboarding, rewardEngine.state.pending != nil else { return [] }
         let unlockedIds = Set(allEnrichments.map { $0.itemId })
         return CityProgressEngine.shared.availableWeeklyOptions(unlockedItemIds: unlockedIds)
-    }
-    
-    private var currentCalendarWeekKey: String {
-        let cal = Calendar.current
-        let year = cal.component(.yearForWeekOfYear, from: Date())
-        let week = cal.component(.weekOfYear, from: Date())
-        return "\(year)-W\(week)"
     }
     
     private var currentSlotPlacements: [String: String] {
@@ -609,6 +585,7 @@ public struct MainCityView: View {
         }
 
         .onAppear {
+            TrackingActivityService.shared.recordActiveToday()
             if companionsStartedAt == 0 {
                 let previousStart = UserDefaults.standard.object(forKey: "firstAppLaunchDate") as? Date
                 companionsStartedAt = min(previousStart ?? Date(), Date()).timeIntervalSince1970
@@ -626,7 +603,11 @@ public struct MainCityView: View {
                 consumeQueuedConfirmationsIfNeeded()
             }
         }
+        .onChange(of: canPresentReward) { _, ready in
+            if ready { checkWeeklyEnrichmentPrompt() }
+        }
         .onChange(of: transactionsDigest) { _, _ in
+            checkWeeklyEnrichmentPrompt()
             syncWidgetData()
             checkCityTapHint()
             checkRecurringCoachmark()
@@ -725,6 +706,8 @@ public struct MainCityView: View {
             }
         }
         .sheet(isPresented: $showProgressSheet, onDismiss: {
+            rewardEngine.dismiss()
+            rewardEngine.save()
             guard let id = pendingCompanionWelcome else { return }
             pendingCompanionWelcome = nil
             newlyUnlockedEnrichmentId = id
@@ -735,12 +718,11 @@ public struct MainCityView: View {
             CityProgressSheet(
                 options: weeklyRewardOptions,
                 unlockedEnrichments: allEnrichments,
-                nextDate: nextCompanionDate,
-                savedAmount: progressReport.savedAmount,
-                hasBaseline: progressReport.previousWeekTotal > 0,
+                rewardContext: rewardEngine.state.pending,
                 onSelectOption: { opt in
                     companionNow = Date()
                     guard pendingCompanionWelcome == nil,
+                          rewardEngine.canClaim(at: companionNow),
                           weeklyRewardOptions.contains(where: { $0.id == opt.id }),
                           !allEnrichments.contains(where: { $0.itemId == opt.id }) else { return false }
                     let newEnrichment = CityEnrichment(
@@ -750,7 +732,8 @@ public struct MainCityView: View {
                         icon: opt.icon,
                         type: opt.type,
                         tier: opt.tier,
-                        savedAmount: progressReport.savedAmount,
+                        unlockedDate: companionNow,
+                        savedAmount: 0,
                         districtId: opt.districtId,
                         isApplied: true,
                         placedSlotId: nil
@@ -763,8 +746,8 @@ public struct MainCityView: View {
                     }
                     
                     
-                    Haptics.notify(.success)
-                    Haptics.impact(.heavy)
+                    rewardEngine.claim(at: companionNow)
+                    rewardEngine.save()
                     
                     pendingCompanionWelcome = opt.id
                     return true
@@ -908,21 +891,26 @@ public struct MainCityView: View {
     
     private func checkWeeklyEnrichmentPrompt() {
         guard hasCompletedOnboarding, !isSnapshotMode, !showProgressSheet else { return }
-        guard !weeklyRewardOptions.isEmpty else { return }
-        
-        let currentWeek = currentCalendarWeekKey
-        let lastPromptWeek = UserDefaults.standard.string(forKey: "lastAdditionsPromptWeekKey")
-        
-        // Trigger only once per calendar week
-        guard lastPromptWeek != currentWeek else { return }
-        
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                guard !weeklyRewardOptions.isEmpty, !isSnapshotMode else { return }
-                UserDefaults.standard.set(currentWeek, forKey: "lastAdditionsPromptWeekKey")
-                showProgressSheet = true
-            }
+        companionNow = Date()
+        rewardEngine = CityRewardEngine()
+        if canPresentCityLesson { rewardEngine.recordVisit(at: companionNow) }
+        rewardEngine.evaluate(
+            expenses: allTransactions.filter(\.isConfirmed).map {
+                CityCompanions.Expense(id: $0.id.uuidString, amount: $0.amount, date: $0.timestamp, category: $0.category.rawValue)
+            }, firstUse: companionFirstUse, latestClaim: lastCompanionRewardDate, now: companionNow)
+        rewardEngine.save()
+        guard canPresentReward,
+              !weeklyRewardOptions.isEmpty, rewardEngine.canPresent(at: companionNow) else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            guard canPresentReward,
+                  !weeklyRewardOptions.isEmpty, !isSnapshotMode,
+                  rewardEngine.canPresent(at: Date()) else { return }
+            rewardEngine.markPresented(at: Date())
+            rewardEngine.save()
+            showProgressSheet = true
+        }
     }
-    
+
     private func handleSelectDistrict(_ dist: String?) {
         if dist != selectedDistrict { Haptics.selection() }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
@@ -1005,10 +993,11 @@ public struct MainCityView: View {
         let lastAck = UserDefaults.standard.string(forKey: "last_acknowledged_month")
         if let lastAck = lastAck {
             if lastAck != status.monthId {
-                let recap = MonthlyRecapService.generateRecap(
+                let recap = MonthlyRecapService.timelineRecap(
                     for: targetMonthDate,
                     allTransactions: allTransactions,
-                    monthlyBudget: effectiveMonthlyBudget
+                    monthlyBudget: effectiveMonthlyBudget,
+                    context: modelContext
                 )
                 if recap.transactionCount > 0 {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
@@ -1088,6 +1077,8 @@ public struct MainCityView: View {
                     isZenMode: $isZenMode,
                     onOpenCompanions: {
                         companionNow = Date()
+                        rewardEngine.markPresented(at: Date())
+                        rewardEngine.save()
                         showProgressSheet = true
                     }
                 )

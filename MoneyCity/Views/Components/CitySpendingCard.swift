@@ -118,7 +118,7 @@ public struct CitySpendingCard: View {
             if displayTransactions.isEmpty {
                 HStack(spacing: 6) {
                     MoneyIcon(.leaf, size: 14)
-                    Text(l10n.language == .hebrew ? "עיר חדשה מתחילה לצמוח" : "A new city is growing")
+                    Text(l10n.language == .hebrew ? "חודש חדש בעיר" : "A new month in the city")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textSecondary)
                     Spacer()
@@ -128,7 +128,7 @@ public struct CitySpendingCard: View {
             } else if displayTransactions.count == 1 {
                 HStack(spacing: 6) {
                     MoneyIcon(.home, size: 14)
-                    Text(l10n.language == .hebrew ? "המבנה הראשון שלך לחודש זה" : "Your first building of the month")
+                    Text(l10n.language == .hebrew ? "הוצאה ראשונה שנרשמה החודש" : "First expense recorded this month")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textSecondary)
                     Spacer()

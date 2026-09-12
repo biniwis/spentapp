@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-/// Available city enrichment / repair option offered to the user upon achieving positive progress.
+/// Catalog metadata offered by the independent reward eligibility engine.
 public struct ProgressRewardOption: Identifiable, Sendable {
     public let id: String
     public let title: String
@@ -59,7 +59,7 @@ public struct WeeklyProgressReport: Sendable {
     }
 }
 
-/// Evaluates personal progress (Week-over-Week) independently from spending-driven city reality.
+/// Companion catalog and stable choices. Legacy progress reports remain for compatibility.
 public final class CityProgressEngine: Sendable {
     public static let shared = CityProgressEngine()
 
@@ -67,12 +67,12 @@ public final class CityProgressEngine: Sendable {
 
     /// Small living companions, never purchasable infrastructure or spending milestones.
     public let allCatalogOptions: [ProgressRewardOption] = [
-        ProgressRewardOption(id: "pet_cat_rooftop", title: "מישמיש החתול", subtitle: "מצא פינה ליד החנויות. עכשיו היא שלו.", icon: "pawprint.fill", type: .pet, tier: "small", actionType: "JOIN", districtId: "shopping"),
-        ProgressRewardOption(id: "pet_golden_dog", title: "טופי הכלב", subtitle: "בא לטיול ליד האגם. נשאר בשביל החברה.", icon: "pawprint.fill", type: .pet, tier: "small", actionType: "JOIN", districtId: "savings"),
+        ProgressRewardOption(id: "pet_cat_rooftop", title: "מיילו החתול", subtitle: "מצא פינה ליד החנויות. עכשיו היא שלו.", icon: "pawprint.fill", type: .pet, tier: "small", actionType: "JOIN", districtId: "shopping"),
+        ProgressRewardOption(id: "pet_golden_dog", title: "ארצ'י הכלב", subtitle: "בא לטיול ליד האגם. נשאר בשביל החברה.", icon: "pawprint.fill", type: .pet, tier: "small", actionType: "JOIN", districtId: "savings"),
         ProgressRewardOption(id: "resident_artist", title: "נוגה האמנית", subtitle: "מציירת את העיר, בקצב שלה.", icon: "paintpalette.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "city"),
-        ProgressRewardOption(id: "resident_skater", title: "גל על גלגלים", subtitle: "עוד סיבוב קטן. ועוד אחד.", icon: "person.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "shopping"),
-        ProgressRewardOption(id: "resident_musician", title: "לני והגיטרה", subtitle: "הופעת רחוב קטנה, בלי כרטיסים.", icon: "music.note", type: .resident, tier: "small", actionType: "JOIN", districtId: "city"),
-        ProgressRewardOption(id: "resident_balloon", title: "אורי והבלון", subtitle: "יוצא לטיול. הבלון מתעקש לבוא.", icon: "person.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "food")
+        ProgressRewardOption(id: "resident_skater", title: "גל והסקייט", subtitle: "עוד סיבוב קטן. ועוד אחד.", icon: "person.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "shopping"),
+        ProgressRewardOption(id: "resident_musician", title: "לני (גיטרה)", subtitle: "הופעת רחוב קטנה, בלי כרטיסים.", icon: "music.note", type: .resident, tier: "small", actionType: "JOIN", districtId: "city"),
+        ProgressRewardOption(id: "resident_balloon", title: "אורי בפארק", subtitle: "יוצא לטיול. הבלון מתעקש לבוא.", icon: "person.fill", type: .resident, tier: "small", actionType: "JOIN", districtId: "food")
     ]
 
     /// Historical metadata only. Never offered to new recipients or deleted from storage.

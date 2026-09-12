@@ -46,54 +46,25 @@ struct CityDensityPreset: Identifiable {
     let enrichmentIds: [String]
 }
 
+// MARK: - Recap Lab Preset Kinds
+
+/// The curated Recap 2.0 presets the Design Lab and Candidate Inspector run.
+public enum RecapLabKind: String, CaseIterable, Identifiable, Sendable {
+    case normal, delivery, coffee, quiet, accumulation, minimalData, strongTrend, richNoticed
+    public var id: String { rawValue }
+}
+
 // MARK: - Recap Mock Data Provider
+
+/// One source of truth for the Recap presets: the recap, the candidate pipeline and the
+/// visual QA all consume the same transaction set via this single registry.
 public enum RecapPreviewData {
-    private static func createMockRecap(
-        targetMonthDate: Date,
-        budget: Double,
-        txs: [(category: SpendingCategory, merchant: String, amount: Double, day: Int)],
-        prevMonthTxs: [(category: SpendingCategory, merchant: String, amount: Double, day: Int)] = []
-    ) -> MonthlyRecap {
-        let cal = Calendar.current
-        let startOfMonth = cal.dateInterval(of: .month, for: targetMonthDate)?.start ?? targetMonthDate
+    typealias PTx = (category: SpendingCategory, merchant: String, amount: Double, day: Int)
 
-        var allTxs: [Transaction] = []
-
-        // Build current month transactions
-        for item in txs {
-            let clampedDay = max(0, min(27, item.day - 1))
-            let date = cal.date(byAdding: .day, value: clampedDay, to: startOfMonth) ?? startOfMonth
-            let tx = Transaction(
-                amount: item.amount,
-                currency: "₪",
-                merchant: item.merchant,
-                category: item.category,
-                timestamp: date
-            )
-            allTxs.append(tx)
-        }
-
-        // Build previous month transactions for comparative metrics
-        let prevMonthDate = cal.date(byAdding: .month, value: -1, to: startOfMonth) ?? startOfMonth
-        let startOfPrev = cal.dateInterval(of: .month, for: prevMonthDate)?.start ?? prevMonthDate
-        for item in prevMonthTxs {
-            let clampedDay = max(0, min(27, item.day - 1))
-            let date = cal.date(byAdding: .day, value: clampedDay, to: startOfPrev) ?? startOfPrev
-            let tx = Transaction(
-                amount: item.amount,
-                currency: "₪",
-                merchant: item.merchant,
-                category: item.category,
-                timestamp: date
-            )
-            allTxs.append(tx)
-        }
-
-        return MonthlyRecapService.generateRecap(
-            for: targetMonthDate,
-            allTransactions: allTxs,
-            monthlyBudget: budget
-        )
+    private struct PreviewSource {
+        let budget: Double
+        let txs: [PTx]
+        let prevTxs: [PTx]
     }
 
     private static var targetMonthDate: Date {
@@ -102,10 +73,78 @@ public enum RecapPreviewData {
         return cal.date(byAdding: .month, value: -1, to: now) ?? now
     }
 
-    // 1. Normal Month
-    public static var normal: MonthlyRecap {
-        createMockRecap(
-            targetMonthDate: targetMonthDate,
+    private static func makeTransactions(
+        targetMonthDate: Date,
+        txs: [PTx],
+        prevTxs: [PTx] = []
+    ) -> [Transaction] {
+        let cal = Calendar.current
+        let startOfMonth = cal.dateInterval(of: .month, for: targetMonthDate)?.start ?? targetMonthDate
+
+        var allTxs: [Transaction] = []
+
+        for item in txs {
+            let clampedDay = max(0, min(27, item.day - 1))
+            let date = cal.date(byAdding: .day, value: clampedDay, to: startOfMonth) ?? startOfMonth
+            allTxs.append(Transaction(
+                amount: item.amount,
+                currency: "₪",
+                merchant: item.merchant,
+                category: item.category,
+                timestamp: date
+            ))
+        }
+
+        let prevMonthDate = cal.date(byAdding: .month, value: -1, to: startOfMonth) ?? startOfMonth
+        let startOfPrev = cal.dateInterval(of: .month, for: prevMonthDate)?.start ?? prevMonthDate
+        for item in prevTxs {
+            let clampedDay = max(0, min(27, item.day - 1))
+            let date = cal.date(byAdding: .day, value: clampedDay, to: startOfPrev) ?? startOfPrev
+            allTxs.append(Transaction(
+                amount: item.amount,
+                currency: "₪",
+                merchant: item.merchant,
+                category: item.category,
+                timestamp: date
+            ))
+        }
+        return allTxs
+    }
+
+    private static func makeRecap(kind: RecapLabKind) -> MonthlyRecap {
+        let source = sources[kind] ?? sources[.normal]!
+        let date = targetMonthDate
+        return MonthlyRecapService.generateRecap(
+            for: date,
+            allTransactions: makeTransactions(targetMonthDate: date, txs: source.txs, prevTxs: source.prevTxs),
+            monthlyBudget: source.budget
+        )
+    }
+
+    /// The raw transaction set behind a preset — feeds the Candidate Inspector and QA.
+    public static func transactions(kind: RecapLabKind) -> [Transaction] {
+        let source = sources[kind] ?? sources[.normal]!
+        return makeTransactions(targetMonthDate: targetMonthDate, txs: source.txs, prevTxs: source.prevTxs)
+    }
+
+    /// The recap for a preset.
+    public static func recap(kind: RecapLabKind) -> MonthlyRecap { makeRecap(kind: kind) }
+
+    // MARK: The seven curated presets (phase 10)
+
+    public static var normal: MonthlyRecap { makeRecap(kind: .normal) }
+    public static var delivery: MonthlyRecap { makeRecap(kind: .delivery) }
+    public static var coffee: MonthlyRecap { makeRecap(kind: .coffee) }
+    public static var quiet: MonthlyRecap { makeRecap(kind: .quiet) }
+    public static var accumulation: MonthlyRecap { makeRecap(kind: .accumulation) }
+    public static var minimalData: MonthlyRecap { makeRecap(kind: .minimalData) }
+    public static var strongTrend: MonthlyRecap { makeRecap(kind: .strongTrend) }
+    public static var richNoticed: MonthlyRecap { makeRecap(kind: .richNoticed) }
+
+    // MARK: Sources (single source of truth for recap + candidate pipeline)
+
+    private static let sources: [RecapLabKind: PreviewSource] = [
+        .normal: PreviewSource(
             budget: 8000,
             txs: [
                 (.food, "שופרסל דיל", 480, 2),
@@ -130,45 +169,72 @@ public enum RecapPreviewData {
                 (.food, "שופרסל דיל", 440, 26),
                 (.subscriptions, "Spotify", 29.90, 27)
             ],
-            prevMonthTxs: [
+            prevTxs: [
                 (.food, "שופרסל", 2400, 5),
                 (.shopping, "קניות", 1800, 10),
                 (.transport, "דלק", 1100, 15),
                 (.housing, "חשבונות", 1200, 20)
             ]
-        )
-    }
-
-    // 2. High Spend Month
-    public static var highSpend: MonthlyRecap {
-        createMockRecap(
-            targetMonthDate: targetMonthDate,
-            budget: 8000,
+        ),
+        .delivery: PreviewSource(
+            budget: 7000,
             txs: [
-                (.shopping, "אל על - טיסה לטוקיו", 4200, 3),
-                (.shopping, "Apple Store - iPad", 2350, 6),
-                (.food, "טאיזו מסעדת שף", 880, 8),
-                (.shopping, "פקטורי 54", 1450, 10),
-                (.food, "שופרסל", 620, 11),
-                (.transport, "טיפול רכב מורשה", 1200, 13),
-                (.food, "Wolt סופש", 280, 15),
-                (.entertainment, "הופעה חיה פארק הירקון", 760, 18),
-                (.food, "פאסטל מסעדה", 590, 22),
-                (.shopping, "רנואר", 420, 25),
-                (.food, "סופרמרקט", 580, 27)
+                (.food, "Wolt - המבורגר", 149, 2),
+                (.food, "שופרסל דיל", 470, 3),
+                (.food, "Wolt - סושי", 179, 5),
+                (.transport, "רב-קו טעינה", 45, 6),
+                (.food, "Wolt - פיצה", 132, 8),
+                (.food, "Wolt - אסייתי", 158, 10),
+                (.food, "Wolt - בורגר", 141, 12),
+                (.food, "שופרסל דיל", 430, 13),
+                (.food, "Wolt - באגט", 96, 15),
+                (.food, "Wolt - סושי", 168, 17),
+                (.food, "Wolt - שנצואי", 145, 19),
+                (.food, "Wolt - פיצה", 128, 21),
+                (.food, "Wolt - גלידה", 62, 22),
+                (.food, "Wolt - פסטה", 138, 24),
+                (.food, "Wolt - קבב", 152, 26),
+                (.food, "שופרסל דיל", 395, 27)
             ],
-            prevMonthTxs: [
-                (.food, "סופרמרקט", 2200, 5),
-                (.shopping, "בגדים", 1500, 12),
-                (.transport, "דלק", 900, 20)
+            prevTxs: [
+                (.food, "אוכל", 2400, 6),
+                (.shopping, "בגדים", 1100, 14),
+                (.transport, "תחבורה", 800, 20)
             ]
-        )
-    }
-
-    // 3. Quiet Month
-    public static var quiet: MonthlyRecap {
-        createMockRecap(
-            targetMonthDate: targetMonthDate,
+        ),
+        .coffee: PreviewSource(
+            budget: 6000,
+            txs: [
+                (.food, "קפה נחת", 42, 1),
+                (.food, "ארומה אספרסו בר", 38, 2),
+                (.food, "קפה בוקר", 32, 3),
+                (.food, "קפה נחת", 44, 4),
+                (.food, "שופרסל דיל", 520, 4),
+                (.food, "ארומה", 41, 6),
+                (.food, "קפה לנדוור", 46, 7),
+                (.food, "קפה נחת", 42, 8),
+                (.food, "ארומה", 34, 9),
+                (.food, "קפה בוקר", 32, 10),
+                (.food, "שופרסל דיל", 480, 11),
+                (.food, "קפה נחת", 44, 12),
+                (.food, "ארומה", 38, 13),
+                (.food, "קפה לנדוור", 45, 14),
+                (.food, "קפה נחת", 40, 15),
+                (.food, "ארומה", 36, 16),
+                (.food, "שופרסל דיל", 460, 18),
+                (.food, "קפה נחת", 43, 19),
+                (.food, "ארומה", 33, 20),
+                (.food, "קפה בוקר", 34, 21),
+                (.food, "קפה נחת", 41, 22),
+                (.food, "ארומה", 37, 24),
+                (.food, "שופרסל דיל", 450, 25)
+            ],
+            prevTxs: [
+                (.food, "קפה ואוכל", 2100, 10),
+                (.shopping, "קניות", 700, 16)
+            ]
+        ),
+        .quiet: PreviewSource(
             budget: 7000,
             txs: [
                 (.food, "שופרסל שלי", 320, 3),
@@ -180,101 +246,245 @@ public enum RecapPreviewData {
                 (.health, "בית מרקחת", 68, 22),
                 (.food, "מאפייה", 42, 25)
             ],
-            prevMonthTxs: [
+            prevTxs: [
                 (.food, "סופר", 1400, 10),
                 (.transport, "נסיעות", 500, 15)
             ]
-        )
-    }
-
-    // 4. Balanced Month
-    public static var balanced: MonthlyRecap {
-        createMockRecap(
-            targetMonthDate: targetMonthDate,
-            budget: 7500,
-            txs: [
-                (.food, "שופרסל דיל", 550, 2),
-                (.housing, "ועד בית ואחזקה", 450, 4),
-                (.transport, "פז תחנת דלק", 280, 6),
-                (.food, "קפה ומאפה", 45, 8),
-                (.shopping, "זארה הום", 340, 10),
-                (.food, "Wolt", 160, 12),
-                (.savings, "חיסכון חודשי לטיול", 1500, 13),
-                (.housing, "אינטרנט וסלולר", 185, 15),
-                (.food, "שופרסל דיל", 580, 17),
-                (.health, "אימון וחדר כושר", 260, 19),
-                (.entertainment, "קולנוע לב", 88, 21),
-                (.food, "מסעדה עם חברים", 380, 23),
-                (.transport, "רכבת ישראל", 140, 25),
-                (.food, "שופרסל דיל", 520, 27)
-            ],
-            prevMonthTxs: [
-                (.food, "אוכל", 2500, 5),
-                (.housing, "דיור", 1200, 10),
-                (.transport, "תחבורה", 900, 15)
-            ]
-        )
-    }
-
-    // 5. Food-heavy Month
-    public static var foodHeavy: MonthlyRecap {
-        createMockRecap(
-            targetMonthDate: targetMonthDate,
-            budget: 7000,
-            txs: [
-                (.food, "Wolt - המבורגר", 155, 1),
-                (.food, "קפה נחת", 44, 2),
-                (.food, "שופרסל דיל", 620, 3),
-                (.food, "Wolt - פיצה", 140, 5),
-                (.food, "טאקרייה מקסיקנית", 210, 6),
-                (.food, "ארומה תל אביב", 36, 7),
-                (.food, "Wolt - סושי", 195, 8),
-                (.food, "גלידה גולדה", 48, 9),
-                (.food, "שופרסל דיל", 540, 10),
-                (.food, "Wolt - אסייתי", 165, 12),
-                (.food, "קפה לנדוור", 95, 13),
-                (.food, "Wolt - פסטה", 130, 14),
-                (.food, "מסעדת מחניודה", 780, 16),
-                (.food, "שופרסל דיל", 490, 17),
-                (.food, "Wolt - אוכל ביתי", 125, 19),
-                (.food, "קפה בוקר", 32, 21),
-                (.food, "Wolt - סנדוויץ'", 85, 23),
-                (.food, "שופרסל דיל", 580, 25),
-                (.food, "Wolt - קינוחים", 110, 26),
-                (.transport, "פז תחנת דלק", 240, 11),
-                (.shopping, "סופר-פארם", 120, 20)
-            ],
-            prevMonthTxs: [
-                (.food, "אוכל", 3800, 5),
-                (.shopping, "שונות", 800, 12)
-            ]
-        )
-    }
-
-    // 6. Transport-heavy Month
-    public static var transportHeavy: MonthlyRecap {
-        createMockRecap(
-            targetMonthDate: targetMonthDate,
+        ),
+        .accumulation: PreviewSource(
             budget: 6500,
             txs: [
-                (.transport, "מוסך מרכזי - טיפול 60,000", 2850, 4),
-                (.transport, "מכון רישוי וטסט לרכב", 320, 5),
-                (.transport, "פז תחנת דלק", 340, 7),
-                (.transport, "סונול דלק", 310, 12),
-                (.transport, "רכבת ישראל", 165, 14),
-                (.transport, "Gett מוניות", 145, 16),
-                (.transport, "פנגו חניה חודשית", 125, 18),
-                (.transport, "פז תחנת דלק", 330, 22),
-                (.transport, "Gett מוניות", 95, 24),
-                (.food, "שופרסל דיל", 490, 8),
-                (.food, "קפה לדרך", 28, 10),
-                (.food, "שופרסל דיל", 440, 20),
-                (.housing, "חשבון חשמל", 380, 15)
+                (.food, "מכולת שכונתית", 86, 2),
+                (.health, "בית מרקחת", 54, 4),
+                (.food, "קפה שכונתי", 32, 5),
+                (.shopping, "חנות ספרים", 128, 7),
+                (.food, "שופרסל אקספרס", 210, 8),
+                (.transport, "רב-קו", 65, 9),
+                (.food, "מאפייה", 47, 12),
+                (.shopping, "תיק קטן", 175, 14),
+                (.health, "סופר-פארם", 92, 15),
+                (.entertainment, "קולנוע לב", 78, 16),
+                (.food, "גלידה", 38, 18),
+                (.shopping, "חנות נעליים", 145, 20),
+                (.food, "מסעדה שכונתית", 165, 21),
+                (.transport, "פנגו חניה", 58, 22),
+                (.food, "מכולת שכונתית", 92, 23),
+                (.health, "ויטמינים", 120, 24),
+                (.subscriptions, "סרט בסטרימינג", 34, 25),
+                (.food, "שיפודיה", 130, 26),
+                (.shopping, "קוסמטיקה", 110, 27)
             ],
-            prevMonthTxs: [
-                (.transport, "רכב", 1200, 5),
-                (.food, "אוכל", 2100, 10)
+            prevTxs: [
+                (.food, "אוכל", 1500, 8),
+                (.shopping, "קניות", 500, 15),
+                (.transport, "תחבורה", 250, 20),
+                (.health, "בריאות", 180, 22)
             ]
+        ),
+        .minimalData: PreviewSource(
+            budget: 5000,
+            txs: [
+                (.food, "שופרסל דיל", 132, 5),
+                (.food, "מכולת שכונתית", 89, 12)
+            ],
+            prevTxs: []
+        ),
+        .strongTrend: PreviewSource(
+            budget: 8000,
+            txs: [
+                (.food, "שופרסל דיל", 340, 3),
+                (.food, "קפה ועוגה", 28, 5),
+                (.transport, "רב-קו", 95, 7),
+                (.health, "בית מרקחת", 60, 9),
+                (.food, "שופרסל דיל", 310, 11),
+                (.shopping, "חנות בגדים", 220, 14),
+                (.food, "מכולת שכונתית", 120, 17),
+                (.food, "מסעדה", 240, 20),
+                (.entertainment, "קולנוע", 86, 23),
+                (.food, "שופרסל דיל", 380, 26)
+            ],
+            prevTxs: [
+                (.food, "שופרסל גדול", 2100, 3),
+                (.shopping, "רשת אופנה", 1400, 8),
+                (.transport, "דלק ומוסך", 1250, 12),
+                (.entertainment, "הופעות", 600, 16),
+                (.food, "מסעדות", 900, 20),
+                (.shopping, "אלקטרוניקה", 1300, 24)
+            ]
+        ),
+        .richNoticed: PreviewSource(
+            budget: 10000,
+            txs: [
+                (.food, "Wolt - המבורגר", 128, 2),
+                (.health, "סופר-פארם", 89, 3),
+                (.food, "Wolt - סושי", 156, 4),
+                (.food, "קפה נחת", 38, 5),
+                (.transport, "פז תחנת דלק", 320, 6),
+                (.food, "שופרסל דיל", 480, 7),
+                (.food, "Wolt - פיצה", 132, 7),
+                (.shopping, "איל עיצוב רהיטים", 1900, 8),
+                (.food, "Wolt - סלט", 112, 8),
+                (.food, "קפה נחת", 35, 8),
+                (.health, "סופר-פארם", 95, 8),
+                (.food, "סופרמרקט אקספרס", 210, 8),
+                (.food, "Wolt - אסייתי", 148, 9),
+                (.food, "שופרסל דיל", 410, 10),
+                (.health, "סופר-פארם", 128, 11),
+                (.food, "Wolt - בורגר", 135, 12),
+                (.transport, "רב-קו טעינה", 105, 13),
+                (.shopping, "אלקטרה מובייל", 1400, 14),
+                (.food, "שופרסל דיל", 520, 14),
+                (.food, "Wolt - שנצואי", 142, 15),
+                (.health, "סופר-פארם", 76, 16),
+                (.transport, "רכבת ישראל", 240, 18),
+                (.food, "שופרסל דיל", 390, 17),
+                (.food, "קפה בוקר", 32, 17),
+                (.food, "Wolt - גלידה", 58, 19),
+                (.transport, "Gett מוניות", 220, 21),
+                (.food, "Wolt - פסטה", 138, 20),
+                (.shopping, "חנות ספרים", 95, 22),
+                (.health, "סופר-פארם", 84, 20),
+                (.transport, "פנגו חניה", 55, 24),
+                (.food, "שופרסל דיל", 460, 26),
+                (.food, "קפה שכונתי", 30, 27),
+                (.health, "סופר-פארם", 110, 28),
+                (.food, "שופרסל דיל", 340, 30)
+            ],
+            prevTxs: [
+                (.food, "שופרסל", 2100, 4),
+                (.food, "קפה ונחת", 120, 7),
+                (.transport, "דלק ונסיעות", 1160, 9),
+                (.shopping, "קניות יומיומיות", 950, 12),
+                (.housing, "חשבונות", 1500, 15),
+                (.health, "בית מרקחת", 200, 18),
+                (.entertainment, "בילויים", 450, 21),
+                (.food, "שופרסל", 1900, 24),
+                (.subscriptions, "מנויים", 150, 26),
+                (.shopping, "מוצרי בית", 350, 27),
+                (.food, "מסעדות", 800, 28),
+                (.transport, "תחבורה ציבורית", 260, 29)
+            ]
+        )
+    ]
+
+    public static var highSpend: MonthlyRecap {
+        let date = targetMonthDate
+        let txs: [PTx] = [
+            (.shopping, "אל על - טיסה לטוקיו", 4200, 3),
+            (.shopping, "Apple Store - iPad", 2350, 6),
+            (.food, "טאיזו מסעדת שף", 880, 8),
+            (.shopping, "פקטורי 54", 1450, 10),
+            (.food, "שופרסל", 620, 11),
+            (.transport, "טיפול רכב מורשה", 1200, 13),
+            (.food, "Wolt סופש", 280, 15),
+            (.entertainment, "הופעה חיה פארק הירקון", 760, 18),
+            (.food, "פאסטל מסעדה", 590, 22),
+            (.shopping, "רנואר", 420, 25),
+            (.food, "סופרמרקט", 580, 27)
+        ]
+        let prevTxs: [PTx] = [
+            (.food, "סופרמרקט", 2200, 5),
+            (.shopping, "בגדים", 1500, 12),
+            (.transport, "דלק", 900, 20)
+        ]
+        return MonthlyRecapService.generateRecap(
+            for: date,
+            allTransactions: makeTransactions(targetMonthDate: date, txs: txs, prevTxs: prevTxs),
+            monthlyBudget: 8000
+        )
+    }
+
+    public static var balanced: MonthlyRecap {
+        let date = targetMonthDate
+        let txs: [PTx] = [
+            (.food, "שופרסל דיל", 550, 2),
+            (.housing, "ועד בית ואחזקה", 450, 4),
+            (.transport, "פז תחנת דלק", 280, 6),
+            (.food, "קפה ומאפה", 45, 8),
+            (.shopping, "זארה הום", 340, 10),
+            (.food, "Wolt", 160, 12),
+            (.savings, "חיסכון חודשי לטיול", 1500, 13),
+            (.housing, "אינטרנט וסלולר", 185, 15),
+            (.food, "שופרסל דיל", 580, 17),
+            (.health, "אימון וחדר כושר", 260, 19),
+            (.entertainment, "קולנוע לב", 88, 21),
+            (.food, "מסעדה עם חברים", 380, 23),
+            (.transport, "רכבת ישראל", 140, 25),
+            (.food, "שופרסל דיל", 520, 27)
+        ]
+        let prevTxs: [PTx] = [
+            (.food, "אוכל", 2500, 5),
+            (.housing, "דיור", 1200, 10),
+            (.transport, "תחבורה", 900, 15)
+        ]
+        return MonthlyRecapService.generateRecap(
+            for: date,
+            allTransactions: makeTransactions(targetMonthDate: date, txs: txs, prevTxs: prevTxs),
+            monthlyBudget: 7500
+        )
+    }
+
+    public static var foodHeavy: MonthlyRecap {
+        let date = targetMonthDate
+        let txs: [PTx] = [
+            (.food, "Wolt - המבורגר", 155, 1),
+            (.food, "קפה נחת", 44, 2),
+            (.food, "שופרסל דיל", 620, 3),
+            (.food, "Wolt - פיצה", 140, 5),
+            (.food, "טאקרייה מקסיקנית", 210, 6),
+            (.food, "ארומה תל אביב", 36, 7),
+            (.food, "Wolt - סושי", 195, 8),
+            (.food, "גלידה גולדה", 48, 9),
+            (.food, "שופרסל דיל", 540, 10),
+            (.food, "Wolt - אסייתי", 165, 12),
+            (.food, "קפה לנדוור", 95, 13),
+            (.food, "Wolt - פסטה", 130, 14),
+            (.food, "מסעדת מחניודה", 780, 16),
+            (.food, "שופרסל דיל", 490, 17),
+            (.food, "Wolt - אוכל ביתי", 125, 19),
+            (.food, "קפה בוקר", 32, 21),
+            (.food, "Wolt - סנדוויץ'", 85, 23),
+            (.food, "שופרסל דיל", 580, 25),
+            (.food, "Wolt - קינוחים", 110, 26),
+            (.transport, "פז תחנת דלק", 240, 11),
+            (.shopping, "סופר-פארם", 120, 20)
+        ]
+        let prevTxs: [PTx] = [
+            (.food, "אוכל", 3800, 5),
+            (.shopping, "שונות", 800, 12)
+        ]
+        return MonthlyRecapService.generateRecap(
+            for: date,
+            allTransactions: makeTransactions(targetMonthDate: date, txs: txs, prevTxs: prevTxs),
+            monthlyBudget: 7000
+        )
+    }
+
+    public static var transportHeavy: MonthlyRecap {
+        let date = targetMonthDate
+        let txs: [PTx] = [
+            (.transport, "מוסך מרכזי - טיפול 60,000", 2850, 4),
+            (.transport, "מכון רישוי וטסט לרכב", 320, 5),
+            (.transport, "פז תחנת דלק", 340, 7),
+            (.transport, "סונול דלק", 310, 12),
+            (.transport, "רכבת ישראל", 165, 14),
+            (.transport, "Gett מוניות", 145, 16),
+            (.transport, "פנגו חניה חודשית", 125, 18),
+            (.transport, "פז תחנת דלק", 330, 22),
+            (.transport, "Gett מוניות", 95, 24),
+            (.food, "שופרסל דיל", 490, 8),
+            (.food, "קפה לדרך", 28, 10),
+            (.food, "שופרסל דיל", 440, 20),
+            (.housing, "חשבון חשמל", 380, 15)
+        ]
+        let prevTxs: [PTx] = [
+            (.transport, "רכב", 1200, 5),
+            (.food, "אוכל", 2100, 10)
+        ]
+        return MonthlyRecapService.generateRecap(
+            for: date,
+            allTransactions: makeTransactions(targetMonthDate: date, txs: txs, prevTxs: prevTxs),
+            monthlyBudget: 6500
         )
     }
 }
@@ -287,8 +497,11 @@ public struct DesignLabView: View {
     @State private var activeOnboardingConfig: OnboardingPreviewConfig? = nil
     @State private var activeRecap: MonthlyRecap? = nil
     @State private var showWeeklyRewardSheet = false
+    @State private var debugRewardTrigger: CityRewardTrigger = .weeklyPresence
+    @State private var debugRewardJoined = false
     @State private var showAllCompanionsCompletedSheet = false
     @State private var showCityDensityLab = false
+    @State private var showCandidateLab = false
 
     private var isHe: Bool { l10n.language == .hebrew }
 
@@ -368,14 +581,24 @@ public struct DesignLabView: View {
                 recap: { RecapPreviewData.normal }
             ),
             RecapPresetItem(
-                id: "highSpend",
-                nameHe: "חודש הוצאות גבוהות",
-                nameEn: "High Spend Month",
-                subtitleHe: "חריגה מהתקציב (~₪12.5K), קניית ציון דרך (טיסה)",
-                subtitleEn: "Over budget (~₪12.5K), landmark flight purchase",
-                emoji: "🚀",
-                badgeColor: Color(red: 239/255, green: 68/255, blue: 68/255),
-                recap: { RecapPreviewData.highSpend }
+                id: "delivery",
+                nameHe: "עיר המשלוחים",
+                nameEn: "Delivery Month",
+                subtitleHe: "רוב האוכל הגיע מ־Wolt — הרגל ברור ומזמין ניתוח",
+                subtitleEn: "Most food arrived via Wolt — a clear, inspectable habit",
+                emoji: "🛵",
+                badgeColor: Color(red: 0/255, green: 194/255, blue: 232/255),
+                recap: { RecapPreviewData.delivery }
+            ),
+            RecapPresetItem(
+                id: "coffee",
+                nameHe: "עיר הקפה",
+                nameEn: "Coffee Month",
+                subtitleHe: "בעצם כל יום קפה — הרגל חם וחוזר",
+                subtitleEn: "Coffee almost every day — a warm, repeated habit",
+                emoji: "☕",
+                badgeColor: Color(red: 180/255, green: 83/255, blue: 9/255),
+                recap: { RecapPreviewData.coffee }
             ),
             RecapPresetItem(
                 id: "quiet",
@@ -388,34 +611,44 @@ public struct DesignLabView: View {
                 recap: { RecapPreviewData.quiet }
             ),
             RecapPresetItem(
-                id: "balanced",
-                nameHe: "חודש מאוזן וחיסכון",
-                nameEn: "Balanced & Savings",
-                subtitleHe: "ניצול 97% מהתקציב, הפקדה גדולה לחיסכון",
-                subtitleEn: "97% budget match, healthy savings deposit",
-                emoji: "⚖️",
-                badgeColor: Color(red: 16/255, green: 185/255, blue: 129/255),
-                recap: { RecapPreviewData.balanced }
-            ),
-            RecapPresetItem(
-                id: "foodHeavy",
-                nameHe: "חודש עמוס במסעדות",
-                nameEn: "Food-Heavy Month",
-                subtitleHe: "75%+ בהוצאות מזון, 16 הזמנות Wolt, רובע אוכל ענק",
-                subtitleEn: "75%+ on food & dining, 16 Wolt orders, huge food hub",
-                emoji: "🍕",
-                badgeColor: Color(red: 249/255, green: 115/255, blue: 22/255),
-                recap: { RecapPreviewData.foodHeavy }
-            ),
-            RecapPresetItem(
-                id: "transportHeavy",
-                nameHe: "חודש עמוס ברכב ותחבורה",
-                nameEn: "Transport-Heavy Month",
-                subtitleHe: "70%+ בתחבורה, טיפול מוסך בולט, תחנות דלק",
-                subtitleEn: "70%+ on transport, major repair shop purchase",
-                emoji: "🚗",
+                id: "accumulation",
+                nameHe: "הצטברות",
+                nameEn: "Accumulation",
+                subtitleHe: "הרבה רכישות קטנות שהצטברו בלי משים",
+                subtitleEn: "Many small purchases that quietly added up",
+                emoji: "🧩",
                 badgeColor: Color(red: 139/255, green: 92/255, blue: 246/255),
-                recap: { RecapPreviewData.transportHeavy }
+                recap: { RecapPreviewData.accumulation }
+            ),
+            RecapPresetItem(
+                id: "minimalData",
+                nameHe: "נתונים מינימליים",
+                nameEn: "Minimal Data",
+                subtitleHe: "חודש כמעט ריק — סיפור קצר ונקי",
+                subtitleEn: "A nearly empty month — a clean, short story",
+                emoji: "🌫️",
+                badgeColor: Color(red: 120/255, green: 120/255, blue: 128/255),
+                recap: { RecapPreviewData.minimalData }
+            ),
+            RecapPresetItem(
+                id: "strongTrend",
+                nameHe: "מגמה חזקה",
+                nameEn: "Strong Trend",
+                subtitleHe: "ירידה חדה ביחס לחודש הקודם",
+                subtitleEn: "A sharp drop vs last month",
+                emoji: "📉",
+                badgeColor: Color(red: 239/255, green: 68/255, blue: 68/255),
+                recap: { RecapPreviewData.strongTrend }
+            ),
+            RecapPresetItem(
+                id: "richNoticed",
+                nameHe: "חודש עשיר ומלא חיים",
+                nameEn: "Rich & Noticed Month",
+                subtitleHe: "קניות זינקו, יום עמוס במיוחד וסיפור נוסף בכל פינה",
+                subtitleEn: "Shopping surged, one packed day and a story around every corner",
+                emoji: "🎡",
+                badgeColor: Color(red: 8/255, green: 145/255, blue: 178/255),
+                recap: { RecapPreviewData.richNoticed }
             )
         ]
     }
@@ -485,9 +718,8 @@ public struct DesignLabView: View {
             CityProgressSheet(
                 options: CityProgressEngine.shared.allCatalogOptions,
                 unlockedEnrichments: [],
-                nextDate: Calendar.current.date(byAdding: .day, value: 5, to: Date()) ?? Date(),
-                savedAmount: 480.0,
-                hasBaseline: true,
+                rewardContext: CityRewardContext(trigger: debugRewardTrigger, unlockedAt: Date()),
+                previewJoined: debugRewardJoined ? CityProgressEngine.shared.allCatalogOptions.first : nil,
                 onSelectOption: { _ in
                     Haptics.notify(.success)
                     return true
@@ -511,15 +743,17 @@ public struct DesignLabView: View {
                         isApplied: true
                     )
                 },
-                nextDate: Calendar.current.date(byAdding: .day, value: 5, to: Date()) ?? Date(),
-                savedAmount: 0,
-                hasBaseline: true,
+
                 onSelectOption: { _ in false }
             )
             .environmentObject(l10n)
         }
         .fullScreenCover(isPresented: $showCityDensityLab) {
             CityDensityLabSheet()
+                .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showCandidateLab) {
+            RecapCandidateLabSheet()
                 .environmentObject(l10n)
         }
     }
@@ -688,7 +922,7 @@ public struct DesignLabView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(
                 title: isHe ? "סיכום חודשי (Monthly Recap Presets)" : "Monthly Recap Presets",
-                badge: "6 MOCKS"
+                badge: "8 CURATED"
             )
 
             Text(isHe
@@ -696,6 +930,49 @@ public struct DesignLabView: View {
                 : "Tap any preset to view the full story & editorial animations with mock data:")
                 .font(.system(size: 12, weight: .regular, design: .default))
                 .foregroundColor(Color.textSecondary)
+
+            // Candidate Inspector launcher
+            Button {
+                Haptics.impact(.medium)
+                showCandidateLab = true
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 219/255, green: 234/255, blue: 254/255))
+                            .frame(width: 46, height: 46)
+                        MoneyIcon(.search, size: 24, color: Color(red: 37/255, green: 99/255, blue: 235/255))
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text(isHe ? "מפקח מועמדויות (Candidate Inspector)" : "Candidate Inspector")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Spacer()
+                            Text(isHe ? "מנוע + אוצר ↗" : "Engine + Curator ↗")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .foregroundColor(Color(red: 37/255, green: 99/255, blue: 235/255))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Color(red: 219/255, green: 234/255, blue: 254/255))
+                                .clipShape(Capsule())
+                        }
+
+                        Text(isHe
+                            ? "צפייה במועמדויות המנוע, הסיפור המעוצב, הדחיות והניקוד לכל Preset"
+                            : "Inspect engine candidates, the curated story, rejections & scores per preset")
+                            .font(.system(size: 12, weight: .regular, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .shadow(color: Color.black.opacity(0.035), radius: 8, y: 3)
+            }
+            .buttonStyle(.plain)
+            .bouncyPress(scale: 0.98)
 
             VStack(spacing: 10) {
                 ForEach(recapPresets) { preset in
@@ -760,9 +1037,41 @@ public struct DesignLabView: View {
                 .foregroundColor(Color.textSecondary)
 
             VStack(spacing: 10) {
+                #if DEBUG
+                Button("Open Reward Selection") {
+                    debugRewardJoined = false
+                    showWeeklyRewardSheet = true
+                }
+                Button("Trigger Weekly Reward") {
+                    var engine = CityRewardEngine()
+                    engine.debugTrigger(.weeklyPresence)
+                    engine.save()
+                    debugRewardTrigger = .weeklyPresence
+                    debugRewardJoined = false
+                    showWeeklyRewardSheet = true
+                }
+                Button("Trigger Surprise Reward") {
+                    var engine = CityRewardEngine()
+                    engine.debugTrigger(.quietPeriod)
+                    engine.save()
+                    debugRewardTrigger = .quietPeriod
+                    debugRewardJoined = false
+                    showWeeklyRewardSheet = true
+                }
+                Button("Open Reward Claimed State") {
+                    debugRewardJoined = true
+                    showWeeklyRewardSheet = true
+                }
+                Button("Reset Reward Cooldowns") {
+                    var engine = CityRewardEngine()
+                    engine.debugResetCooldowns()
+                    engine.save()
+                }
+                #endif
                 // Active Choice Ceremony
                 Button {
                     Haptics.impact(.medium)
+                    debugRewardJoined = false
                     showWeeklyRewardSheet = true
                 } label: {
                     HStack(spacing: 14) {
@@ -1372,6 +1681,409 @@ public struct CityDensityLabSheet: View {
         .padding(.vertical, 4)
         .background(Color.white.opacity(0.85))
         .clipShape(Capsule())
+    }
+}
+
+// MARK: - Phase 10 · Candidate Inspector (DEBUG)
+
+/// Inspects the Recap 2.0 pipeline for each curated preset: the engine candidates with their
+/// scores, the fixed backbone, the curated story slots, every rejection reason, and the final
+/// shot count. Data is computed on demand per preset; nothing is written anywhere.
+struct RecapCandidateLabSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    @State private var kind: RecapLabKind = .normal
+    @State private var showRawReports = false
+    @State private var analysis: Analysis?
+
+    private var isHe: Bool { l10n.language == .hebrew }
+
+    private struct Analysis {
+        let recap: MonthlyRecap
+        let candidates: [RecapInsight]
+        let backbone: [RecapBackboneInsight]
+        let story: RecapCuratedStory
+        let rejections: [RecapCuratedRejection]
+        let engineReport: String
+        let curatorReport: String
+        let shots: Int
+    }
+
+    private static let presetMeta: [(kind: RecapLabKind, emoji: String, he: String, en: String)] = [
+        (.normal, "🌟", "רגיל", "Normal"),
+        (.delivery, "🛵", "משלוחים", "Delivery"),
+        (.coffee, "☕", "קפה", "Coffee"),
+        (.quiet, "🌿", "רגוע", "Quiet"),
+        (.accumulation, "🧩", "הצטברות", "Accumulation"),
+        (.minimalData, "🌫️", "מינימלי", "Minimal"),
+        (.strongTrend, "📉", "מגמה", "Trend"),
+        (.richNoticed, "🎡", "עשיר", "Rich")
+    ]
+
+    private func compute() -> Analysis {
+        let recap = RecapPreviewData.recap(kind: kind)
+        let txs = RecapPreviewData.transactions(kind: kind)
+        let month = recap.date
+        let candidates = RecapInsightEngine.generateCandidates(for: month, allTransactions: txs)
+        let backbone = RecapInsightCurator.backbone(for: month, allTransactions: txs)
+        let result = RecapInsightCurator.curate(candidates: candidates, backbone: backbone)
+        return Analysis(
+            recap: recap,
+            candidates: candidates,
+            backbone: backbone,
+            story: result.story,
+            rejections: result.rejections,
+            engineReport: RecapInsightEngine.debugReport(for: month, allTransactions: txs),
+            curatorReport: RecapInsightCurator.debugCuratorReport(for: month, allTransactions: txs),
+            shots: RecapEditorialShot.sequence(for: recap).count
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        presetChips
+                        if let analysis {
+                            summary(analysis)
+                            storyCard(analysis)
+                            if !analysis.rejections.isEmpty { rejectionsCard(analysis) }
+                            poolCard(analysis)
+                            rawReports(analysis)
+                        } else {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 60)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 40)
+                }
+            }
+            .navigationTitle(isHe ? "מפקח מועמדויות" : "Candidate Inspector")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(isHe ? "סגור" : "Done") { dismiss() }
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                }
+            }
+        }
+        .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
+        .onAppear { if analysis == nil { analysis = compute() } }
+        .onChange(of: kind) { _, _ in analysis = compute() }
+    }
+
+    private var presetChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Self.presetMeta, id: \.kind) { meta in
+                    let selected = meta.kind == kind
+                    Button {
+                        Haptics.selection()
+                        Haptics.impact(.light)
+                        kind = meta.kind
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text(meta.emoji)
+                                .font(.system(size: 13))
+                            Text(isHe ? meta.he : meta.en)
+                                .font(.system(size: 12, weight: selected ? .bold : .medium, design: .rounded))
+                        }
+                        .foregroundColor(selected ? .white : Color.deepNavy)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(selected ? Color.deepNavy : Color.white)
+                        .clipShape(Capsule())
+                        .shadow(color: Color.black.opacity(selected ? 0.12 : 0.04), radius: 4, y: 2)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func pipelineCard<Content: View>(title: String, badge: String? = nil, accent: Color = Color.deepNavy, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                Spacer()
+                if let badge {
+                    Text(badge)
+                        .font(.system(size: 9, weight: .black, design: .rounded))
+                        .foregroundColor(accent)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(accent.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+            content()
+        }
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+    }
+
+    private func roleLabel(_ role: String) -> some View {
+        Text(role)
+            .font(.system(size: 9, weight: .black, design: .rounded))
+            .foregroundColor(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(pipelineRoleColor(role))
+            .clipShape(Capsule())
+    }
+    private func pipelineRoleColor(_ role: String) -> Color {
+        switch role {
+        case "Hero 1": Color(red: 239/255, green: 68/255, blue: 68/255)
+        case "Hero 2": Color(red: 59/255, green: 130/255, blue: 246/255)
+        case "Micro Fact": Color(red: 139/255, green: 92/255, blue: 246/255)
+        default: Color(red: 16/255, green: 185/255, blue: 129/255)
+        }
+    }
+    private func familyColor(_ family: RecapInsightFamily) -> Color {
+        Color(red: 100/255, green: 116/255, blue: 139/255)
+    }
+    private func scoreText(_ value: Double) -> String { String(format: "%.2f", value) }
+
+    private func summary(_ a: Analysis) -> some View {
+        let total = a.recap.totalSpent
+        let info = Self.presetMeta.first { $0.kind == kind }
+        return pipelineCard(
+            title: (info?.he ?? "") + " · " + (info?.en ?? ""),
+            badge: a.recap.transactionCount <= 2 ? "SPARSE 5 SHOTS" : "\(a.shots) SHOTS"
+        ) {
+            HStack(spacing: 16) {
+                metricBlock("Spent", l10n.format(amount: total))
+                metricBlock("Tx", "\(a.recap.transactionCount)")
+                metricBlock("Candidates", "\(a.candidates.count)")
+                metricBlock("Slots", "\(a.story.selectedInsights.count)")
+                metricBlock("Rejected", "\(a.rejections.count)")
+            }
+            Text(isHe
+                ? "רצף: פתיחה + סה״כ + פעילות + רובע + דינמי⁽≤4⁾ + הבחנות + דיוקן"
+                : "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait")
+                .font(.system(size: 11, weight: .regular, design: .default))
+                .foregroundColor(Color.textSecondary)
+            Text(isHe
+                ? "הערה: הדינמי בקצה ה־Flow מוגבל ל־3, וגם ל־2 בכרטיסי אינדקס – החישוב כאן הוא התקרה התיאורטית."
+                : "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling.")
+                .font(.system(size: 10, weight: .regular, design: .default))
+                .foregroundColor(Color.textMuted)
+        }
+    }
+
+    private func metricBlock(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .foregroundColor(Color.textMuted)
+            Text(value)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+        }
+    }
+
+    private func storyCard(_ a: Analysis) -> some View {
+        pipelineCard(
+            title: isHe ? "הסיפור המעוצב" : "Curated Story",
+            badge: "\(a.story.hero1 == nil ? 0 : 1) HERO · \(a.story.noticed.count) NOTICED · \(a.story.hero2 == nil ? 0 : 1) HERO2 · \(a.story.microFact == nil ? 0 : 1) FACT",
+            accent: Color(red: 239/255, green: 68/255, blue: 68/255)
+        ) {
+            if a.story.selectedInsights.isEmpty {
+                Text(isHe ? "אין סיפור — שום מועמדות לא עברה את הרף." : "No story — nothing cleared the bars.")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+            } else {
+                VStack(spacing: 12) {
+                    if let h1 = a.story.hero1 { insightRow(h1, role: "Hero 1") }
+                    ForEach(a.story.noticed) { row in insightRow(row, role: "Noticed") }
+                    if let h2 = a.story.hero2 { insightRow(h2, role: "Hero 2") }
+                    if let fact = a.story.microFact { insightRow(fact, role: "Micro Fact") }
+                }
+            }
+        }
+    }
+
+    private func insightRow(_ insight: RecapInsight, role: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                roleLabel(role)
+                Text(insight.kind.rawValue)
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundColor(isHe ? Color.deepNavy : Color.deepNavy)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                    .clipShape(Capsule())
+                Text("family=\(insight.family.rawValue)")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Spacer()
+                Text("Σ \(scoreText(insight.scores.total))")
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
+            Text(isHe ? insight.headlineHe : insight.headlineEn)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+            if let v = isHe ? insight.valueHe : insight.valueEn {
+                Text(v)
+                    .font(.system(size: 12, weight: .regular, design: .default))
+                    .foregroundColor(Color.textSecondary)
+            }
+            if let s = isHe ? insight.supportHe : insight.supportEn {
+                Text(s)
+                    .font(.system(size: 11, weight: .regular, design: .default))
+                    .foregroundColor(Color.textSecondary)
+                    .lineSpacing(2)
+            }
+            HStack(spacing: 6) {
+                subScore("su", insight.scores.surprise)
+                subScore("re", insight.scores.relevance)
+                subScore("co", insight.scores.contrast)
+                subScore("cf", insight.scores.confidence)
+                subScore("no", insight.scores.novelty)
+            }
+        }
+        .padding(12)
+        .background(Color(red: 248/255, green: 249/255, blue: 251/255))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func subScore(_ tag: String, _ value: Double) -> some View {
+        HStack(spacing: 3) {
+            Text(tag)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .foregroundColor(Color.textMuted)
+            Text(scoreText(value))
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(Color.white)
+        .clipShape(Capsule())
+    }
+
+    private func rejectionsCard(_ a: Analysis) -> some View {
+        pipelineCard(
+            title: isHe ? "דחיות" : "Rejections",
+            badge: "\(a.rejections.count)"
+        ) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(Array(a.rejections.enumerated()), id: \.offset) { _, rejection in
+                    HStack(alignment: .top, spacing: 6) {
+                        Text("•")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.textMuted)
+                        Text("\(rejection.insightID) — \(rejection.reason)")
+                            .font(.system(size: 11, weight: .regular, design: .default))
+                            .foregroundColor(Color.textMuted)
+                    }
+                }
+            }
+        }
+    }
+
+    private func poolCard(_ a: Analysis) -> some View {
+        pipelineCard(
+            title: isHe ? "בריכת מועמדויות" : "Candidate Pool",
+            badge: "\(a.candidates.count) + \(a.backbone.count) BACKBONE"
+        ) {
+            VStack(spacing: 8) {
+                if !a.backbone.isEmpty {
+                    HStack(spacing: 6) {
+                        roleLabel("Backbone")
+                        Text(isHe ? "רובע סיפור + רגע משמעותי" : "Biggest Story District + Meaningful Moment")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                        Spacer()
+                    }
+                }
+                ForEach(a.candidates.sorted { $0.scores.total > $1.scores.total }) { candidate in
+                    HStack(alignment: .top, spacing: 8) {
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(scoreText(candidate.scores.total))
+                                .font(.system(size: 12, weight: .black, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Text(candidate.family.rawValue)
+                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .foregroundColor(familyColor(candidate.family))
+                        }
+                        .frame(width: 64, alignment: isHe ? .trailing : .leading)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(isHe ? candidate.headlineHe : candidate.headlineEn)
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                                .lineLimit(1)
+                            Text("\(candidate.kind.rawValue) · \(candidate.basis.count) basis")
+                                .font(.system(size: 10, weight: .regular, design: .default))
+                                .foregroundColor(Color.textMuted)
+                        }
+                        Spacer()
+                    }
+                    .padding(10)
+                    .background(a.story.selectedInsights.contains(where: { $0.id == candidate.id })
+                        ? Color(red: 209/255, green: 250/255, blue: 229/255).opacity(0.6)
+                        : Color(red: 243/255, green: 244/255, blue: 246/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+            }
+        }
+    }
+
+    private func rawReports(_ a: Analysis) -> some View {
+        DisclosureGroup(isExpanded: $showRawReports) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Engine — generateCandidates")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Text(a.engineReport)
+                    .font(.system(size: 9, weight: .regular, design: .monospaced))
+                    .foregroundColor(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color(red: 248/255, green: 249/255, blue: 251/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                Text("Curator — curate")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                Text(a.curatorReport)
+                    .font(.system(size: 9, weight: .regular, design: .monospaced))
+                    .foregroundColor(Color.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Color(red: 248/255, green: 249/255, blue: 251/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .padding(.top, 6)
+        } label: {
+            HStack {
+                Text(isHe ? "דוחות גלם (Engine + Curator)" : "Raw reports (Engine + Curator)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                Spacer()
+                Text(showRawReports ? "▲" : "▼")
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+            }
+        }
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
     }
 }
 #endif

@@ -23,7 +23,6 @@ public struct AnalyticsView: View {
     private let storyVibrantPurple = Color.spentGreen
     private let storySoftLilac = Color.spentGreenSoft
 
-    @State private var selectedTab: String = "spending"
     @State private var selectedSlice: SpendingCategory? = nil
     @State private var selectedMonthOffset: Int = 0
     @State private var activeRecap: MonthlyRecap? = nil
@@ -194,13 +193,6 @@ public struct AnalyticsView: View {
     /// Crystal-clear comparison descriptor
     private var comparisonInfo: (text: String, isIncrease: Bool?, color: Color, bgColor: Color)? {
         let isHe = l10n.language == .hebrew
-        guard selectedTab == "spending" else {
-            if selectedTab == "income" {
-                return (isHe ? "הכנסה חודשית פעילה" : "Active monthly income", nil, MoneyCityTheme.textSecondary, MoneyCityTheme.jetBlack.opacity(0.04))
-            } else {
-                return (isHe ? "סך שנחסך החודש" : "Saved this month", nil, MoneyCityTheme.textSecondary, MoneyCityTheme.jetBlack.opacity(0.04))
-            }
-        }
 
         // If user wasn't in the app before this month, don't show an artificial difference vs zero
         guard hasPreviousMonthHistory else {
@@ -222,14 +214,6 @@ public struct AnalyticsView: View {
         }
     }
 
-    private var currentCitySavings: Double {
-        displayTransactions.filter { $0.category.canonical == .savings }.reduce(0) { $0 + $1.amount }
-    }
-
-    private var expectedIncome: Double {
-        BudgetService.monthlySpendingBudget(categoryBudgets: categoryBudgets, overallBudget: userMonthlyBudget)
-    }
-
     // MARK: - Body Layout
 
     public var body: some View {
@@ -238,11 +222,9 @@ public struct AnalyticsView: View {
 
             VStack(spacing: 0) {
                 // ── Sticky Header (Pinned outside ScrollView, matches HistoryView) ──
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     topNavigationBar
                     monthStepperRow
-                    flatSegmentedTabs
-                        .padding(.top, 2)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
@@ -257,12 +239,12 @@ public struct AnalyticsView: View {
                         compactBarChart
                             .padding(.horizontal, 20)
 
-                        if selectedTab == "spending" && !displayTransactions.isEmpty {
+                        if activeTransactionCount > 0 {
                             monthlyPulseRow
                                 .padding(.top, 4)
                         }
 
-                        if selectedTab == "spending" && housingThisMonth > 0 {
+                        if housingThisMonth > 0 {
                             housingLineItem
                                 .padding(.top, 2)
                                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -272,7 +254,7 @@ public struct AnalyticsView: View {
                             .padding(.horizontal, 20)
                             .padding(.top, 4)
 
-                        if selectedTab == "spending" && !categoryTotals.isEmpty {
+                        if !categoryTotals.isEmpty {
                             categoryDonutCard
                                 .padding(.horizontal, 20)
                                 .padding(.top, 8)
@@ -314,13 +296,14 @@ public struct AnalyticsView: View {
             if isRecapWindowActiveForTargetMonth {
                 Button(action: {
                     Haptics.impact(.medium)
-                    activeRecap = MonthlyRecapService.generateRecap(
+                    activeRecap = MonthlyRecapService.timelineRecap(
                         for: targetMonthDate,
                         allTransactions: allTransactions,
                         monthlyBudget: BudgetService.monthlySpendingBudget(
                             categoryBudgets: categoryBudgets,
                             overallBudget: userMonthlyBudget
-                        )
+                        ),
+                        context: modelContext
                     )
                 }) {
                     HStack(spacing: 5) {
@@ -394,7 +377,7 @@ public struct AnalyticsView: View {
     private var heroKpiSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(l10n.format(amount: selectedTab == "savings" ? currentCitySavings : (selectedTab == "income" ? expectedIncome : totalSpent)))
+                Text(l10n.format(amount: totalSpent))
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .lineLimit(1)
@@ -484,47 +467,6 @@ public struct AnalyticsView: View {
         }
     }
 
-    // MARK: - Modern Flat Segmented Tabs
-
-    private var flatSegmentedTabs: some View {
-        let isHe = l10n.language == .hebrew
-        let tabs: [(id: String, label: String)] = [
-            ("spending", isHe ? "הוצאות" : "Spending"),
-            ("income", isHe ? "הכנסות" : "Income"),
-            ("savings", isHe ? "חיסכון" : "Savings")
-        ]
-
-        return HStack(spacing: 0) {
-            ForEach(tabs, id: \.id) { tab in
-                let isSel = selectedTab == tab.id
-                Button(action: {
-                    Haptics.selection()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                        selectedTab = tab.id
-                    }
-                }) {
-                    Text(tab.label)
-                        .font(.system(size: 13, weight: isSel ? .bold : .medium, design: .default))
-                        .foregroundColor(isSel ? Color.deepNavy : Color.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 7)
-                        .background(
-                            ZStack {
-                                if isSel {
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(Color.white)
-                                        .shadow(color: Color.black.opacity(0.06), radius: 4, y: 1)
-                                }
-                            }
-                        )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(3)
-        .background(Color(uiColor: .systemGray6).opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
 
     // MARK: - Compact Comparative Bar Chart
 

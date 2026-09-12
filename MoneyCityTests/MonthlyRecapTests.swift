@@ -423,7 +423,7 @@ final class MonthlyRecapPortraitTests: XCTestCase {
 final class MonthlyRecapArchiveVisualTests: XCTestCase {
     @MainActor
     func testMonthlyRecapArchiveRendersPostcardsAndSavesVisuals() throws {
-        let schema = Schema([Transaction.self, CategoryBudget.self])
+        let schema = Schema([Transaction.self, CategoryBudget.self, RecapSnapshot.self])
         let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
         let context = container.mainContext
         
@@ -493,5 +493,117 @@ final class MonthlyRecapArchiveVisualTests: XCTestCase {
         
         // Restore language
         l10n.language = .hebrew
+    }
+}
+
+/// Phase 10 visual QA: render every shot of the seven curated presets in Hebrew and English,
+/// assert the shot-count contracts (max 9, sparse exactly 5), and dump the export/share
+/// portrait exactly as `share()` composes it.
+final class RecapVisualQATests: XCTestCase {
+    private static let outDir = "/Users/bnymynwysmn/.gemini/antigravity/brain/0b66d33b-b50a-4abf-bf18-87bef410dacc/recap_qa"
+
+    @MainActor
+    private func renderPNG(_ view: some View) -> Data? {
+        let content = view.frame(width: 390, height: 844)
+        let renderer = ImageRenderer(content: content)
+        renderer.isOpaque = true
+        return renderer.uiImage?.pngData()
+    }
+
+    @MainActor
+    func testAllPresetsRenderEveryShotInBothLanguages() throws {
+        beforeEachRender: do {
+            try? FileManager.default.createDirectory(atPath: Self.outDir, withIntermediateDirectories: true)
+        }
+        for kind in RecapLabKind.allCases {
+            let recap = RecapPreviewData.recap(kind: kind)
+            let shots = RecapEditorialShot.sequence(for: recap)
+            XCTAssertLessThanOrEqual(shots.count, 9, "\(kind.rawValue) must never exceed 9 shots")
+            if kind == .minimalData {
+                XCTAssertEqual(shots.count, 5, "minimalData must stay exactly 5 shots")
+            }
+            if case .noticed? = shots.last(where: { if case .noticed = $0 { return true }; return false }) {
+                XCTAssertFalse(recap.noticedInsights.isEmpty)
+            } else {
+                XCTAssertTrue(recap.noticedInsights.isEmpty)
+            }
+            XCTAssertTrue(shots.contains { if case .portrait = $0 { return true }; return false })
+
+            for (i, shot) in shots.enumerated() {
+                for he in [true, false] {
+                    let frame = RecapSceneFrame(shot: shot, recap: recap, time: max(shot.duration * 0.9, 0.2), he: he, currency: "₪")
+                        .environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
+                    let data = try XCTUnwrap(renderPNG(frame), "\(kind.rawValue) shot \(i) \(he ? "he" : "en")")
+                    try data.write(to: URL(fileURLWithPath: "\(Self.outDir)/\(kind.rawValue)_shot\(i)_\(he ? "he" : "en").png"))
+                }
+            }
+
+            // Export/share portrait exactly as MonthlyRecapSheet.share() produces it.
+            let export = RecapSceneFrame(shot: .portrait, recap: recap, time: 7.9, he: true, currency: "₪", export: true)
+                .frame(width: 390, height: 844)
+            let exportData = try XCTUnwrap(renderPNG(export), "\(kind.rawValue) export")
+            try exportData.write(to: URL(fileURLWithPath: "\(Self.outDir)/\(kind.rawValue)_export.png"))
+            if kind == .richNoticed {
+                XCTAssertTrue(
+                    recap.noticedInsights.count >= 2 && recap.noticedInsights.count <= 4,
+                    "richNoticed must carry 2–4 noticed rows, got \(recap.noticedInsights.count)"
+                )
+                XCTAssertTrue(shots.contains { if case .noticed = $0 { return true }; return false })
+            }
+        }
+    }
+
+    /// The rich preset must produce a REAL noticed shot through the untouched pipeline —
+    /// preset transactions → `RecapInsightEngine` → `RecapInsightCurator` → `.noticed` rows.
+    /// No injection, no threshold changes; the curator's own `debugCuratorReport` is printed
+    /// so the selected families and scores are visible in the test log.
+    @MainActor
+    func testRichNoticedPresetProducesNaturalNoticedStoryThroughRealPipeline() {
+        let transactions = RecapPreviewData.transactions(kind: .richNoticed)
+        let recap = RecapPreviewData.recap(kind: .richNoticed)
+        let month = recap.date
+
+        let curated = RecapInsightCurator.curate(for: month, allTransactions: transactions)
+        XCTAssertGreaterThanOrEqual(curated.noticed.count, 2, "engine+curator must surface ≥2 noticed rows")
+        XCTAssertLessThanOrEqual(curated.noticed.count, RecapInsightCurator.maxNoticedRows)
+        XCTAssertEqual(
+            recap.noticedInsights.count, curated.noticed.count,
+            "recap must wire the curator's noticed rows without injection"
+        )
+        let shots = RecapEditorialShot.sequence(for: recap)
+        XCTAssertTrue(shots.contains { if case .noticed = $0 { return true }; return false })
+        XCTAssertGreaterThanOrEqual(shots.count, 5)
+        XCTAssertLessThanOrEqual(shots.count, 9)
+
+        print(RecapInsightCurator.debugCuratorReport(for: month, allTransactions: transactions))
+        for row in recap.noticedInsights {
+            print("  noticed row: family=\(row.family ?? "—") score=\(String(format: "%.3f", row.score))")
+        }
+    }
+
+    /// Forced-render QA of the "Things We Noticed" and dynamic-insight layouts. The curated
+    /// presets rarely pass the `≥2 diverse rows` bar, so the noticed shot is exercised with
+    /// the same rows the flow would compose (`MonthlyRecapSheet` builds `.noticed` from
+    /// `noticedInsights`); the dynamic `.insight` shot is exercised on the strongest insight.
+    @MainActor
+    func testNoticedAndInsightLayoutsRenderInBothLanguages() throws {
+        try? FileManager.default.createDirectory(atPath: Self.outDir, withIntermediateDirectories: true)
+        let recap = RecapPreviewData.recap(kind: .delivery)
+        let rows = Array(recap.dynamicInsights.prefix(4))
+        XCTAssertFalse(rows.isEmpty)
+
+        for he in [true, false] {
+            let noticed = RecapSceneFrame(shot: .noticed(rows), recap: recap, time: 6.0, he: he, currency: "₪")
+                .environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
+            let data = try XCTUnwrap(renderPNG(noticed))
+            try data.write(to: URL(fileURLWithPath: "\(Self.outDir)/noticed_forced_\(he ? "he" : "en").png"))
+
+            if let strongest = rows.first, let insight = RecapEditorialShot.insight(strongest) as RecapEditorialShot? {
+                let frame = RecapSceneFrame(shot: insight, recap: recap, time: 4.6, he: he, currency: "₪")
+                    .environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
+                let insightData = try XCTUnwrap(renderPNG(frame))
+                try insightData.write(to: URL(fileURLWithPath: "\(Self.outDir)/insight_curated_\(he ? "he" : "en").png"))
+            }
+        }
     }
 }

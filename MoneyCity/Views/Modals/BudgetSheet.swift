@@ -197,16 +197,11 @@ public struct BudgetSheet: View {
     private var expectedByNow: Double { plannedSpending * monthElapsed }
 
     private var paceIcon: MoneyIconName {
-        if expectedByNow <= 0 { return .clock }
-        return spentThisMonth > expectedByNow ? .flame : .leaf
+        .clock
     }
 
     private var paceColor: Color {
-        guard plannedSpending > 0, expectedByNow > 0 else { return Color.deepNavy }
-        let ratio = spentThisMonth / expectedByNow
-        if ratio > 1.15 { return Color.red }
-        if ratio > 1.0  { return Color.themeYellow }
-        return Color.themeMint
+        Color.deepNavy
     }
 
     private var paceExplanation: String {
@@ -219,12 +214,12 @@ public struct BudgetSheet: View {
         let diff = (spentThisMonth - expectedByNow).rounded()
         if diff > 0 {
             return isHebrew
-                ? "עברו \(pct)% מהחודש והוצאת \(l10n.format(amount: diff)) מעבר לקצב."
-                : "\(pct)% of the month has passed and you are \(l10n.format(amount: diff)) ahead of pace."
+                ? "עברו \(pct)% מהחודש. קצב ההוצאות גבוה ב־\(l10n.format(amount: diff)) מהתכנון."
+                : "\(pct)% of the month has passed. Spending pace is \(l10n.format(amount: diff)) ahead of plan."
         }
         return isHebrew
-            ? "עברו \(pct)% מהחודש ואתה \(l10n.format(amount: -diff)) מתחת לקצב."
-            : "\(pct)% of the month has passed and you are \(l10n.format(amount: -diff)) under pace."
+            ? "עברו \(pct)% מהחודש. קצב ההוצאות נמוך ב־\(l10n.format(amount: -diff)) מהתכנון."
+            : "\(pct)% of the month has passed. Spending pace is \(l10n.format(amount: -diff)) under plan."
     }
 
     private func figure(_ label: String, _ value: Double, _ color: Color) -> some View {

@@ -13,6 +13,9 @@
     "?" : {
 
     },
+    "·" : {
+
+    },
     "(%lld%%)" : {
 
     },
@@ -37,8 +40,35 @@
     "%@" : {
 
     },
-    "%@ — איזה כיף שבאת!" : {
-
+    "%@ — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %lld basis" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld basis"
+          }
+        }
+      }
     },
     "%@ · Monthly Target %@" : {
       "localizations" : {
@@ -100,13 +130,23 @@
         }
       }
     },
+    "%@ %@ לעיר" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ לעיר"
+          }
+        }
+      }
+    },
     "%@ City is Ready!" : {
 
     },
     "%@ hidden from total" : {
 
     },
-    "%@ joined your city!" : {
+    "%@ joined the city" : {
 
     },
     "%@ Recap is Ready" : {
@@ -143,6 +183,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@, %2$@, %3$@ %4$@, %5$@"
+          }
+        }
+      }
+    },
+    "%@. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. %2$@"
           }
         }
       }
@@ -306,17 +356,13 @@
     "+%@" : {
 
     },
-    "+%@ · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "+%1$@ · %2$@"
-          }
-        }
-      }
-    },
     "≈ %@" : {
+
+    },
+    "▲" : {
+
+    },
+    "▼" : {
 
     },
     "✦ MONTHLY RECAP" : {
@@ -379,10 +425,13 @@
     "A goal gives you a reason to open the app on a day you bought nothing." : {
 
     },
-    "A little addition for your weekly progress" : {
+    "A new month in the city" : {
 
     },
-    "A new city is growing" : {
+    "About city additions" : {
+
+    },
+    "About city life" : {
 
     },
     "About SPENT" : {
@@ -478,9 +527,6 @@
     "All transactions have been categorized. You're completely caught up." : {
 
     },
-    "Already in the city, here to stay. No placing or managing — just a familiar face to spot." : {
-
-    },
     "Always remember this category" : {
 
     },
@@ -569,6 +615,9 @@
     "Base Currency" : {
 
     },
+    "Biggest Story District + Meaningful Moment" : {
+
+    },
     "Breakdown for %@:" : {
 
     },
@@ -585,6 +634,9 @@
 
     },
     "Cancel" : {
+
+    },
+    "Candidate Inspector" : {
 
     },
     "Capture Apple Pay Payment (Simple)" : {
@@ -645,9 +697,6 @@
     "City" : {
 
     },
-    "City companions" : {
-
-    },
     "City companions — weekly addition" : {
 
     },
@@ -679,6 +728,9 @@
 
     },
     "Create" : {
+
+    },
+    "Curator — curate" : {
 
     },
     "Currency" : {
@@ -818,6 +870,12 @@
     "Edit Transaction" : {
 
     },
+    "Engine — generateCandidates" : {
+
+    },
+    "Engine + Curator ↗" : {
+
+    },
     "Enter ✎" : {
 
     },
@@ -850,16 +908,31 @@
     "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero." : {
 
     },
+    "family=%@" : {
+
+    },
     "Filter to This Day Only" : {
 
     },
     "Financial Privacy at SPENT" : {
 
     },
+    "First expense recorded this month" : {
+
+    },
     "Fixed Expenses" : {
 
     },
     "Fixed monthly total" : {
+
+    },
+    "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling." : {
+
+    },
+    "Friends in the city" : {
+
+    },
+    "From time to time, someone new will arrive here." : {
 
     },
     "Full journey from city concept to reveal, with all transitions" : {
@@ -878,6 +951,9 @@
 
     },
     "Goal name (e.g. Emergency Fund, Trip)" : {
+
+    },
+    "Got it" : {
 
     },
     "Haptic Feedback" : {
@@ -979,6 +1055,9 @@
     "Individual Step Previews:" : {
 
     },
+    "Inspect engine candidates, the curated story, rejections & scores per preset" : {
+
+    },
     "Installments" : {
 
     },
@@ -995,9 +1074,6 @@
 
     },
     "Keep streak tomorrow" : {
-
-    },
-    "Let's get to know your weeks first" : {
 
     },
     "Limited Time" : {
@@ -1019,9 +1095,6 @@
 
     },
     "Mayor Name" : {
-
-    },
-    "Meet in the city" : {
 
     },
     "Meet your city" : {
@@ -1073,9 +1146,6 @@
     "Merge" : {
 
     },
-    "Mindful Spending & City Builder" : {
-
-    },
     "Monthly budget" : {
 
     },
@@ -1106,13 +1176,13 @@
     "Next" : {
 
     },
-    "Next addition check from" : {
-
-    },
     "No expenses recorded this month" : {
 
     },
     "No expenses this month" : {
+
+    },
+    "No expenses this month • %@0" : {
 
     },
     "No goals yet" : {
@@ -1121,19 +1191,16 @@
     "No Monthly Recaps Yet" : {
 
     },
-    "No new addition to choose this week yet" : {
-
-    },
     "No savings goals defined yet" : {
 
     },
     "No snapshots yet." : {
 
     },
-    "Not in use — the ceilings below take over" : {
+    "No story — nothing cleared the bars." : {
 
     },
-    "Not now" : {
+    "Not in use — the ceilings below take over" : {
 
     },
     "Note / Merchant name (optional)" : {
@@ -1154,10 +1221,13 @@
     "On the budget screen" : {
 
     },
-    "One choice every seven days when everyday spending decreases by more than ₪10 compared with the previous week. Existing companions always stay." : {
+    "Open 3D ↗" : {
 
     },
-    "Open 3D ↗" : {
+    "Open Reward Claimed State" : {
+
+    },
+    "Open Reward Selection" : {
 
     },
     "Open Shortcuts" : {
@@ -1186,7 +1256,7 @@
     "Or break it down by category — any ceiling you fill in here replaces the overall figure." : {
 
     },
-    "Over" : {
+    "Over target by %@" : {
 
     },
     "Overall" : {
@@ -1238,6 +1308,9 @@
           }
         }
       }
+    },
+    "Raw reports (Engine + Curator)" : {
+
     },
     "Reading the amount and merchant from your receipt…" : {
 
@@ -1316,7 +1389,7 @@
         }
       }
     },
-    "Remaining" : {
+    "Remaining in budget" : {
 
     },
     "Rent" : {
@@ -1344,6 +1417,9 @@
 
     },
     "Reset Filters" : {
+
+    },
+    "Reset Reward Cooldowns" : {
 
     },
     "Restore" : {
@@ -1441,10 +1517,13 @@
     "See All" : {
 
     },
-    "See your skyline growth and spending highlights" : {
+    "See how the month took shape in your city" : {
 
     },
     "Select Category" : {
+
+    },
+    "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
 
     },
     "Set a goal for emergencies, vacation, or investments — and watch the park grow." : {
@@ -1481,6 +1560,12 @@
 
     },
     "Simulates positive weekly progress (₪480 saved), interactive selection & join animation" : {
+
+    },
+    "Something new in the city" : {
+
+    },
+    "Spending awareness, visualized as a city" : {
 
     },
     "Spending Breakdown" : {
@@ -1525,6 +1610,9 @@
     "SPENT City" : {
 
     },
+    "SPENT looks at your activity and changes in spending patterns to occasionally bring new life to the city." : {
+
+    },
     "SPENT Month" : {
 
     },
@@ -1534,7 +1622,7 @@
     "‏SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות." : {
 
     },
-    "Start Today! ✨" : {
+    "SPENT מסתכלת על השימוש שלך ועל שינויים בדפוס ההוצאות כדי להוסיף מדי פעם חיים חדשים לעיר." : {
 
     },
     "Status:" : {
@@ -1596,9 +1684,6 @@
     "The park changes with your budget and savings." : {
 
     },
-    "The whole gang is here" : {
-
-    },
     "This is also recorded as a savings transfer and grows the city's park." : {
 
     },
@@ -1630,6 +1715,9 @@
 
     },
     "Total This Year" : {
+
+    },
+    "Track Today! ✨" : {
 
     },
     "Transaction Amount" : {
@@ -1709,6 +1797,12 @@
     "Transactions to Categorize" : {
 
     },
+    "Trigger Surprise Reward" : {
+
+    },
+    "Trigger Weekly Reward" : {
+
+    },
     "Trip to Japan" : {
 
     },
@@ -1719,9 +1813,6 @@
 
     },
     "Undo" : {
-
-    },
-    "Vacant Lot • %@0" : {
 
     },
     "Version, copyright & details" : {
@@ -1736,9 +1827,6 @@
     "View Story" : {
 
     },
-    "We compare two weeks of everyday spending, excluding housing, subscriptions, health, finance and savings. A decrease of more than ₪10 can unlock a new companion. There's no need to skip things you need." : {
-
-    },
     "Weekly Companion Ceremony" : {
 
     },
@@ -1746,9 +1834,6 @@
 
     },
     "Welcome & Onboarding" : {
-
-    },
-    "Welcome to the city" : {
 
     },
     "WELCOME TO THE CITY OF" : {
@@ -1808,6 +1893,9 @@
         }
       }
     },
+    "Who’s joining this time?" : {
+
+    },
     "Without income, the savings figure rests on a number the app invented." : {
 
     },
@@ -1823,22 +1911,13 @@
     "Your city is ready for your story" : {
 
     },
-    "Your companion wasn't added" : {
-
-    },
-    "Your companions are here to stay. There are no more companions to choose right now." : {
+    "Your companion wasn’t added" : {
 
     },
     "Your data stays on your device" : {
 
     },
-    "Your everyday spending in the last 7 days was %@ lower than in the previous 7 days. Choose one companion to stay in your city." : {
-
-    },
     "Your financial data stays on your device" : {
-
-    },
-    "Your first building of the month" : {
 
     },
     "Your first recap will appear at the end of the month" : {
@@ -1848,6 +1927,9 @@
 
     },
     "Zero writes to SwiftData. Does not modify real transactions, budget, city progression, or onboarding completion flags." : {
+
+    },
+    "Σ %@" : {
 
     },
     "אגלה בעצמי" : {
@@ -1866,6 +1948,9 @@
 
     },
     "אין הוצאות בחודש הזה" : {
+
+    },
+    "אין סיפור — שום מועמדות לא עברה את הרף." : {
 
     },
     "אין עדיין יעדים" : {
@@ -1925,9 +2010,6 @@
     "ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
 
     },
-    "ב־7 הימים האחרונים ההוצאות היומיומיות היו נמוכות ב־%@ מב־7 הימים שלפניהם. אפשר לבחור חבר אחד שיישאר בעיר." : {
-
-    },
     "בגלל ש-iOS שומרת על פרטיות, נדרש חיבור קצר באפליקציית 'קיצורים' (Shortcuts) כדי שכל תשלום ייקלט מיד בעיר שלך." : {
 
     },
@@ -1940,13 +2022,7 @@
     "בדיקת מסכים בודדים:" : {
 
     },
-    "בוא לראות איך העיר שלך נראית ומה היו השיאים" : {
-
-    },
-    "בואו נראה בעיר" : {
-
-    },
-    "בחירה אחת בכל שבעה ימים, כשההוצאות היומיומיות יורדות ביותר מ־10 ₪ לעומת השבוע הקודם. החברים שכבר הצטרפו נשארים תמיד." : {
+    "בוא לראות איך החודש קיבל צורה בעיר" : {
 
     },
     "בחר קטגוריה" : {
@@ -1992,6 +2068,9 @@
     "גרסה, זכויות יוצרים ומידע" : {
 
     },
+    "דוחות גלם (Engine + Curator)" : {
+
+    },
     "דיווח על באגים, שאלות והצעות" : {
 
     },
@@ -2002,6 +2081,9 @@
 
     },
     "הבא" : {
+
+    },
+    "הבנתי" : {
 
     },
     "הגדר יעד" : {
@@ -2064,6 +2146,9 @@
     "הוצאה קבועה חדשה" : {
 
     },
+    "הוצאה ראשונה שנרשמה החודש" : {
+
+    },
     "הוצאות דיור" : {
 
     },
@@ -2088,13 +2173,10 @@
     "הזנת סכום לתשלום" : {
 
     },
-    "החבר החדש כבר בעיר ויישאר בה. בלי הצבה או ניהול — רק לפגוש אותו מדי פעם." : {
-
-    },
     "החבר עדיין לא נוסף" : {
 
     },
-    "החברים שהצטרפו נשארים בעיר. כרגע אין חברים נוספים לבחירה." : {
+    "החברים בעיר" : {
 
     },
     "החודש: %@" : {
@@ -2136,9 +2218,6 @@
     "הכל" : {
 
     },
-    "המבנה הראשון שלך לחודש זה" : {
-
-    },
     "המידע הפיננסי נשמר במכשיר שלך" : {
 
     },
@@ -2173,6 +2252,9 @@
 
     },
     "העיר שלך החודש" : {
+
+    },
+    "הערה: הדינמי בקצה ה־Flow מוגבל ל־3, וגם ל־2 בכרטיסי אינדקס – החישוב כאן הוא התקרה התיאורטית." : {
 
     },
     "הפארק" : {
@@ -2241,9 +2323,6 @@
     "הקשה להמשך" : {
 
     },
-    "השבוע עדיין אין תוספת חדשה לבחירה" : {
-
-    },
     "השהה" : {
 
     },
@@ -2254,12 +2333,6 @@
 
     },
     "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : {
-
-    },
-    "התוספת הבאה תיבדק החל מ־" : {
-
-    },
-    "התחל היום! ✨" : {
 
     },
     "התמונה לא נוצרה" : {
@@ -2289,6 +2362,9 @@
     "חבר את נתוני העסקה (כמות ובית עסק 💡)" : {
 
     },
+    "חודש חדש בעיר" : {
+
+    },
     "חזרה" : {
 
     },
@@ -2305,9 +2381,6 @@
 
     },
     "חפש עסקה או קטגוריה..." : {
-
-    },
-    "חריגה" : {
 
     },
     "טיול ליפן" : {
@@ -2349,9 +2422,6 @@
     "כל %lld בחודש" : {
 
     },
-    "כל החבורה כבר בעיר שלך" : {
-
-    },
     "כל העסקאות שויכו לקטגוריות מתאימות. אין עסקאות שממתינות לסיווג." : {
 
     },
@@ -2367,16 +2437,10 @@
     "לא בשימוש — התקרות למטה גוברות" : {
 
     },
-    "לא עכשיו" : {
-
-    },
     "לאיזו קטגוריה להעביר?" : {
 
     },
     "לאישור (%lld)" : {
-
-    },
-    "לבחור שיצטרף" : {
 
     },
     "לוח שנה ומעבר לתאריך" : {
@@ -2391,13 +2455,16 @@
     "לכל בניין יש סיפור" : {
 
     },
+    "ללא הוצאות החודש • %@" : {
+
+    },
     "לעיר" : {
 
     },
     "לשחזר את הגיבוי הזה?" : {
 
     },
-    "מגרש פנוי • %@ החודש" : {
+    "מדי פעם תופיע כאן תוספת חדשה." : {
 
     },
     "מדיניות פרטיות" : {
@@ -2433,6 +2500,9 @@
     "מטבע ראשי" : {
 
     },
+    "מי מצטרף הפעם?" : {
+
+    },
     "מיזוג" : {
 
     },
@@ -2451,19 +2521,28 @@
     "ממוצע: %@/חודש" : {
 
     },
+    "מנוע + אוצר ↗" : {
+
+    },
     "מעבדת תלת-ממד אינטראקטיבית" : {
 
     },
-    "מעקב הוצאות ובניית עיר חכמה" : {
+    "מעל היעד ב־%@" : {
+
+    },
+    "מעקב הוצאות שמקבל צורה בעיר" : {
 
     },
     "מפענח סכום ופרטי עסק מתמונת הקבלה..." : {
 
     },
-    "מצב סיום: כל החברים כבר בעיר" : {
+    "מפקח מועמדויות" : {
 
     },
-    "מצטרפים לעיר" : {
+    "מפקח מועמדויות (Candidate Inspector)" : {
+
+    },
+    "מצב סיום: כל החברים כבר בעיר" : {
 
     },
     "מצטרפים לעיר — תוספת שבועית" : {
@@ -2472,10 +2551,10 @@
     "מקורות הכנסה" : {
 
     },
-    "משוב במגע" : {
+    "משהו חדש בעיר" : {
 
     },
-    "משווים שני שבועות של הוצאות יומיומיות, בלי דיור, מנויים, בריאות, בנק וחיסכון. ירידה של יותר מ־10 ₪ יכולה לפתוח בחירה של חבר חדש. אין צורך לוותר על דברים שאתה צריך." : {
+    "משוב במגע" : {
 
     },
     "משכורת" : {
@@ -2493,7 +2572,7 @@
     "נוצר בישראל באהבה 🏙️" : {
 
     },
-    "נותר להוציא" : {
+    "נותר בתקציב" : {
 
     },
     "נותרו %@ ליעד" : {
@@ -2581,7 +2660,10 @@
     "עזרה ומשוב" : {
 
     },
-    "עיר חדשה מתחילה לצמוח" : {
+    "על החיים בעיר" : {
+
+    },
+    "על התוספות בעיר" : {
 
     },
     "עסקאות" : {
@@ -2603,6 +2685,9 @@
 
     },
     "עסקאות שמחכות לסיווג" : {
+
+    },
+    "עקוב היום! ✨" : {
 
     },
     "ערוך עסקה" : {
@@ -2662,13 +2747,13 @@
     "צפה בסטורי" : {
 
     },
+    "צפייה במועמדויות המנוע, הסיפור המעוצב, הדחיות והניקוד לכל Preset" : {
+
+    },
     "צפייה מחדש בסיור העיר וההגדרות" : {
 
     },
     "קבלת פוש מיידי כשרכישה נקלטת בהצלחה בעיר" : {
-
-    },
-    "קודם נכיר את השבועות שלך" : {
 
     },
     "קטגוריה" : {
@@ -2689,7 +2774,13 @@
     "קצב ההוצאות של החודש" : {
 
     },
+    "רובע סיפור + רגע משמעותי" : {
+
+    },
     "רצף ימים פעיל" : {
+
+    },
+    "רצף: פתיחה + סה״כ + פעילות + רובע + דינמי⁽≤4⁾ + הבחנות + דיוקן" : {
 
     },
     "שגרת העיר" : {
@@ -2769,9 +2860,6 @@
 
     },
     "שפת ממשק" : {
-
-    },
-    "תוספת קטנה על ההתקדמות השבועית שלך" : {
 
     },
     "תצוגת 3D אינטראקטיבית עם החלפת מצבי צפיפות בזמן אמת – מתחילת חודש ועד מגה-מטרופולין:" : {

@@ -5,6 +5,7 @@ import SwiftData
 public struct MonthlyRecapArchiveView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
@@ -51,10 +52,11 @@ public struct MonthlyRecapArchiveView: View {
                                 if isCurrentMonthInProgress(monthDate) {
                                     currentMonthInProgressCard(monthDate)
                                 } else {
-                                    let recap = MonthlyRecapService.generateRecap(
+                                    let recap = MonthlyRecapService.timelineRecap(
                                         for: monthDate,
                                         allTransactions: allTransactions,
-                                        monthlyBudget: effectiveMonthlyBudget
+                                        monthlyBudget: effectiveMonthlyBudget,
+                                        context: modelContext
                                     )
                                     
                                     Button {

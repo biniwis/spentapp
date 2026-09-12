@@ -19,7 +19,7 @@ public struct CityConfirmationBanner: View {
                 MoneyIcon(.checkCircle, size: 13)
                     .foregroundColor(MoneyCityTheme.mint)
 
-                Text("+\(amountStr) · \(label)")
+                Text("\(amountStr) · \(label)")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
             }

@@ -38,6 +38,11 @@ struct AppRootView: View {
     @State private var route: RootRoute = .resolving
     @State private var justCompletedOnboarding: Bool = false
 
+    #if DEBUG
+    @State private var qaRecap: MonthlyRecap? = nil
+    @State private var qaShowDesignLab = false
+    #endif
+
     var body: some View {
         ZStack {
             switch route {
@@ -72,8 +77,40 @@ struct AppRootView: View {
         .onAppear {
             migrateLegacyMonthlyTargetIncomeIfNeeded()
             resolveInitialRoute()
+            #if DEBUG
+            configureDebugLaunchRoute()
+            #endif
+        }
+        #if DEBUG
+        .fullScreenCover(item: $qaRecap) { recap in
+            MonthlyRecapSheet(recap: recap, onNavigateToCity: nil)
+                .environmentObject(LocalizationManager.shared)
+        }
+        .sheet(isPresented: $qaShowDesignLab) {
+            DesignLabView()
+                .environmentObject(LocalizationManager.shared)
+        }
+        #endif
+    }
+
+    #if DEBUG
+    private func configureDebugLaunchRoute() {
+        let args = ProcessInfo.processInfo.arguments
+        for arg in args where arg.hasPrefix("-openRecapQA=") {
+            guard let kind = RecapLabKind(rawValue: String(arg.dropFirst("-openRecapQA=".count))) else { continue }
+            let recap = RecapPreviewData.recap(kind: kind)
+            DispatchQueue.main.async {
+                qaRecap = recap
+            }
+            return
+        }
+        if args.contains("-openDesignLab") {
+            DispatchQueue.main.async {
+                qaShowDesignLab = true
+            }
         }
     }
+    #endif
 
     private func resolveInitialRoute() {
         guard route == .resolving else { return }

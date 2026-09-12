@@ -204,12 +204,12 @@ public final class LocalizationManager: ObservableObject {
         case "total_this_month": return isHebrew ? "סה״כ החודש" : "Total This Month"
         case "total_this_year": return isHebrew ? "הוצאות השנה" : "Spent This Year"
         case "transactions_count": return isHebrew ? "עסקאות" : "Transactions"
-        case "enrichments_count": return isHebrew ? "שדרוגים" : "Upgrades"
+        case "enrichments_count": return isHebrew ? "חברים בעיר" : "City Companions"
         case "weekly_expenses": return isHebrew ? "הוצאות שבועיות" : "Weekly Expenses"
         case "by_category": return isHebrew ? "לפי קטגוריה" : "By Category"
         case "quick_settings": return isHebrew ? "הגדרות מהירות" : "Quick Settings"
         case "all_settings": return isHebrew ? "כל ההגדרות" : "All Settings"
-        case "city_upgrades": return isHebrew ? "שדרוגי העיר שלך" : "Your City Upgrades"
+        case "city_upgrades": return isHebrew ? "חברים בעיר שלך" : "Your City Companions"
         case "yearly_breakdown": return isHebrew ? "שבירת הוצאות השנה" : "Yearly Spending Breakdown"
 
         // Quick Add
@@ -232,7 +232,7 @@ public final class LocalizationManager: ObservableObject {
         case "active": return isHebrew ? "פעיל" : "Active"
         case "not_configured": return isHebrew ? "לא הוגדר" : "Not set up"
         case "apple_pay_setup_hint": return isHebrew ? "עדיין לא נקלטה עסקה אוטומטית. הגדר את האוטומציה ב-Shortcuts." : "No automatic transaction captured yet. Set up the Shortcuts automation."
-        case "apple_pay_info": return isHebrew ? "תשלום בחנות (הצמדת הטלפון) נקלט אוטומטית, משויך לקטגוריה ובונה את השכונה המתאימה. רכישות אונליין יש להזין ידנית — iOS לא מאפשר לקלוט אותן." : "In-store tap payments are logged automatically, categorized, and shape their district. Online purchases must be added manually — iOS does not expose them."
+        case "apple_pay_info": return isHebrew ? "תשלום בחנות (הצמדת הטלפון) נקלט אוטומטית, משויך לקטגוריה ומעדכן את האזור המתאים בעיר. רכישות אונליין יש להזין ידנית — iOS לא מאפשר לקלוט אותן." : "In-store tap payments are logged automatically, categorized, and update their district. Online purchases must be added manually — iOS does not expose them."
         case "notifications": return isHebrew ? "התראות ותזכורות שבועיות" : "Weekly Notifications & Status"
         case "haptics": return isHebrew ? "משוב במגע" : "Haptic Feedback"
         case "data_management": return isHebrew ? "ניהול נתונים וייצוא" : "Data Management & Export"

@@ -112,7 +112,7 @@ public struct InspectorModalView: View {
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(Color.primaryBlue)
                 } else {
-                    Text(l10n.language == .hebrew ? "מגרש פנוי • \(l10n.format(amount: 0)) החודש" : "Vacant Lot • \(l10n.baseCurrency.symbol)0")
+                    Text(l10n.language == .hebrew ? "ללא הוצאות החודש • \(l10n.format(amount: 0))" : "No expenses this month • \(l10n.baseCurrency.symbol)0")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textMuted)
                 }
@@ -136,7 +136,7 @@ public struct InspectorModalView: View {
             Text(l10n.language == .hebrew ? "סטטוס:" : "Status:")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundColor(Color.textMuted)
-            Text(isSortingHub ? (info.amount > 0 ? (l10n.language == .hebrew ? "ממתין לסיווג" : "Pending Categorization") : (l10n.language == .hebrew ? "הכול מסווג" : "All Categorized")) : (info.amount > 0 ? info.trendText : (l10n.language == .hebrew ? "ממתין להוצאה ראשונה" : "Waiting for first expense")))
+            Text(isSortingHub ? (info.amount > 0 ? (l10n.language == .hebrew ? "ממתין לסיווג" : "Pending Categorization") : (l10n.language == .hebrew ? "הכול מסווג" : "All Categorized")) : (info.amount > 0 ? info.trendText : (l10n.language == .hebrew ? "לא נרשמו הוצאות כאן החודש" : "No expenses recorded here this month")))
                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                 .foregroundColor(info.amount > 0 ? (isSortingHub ? Color(red: 234/255, green: 88/255, blue: 12/255) : Color.themeMint) : Color.textMuted)
                 .lineLimit(1)

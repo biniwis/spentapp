@@ -278,6 +278,7 @@ public struct BigQuickAmountOverlay: View {
                         .lineLimit(1)
                         .minimumScaleFactor(0.65)
                 }
+                .environment(\.layoutDirection, .leftToRight)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
 
@@ -312,6 +313,7 @@ public struct BigQuickAmountOverlay: View {
                         }
                     }
                 }
+                .environment(\.layoutDirection, .leftToRight)
 
                 // 4. Big Clean Confirm Button
                 Button(action: onSubmit) {

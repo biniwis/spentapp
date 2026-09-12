@@ -194,6 +194,7 @@ public struct QuickAddSheet: View {
                                 .frame(width: 2.5, height: displayAmountFontSize * 0.9)
                                 .opacity(cursorVisible ? 1.0 : 0.0)
                         }
+                        .environment(\.layoutDirection, .leftToRight)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 10)
                         .padding(.bottom, 6)
@@ -206,11 +207,13 @@ public struct QuickAddSheet: View {
                                 Text("≈ \(l10n.format(amount: inILS, showDecimals: true))")
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                             }
+                            .environment(\.layoutDirection, .leftToRight)
                             .foregroundColor(Color.themeMint)
                         }
 
                         // ── 2. Built-in Numeric Keypad (Reference Screen 5) ──
                         numericKeypadView
+                            .environment(\.layoutDirection, .leftToRight)
                             .padding(.horizontal, 20)
 
                         // ── 3. Meta Rows (Merchant, Category, Date) ── Grouped Clean White Card

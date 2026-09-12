@@ -155,29 +155,35 @@ public final class CitySimulationEngine: Sendable {
             buildingTotals[bId, default: 0.0] += t.amount
             
             let m = t.merchant.lowercased()
+            let isPositive = t.amount > 0
             if bId == "food_wolt" || m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") {
-                woltCount += 1
+                if isPositive {
+                    woltCount += 1
+                    // Track distinct calendar days using "yyyy-MM-dd" key
+                    let dayKey = Calendar.current.startOfDay(for: t.timestamp).description
+                    woltActiveDaysSet.insert(dayKey)
+                }
                 woltTotalSpend += t.amount
-                // Track distinct calendar days using "yyyy-MM-dd" key
-                let dayKey = Calendar.current.startOfDay(for: t.timestamp).description
-                woltActiveDaysSet.insert(dayKey)
             }
-            if bId == "food_coffee" || t.category == .coffee || m.contains("aroma") || m.contains("קפה") || m.contains("cafe") || m.contains("ארומה") {
-                coffeeCount += 1
-            }
-            if bId == "shop_tech" || m.contains("amazon") || m.contains("אמזון") || m.contains("asos") || m.contains("ksp") || m.contains("aliexpress") {
-                onlinePkgCount += 1
-            }
-            if bId == "shop_travel" || m.contains("flight") || m.contains("טיסה") || m.contains("el al") || m.contains("אל על") || m.contains("airbnb") || m.contains("booking") || m.contains("hotel") {
-                hasTravel = true
-            }
-            if bId == "house_subs" || t.category == .subscriptions || m.contains("netflix") || m.contains("spotify") || m.contains("apple") {
-                activeSubs += 1
-            }
-            if bId == "food_super" || t.category == .groceries || m.contains("שופרסל") || m.contains("רמי לוי") || m.contains("סופר") {
-                groceryBags += max(1, Int(t.amount / 120))
+            if isPositive {
+                if bId == "food_coffee" || t.category == .coffee || m.contains("aroma") || m.contains("קפה") || m.contains("cafe") || m.contains("ארומה") {
+                    coffeeCount += 1
+                }
+                if bId == "shop_tech" || m.contains("amazon") || m.contains("אמזון") || m.contains("asos") || m.contains("ksp") || m.contains("aliexpress") {
+                    onlinePkgCount += 1
+                }
+                if bId == "shop_travel" || m.contains("flight") || m.contains("טיסה") || m.contains("el al") || m.contains("אל על") || m.contains("airbnb") || m.contains("booking") || m.contains("hotel") {
+                    hasTravel = true
+                }
+                if bId == "house_subs" || t.category == .subscriptions || m.contains("netflix") || m.contains("spotify") || m.contains("apple") {
+                    activeSubs += 1
+                }
+                if bId == "food_super" || t.category == .groceries || m.contains("שופרסל") || m.contains("רמי לוי") || m.contains("סופר") {
+                    groceryBags += max(1, Int(t.amount / 120))
+                }
             }
         }
+        woltTotalSpend = max(0, woltTotalSpend)
         
         let spendingTransactions = transactions.filter { $0.category != .savings }
         let totalSpent = spendingTransactions.reduce(0.0) { $0 + $1.amount }

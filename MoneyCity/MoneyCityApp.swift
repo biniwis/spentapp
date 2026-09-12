@@ -190,25 +190,10 @@ struct MoneyCityApp: App {
                     }
                 }
                 .onOpenURL { url in
-                    Task {
-                        guard let scheme = url.scheme?.lowercased(),
-                              scheme == "spentapp" || scheme == "moneycity" else { return }
-                        let host = url.host?.lowercased() ?? ""
-                        guard host == "wallet-ingest" || host == "ingest" else { return }
-                        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
-                        let amount = MoneyAmount.sanitized(components.queryItems?.first(where: { $0.name == "amount" })?.value.flatMap(Double.init))
-                        let merchant = components.queryItems?.first(where: { $0.name == "merchant" })?.value
-                        let currency = components.queryItems?.first(where: { $0.name == "currency" })?.value
-                        if amount != nil || merchant != nil {
-                            _ = await WalletIngestCoordinator.run(
-                                amount: amount,
-                                amountText: nil,
-                                merchant: merchant,
-                                currency: currency,
-                                transactionDate: Date()
-                            )
-                        }
-                    }
+                    guard let scheme = url.scheme?.lowercased(),
+                          scheme == "spentapp" || scheme == "moneycity" else { return }
+                    // Deep links must never silently inject financial transactions into the ledger.
+                    // Legitimate navigation deep links can be handled safely without silent financial writes.
                 }
         }
         .modelContainer(DatabaseService.shared.container)
@@ -245,24 +230,94 @@ struct MoneyCityApp: App {
     }
     
     private func syncPendingWidgetTransactions() {
-        let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? UserDefaults.standard
-        guard let pending = defaults.array(forKey: "pending_widget_transactions") as? [[String: Any]], !pending.isEmpty else { return }
-        defaults.removeObject(forKey: "pending_widget_transactions")
         Task {
-            for item in pending {
-                let amount = item["amount"] as? Double
-                let merchant = item["merchant"] as? String
-                let timestamp = (item["date"] as? TimeInterval).map { Date(timeIntervalSince1970: $0) } ?? Date()
-                if amount != nil || merchant != nil {
-                    _ = await WalletIngestCoordinator.run(
-                        amount: amount,
-                        amountText: nil,
-                        merchant: merchant,
-                        currency: nil,
-                        transactionDate: timestamp,
-                        intentName: "QuickExpenseWidgetIntent"
-                    )
-                }
+            await WidgetTransactionQueue.drain()
+        }
+    }
+}
+
+// MARK: - Durable Widget Transaction Queue
+
+public enum WidgetTransactionQueue {
+    public static let key = "pending_widget_transactions"
+
+    /// Migrates any legacy entries missing an "id" field by assigning a stable UUID.
+    /// Filters out irrecoverably malformed items (missing both amount and merchant, or invalid structure)
+    /// so they do not poison the queue.
+    public static func sanitizeAndMigrate(raw: [[String: Any]]) -> (valid: [[String: Any]], malformedCount: Int) {
+        var valid: [[String: Any]] = []
+        var malformed = 0
+
+        for var item in raw {
+            let amount = item["amount"] as? Double
+            let merchant = item["merchant"] as? String
+
+            // An item is irrecoverably malformed if it has neither amount nor merchant
+            guard amount != nil || (merchant != nil && !merchant!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) else {
+                malformed += 1
+                continue
+            }
+
+            // Assign stable ID if missing from legacy formats
+            if (item["id"] as? String)?.isEmpty ?? true {
+                item["id"] = UUID().uuidString
+            }
+            valid.append(item)
+        }
+
+        return (valid, malformed)
+    }
+
+    @MainActor
+    public static func drain(
+        defaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard,
+        ingestHandler: ((_ amount: Double?, _ merchant: String?, _ timestamp: Date) async -> Bool)? = nil
+    ) async {
+        #if canImport(UIKit)
+        guard UIApplication.shared.isProtectedDataAvailable else { return }
+        #endif
+
+        if ingestHandler == nil {
+            guard !DatabaseService.shared.isEphemeral else { return }
+        }
+
+        guard let raw = defaults.array(forKey: key) as? [[String: Any]], !raw.isEmpty else { return }
+
+        let (migrated, malformedCount) = sanitizeAndMigrate(raw: raw)
+        if malformedCount > 0 || migrated.count != raw.count || raw.contains(where: { ($0["id"] as? String) == nil }) {
+            defaults.set(migrated, forKey: key)
+        }
+
+        guard !migrated.isEmpty else { return }
+
+        var remaining = migrated
+        for item in migrated {
+            guard let itemId = item["id"] as? String else { continue }
+            let amount = item["amount"] as? Double
+            let merchant = item["merchant"] as? String
+            let timestamp = (item["date"] as? TimeInterval).map { Date(timeIntervalSince1970: $0) } ?? Date()
+
+            let succeeded: Bool
+            if let customHandler = ingestHandler {
+                succeeded = await customHandler(amount, merchant, timestamp)
+            } else {
+                let result = await WalletIngestCoordinator.run(
+                    amount: amount,
+                    amountText: nil,
+                    merchant: merchant,
+                    currency: nil,
+                    transactionDate: timestamp,
+                    intentName: "QuickExpenseWidgetIntent"
+                )
+                succeeded = result.succeeded
+            }
+
+            if succeeded {
+                remaining.removeAll(where: { ($0["id"] as? String) == itemId })
+                defaults.set(remaining, forKey: key)
+            } else {
+                // Preserve this item and all remaining items for the next cycle
+                break
             }
         }
     }

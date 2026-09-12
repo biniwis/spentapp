@@ -140,13 +140,13 @@
         }
       }
     },
+    "%@ added to the city" : {
+
+    },
     "%@ City is Ready!" : {
 
     },
     "%@ hidden from total" : {
-
-    },
-    "%@ joined the city" : {
 
     },
     "%@ Recap is Ready" : {
@@ -518,7 +518,7 @@
     "All" : {
 
     },
-    "All Companions Unlocked State" : {
+    "All Additions Unlocked State" : {
 
     },
     "All sorted & clean!" : {
@@ -688,13 +688,16 @@
     "Change currency" : {
 
     },
-    "Check state when all 6 companions have already joined the city" : {
+    "Check state when all 6 additions have already joined the city" : {
 
     },
     "Choose a Category" : {
 
     },
     "City" : {
+
+    },
+    "City additions" : {
 
     },
     "City companions — weekly addition" : {
@@ -927,9 +930,6 @@
 
     },
     "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling." : {
-
-    },
-    "Friends in the city" : {
 
     },
     "From time to time, someone new will arrive here." : {
@@ -1827,7 +1827,7 @@
     "View Story" : {
 
     },
-    "Weekly Companion Ceremony" : {
+    "Weekly Addition Ceremony" : {
 
     },
     "Welcome" : {
@@ -1837,6 +1837,9 @@
 
     },
     "WELCOME TO THE CITY OF" : {
+
+    },
+    "What's added to the city?" : {
 
     },
     "What’s your name?" : {
@@ -1892,9 +1895,6 @@
           }
         }
       }
-    },
-    "Who’s joining this time?" : {
-
     },
     "Without income, the savings figure rests on a number the app invented." : {
 
@@ -2016,7 +2016,7 @@
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
 
     },
-    "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 החברים בעיר" : {
+    "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 התוספות בעיר" : {
 
     },
     "בדיקת מסכים בודדים:" : {
@@ -2174,9 +2174,6 @@
 
     },
     "החבר עדיין לא נוסף" : {
-
-    },
-    "החברים בעיר" : {
 
     },
     "החודש: %@" : {
@@ -2386,7 +2383,7 @@
     "טיול ליפן" : {
 
     },
-    "טקס בחירת חבר שבועי" : {
+    "טקס תוספת שבועית לעיר" : {
 
     },
     "טרם הגדרת יעדי חיסכון" : {
@@ -2470,6 +2467,9 @@
     "מדיניות פרטיות" : {
 
     },
+    "מה נוסף לעיר?" : {
+
+    },
     "מוסתר" : {
 
     },
@@ -2498,9 +2498,6 @@
 
     },
     "מטבע ראשי" : {
-
-    },
-    "מי מצטרף הפעם?" : {
 
     },
     "מיזוג" : {
@@ -2542,7 +2539,7 @@
     "מפקח מועמדויות (Candidate Inspector)" : {
 
     },
-    "מצב סיום: כל החברים כבר בעיר" : {
+    "מצב סיום: כל התוספות כבר בעיר" : {
 
     },
     "מצטרפים לעיר — תוספת שבועית" : {
@@ -2860,6 +2857,9 @@
 
     },
     "שפת ממשק" : {
+
+    },
+    "תוספות לעיר" : {
 
     },
     "תצוגת 3D אינטראקטיבית עם החלפת מצבי צפיפות בזמן אמת – מתחילת חודש ועד מגה-מטרופולין:" : {

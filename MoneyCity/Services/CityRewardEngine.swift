@@ -54,7 +54,7 @@ public struct CityRewardEngine {
             state.pending = nil
         }
         guard state.pending == nil,
-              state.lastAnyRewardDate.map({ day($0) < day(now) }) ?? true else { return }
+              state.lastAnyRewardDate.map({ now >= adding(4, to: $0) }) ?? true else { return }
         let valid = expenses.filter { $0.date <= now && $0.amount.isFinite && $0.amount > 0 }
         let cycleStart = max(firstUse, state.lastWeeklyRewardDate ?? firstUse)
         let activeStart = max(day(cycleStart), adding(-6, to: day(now)))
@@ -63,8 +63,7 @@ public struct CityRewardEngine {
             unlock(.weeklyPresence, now: now)
             return
         }
-        guard state.lastSurpriseRewardDate.map({ $0 < cycleStart && now >= adding(4, to: $0) }) ?? true,
-              state.lastAnyRewardDate.map({ now >= adding(4, to: $0) }) ?? true else { return }
+        guard state.lastSurpriseRewardDate.map({ $0 < cycleStart && now >= adding(4, to: $0) }) ?? true else { return }
         // Three completed days, compared with the preceding 21 days. Never overlap the baseline.
         let end = day(now), recentStart = adding(-3, to: end), baselineStart = adding(-24, to: end)
         let excluded: Set<String> = ["housing", "subscriptions", "health", "finance", "savings", "other"]

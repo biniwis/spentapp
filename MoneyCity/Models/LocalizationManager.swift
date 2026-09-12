@@ -156,13 +156,18 @@ public final class LocalizationManager: ObservableObject {
     /// grouped by a real formatter and the whole amount is wrapped in a first-strong isolate so
     /// it stays one unit whichever direction the text around it runs.
     public func format(amount: Double, currency: CurrencyType? = nil, showDecimals: Bool = false) -> String {
-        let cur = currency ?? baseCurrency
-        let converted = currency == nil ? amount : CurrencyType.convert(amount: amount, from: currency!, to: baseCurrency)
+        let targetCurrency = baseCurrency
+        let converted: Double
+        if let sourceCurrency = currency {
+            converted = CurrencyType.convert(amount: amount, from: sourceCurrency, to: targetCurrency)
+        } else {
+            converted = amount
+        }
         let safe = converted.isFinite ? converted : 0
         let digits = Self.groupingFormatter(decimals: showDecimals)
             .string(from: NSNumber(value: abs(safe))) ?? "0"
         let sign = safe < 0 ? "-" : ""
-        return "\u{2068}" + sign + cur.symbol + digits + "\u{2069}"
+        return "\u{2068}" + sign + targetCurrency.symbol + digits + "\u{2069}"
     }
 
     private static let formatterCache = NSCache<NSString, NumberFormatter>()

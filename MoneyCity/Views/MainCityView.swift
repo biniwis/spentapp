@@ -162,6 +162,10 @@ public struct MainCityView: View {
     }
 
     private var currentCity: MonthlyCity {
+        let historicalDelivery = DeliveryHistoryHelper.completedHistoricalWoltData(
+            from: allTransactions,
+            relativeTo: currentDate
+        )
         var hasher = Hasher()
         hasher.combine(transactionsDigest)
         hasher.combine(currentDate.timeIntervalSinceReferenceDate)
@@ -170,7 +174,9 @@ public struct MainCityView: View {
         hasher.combine(typicalEverydaySpend)
         hasher.combine(typicalCommittedSpend)
         hasher.combine(everydayBudget)
-        hasher.combine(budgetedEverydayCategories.count)
+        hasher.combine(budgetedEverydayCategories.map(\.rawValue).sorted())
+        hasher.combine(historicalDelivery.counts)
+        hasher.combine(historicalDelivery.spends)
         return derived.city(key: hasher.finalize()) {
             CitySimulationEngine.shared.generateCity(
                 for: currentDate,
@@ -180,7 +186,9 @@ public struct MainCityView: View {
                 typicalEverydaySpend: typicalEverydaySpend,
                 typicalCommittedSpend: typicalCommittedSpend,
                 everydayBudget: everydayBudget,
-                budgetedEverydayCategories: budgetedEverydayCategories
+                budgetedEverydayCategories: budgetedEverydayCategories,
+                historicalWoltCounts: historicalDelivery.counts,
+                historicalWoltSpends: historicalDelivery.spends
             )
         }
     }
@@ -553,7 +561,10 @@ public struct MainCityView: View {
                             // the opening view back — and the opening view is this month, so
                             // the tab is a way out of a past month as well as out of a
                             // district.
-                            if isViewingPastMonth { currentDate = Date() }
+                            if isViewingPastMonth {
+                                monthSnapshot = nil
+                                currentDate = Date()
+                            }
                             cityViewResetToken &+= 1
                         },
                         onLongPressAdd: {
@@ -692,6 +703,9 @@ public struct MainCityView: View {
         }
         .onChange(of: companionScenePhase) { _, phase in
             if phase == .active {
+                if monthSnapshot == nil {
+                    currentDate = Date()
+                }
                 companionNow = Date()
                 checkWeeklyEnrichmentPrompt()
                 refreshPendingWalletItems()
@@ -777,6 +791,7 @@ public struct MainCityView: View {
         }
         .fullScreenCover(item: $activeNewMonthRecap) { recap in
             MonthlyRecapSheet(recap: recap) { targetDate in
+                monthSnapshot = targetDate
                 currentDate = targetDate
                 activeNewMonthRecap = nil
             }
@@ -797,9 +812,10 @@ public struct MainCityView: View {
                             pendingID: pending.id
                         )
                         await MainActor.run {
-                            PendingWalletStore.shared.remove(id: pending.id)
-                            pendingWalletItems.removeAll(where: { $0.id == pending.id })
-                            resolvingPendingItem = nil
+                            if !PendingWalletStore.shared.getAll().contains(where: { $0.id == pending.id }) {
+                                pendingWalletItems.removeAll(where: { $0.id == pending.id })
+                                resolvingPendingItem = nil
+                            }
                         }
                     }
                 },
@@ -1145,19 +1161,23 @@ public struct MainCityView: View {
             exchangeRate: nil
         )
         modelContext.insert(tx)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                amount: amt,
+                merchant: building.displayName(for: l10n.language),
+                isRefund: false
+            )
+            Haptics.notify(.success)
 
-        ExpenseConfirmationCoordinator.shared.triggerConfirmation(
-            amount: amt,
-            merchant: building.displayName(for: l10n.language),
-            isRefund: false
-        )
-        Haptics.notify(.success)
-
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
-            isQuickActionActive = false
-            quickActionBuilding = nil
-            quickActionAmountText = ""
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
+                isQuickActionActive = false
+                quickActionBuilding = nil
+                quickActionAmountText = ""
+            }
+        } catch {
+            modelContext.rollback()
+            Haptics.notify(.error)
         }
     }
 
@@ -1348,6 +1368,7 @@ public struct MainCityView: View {
 
     private func returnToCurrentMonth() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            monthSnapshot = nil
             currentDate = Date()
             selectedDistrict = nil
             inspectedBuilding = nil

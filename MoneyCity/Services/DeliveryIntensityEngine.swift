@@ -218,3 +218,62 @@ public enum DeliveryIntensityEngine {
         )
     }
 }
+
+// MARK: - Delivery History Helper
+
+public enum DeliveryHistoryHelper {
+    public static func isDelivery(buildingId: String, merchant: String) -> Bool {
+        if buildingId == "food_wolt" { return true }
+        let m = merchant.lowercased()
+        return m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") || m.contains("tabit") || m.contains("משלוח")
+    }
+
+    /// Extracts historical completed months delivery counts (positive count) and spend (all signed amounts clamped to >= 0 per month),
+    /// ordered oldest to newest.
+    public static func completedHistoricalWoltData(
+        from transactions: [Transaction],
+        relativeTo targetDate: Date = Date(),
+        calendar: Calendar = .current
+    ) -> (counts: [Int], spends: [Double]) {
+        let currentComps = calendar.dateComponents([.year, .month], from: targetDate)
+
+        // Find all completed historical months with any user transaction
+        var allHistoryMonths: [DateComponents: [Transaction]] = [:]
+        for tx in transactions {
+            let c = calendar.dateComponents([.year, .month], from: tx.timestamp)
+            // Exclude current/target month or future months
+            guard let y1 = c.year, let m1 = c.month,
+                  let y2 = currentComps.year, let m2 = currentComps.month else { continue }
+            if (y1 > y2) || (y1 == y2 && m1 >= m2) { continue }
+
+            allHistoryMonths[c, default: []].append(tx)
+        }
+
+        // Sort all active historical months chronologically (oldest first)
+        let sortedMonths = allHistoryMonths.keys.sorted { a, b in
+            if (a.year ?? 0) != (b.year ?? 0) {
+                return (a.year ?? 0) < (b.year ?? 0)
+            }
+            return (a.month ?? 0) < (b.month ?? 0)
+        }
+
+        var counts: [Int] = []
+        var spends: [Double] = []
+
+        for month in sortedMonths {
+            let txs = allHistoryMonths[month] ?? []
+            let deliveryTxs = txs.filter { isDelivery(buildingId: $0.buildingId, merchant: $0.merchant) }
+
+            // Count positive purchases only
+            let count = deliveryTxs.filter { $0.amount > 0 }.count
+            // Net spend: sum of all signed amounts (refunds reduce spend), clamped >= 0
+            let rawSpend = deliveryTxs.reduce(0.0) { $0 + $1.amount }
+            let spend = max(0.0, rawSpend)
+
+            counts.append(count)
+            spends.append(spend)
+        }
+
+        return (counts, spends)
+    }
+}

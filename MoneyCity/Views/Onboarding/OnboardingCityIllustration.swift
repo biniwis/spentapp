@@ -48,6 +48,7 @@ public struct OnboardingCityScene: View {
             ZStack(alignment: .topLeading) {
                 ForEach(0..<3) { layer in
                     CityPosterDrawing(step: step, layer: layer)
+                        .scaleEffect(x: isRTL ? -1 : 1, y: 1)
                         .opacity(presentsImmediately || phase > layer ? 1 : 0)
                         .offset(y: presentsImmediately || phase > layer ? 0 : 14)
                 }
@@ -55,7 +56,6 @@ public struct OnboardingCityScene: View {
                     .opacity(presentsImmediately || phase == 3 ? 1 : 0)
             }
             .frame(width: 380, height: 300)
-            .scaleEffect(x: isRTL ? -1 : 1, y: 1)
             .scaleEffect(scale, anchor: .topLeading)
             .offset(x: (geometry.size.width - 380 * scale) / 2,
                     y: (geometry.size.height - 300 * scale) / 2)
@@ -87,10 +87,24 @@ public struct OnboardingCityScene: View {
         static let conceptStoreSign = CGRect(x: 186, y: 150, width: 122, height: 26)
         static let mayorBillboard = CGRect(x: 57, y: 34, width: 258, height: 89)
         static let targetPanel = CGRect(x: 147, y: 181, width: 176, height: 70)
-        static let automationCardLabelCenter = CGPoint(x: 94, y: 71)
+        static let automationCardCenter = CGPoint(x: 94, y: 71)
         static let automationShopSign = CGRect(x: 253, y: 190, width: 77, height: 26)
         static let revealMayorSign = CGRect(x: 31, y: 39, width: 158, height: 45)
         static let revealShopSign = CGRect(x: 205, y: 169, width: 87, height: 26)
+    }
+
+    /// Computes the mirrored coordinate rect in unmirrored 380pt artwork space for RTL.
+    private func rtlSafeRect(_ rect: CGRect) -> CGRect {
+        if isRTL {
+            return CGRect(
+                x: 380 - rect.maxX,
+                y: rect.minY,
+                width: rect.width,
+                height: rect.height
+            )
+        } else {
+            return rect
+        }
     }
 
     @ViewBuilder private var lettering: some View {
@@ -98,37 +112,45 @@ public struct OnboardingCityScene: View {
         case .concept:
             illustrationLabel("SPENT", in: IllustrationTextSlot.conceptStoreSign, fontSize: 13)
         case .mayor:
+            let boardRect = rtlSafeRect(IllustrationTextSlot.mayorBillboard)
             VStack(spacing: 4) {
                 Text(isRTL ? "ברוכים הבאים לעיר של" : "WELCOME TO THE CITY OF")
                     .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Color.jetBlack.opacity(0.8))
                 Text(name)
                     .font(.system(size: 28, weight: .heavy))
+                    .foregroundStyle(Color.jetBlack)
                     .lineLimit(1)
                     .minimumScaleFactor(0.45)
             }
-            .foregroundStyle(Color.jetBlack)
-            .frame(width: IllustrationTextSlot.mayorBillboard.width - 24,
-                   height: IllustrationTextSlot.mayorBillboard.height - 14)
-            .scaleEffect(x: isRTL ? -1 : 1, y: 1)
-            .position(x: IllustrationTextSlot.mayorBillboard.midX,
-                      y: IllustrationTextSlot.mayorBillboard.midY)
+            .frame(width: boardRect.width - 24, height: boardRect.height - 14)
+            .position(x: boardRect.midX, y: boardRect.midY)
         case .spendingTarget:
-            VStack(spacing: 4) {
+            let cardRect = rtlSafeRect(IllustrationTextSlot.targetPanel)
+            let digits = targetAmountText.filter { $0.isNumber }
+            let formattedVal = digits.isEmpty ? "8,000" : (formatTargetAmount(digits) ?? targetAmountText)
+            let displayAmount = "₪\(formattedVal)"
+
+            VStack(spacing: 3) {
                 Text(isRTL ? "המסגרת של החודש" : "THIS MONTH’S TARGET")
                     .font(.system(size: 9, weight: .semibold))
-                Text(targetAmountText.isEmpty ? "—" : targetAmountText)
+                    .foregroundStyle(Color.jetBlack.opacity(0.8))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+
+                Text(displayAmount)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.jetBlack)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
             }
-            .foregroundStyle(Color.jetBlack)
-            .frame(width: IllustrationTextSlot.targetPanel.width - 16,
-                   height: IllustrationTextSlot.targetPanel.height - 12)
-            .scaleEffect(x: isRTL ? -1 : 1, y: 1)
-            .position(x: IllustrationTextSlot.targetPanel.midX,
-                      y: IllustrationTextSlot.targetPanel.midY)
+            .frame(width: cardRect.width - 16, height: cardRect.height - 12)
+            .position(x: cardRect.midX, y: cardRect.midY)
         case .automation:
             // Tilted label directly printed on the orange-red card surface
+            let cardCenter = isRTL ? CGPoint(x: 380 - IllustrationTextSlot.automationCardCenter.x,
+                                             y: IllustrationTextSlot.automationCardCenter.y)
+                                   : IllustrationTextSlot.automationCardCenter
             Text(isRTL ? "תשלום" : "PAYMENT")
                 .font(.system(size: 10, weight: .heavy))
                 .foregroundStyle(Color.white)
@@ -136,14 +158,21 @@ public struct OnboardingCityScene: View {
                 .minimumScaleFactor(0.5)
                 .frame(width: 68, height: 18)
                 .rotationEffect(.degrees(isRTL ? 9 : -9))
-                .scaleEffect(x: isRTL ? -1 : 1, y: 1)
-                .position(IllustrationTextSlot.automationCardLabelCenter)
+                .position(cardCenter)
 
             illustrationLabel("SPENT", in: IllustrationTextSlot.automationShopSign, fontSize: 12)
         case .finalReveal:
             illustrationLabel(name, in: IllustrationTextSlot.revealMayorSign, fontSize: 17)
             illustrationLabel("SPENT", in: IllustrationTextSlot.revealShopSign, fontSize: 11)
         }
+    }
+
+    private func formatTargetAmount(_ digits: String) -> String? {
+        guard let val = Double(digits) else { return nil }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: val))
     }
 
     private func illustrationLabel(
@@ -155,16 +184,15 @@ public struct OnboardingCityScene: View {
         color: Color = .jetBlack,
         rotation: Angle = .zero
     ) -> some View {
-        Text(text)
+        let safeRect = rtlSafeRect(rect)
+        return Text(text)
             .font(.system(size: fontSize, weight: weight, design: design))
             .foregroundStyle(color)
             .lineLimit(1)
             .minimumScaleFactor(0.4)
-            .frame(width: rect.width - 8, height: rect.height - 4)
+            .frame(width: safeRect.width - 8, height: safeRect.height - 4)
             .rotationEffect(rotation)
-            // Counter-mirror the glyphs locally, preserving their position in the artwork.
-            .scaleEffect(x: isRTL ? -1 : 1, y: 1)
-            .position(x: rect.midX, y: rect.midY)
+            .position(x: safeRect.midX, y: safeRect.midY)
     }
 }
 
@@ -251,7 +279,7 @@ private struct CityPosterDrawing: View {
         } else {
             line(&c, [(182, 254), (182, 230)], width: 5)
             line(&c, [(288, 254), (288, 230)], width: 5)
-            rectangle(&c, 147, 181, 176, 70, fill: .warmCream, radius: 4)
+            rectangle(&c, 147, 181, 176, 70, fill: .white, radius: 4)
         }
     }
 

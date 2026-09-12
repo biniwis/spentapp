@@ -325,23 +325,25 @@ public struct OnboardingWizardView: View {
     // MARK: Step 3 - Monthly Spending Target (Tonal editable surface, clean presets, BUDGET ≠ INCOME)
     private var step3BudgetConfig: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 Text(l10n.baseCurrency.symbol)
-                    .font(.system(size: inputSize * 0.8, weight: .medium))
-
-                TextField("", text: $budgetInputText)
-                    .font(.system(size: inputSize * 1.4, weight: .heavy, design: .rounded))
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.jetBlack)
-                    .tint(.jetBlack)
+
+                TextField("0", text: $budgetInputText)
+                    .font(.system(size: 36, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.jetBlack)
+                    .foregroundColor(Color.jetBlack)
+                    .tint(Color.jetBlack)
+                    .multilineTextAlignment(.leading)
                     .keyboardType(.numberPad)
                     .focused($focusedField, equals: .budget)
                     .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
             }
-            .foregroundStyle(Color.jetBlack)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.layoutDirection, .leftToRight)
+            .flipsForRightToLeftLayoutDirection(false)
             .padding(.vertical, 6)
-            .contentShape(Rectangle())
-            .onTapGesture { focusedField = .budget }
 
             Rectangle()
                 .fill(Color.jetBlack.opacity(focusedField == .budget ? 1 : 0.35))

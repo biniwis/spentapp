@@ -34,7 +34,7 @@ public struct CityTopBarView: View {
                     .background(Color.white.opacity(0.94), in: Circle())
                     .overlay(alignment: .topTrailing) {
                         if hasWeeklyReward {
-                            Circle().fill(Color.themeMint).frame(width: 10, height: 10)
+                            Circle().fill(MoneyCityTheme.neonLime).frame(width: 10, height: 10)
                         }
                     }
             }
@@ -50,7 +50,7 @@ public struct CityTopBarView: View {
                         .fill(Color.white.opacity(0.94))
                         .frame(width: 38, height: 38)
                         .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
-                    DioramaExpandVectorIcon(isExpanded: isZenMode, color: Color.deepNavy)
+                    DioramaExpandVectorIcon(isExpanded: isZenMode, color: MoneyCityTheme.textPrimary)
                         .frame(width: 15, height: 15)
                 }
             }
@@ -82,18 +82,18 @@ public struct CityNewMonthRecapBanner: View {
         HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(Color.spentGreenSoft)
+                    .fill(MoneyCityTheme.babyBlue)
                     .frame(width: 32, height: 32)
-                MoneyIcon(.trophy, size: 16, color: Color.spentGreen)
+                MoneyIcon(.trophy, size: 16)
             }
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(l10n.language == .hebrew ? "העיר של \(recap.monthNameHe) מוכנה לסיכום!" : "\(recap.monthNameEn) City is Ready!")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
+                    .foregroundColor(MoneyCityTheme.textPrimary)
                 Text(l10n.language == .hebrew ? "הקש לצפייה בסיכום החודשי שלך" : "Tap to view your monthly recap")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
+                    .foregroundColor(MoneyCityTheme.textMuted)
             }
             
             Spacer()
@@ -104,13 +104,13 @@ public struct CityNewMonthRecapBanner: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Color.spentGreen)
+                    .background(MoneyCityTheme.brandPrimary)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
             
             Button(action: onDismiss) {
-                MoneyIcon(.xmarkCircle, size: 16, color: Color.textMuted)
+                MoneyIcon(.xmarkCircle, size: 16, color: MoneyCityTheme.textMuted)
             }
             .buttonStyle(.plain)
         }

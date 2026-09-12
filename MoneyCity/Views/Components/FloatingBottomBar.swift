@@ -30,19 +30,17 @@ public struct FloatingBottomBar: View {
 
     public var body: some View {
         HStack(spacing: 0) {
-            navButton(id: "city", label: l10n.text(for: "tab_city")) { isSel, col in
-                MoneyIcon(.home, size: 24, color: isSel ? nil : col)
-                    .grayscale(isSel ? 0 : 1)
-                    .opacity(isSel ? 1.0 : 0.55)
+            navButton(id: "city", label: l10n.text(for: "tab_city")) { isSel, _ in
+                MoneyIcon(.home, size: 24)
+                    .opacity(isSel ? 1.0 : 0.72)
             }
             
-            navButton(id: "analytics", label: l10n.text(for: "tab_analytics")) { isSel, col in
-                MoneyIcon(.barChart, size: 24, color: isSel ? nil : col)
-                    .grayscale(isSel ? 0 : 1)
-                    .opacity(isSel ? 1.0 : 0.55)
+            navButton(id: "analytics", label: l10n.text(for: "tab_analytics")) { isSel, _ in
+                MoneyIcon(.barChart, size: 24)
+                    .opacity(isSel ? 1.0 : 0.72)
             }
 
-            // Central Action Button (Pristine Green Plus Circle - Tactile Long Press)
+            // Central Action Button (Lucky Green Plus Circle - Tactile Long Press)
             ZStack {
                 MoneyIcon(.plusCircle, size: 48)
                     .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 2)
@@ -85,16 +83,14 @@ public struct FloatingBottomBar: View {
                     }
             )
 
-            navButton(id: "history", label: l10n.text(for: "tab_history")) { isSel, col in
-                MoneyIcon(.receipt, size: 24, color: isSel ? nil : col)
-                    .grayscale(isSel ? 0 : 1)
-                    .opacity(isSel ? 1.0 : 0.55)
+            navButton(id: "history", label: l10n.text(for: "tab_history")) { isSel, _ in
+                MoneyIcon(.receipt, size: 24)
+                    .opacity(isSel ? 1.0 : 0.72)
             }
             
-            navButton(id: "profile", label: l10n.text(for: "tab_profile")) { isSel, col in
-                MoneyIcon(.user, size: 24, color: isSel ? nil : col)
-                    .grayscale(isSel ? 0 : 1)
-                    .opacity(isSel ? 1.0 : 0.55)
+            navButton(id: "profile", label: l10n.text(for: "tab_profile")) { isSel, _ in
+                MoneyIcon(.user, size: 24)
+                    .opacity(isSel ? 1.0 : 0.72)
             }
         }
         .padding(.horizontal, 16)
@@ -111,7 +107,7 @@ public struct FloatingBottomBar: View {
         @ViewBuilder icon: @escaping (_ isSelected: Bool, _ color: Color) -> IconContent
     ) -> some View {
         let isSelected = activeTab == id
-        let tintColor = isSelected ? Color.deepNavy : Color.textMuted
+        let tintColor = isSelected ? MoneyCityTheme.textPrimary : MoneyCityTheme.textMuted
         
         return Button(action: {
             Haptics.selection()
@@ -122,13 +118,18 @@ public struct FloatingBottomBar: View {
             }
             onTabTapped?(id)
         }) {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 icon(isSelected, tintColor)
-                    .scaleEffect(isSelected ? 1.12 : 1.0)
+                    .scaleEffect(isSelected ? 1.08 : 1.0)
                 
                 Text(label)
-                    .font(.system(size: 10, weight: isSelected ? .black : .bold, design: .rounded))
+                    .font(.system(size: 10, weight: isSelected ? .black : .semibold, design: .rounded))
                     .foregroundColor(tintColor)
+
+                // Clean minimal indicator dot
+                Circle()
+                    .fill(isSelected ? MoneyCityTheme.jetBlack : Color.clear)
+                    .frame(width: 3.5, height: 3.5)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())

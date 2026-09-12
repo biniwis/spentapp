@@ -99,86 +99,80 @@ Storytelling, city, onboarding, recap, archive, celebrations, and empty states m
 
 Color is not a tiny decorative exception.
 
-SPENT may use color confidently.
+SPENT uses color with intention, maturity, and authorial voice.
 
-The app already contains a vivid family of greens, blues, orange, pink, purple, yellow, turquoise, and soft category backgrounds.
-
-Use them.
+The interface is calm and spacious, but the custom bespoke icons remain intensely colorful and characterful.
 
 Do not desaturate the app in the name of minimalism.
+Color is concentrated, not removed.
 
-## Core neutral foundation
+## Core Canvas & Neutral Foundation
 
-### Ink / primary text
-`#111827`
+### Canvas / Default App Background
+`#FFFFFF` Pure White
+
+The default application canvas is pure clean white.
+Lots of white breathing room allows strong typography and small confident fields of color to pop.
+
+### Supporting Warm Surface
+`#FFF2E6` Warm Cream
+
+Warm Cream is a selective supporting surface (onboarding, empty states, special editorial cards, icon interior fills). It is NOT the universal app canvas.
+
+### Jet Black / High-Contrast Ink
+`#000000` Jet Black
 
 Use for:
-- major titles
-- primary numbers
-- important labels
-- dark actions
-- high-contrast icons
-
-### Canvas
-`#F8F9FA`
-
-The default app canvas.
-
-It gives colored elements room to breathe without becoming clinical white.
-
-### White
-`#FFFFFF`
-
-Use as a surface when white genuinely improves hierarchy.
-
-White is a tool, not the brand.
-
-Do not make every component white by default.
+- major titles & typography
+- important numbers
+- icon outlines & structural frames
+- selected state outlines & active indicators
+- opacity-derived secondary text (0.60), muted text (0.40), and borders (0.08)
 
 ---
 
-# 5. SPENT Expressive Palette
+# 5. SPENT Canonical Palette (V2)
 
-The visual language may draw from the existing app and icon colors.
+The entire application UI derives from this unified canonical 8-color family:
 
-## Primary expressive colors
+- **White** — `#FFFFFF` (Default app canvas, cards, breathing room)
+- **Warm Cream** — `#FFF2E6` (Warm supporting surface, editorial modules, empty states)
+- **Neon Lime** — `#D1D175` (Special accent: weekly rewards, companions, highlights)
+- **Baby Blue** — `#D7E7FF` (Soft supporting surface, icon fills, informational fields)
+- **Jet Black** — `#000000` (Typography, outlines, strong navigation state)
+- **Orange Red** — `#FF6446` (Strong warm accent: destructive, alerts, high-energy details)
+- **Lucky Green** — `#2D9E65` (Primary brand color: central "+", primary CTA, savings identity)
+- **Violet Blue** — `#5653E8` (Secondary brand color: analytics, data series, editorial moments)
 
-- **SPENT Green** — `#22C55E`
-- **Royal / App Blue** — approximately `#253CC4`
-- **Sky Blue** — `#258CF4`
-- **Warm Orange** — `#F97316`
-- **Sun Gold** — `#FFC529`
-- **Coral Red** — `#FF5757`
-- **Vivid Purple** — `#A855F7`
-- **Coral Pink** — `#FB7185`
-- **Carbon / Ink** — `#111827`
+## Color Hierarchy & Rules
 
-Existing category colors and soft background pairs in the code are valid members of the same family.
+1. **Hierarchy**:
+   - MOST: White `#FFFFFF`
+   - NEXT: Jet Black `#000000` & opacity-derived neutrals
+   - SUPPORTING: Warm Cream `#FFF2E6`, Baby Blue `#D7E7FF`
+   - PRIMARY ACTION: Lucky Green `#2D9E65`
+   - SECONDARY EXPRESSIVE: Violet Blue `#5653E8`
+   - STRONG ACCENT: Orange Red `#FF6446`
+   - SPECIAL ACCENT: Neon Lime `#D1D175`
 
-## How to use vivid color
+2. **Colorful Icons inside Quiet Containers**:
+   Custom MoneyIcons stay colorful and illustrated with multicolor fills from the canonical paintbox.
+   Containers behind icons stay quiet (white, Warm Cream, or subtle neutral).
+   Do not nest a colorful icon inside a colorful circle inside a colorful card.
 
-Good:
-- one strong accent
-- one supporting color
-- soft tinted field
-- colored illustration
-- editorial geometric block
-- category identity
-- graphic highlight
-- colored roof / tree / vehicle / icon
-- selected state
-- important primary action
+3. **No Moral Red/Green Coding**:
+   SPENT's tone is descriptive and non-judgmental.
+   Do not use Green = "You were good" or Red = "You were bad".
+   Month-over-month spending differences use neutral/brand colors, arrows, and numbers rather than moral red/green.
+   Orange Red is reserved for destructive actions, errors, and genuine warnings.
 
-Bad:
-- six equally loud colors competing at once
-- color without hierarchy
-- random tint because a screen feels empty
-- every container having a different color
-- meaning changing between screens
+4. **Calm Chrome vs. Storytelling**:
+   Functional screens (City chrome, History, Budget, Settings) remain calm and predominantly white.
+   Onboarding, Monthly Recap, and Weekly Companions may use graphic color blocks and expressive moments.
 
-Rule:
-
-> **A screen can be colorful without being noisy.**
+5. **The 3D City Diorama is Separate**:
+   The 3D diorama has its own living architectural visual world.
+   The UI surrounds and frames the city; do not alter diorama materials, lighting, or 3D assets to match the UI palette.
 
 ---
 
@@ -245,8 +239,8 @@ Color communicates meaning.
 
 Examples:
 - category identity
-- destructive red
-- savings / park green
+- destructive Orange Red
+- savings / park Lucky Green
 - selected states
 - warning / confirmation states
 
@@ -257,10 +251,10 @@ Keep these consistent.
 Color identifies SPENT.
 
 Examples:
-- SPENT Green
-- deep ink
-- primary app blue
-- signature icon palette
+- Lucky Green (#2D9E65)
+- Violet Blue (#5653E8)
+- Jet Black (#000000)
+- canonical icon palette
 
 These can recur across screens.
 

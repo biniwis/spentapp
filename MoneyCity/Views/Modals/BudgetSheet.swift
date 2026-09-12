@@ -19,7 +19,7 @@ public struct BudgetSheet: View {
     @State private var newIncomeAmount: String = ""
     @State private var showIncomeEditor = false
 
-    private let sheetBg = Color(red: 248/255, green: 250/255, blue: 252/255)
+    private let sheetBg = MoneyCityTheme.appBackground
 
     public init() {}
 
@@ -490,9 +490,9 @@ public struct BudgetSheet: View {
 
     private func barColor(_ status: BudgetStatus) -> Color {
         switch status {
-        case .over: return Color.red
-        case .approaching: return Color.themeYellow
-        default: return Color.themeMint
+        case .over: return MoneyCityTheme.accentWarm
+        case .approaching: return MoneyCityTheme.brandSecondary
+        default: return MoneyCityTheme.brandSecondary
         }
     }
 

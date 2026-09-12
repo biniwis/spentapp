@@ -69,28 +69,28 @@ extension MoneyIconRenderer {
         ZStack {
             // Box
             RoundedRectangle(cornerRadius: 2)
-                .fill(overrideColor ?? IconPalette.green)
+                .fill(overrideColor ?? IconPalette.neonLime)
                 .frame(width: 14.5, height: 12)
                 .overlay(RoundedRectangle(cornerRadius: 2).stroke(black, lineWidth: strokeWidth))
                 .offset(y: 2.5)
 
             // Vertical ribbon band
             RoundedRectangle(cornerRadius: 0.8)
-                .fill(IconPalette.red)
+                .fill(IconPalette.orangeRed)
                 .frame(width: 3.2, height: 12)
                 .overlay(RoundedRectangle(cornerRadius: 0.8).stroke(black, lineWidth: 1.2))
                 .offset(y: 2.5)
 
             // Lid
             RoundedRectangle(cornerRadius: 1.8)
-                .fill(overrideColor ?? IconPalette.green)
+                .fill(overrideColor ?? IconPalette.neonLime)
                 .frame(width: 16.5, height: 4)
                 .overlay(RoundedRectangle(cornerRadius: 1.8).stroke(black, lineWidth: strokeWidth))
                 .offset(y: -4.2)
 
             // Lid horizontal ribbon band
             RoundedRectangle(cornerRadius: 0.8)
-                .fill(IconPalette.red)
+                .fill(IconPalette.orangeRed)
                 .frame(width: 3.2, height: 4)
                 .overlay(RoundedRectangle(cornerRadius: 0.8).stroke(black, lineWidth: 1.2))
                 .offset(y: -4.2)
@@ -98,12 +98,12 @@ extension MoneyIconRenderer {
             // Ribbon Bow loops
             HStack(spacing: 1) {
                 Ellipse()
-                    .fill(IconPalette.red)
+                    .fill(IconPalette.orangeRed)
                     .frame(width: 4.5, height: 3.5)
                     .overlay(Ellipse().stroke(black, lineWidth: 1.4))
                     .rotationEffect(.degrees(-25))
                 Ellipse()
-                    .fill(IconPalette.red)
+                    .fill(IconPalette.orangeRed)
                     .frame(width: 4.5, height: 3.5)
                     .overlay(Ellipse().stroke(black, lineWidth: 1.4))
                     .rotationEffect(.degrees(25))

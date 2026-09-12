@@ -196,29 +196,29 @@ public struct AnalyticsView: View {
         let isHe = l10n.language == .hebrew
         guard selectedTab == "spending" else {
             if selectedTab == "income" {
-                return (isHe ? "הכנסה חודשית פעילה" : "Active monthly income", nil, Color.textSecondary, Color(uiColor: .systemGray6))
+                return (isHe ? "הכנסה חודשית פעילה" : "Active monthly income", nil, MoneyCityTheme.textSecondary, MoneyCityTheme.jetBlack.opacity(0.04))
             } else {
-                return (isHe ? "סך שנחסך החודש" : "Saved this month", nil, Color.textSecondary, Color(uiColor: .systemGray6))
+                return (isHe ? "סך שנחסך החודש" : "Saved this month", nil, MoneyCityTheme.textSecondary, MoneyCityTheme.jetBlack.opacity(0.04))
             }
         }
 
         // If user wasn't in the app before this month, don't show an artificial difference vs zero
         guard hasPreviousMonthHistory else {
-            return (isHe ? "חודש ראשון לדיווח באפליקציה 🎉" : "First month tracking in SPENT 🎉", nil, Color(red: 16/255, green: 185/255, blue: 129/255), Color(red: 209/255, green: 250/255, blue: 229/255))
+            return (isHe ? "חודש ראשון לדיווח באפליקציה 🎉" : "First month tracking in SPENT 🎉", nil, MoneyCityTheme.brandPrimary, MoneyCityTheme.surfaceSoft)
         }
 
         let diff = totalSpent - prevTotalSpent
         if abs(diff) < 1 {
-            return (isHe ? "ללא שינוי מ\(previousMonthName)" : "No change from \(previousMonthName)", nil, Color.textSecondary, Color(uiColor: .systemGray6))
+            return (isHe ? "ללא שינוי מ\(previousMonthName)" : "No change from \(previousMonthName)", nil, MoneyCityTheme.textSecondary, MoneyCityTheme.jetBlack.opacity(0.04))
         }
 
         let formattedDiff = l10n.format(amount: abs(diff).rounded())
         if diff > 0 {
             let txt = isHe ? "↑ \(formattedDiff) יותר מ\(previousMonthName)" : "↑ \(formattedDiff) more than \(previousMonthName)"
-            return (txt, true, Color(red: 239/255, green: 68/255, blue: 68/255), Color(red: 254/255, green: 242/255, blue: 242/255))
+            return (txt, true, MoneyCityTheme.brandSecondary, MoneyCityTheme.surfaceSoft)
         } else {
             let txt = isHe ? "↓ \(formattedDiff) פחות מ\(previousMonthName)" : "↓ \(formattedDiff) less than \(previousMonthName)"
-            return (txt, false, Color(red: 16/255, green: 185/255, blue: 129/255), Color(red: 209/255, green: 250/255, blue: 229/255))
+            return (txt, false, MoneyCityTheme.brandSecondary, MoneyCityTheme.surfaceSoft)
         }
     }
 
@@ -677,7 +677,7 @@ public struct AnalyticsView: View {
 
                     Text(excludeHousing ? (isHebrew ? "מוסתר" : "Hidden") : (isHebrew ? "כלול" : "Included"))
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(excludeHousing ? Color.primaryBlue : Color.themeMint)
+                        .foregroundColor(excludeHousing ? MoneyCityTheme.brandSecondary : MoneyCityTheme.brandPrimary)
                 }
 
                 Text(excludeHousing

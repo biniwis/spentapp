@@ -290,7 +290,7 @@ public struct MainCityView: View {
     
     public var body: some View {
         ZStack {
-            Color(red: 248/255, green: 250/255, blue: 252/255).ignoresSafeArea()
+            MoneyCityTheme.appBackground.ignoresSafeArea()
 
             // ── City Tab (Kept persistent in background so 3D WebGL context is never destroyed on tab switch) ──
             ZStack(alignment: .top) {
@@ -393,7 +393,7 @@ public struct MainCityView: View {
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
-                                .background(Color.themeLavender)
+                                .background(MoneyCityTheme.brandSecondary)
                                 .clipShape(Capsule())
                                 .shadow(color: Color.black.opacity(0.15), radius: 6, y: 2)
                             }
@@ -404,10 +404,10 @@ public struct MainCityView: View {
                         }
                         if isZenMode {
                             HStack(spacing: 5) {
-                                Circle().fill(Color(red: 16/255, green: 185/255, blue: 129/255)).frame(width: 7, height: 7)
+                                Circle().fill(MoneyCityTheme.brandPrimary).frame(width: 7, height: 7)
                                 Text(l10n.language == .hebrew ? "תצוגת מפה מלאה" : "Full Map View")
                                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                                    .foregroundColor(MoneyCityTheme.textPrimary)
                             }
                             .padding(.horizontal, 11)
                             .padding(.vertical, 7)
@@ -431,7 +431,7 @@ public struct MainCityView: View {
                                         .frame(width: 38, height: 38)
                                         .shadow(color: Color.black.opacity(0.12), radius: 6, y: 2)
                                         .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
-                                    DioramaExpandVectorIcon(isExpanded: true, color: Color.deepNavy)
+                                    DioramaExpandVectorIcon(isExpanded: true, color: MoneyCityTheme.textPrimary)
                                         .frame(width: 15, height: 15)
                                 }
                             }
@@ -450,7 +450,7 @@ public struct MainCityView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(l10n.language == .hebrew ? "תשלום ב-\(pending.merchant)" : "Payment at \(pending.merchant)")
                                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
+                                    .foregroundColor(MoneyCityTheme.textPrimary)
                                     .lineLimit(1)
                                 Text(l10n.language == .hebrew ? "הזן סכום לעדכון העיר" : "Enter amount to update city")
                                     .font(.system(size: 10, weight: .medium, design: .rounded))
@@ -467,7 +467,7 @@ public struct MainCityView: View {
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
-                                    .background(Color.spentGreen)
+                                    .background(MoneyCityTheme.brandPrimary)
                                     .clipShape(Capsule())
                             }
                             .buttonStyle(.plain)

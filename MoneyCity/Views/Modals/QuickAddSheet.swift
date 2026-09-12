@@ -248,7 +248,7 @@ public struct QuickAddSheet: View {
                                         }
                                     } else {
                                         Circle()
-                                            .fill(Color(red: 255/255, green: 237/255, blue: 213/255))
+                                            .fill(MoneyCityTheme.warmCream)
                                             .frame(width: 32, height: 32)
                                             .overlay(
                                                 MoneyIcon(.bookmark, size: 16)
@@ -784,8 +784,8 @@ public struct QuickAddSheet: View {
             .frame(height: 52)
             .background(
                 (parseAmount(amountText) != nil && selectedCategory != nil)
-                    ? Color(red: 17/255, green: 24/255, blue: 39/255)
-                    : Color(red: 17/255, green: 24/255, blue: 39/255).opacity(0.4)
+                    ? MoneyCityTheme.brandPrimary
+                    : MoneyCityTheme.brandPrimary.opacity(0.35)
             )
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)

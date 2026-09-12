@@ -44,7 +44,7 @@ public struct CityProgressSheet: View {
                     .accessibilityLabel(he ? "סגירה" : "Close")
                 }
                 MoneyIcon(joined == nil ? .gift : .checkCircle, size: 46)
-                    .padding(20).background(Color.themeMint.opacity(0.13), in: Circle())
+                    .padding(20).background(MoneyCityTheme.neonLime.opacity(0.25), in: Circle())
                 if let friend = joined {
                     VStack(spacing: 22) {
                         Text(he ? "\(title(friend)) — איזה כיף שבאת!" : "\(title(friend)) joined your city!")
@@ -54,7 +54,8 @@ public struct CityProgressSheet: View {
                         Button { dismiss() } label: {
                             Text(he ? "בואו נראה בעיר" : "Meet in the city")
                                 .font(.headline).frame(maxWidth: .infinity).padding(16)
-                                .background(Color.themeMint, in: RoundedRectangle(cornerRadius: 16))
+                                .foregroundColor(.white)
+                                .background(MoneyCityTheme.brandPrimary, in: RoundedRectangle(cornerRadius: 16))
                         }
                     }
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
@@ -81,7 +82,7 @@ public struct CityProgressSheet: View {
                                 HStack(spacing: 14) {
                                     MoneyIcon(option.type == .pet ? .paw : .user, size: 30)
                                         .frame(width: 52, height: 52)
-                                        .background(Color.themeMint.opacity(0.12), in: Circle())
+                                        .background(MoneyCityTheme.warmCream, in: Circle())
                                     VStack(alignment: .leading, spacing: 5) {
                                         Text(title(option)).font(.headline)
                                         Text(description(option)).font(.subheadline).foregroundStyle(Color.textSecondary)

@@ -3,76 +3,106 @@ import SwiftUI
 /// Global design system tokens and color palette art-directed for MoneyCity.
 /// Clean, playful, modern, and distinctive — Vivid Royal Blue brand with soft pastel category accents.
 public struct MoneyCityTheme {
-    // ── Primary Brand & Base Palette ──
-    public static let primaryBlue = Color(red: 37/255, green: 60/255, blue: 196/255)   // #253CC4 Vivid Royal Blue
-    public static let deepNavy = Color(red: 17/255, green: 24/255, blue: 39/255)       // #111827 Crisp Charcoal Primary Text
-    public static let background = Color(red: 248/255, green: 249/255, blue: 250/255)  // #F8F9FA Breathable Warm Off-White
-    public static let cardSurface = Color.white                                         // #FFFFFF Pure White Cards
-    public static let borderSubtle = Color(red: 229/255, green: 231/255, blue: 235/255)// #E5E7EB Soft Slate Border
-    public static let borderHairline = Color(red: 243/255, green: 244/255, blue: 246/255) // #F3F4F6
+    // ── SPENT Canonical Palette (V2) ──
+    public static let white       = Color(red: 255/255, green: 255/255, blue: 255/255) // #FFFFFF Pure White
+    public static let warmCream   = Color(red: 255/255, green: 242/255, blue: 230/255) // #FFF2E6 Warm Cream (Supporting)
+    public static let neonLime    = Color(red: 209/255, green: 209/255, blue: 117/255) // #D1D175 Neon Lime (Special Accent)
+    public static let babyBlue    = Color(red: 215/255, green: 231/255, blue: 255/255) // #D7E7FF Baby Blue (Soft Supporting)
+    public static let jetBlack    = Color(red: 0/255, green: 0/255, blue: 0/255)       // #000000 Jet Black (Typography & Outlines)
+    public static let orangeRed   = Color(red: 255/255, green: 100/255, blue: 70/255)  // #FF6446 Orange Red (Strong Warm Accent)
+    public static let luckyGreen  = Color(red: 45/255, green: 158/255, blue: 101/255)  // #2D9E65 Lucky Green (Primary Brand & Action)
+    public static let violetBlue  = Color(red: 86/255, green: 83/255, blue: 232/255)   // #5653E8 Violet Blue (Secondary Brand & Editorial)
 
-    // ── Typography Colors ──
-    public static let textPrimary = Color(red: 17/255, green: 24/255, blue: 39/255)    // #111827
-    public static let textSecondary = Color(red: 107/255, green: 114/255, blue: 128/255) // #6B7280
-    public static let textMuted = Color(red: 156/255, green: 163/255, blue: 175/255)   // #9CA3AF
+    // ── Semantic Design Tokens ──
+    public static let appBackground   = white                                         // #FFFFFF Canvas
+    public static let surfacePrimary  = white                                         // #FFFFFF Clean cards
+    public static let surfaceWarm     = warmCream                                     // #FFF2E6 Supporting warm surface
+    public static let surfaceSoft     = babyBlue                                      // #D7E7FF Soft information surface
+    public static let brandPrimary    = luckyGreen                                    // #2D9E65 Primary Action / Brand
+    public static let brandSecondary  = violetBlue                                    // #5653E8 Secondary Brand / Analytics
+    public static let accentWarm      = orangeRed                                     // #FF6446 Warm Accent / Warning / Destructive
+    public static let accentSpecial   = neonLime                                      // #D1D175 Rewards / Companions / Highlight
+    public static let destructive     = orangeRed                                     // #FF6446
 
-    // ── Secondary / Category Palette ──
-    public static let turquoise = Color(red: 53/255, green: 174/255, blue: 183/255)     // #35AEB7
-    public static let turquoiseSoft = Color(red: 230/255, green: 247/255, blue: 248/255)// #E6F7F8
+    // ── Typography & Neutral Tokens ──
+    public static let textPrimary     = jetBlack                                      // #000000 Primary Text & Numbers
+    public static let textSecondary   = jetBlack.opacity(0.60)                        // Readable medium contrast text
+    public static let textMuted       = jetBlack.opacity(0.40)                        // Lower hierarchy labels & captions
+    public static let borderSubtle    = jetBlack.opacity(0.08)                        // Quiet Apple HIG hairline borders
+    public static let borderHairline  = jetBlack.opacity(0.05)                        // Ultra-subtle dividers
+    public static let divider         = jetBlack.opacity(0.08)
 
-    public static let orange = Color(red: 244/255, green: 122/255, blue: 40/255)        // #F47A28
-    public static let orangeSoft = Color(red: 254/255, green: 242/255, blue: 232/255)   // #FEF2E8
+    // ── Compatibility Aliases (Redirected to Canonical Palette) ──
+    public static let background       = appBackground                                // White
+    public static let cardSurface      = surfacePrimary                               // White
+    public static let primaryBlue      = brandSecondary                               // Violet Blue #5653E8
+    public static let deepNavy         = textPrimary                                  // Jet Black #000000
+    public static let spentGreen       = brandPrimary                                 // Lucky Green #2D9E65
+    public static let spentGreenSoft   = luckyGreen.opacity(0.12)
+    public static let deleteRed        = destructive                                  // Orange Red #FF6446
+    public static let deleteSoft       = orangeRed.opacity(0.12)
 
-    public static let lavender = Color(red: 124/255, green: 114/255, blue: 255/255)     // #7C72FF
-    public static let lavenderSoft = Color(red: 232/255, green: 229/255, blue: 255/255) // #E8E5FF
+    public static let turquoise        = violetBlue
+    public static let turquoiseSoft    = babyBlue.opacity(0.45)
+    public static let orange           = accentWarm                                   // Orange Red #FF6446
+    public static let orangeSoft       = warmCream
+    public static let lavender         = violetBlue
+    public static let lavenderSoft     = babyBlue
+    public static let mint             = luckyGreen
+    public static let mintSoft         = luckyGreen.opacity(0.12)
+    public static let yellow           = neonLime
+    public static let yellowSoft       = warmCream
+    public static let pink             = violetBlue
+    public static let pinkSoft         = warmCream
 
-    public static let mint = Color(red: 16/255, green: 185/255, blue: 129/255)          // #10B981
-    public static let mintSoft = Color(red: 221/255, green: 243/255, blue: 234/255)     // #DDF3EA
-
-    public static let spentGreen = Color(red: 34/255, green: 197/255, blue: 94/255)     // #22C55E Primary Brand Green
-    public static let spentGreenSoft = Color(red: 220/255, green: 252/255, blue: 231/255)// #DCFCE7 Soft Green
-
-    public static let yellow = Color(red: 245/255, green: 158/255, blue: 11/255)        // #F59E0B
-    public static let yellowSoft = Color(red: 255/255, green: 240/255, blue: 199/255)   // #FFF0C7
-
-    public static let pink = Color(red: 236/255, green: 72/255, blue: 153/255)          // #EC4899
-    public static let pinkSoft = Color(red: 249/255, green: 225/255, blue: 232/255)     // #F9E1E8
-
-    // ── Semantic Action Tokens ──
-    public static let deleteRed = Color(red: 239/255, green: 68/255, blue: 68/255)       // #EF4444 Crisp Destructive Red
-    public static let deleteSoft = Color(red: 254/255, green: 242/255, blue: 242/255)   // #FEF2F2 Soft Red Tint
-
-    // Legacy aliases redirected to the clean new palette
-    public static let cherryRed = Color(red: 37/255, green: 60/255, blue: 196/255)     // Redirected to primary blue
-    public static let bubblegumPink = lavender
-    public static let sunflowerYellow = yellow
-    public static let obsidianBlack = deepNavy
-    public static let emeraldGreen = mint
-    public static let oceanBlue = primaryBlue
+    // Legacy aliases
+    public static let cherryRed        = brandSecondary
+    public static let bubblegumPink    = brandSecondary
+    public static let sunflowerYellow  = neonLime
+    public static let obsidianBlack    = textPrimary
+    public static let emeraldGreen     = luckyGreen
+    public static let oceanBlue        = brandSecondary
 }
 
 public extension Color {
-    // Brand Tokens
-    static let primaryBlue = MoneyCityTheme.primaryBlue
-    static let deepNavy = MoneyCityTheme.deepNavy
-    static let appBackground = MoneyCityTheme.background
-    static let cardBackground = MoneyCityTheme.cardSurface
-    static let borderSubtle = MoneyCityTheme.borderSubtle
-    static let textDark = MoneyCityTheme.textPrimary
-    static let textMuted = MoneyCityTheme.textMuted
-    static let textSecondary = MoneyCityTheme.textSecondary
+    // Canonical V2 Primitives
+    static let spentWhite = MoneyCityTheme.white
+    static let warmCream = MoneyCityTheme.warmCream
+    static let neonLime = MoneyCityTheme.neonLime
+    static let babyBlue = MoneyCityTheme.babyBlue
+    static let jetBlack = MoneyCityTheme.jetBlack
+    static let orangeRed = MoneyCityTheme.orangeRed
+    static let luckyGreen = MoneyCityTheme.luckyGreen
+    static let violetBlue = MoneyCityTheme.violetBlue
 
-    // Semantic Action Tokens
+    // Semantic Design Tokens
+    static let appBackground = MoneyCityTheme.appBackground
+    static let cardBackground = MoneyCityTheme.surfacePrimary
+    static let surfaceWarm = MoneyCityTheme.surfaceWarm
+    static let surfaceSoft = MoneyCityTheme.surfaceSoft
+    static let brandPrimary = MoneyCityTheme.brandPrimary
+    static let brandSecondary = MoneyCityTheme.brandSecondary
+    static let accentWarm = MoneyCityTheme.accentWarm
+    static let accentSpecial = MoneyCityTheme.accentSpecial
+    static let textDark = MoneyCityTheme.textPrimary
+    static let textPrimary = MoneyCityTheme.textPrimary
+    static let textSecondary = MoneyCityTheme.textSecondary
+    static let textMuted = MoneyCityTheme.textMuted
+    static let borderSubtle = MoneyCityTheme.borderSubtle
+    static let borderHairline = MoneyCityTheme.borderHairline
+    static let destructive = MoneyCityTheme.destructive
     static let deleteRed = MoneyCityTheme.deleteRed
     static let deleteSoft = MoneyCityTheme.deleteSoft
 
-    // Pastel Secondary Tokens
+    // Backward-Compatibility Aliases
+    static let primaryBlue = MoneyCityTheme.primaryBlue
+    static let deepNavy = MoneyCityTheme.deepNavy
+    static let backgroundElevated = MoneyCityTheme.cardSurface
     static let themeTurquoise = MoneyCityTheme.turquoise
     static let themeTurquoiseSoft = MoneyCityTheme.turquoiseSoft
     static let themeOrange = MoneyCityTheme.orange
     static let themeOrangeSoft = MoneyCityTheme.orangeSoft
     static let accentOrange = MoneyCityTheme.orange
-    static let backgroundElevated = MoneyCityTheme.cardSurface
     static let themeLavender = MoneyCityTheme.lavender
     static let themeLavenderSoft = MoneyCityTheme.lavenderSoft
     static let themeMint = MoneyCityTheme.mint
@@ -86,24 +116,23 @@ public extension Color {
     static let themePink = MoneyCityTheme.pink
     static let themePinkSoft = MoneyCityTheme.pinkSoft
 
-    // Legacy aliases
-    static let cherryRed = MoneyCityTheme.primaryBlue
-    static let bubblegumPink = MoneyCityTheme.lavender
-    static let sunflowerYellow = MoneyCityTheme.yellow
-    static let obsidianBlack = MoneyCityTheme.deepNavy
-    static let emeraldGreen = MoneyCityTheme.mint
-    static let oceanBlue = MoneyCityTheme.primaryBlue
+    static let cherryRed = MoneyCityTheme.cherryRed
+    static let bubblegumPink = MoneyCityTheme.bubblegumPink
+    static let sunflowerYellow = MoneyCityTheme.sunflowerYellow
+    static let obsidianBlack = MoneyCityTheme.obsidianBlack
+    static let emeraldGreen = MoneyCityTheme.emeraldGreen
+    static let oceanBlue = MoneyCityTheme.oceanBlue
 
-    // Slates
-    static let slate100 = Color(red: 245/255, green: 247/255, blue: 250/255)
-    static let slate200 = Color(red: 232/255, green: 237/255, blue: 245/255)
-    static let slate300 = Color(red: 203/255, green: 213/255, blue: 225/255)
-    static let slate400 = Color(red: 148/255, green: 163/255, blue: 184/255)
-    static let slate500 = Color(red: 100/255, green: 116/255, blue: 139/255)
-    static let slate700 = Color(red: 51/255, green: 65/255, blue: 85/255)
-    static let slate800 = Color(red: 30/255, green: 41/255, blue: 59/255)
-    static let slate900 = Color(red: 16/255, green: 23/255, blue: 45/255)
-    static let slate950 = Color(red: 10/255, green: 15/255, blue: 30/255)
+    // Slates (now derived from Jet Black hierarchy)
+    static let slate100 = Color.white
+    static let slate200 = MoneyCityTheme.warmCream
+    static let slate300 = MoneyCityTheme.babyBlue
+    static let slate400 = MoneyCityTheme.jetBlack.opacity(0.40)
+    static let slate500 = MoneyCityTheme.jetBlack.opacity(0.60)
+    static let slate700 = MoneyCityTheme.jetBlack.opacity(0.75)
+    static let slate800 = MoneyCityTheme.jetBlack.opacity(0.88)
+    static let slate900 = MoneyCityTheme.jetBlack.opacity(0.95)
+    static let slate950 = MoneyCityTheme.jetBlack
 
     /// Initialize a Color from a hexadecimal string (e.g., "#9333EA", "9333EA", "#FFF")
     init(hex: String) {
@@ -174,18 +203,18 @@ public extension MoneyCityTheme {
     static let edgeThickness: CGFloat = 0
 
     // ── Edge shades ──────────────────────────────────────────────────
-    static let edgeNeutral = Color(red: 236/255, green: 240/255, blue: 246/255)
-    static let edgeTurquoise = Color(red: 200/255, green: 235/255, blue: 237/255)
-    static let edgeLavender = Color(red: 215/255, green: 212/255, blue: 255/255)
-    static let edgeMint = Color(red: 195/255, green: 238/255, blue: 222/255)
-    static let edgeOrange = Color(red: 254/255, green: 228/255, blue: 208/255)
-    static let edgeYellow = Color(red: 254/255, green: 235/255, blue: 185/255)
-    static let edgePink = Color(red: 250/255, green: 215/255, blue: 226/255)
-    static let edgeBlue = Color(red: 37/255, green: 60/255, blue: 196/255)
-    static let edgeNavy = Color(red: 15/255, green: 23/255, blue: 42/255)
+    static let edgeNeutral = MoneyCityTheme.borderSubtle
+    static let edgeTurquoise = MoneyCityTheme.babyBlue.opacity(0.35)
+    static let edgeLavender = MoneyCityTheme.violetBlue.opacity(0.18)
+    static let edgeMint = MoneyCityTheme.luckyGreen.opacity(0.20)
+    static let edgeOrange = MoneyCityTheme.orangeRed.opacity(0.20)
+    static let edgeYellow = MoneyCityTheme.neonLime.opacity(0.25)
+    static let edgePink = MoneyCityTheme.violetBlue.opacity(0.18)
+    static let edgeBlue = MoneyCityTheme.violetBlue
+    static let edgeNavy = MoneyCityTheme.jetBlack
 
     // ── Ambient Soft Shadow ──────────────────────────────────────────
-    static let floatShadow = Color(red: 15/255, green: 23/255, blue: 42/255).opacity(0.08)
+    static let floatShadow = Color.black.opacity(0.06)
     static let floatShadowRadius: CGFloat = 16
     static let floatShadowY: CGFloat = 6
 }
@@ -205,22 +234,22 @@ public enum CitySurface: Equatable {
 
     public var fill: Color {
         switch self {
-        case .plain:    return MoneyCityTheme.cardSurface
-        case .food:     return MoneyCityTheme.turquoiseSoft
-        case .shopping: return MoneyCityTheme.lavenderSoft
-        case .housing:  return MoneyCityTheme.yellowSoft
-        case .savings:  return MoneyCityTheme.mintSoft
-        case .habit:    return MoneyCityTheme.orangeSoft
-        case .night:    return MoneyCityTheme.deepNavy
+        case .plain:    return MoneyCityTheme.surfacePrimary
+        case .food:     return MoneyCityTheme.surfaceWarm
+        case .shopping: return MoneyCityTheme.surfaceSoft
+        case .housing:  return MoneyCityTheme.surfaceWarm
+        case .savings:  return MoneyCityTheme.luckyGreen.opacity(0.12)
+        case .habit:    return MoneyCityTheme.surfaceWarm
+        case .night:    return MoneyCityTheme.jetBlack
         }
     }
 
     public var edge: Color {
         switch self {
         case .plain:    return MoneyCityTheme.edgeNeutral
-        case .food:     return MoneyCityTheme.edgeTurquoise
+        case .food:     return MoneyCityTheme.edgeOrange
         case .shopping: return MoneyCityTheme.edgeLavender
-        case .housing:  return MoneyCityTheme.edgeYellow
+        case .housing:  return MoneyCityTheme.edgeOrange
         case .savings:  return MoneyCityTheme.edgeMint
         case .habit:    return MoneyCityTheme.edgeOrange
         case .night:    return MoneyCityTheme.edgeNavy
@@ -239,13 +268,13 @@ public enum CitySurface: Equatable {
     /// The accent used for a glyph or a value sitting on this surface.
     public var accent: Color {
         switch self {
-        case .plain:    return MoneyCityTheme.primaryBlue
-        case .food:     return MoneyCityTheme.turquoise
-        case .shopping: return MoneyCityTheme.lavender
-        case .housing:  return MoneyCityTheme.yellow
-        case .savings:  return MoneyCityTheme.mint
-        case .habit:    return MoneyCityTheme.orange
-        case .night:    return MoneyCityTheme.mint
+        case .plain:    return MoneyCityTheme.brandSecondary
+        case .food:     return MoneyCityTheme.accentWarm
+        case .shopping: return MoneyCityTheme.brandSecondary
+        case .housing:  return MoneyCityTheme.accentWarm
+        case .savings:  return MoneyCityTheme.brandPrimary
+        case .habit:    return MoneyCityTheme.accentWarm
+        case .night:    return MoneyCityTheme.brandPrimary
         }
     }
 

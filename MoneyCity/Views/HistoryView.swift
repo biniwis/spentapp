@@ -496,7 +496,7 @@ public struct HistoryView: View {
         Group {
             if let snap = lastDeleted {
                 HStack(spacing: 12) {
-                    TrashVectorIcon(color: Color.themePink)
+                    TrashVectorIcon(color: MoneyCityTheme.destructive)
                     Text(l10n.language == .hebrew ? "נמחקה: \(snap.merchant)" : "Deleted: \(snap.merchant)")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
@@ -504,7 +504,7 @@ public struct HistoryView: View {
                     Button(action: undoDelete) {
                         Text(l10n.language == .hebrew ? "בטל" : "Undo")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.themeMint)
+                            .foregroundColor(MoneyCityTheme.brandPrimary)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
                             .background(Color.white.opacity(0.18))

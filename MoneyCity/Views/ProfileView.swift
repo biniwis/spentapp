@@ -309,9 +309,9 @@ public struct ProfileView: View {
                     // Festive Badge
                     ZStack {
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.themeLavenderSoft)
+                            .fill(MoneyCityTheme.babyBlue)
                             .frame(width: 48, height: 48)
-                        MoneyIcon(.trophy, size: 22, color: Color.deepNavy)
+                        MoneyIcon(.trophy, size: 22)
                     }
 
                     // Titles
@@ -361,7 +361,7 @@ public struct ProfileView: View {
         HStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(Color(red: 254/255, green: 242/255, blue: 232/255))
+                    .fill(MoneyCityTheme.warmCream)
                     .frame(width: 56, height: 56)
                 MoneyIcon(.user, size: 36)
             }
@@ -380,19 +380,19 @@ public struct ProfileView: View {
                     .foregroundColor(Color.deepNavy)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 4)
-                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                    .background(MoneyCityTheme.jetBlack.opacity(0.05))
                     .clipShape(Capsule())
 
                     if activeStreakDays > 0 {
                         HStack(spacing: 4) {
-                            MoneyIcon(.lightning, size: 10, color: Color.spentGreen)
+                            MoneyIcon(.lightning, size: 10)
                             Text("\(activeStreakDays)d")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                         }
-                        .foregroundColor(Color.spentGreen)
+                        .foregroundColor(MoneyCityTheme.brandPrimary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.spentGreenSoft)
+                        .background(MoneyCityTheme.spentGreenSoft)
                         .clipShape(Capsule())
                     }
                 }

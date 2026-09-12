@@ -5,15 +5,25 @@ import SwiftUI
 // based on the canonical 70-icon reference set.
 
 public struct IconPalette {
-    public static let black  = Color(red: 24/255, green: 24/255, blue: 27/255)  // #18181B (crisp outline)
-    public static let yellow = Color(red: 255/255, green: 197/255, blue: 41/255) // #FFC529 (sunny gold)
-    public static let blue   = Color(red: 37/255, green: 140/255, blue: 244/255) // #258CF4 (azure sky)
-    public static let green  = Color(red: 34/255, green: 197/255, blue: 94/255)  // #22C55E (fresh emerald)
-    public static let red    = Color(red: 255/255, green: 87/255, blue: 87/255)  // #FF5757 (warm coral red)
-    public static let coral  = Color(red: 251/255, green: 113/255, blue: 133/255)// #FB7185 (soft rose coral)
-    public static let purple = Color(red: 168/255, green: 85/255, blue: 247/255)// #A855F7 (vibrant violet)
-    public static let orange = Color(red: 249/255, green: 115/255, blue: 22/255) // #F97316 (warm orange)
-    public static let white  = Color.white
+    // ── Canonical SPENT V2 Icon Paintbox ──
+    public static let jetBlack   = Color(red: 0/255, green: 0/255, blue: 0/255)       // #000000 (crisp outline & detail)
+    public static let luckyGreen = Color(red: 45/255, green: 158/255, blue: 101/255)  // #2D9E65
+    public static let violetBlue = Color(red: 86/255, green: 83/255, blue: 232/255)   // #5653E8
+    public static let orangeRed  = Color(red: 255/255, green: 100/255, blue: 70/255)  // #FF6446
+    public static let babyBlue   = Color(red: 215/255, green: 231/255, blue: 255/255) // #D7E7FF
+    public static let neonLime   = Color(red: 209/255, green: 209/255, blue: 117/255) // #D1D175
+    public static let warmCream  = Color(red: 255/255, green: 242/255, blue: 230/255) // #FFF2E6
+    public static let white      = Color.white                                         // #FFFFFF
+
+    // ── Aliases & Backward-Compatibility mapped onto Canonical Paintbox ──
+    public static let black  = jetBlack
+    public static let yellow = neonLime
+    public static let blue   = violetBlue
+    public static let green  = luckyGreen
+    public static let red    = orangeRed
+    public static let coral  = warmCream
+    public static let purple = violetBlue
+    public static let orange = orangeRed
 }
 
 // MARK: - Icon Catalog Enum

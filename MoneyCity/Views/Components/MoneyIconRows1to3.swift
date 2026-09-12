@@ -7,14 +7,14 @@ extension MoneyIconRenderer {
         ZStack {
             // Walls
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(overrideColor != nil ? overrideColor!.opacity(0.18) : IconPalette.white)
+                .fill(overrideColor != nil ? overrideColor!.opacity(0.18) : IconPalette.warmCream)
                 .frame(width: 14, height: 11)
                 .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
                 .offset(y: 4)
 
             // Roof
             RoofTriangleShape()
-                .fill(overrideColor ?? IconPalette.red)
+                .fill(overrideColor ?? IconPalette.orangeRed)
                 .frame(width: 19, height: 9.5)
                 .overlay(RoofTriangleShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
                 .offset(y: -4.5)
@@ -35,23 +35,23 @@ extension MoneyIconRenderer {
                 .frame(width: 19, height: 1.8)
                 .offset(y: 1.0)
 
-            // Bar 1 (Left: Blue)
+            // Bar 1 (Left: Violet Blue)
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(overrideColor ?? IconPalette.blue)
+                .fill(overrideColor ?? IconPalette.violetBlue)
                 .frame(width: 4.5, height: 7.5)
                 .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
                 .offset(x: -6.0, y: 0)
 
-            // Bar 2 (Middle: Green)
+            // Bar 2 (Middle: Lucky Green)
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(overrideColor ?? IconPalette.green)
+                .fill(overrideColor ?? IconPalette.luckyGreen)
                 .frame(width: 4.5, height: 12.0)
                 .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
                 .offset(x: 0, y: 0)
 
-            // Bar 3 (Right: Yellow)
+            // Bar 3 (Right: Orange Red)
             RoundedRectangle(cornerRadius: 1.5)
-                .fill(overrideColor ?? IconPalette.yellow)
+                .fill(overrideColor ?? IconPalette.orangeRed)
                 .frame(width: 4.5, height: 16.5)
                 .overlay(RoundedRectangle(cornerRadius: 1.5).stroke(black, lineWidth: strokeWidth))
                 .offset(x: 6.0, y: 0)
@@ -63,7 +63,7 @@ extension MoneyIconRenderer {
         ZStack {
             // Card Body
             RoundedRectangle(cornerRadius: 3.5)
-                .fill(overrideColor ?? IconPalette.blue)
+                .fill(overrideColor ?? IconPalette.violetBlue)
                 .frame(width: 19, height: 13.5)
                 .overlay(RoundedRectangle(cornerRadius: 3.5).stroke(black, lineWidth: strokeWidth))
 
@@ -73,18 +73,18 @@ extension MoneyIconRenderer {
                 .frame(width: 19, height: 2.8)
                 .offset(y: -2.8)
 
-            // Smart Chip (Gold/Yellow with outline)
+            // Smart Chip (Neon Lime with outline)
             RoundedRectangle(cornerRadius: 1)
-                .fill(IconPalette.yellow)
+                .fill(IconPalette.neonLime)
                 .frame(width: 4.2, height: 3)
                 .overlay(RoundedRectangle(cornerRadius: 1).stroke(black, lineWidth: 1.0))
                 .offset(x: -4.2, y: 2.2)
 
             // Card embossed dots/lines
             HStack(spacing: 1.5) {
-                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.white).frame(width: 2.5, height: 1.5)
-                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.white).frame(width: 2.5, height: 1.5)
-                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.white).frame(width: 2.5, height: 1.5)
+                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.babyBlue).frame(width: 2.5, height: 1.5)
+                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.babyBlue).frame(width: 2.5, height: 1.5)
+                RoundedRectangle(cornerRadius: 0.5).fill(IconPalette.babyBlue).frame(width: 2.5, height: 1.5)
             }
             .offset(x: 2.8, y: 2.2)
         }
@@ -561,7 +561,7 @@ extension MoneyIconRenderer {
                     .stroke(black, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                     .frame(width: 5.5, height: 7)
                 RoundedRectangle(cornerRadius: 1)
-                    .fill(overrideColor ?? IconPalette.red)
+                    .fill(overrideColor ?? IconPalette.orangeRed)
                     .frame(width: 2.6, height: 9)
                     .overlay(RoundedRectangle(cornerRadius: 1).stroke(black, lineWidth: 1.4))
             }
@@ -569,11 +569,11 @@ extension MoneyIconRenderer {
             // Knife
             VStack(spacing: 0) {
                 KnifeBladeShape()
-                    .fill(IconPalette.white)
+                    .fill(IconPalette.warmCream)
                     .frame(width: 3.5, height: 8)
                     .overlay(KnifeBladeShape().stroke(black, lineWidth: 1.6))
                 RoundedRectangle(cornerRadius: 1)
-                    .fill(overrideColor ?? IconPalette.orange)
+                    .fill(overrideColor ?? IconPalette.orangeRed)
                     .frame(width: 2.6, height: 9)
                     .overlay(RoundedRectangle(cornerRadius: 1).stroke(black, lineWidth: 1.4))
             }
@@ -631,7 +631,7 @@ extension MoneyIconRenderer {
         ZStack {
             // Car Body
             CarBodyShape()
-                .fill(overrideColor ?? IconPalette.blue)
+                .fill(overrideColor ?? IconPalette.babyBlue)
                 .frame(width: 18.5, height: 10)
                 .overlay(CarBodyShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
                 .offset(y: -0.5)
@@ -645,7 +645,7 @@ extension MoneyIconRenderer {
 
             // Headlight
             Circle()
-                .fill(IconPalette.yellow)
+                .fill(IconPalette.neonLime)
                 .frame(width: 2, height: 2)
                 .offset(x: 8, y: -0.5)
 

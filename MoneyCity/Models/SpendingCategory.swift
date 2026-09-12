@@ -175,34 +175,34 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
     }
     
     public var themeColor: Color {
-        switch self {
-        case .housing: return Color(red: 2/255, green: 132/255, blue: 199/255)       // Sky Blue #0284C7
-        case .food, .groceries, .coffee: return Color(red: 249/255, green: 115/255, blue: 22/255) // Warm Orange #F97316
-        case .transport: return Color(red: 34/255, green: 197/255, blue: 94/255)    // Fresh Green #22C55E
-        case .shopping: return Color(red: 236/255, green: 72/255, blue: 153/255)    // Soft Pink #EC4899
-        case .entertainment: return Color(red: 168/255, green: 85/255, blue: 247/255)// Purple #A855F7
-        case .health: return Color(red: 244/255, green: 63/255, blue: 94/255)       // Soft Rose #F43F5E
-        case .subscriptions: return Color(red: 59/255, green: 130/255, blue: 246/255) // Royal Blue #3B82F6
-        case .finance: return Color(red: 139/255, green: 92/255, blue: 246/255)     // Lavender Violet #8B5CF6
-        case .savings: return Color(red: 16/255, green: 185/255, blue: 129/255)      // Mint Green #10B981
-        case .miscellaneous, .misc: return Color(red: 99/255, green: 102/255, blue: 241/255) // Indigo #6366F1
-        case .other: return Color(red: 100/255, green: 116/255, blue: 139/255)        // Neutral Slate #64748B
+        switch canonical {
+        case .housing: return MoneyCityTheme.orangeRed
+        case .food, .groceries, .coffee: return MoneyCityTheme.orangeRed
+        case .transport: return MoneyCityTheme.violetBlue
+        case .shopping: return MoneyCityTheme.violetBlue
+        case .entertainment: return MoneyCityTheme.violetBlue
+        case .health: return MoneyCityTheme.orangeRed
+        case .subscriptions: return MoneyCityTheme.violetBlue
+        case .finance: return MoneyCityTheme.violetBlue
+        case .savings: return MoneyCityTheme.luckyGreen
+        case .miscellaneous, .misc: return MoneyCityTheme.neonLime
+        case .other: return MoneyCityTheme.textMuted
         }
     }
 
     public var softBackgroundColor: Color {
-        switch self {
-        case .housing: return Color(red: 224/255, green: 242/255, blue: 254/255)     // #E0F2FE
-        case .food, .groceries, .coffee: return Color(red: 255/255, green: 237/255, blue: 213/255) // #FFEDD5 Warm Peach
-        case .transport: return Color(red: 220/255, green: 252/255, blue: 231/255)    // #DCFCE7 Mint Soft
-        case .shopping: return Color(red: 252/255, green: 231/255, blue: 243/255)     // #FCE7F3 Pink Soft
-        case .entertainment: return Color(red: 243/255, green: 232/255, blue: 255/255)// #F3E8FF Lavender Soft
-        case .health: return Color(red: 255/255, green: 228/255, blue: 230/255)        // #FFE4E6 Rose Soft
-        case .subscriptions: return Color(red: 219/255, green: 234/255, blue: 254/255)// #DBEAFE Periwinkle Soft
-        case .finance: return Color(red: 237/255, green: 233/255, blue: 254/255)       // #EDE9FE Violet Soft
-        case .savings: return Color(red: 209/255, green: 250/255, blue: 229/255)       // #D1FAE5 Sage Soft
-        case .miscellaneous, .misc: return Color(red: 238/255, green: 242/255, blue: 255/255) // #EEF2FF
-        case .other: return Color(red: 241/255, green: 245/255, blue: 249/255)         // #F1F5F9 Neutral Soft
+        switch canonical {
+        case .housing: return MoneyCityTheme.warmCream
+        case .food, .groceries, .coffee: return MoneyCityTheme.warmCream
+        case .transport: return MoneyCityTheme.babyBlue
+        case .shopping: return MoneyCityTheme.babyBlue
+        case .entertainment: return MoneyCityTheme.babyBlue
+        case .health: return MoneyCityTheme.orangeRed.opacity(0.12)
+        case .subscriptions: return MoneyCityTheme.babyBlue
+        case .finance: return MoneyCityTheme.babyBlue
+        case .savings: return MoneyCityTheme.luckyGreen.opacity(0.12)
+        case .miscellaneous, .misc: return MoneyCityTheme.neonLime.opacity(0.25)
+        case .other: return MoneyCityTheme.borderSubtle
         }
     }
 

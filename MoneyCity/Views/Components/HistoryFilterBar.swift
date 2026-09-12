@@ -68,7 +68,7 @@ public struct HistoryFilterBar: View {
             .foregroundColor(.white)
             .padding(.horizontal, 12)
             .frame(height: 36)
-            .background(Color(red: 17/255, green: 24/255, blue: 39/255))
+            .background(MoneyCityTheme.jetBlack)
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -110,7 +110,7 @@ public struct HistoryFilterBar: View {
         } label: {
             MoneyIcon(.sliders, size: 18)
                 .frame(width: 36, height: 36)
-                .background(showOnlyUnconfirmed ? Color.deepNavy : Color(red: 243/255, green: 244/255, blue: 246/255))
+                .background(showOnlyUnconfirmed ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -125,15 +125,15 @@ public struct HistoryFilterBar: View {
         }) {
             HStack(spacing: 6) {
                 Circle()
-                    .fill(showOnlyUnconfirmed ? .white : Color(red: 245/255, green: 158/255, blue: 11/255))
+                    .fill(showOnlyUnconfirmed ? .white : MoneyCityTheme.accentWarm)
                     .frame(width: 7, height: 7)
                 Text(l10n.language == .hebrew ? "לאישור (\(unconfirmedCount))" : "Review (\(unconfirmedCount))")
                     .font(.system(size: 13.5, weight: .semibold, design: .default))
             }
-            .foregroundColor(showOnlyUnconfirmed ? .white : Color.deepNavy)
+            .foregroundColor(showOnlyUnconfirmed ? .white : MoneyCityTheme.textPrimary)
             .padding(.horizontal, 14)
             .frame(height: 36)
-            .background(showOnlyUnconfirmed ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 243/255, green: 244/255, blue: 246/255))
+            .background(showOnlyUnconfirmed ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -151,10 +151,10 @@ public struct HistoryFilterBar: View {
         }) {
             Text(l10n.language == .hebrew ? "הכל" : "All")
                 .font(.system(size: 13.5, weight: isSelected ? .bold : .semibold, design: .default))
-                .foregroundColor(isSelected ? .white : Color(red: 75/255, green: 85/255, blue: 99/255))
+                .foregroundColor(isSelected ? .white : MoneyCityTheme.textSecondary)
                 .padding(.horizontal, 16)
                 .frame(height: 36)
-                .background(isSelected ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 243/255, green: 244/255, blue: 246/255))
+                .background(isSelected ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -171,10 +171,10 @@ public struct HistoryFilterBar: View {
         }) {
             Text(cat.shortName(for: l10n.language))
                 .font(.system(size: 13.5, weight: isSelected ? .bold : .semibold, design: .default))
-                .foregroundColor(isSelected ? .white : Color(red: 75/255, green: 85/255, blue: 99/255))
+                .foregroundColor(isSelected ? .white : MoneyCityTheme.textSecondary)
                 .padding(.horizontal, 16)
                 .frame(height: 36)
-                .background(isSelected ? Color(red: 17/255, green: 24/255, blue: 39/255) : Color(red: 243/255, green: 244/255, blue: 246/255))
+                .background(isSelected ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)

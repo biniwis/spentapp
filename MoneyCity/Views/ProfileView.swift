@@ -696,7 +696,7 @@ public struct ProfileView: View {
                             Text(verbatim: l10n.language == .hebrew ? "‹" : "›")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(MoneyCityTheme.jetBlack)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(Color.spentGreen)

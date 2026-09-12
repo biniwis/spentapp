@@ -176,17 +176,17 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
     
     public var themeColor: Color {
         switch canonical {
-        case .housing: return MoneyCityTheme.orangeRed
-        case .food, .groceries, .coffee: return MoneyCityTheme.orangeRed
-        case .transport: return MoneyCityTheme.violetBlue
-        case .shopping: return MoneyCityTheme.violetBlue
-        case .entertainment: return MoneyCityTheme.violetBlue
-        case .health: return MoneyCityTheme.orangeRed
-        case .subscriptions: return MoneyCityTheme.violetBlue
-        case .finance: return MoneyCityTheme.violetBlue
-        case .savings: return MoneyCityTheme.luckyGreen
-        case .miscellaneous, .misc: return MoneyCityTheme.neonLime
-        case .other: return MoneyCityTheme.textMuted
+        case .housing: return MoneyCityTheme.CategoryPalette.housing
+        case .food, .groceries, .coffee: return MoneyCityTheme.CategoryPalette.food
+        case .transport: return MoneyCityTheme.CategoryPalette.transport
+        case .shopping: return MoneyCityTheme.CategoryPalette.shopping
+        case .entertainment: return MoneyCityTheme.CategoryPalette.entertainment
+        case .health: return MoneyCityTheme.CategoryPalette.health
+        case .subscriptions: return MoneyCityTheme.CategoryPalette.subscriptions
+        case .finance: return MoneyCityTheme.CategoryPalette.finance
+        case .savings: return MoneyCityTheme.CategoryPalette.savings
+        case .miscellaneous, .misc: return MoneyCityTheme.CategoryPalette.miscellaneous
+        case .other: return MoneyCityTheme.CategoryPalette.other
         }
     }
 
@@ -199,10 +199,10 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .entertainment: return MoneyCityTheme.babyBlue
         case .health: return MoneyCityTheme.orangeRed.opacity(0.12)
         case .subscriptions: return MoneyCityTheme.babyBlue
-        case .finance: return MoneyCityTheme.babyBlue
+        case .finance: return MoneyCityTheme.jetBlack.opacity(0.06)
         case .savings: return MoneyCityTheme.luckyGreen.opacity(0.12)
         case .miscellaneous, .misc: return MoneyCityTheme.neonLime.opacity(0.25)
-        case .other: return MoneyCityTheme.borderSubtle
+        case .other: return MoneyCityTheme.jetBlack.opacity(0.04)
         }
     }
 

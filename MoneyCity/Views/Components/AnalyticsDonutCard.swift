@@ -137,6 +137,14 @@ public struct AnalyticsDonutCard: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isSelected)
             }
 
+            if donutSlices.count > 1 {
+                ForEach(donutSlices) { slice in
+                    DonutRadialSeparator(angle: slice.rawEndAngle)
+                        .stroke(Color.white, lineWidth: 1.5)
+                        .frame(width: diameter, height: diameter)
+                }
+            }
+
             donutCenterHub
         }
         .frame(width: diameter, height: diameter)

@@ -101,7 +101,7 @@ public struct CityNewMonthRecapBanner: View {
             Button(action: onOpen) {
                 Text(l10n.language == .hebrew ? "צפה" : "View")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(MoneyCityTheme.jetBlack)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                     .background(MoneyCityTheme.brandPrimary)

@@ -464,7 +464,7 @@ public struct MainCityView: View {
                             }) {
                                 Text(l10n.language == .hebrew ? "הזן סכום ✎" : "Enter ✎")
                                     .font(.system(size: 11, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(MoneyCityTheme.jetBlack)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
                                     .background(MoneyCityTheme.brandPrimary)

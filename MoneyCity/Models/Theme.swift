@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Global design system tokens and color palette art-directed for MoneyCity.
-/// Clean, playful, modern, and distinctive — Vivid Royal Blue brand with soft pastel category accents.
+/// SPENT V2 Design System tokens and color palette art-directed for MoneyCity.
+/// Calm white interface, strong black typography, controlled expressive moments.
 public struct MoneyCityTheme {
     // ── SPENT Canonical Palette (V2) ──
     public static let white       = Color(red: 255/255, green: 255/255, blue: 255/255) // #FFFFFF Pure White
@@ -12,6 +13,21 @@ public struct MoneyCityTheme {
     public static let orangeRed   = Color(red: 255/255, green: 100/255, blue: 70/255)  // #FF6446 Orange Red (Strong Warm Accent)
     public static let luckyGreen  = Color(red: 45/255, green: 158/255, blue: 101/255)  // #2D9E65 Lucky Green (Primary Brand & Action)
     public static let violetBlue  = Color(red: 86/255, green: 83/255, blue: 232/255)   // #5653E8 Violet Blue (Secondary Brand & Editorial)
+
+    // ── Curated Category Palette (Tonally unified for data distinction) ──
+    public struct CategoryPalette {
+        public static let food           = Color(red: 255/255, green: 100/255, blue: 70/255)  // #FF6446 Orange Red
+        public static let shopping       = Color(red: 86/255,  green: 83/255,  blue: 232/255) // #5653E8 Violet Blue
+        public static let transport      = Color(red: 63/255,  green: 134/255, blue: 199/255) // #3F86C7 City Blue
+        public static let housing        = Color(red: 201/255, green: 145/255, blue: 63/255)  // #C9913F Warm Ochre
+        public static let entertainment  = Color(red: 122/255, green: 95/255,  blue: 199/255) // #7A5FC7 Soft Purple
+        public static let health         = Color(red: 216/255, green: 95/255,  blue: 115/255) // #D85F73 Dusty Coral
+        public static let subscriptions  = Color(red: 102/255, green: 121/255, blue: 200/255) // #6679C8 Periwinkle
+        public static let finance        = Color(red: 83/255,  green: 96/255,  blue: 107/255) // #53606B Graphite Blue
+        public static let savings        = Color(red: 45/255,  green: 158/255, blue: 101/255) // #2D9E65 Lucky Green
+        public static let miscellaneous  = Color(red: 166/255, green: 169/255, blue: 86/255)  // #A6A956 Olive Lime
+        public static let other          = Color(red: 146/255, green: 153/255, blue: 161/255) // #9299A1 Neutral Slate
+    }
 
     // ── Semantic Design Tokens ──
     public static let appBackground   = white                                         // #FFFFFF Canvas
@@ -26,8 +42,8 @@ public struct MoneyCityTheme {
 
     // ── Typography & Neutral Tokens ──
     public static let textPrimary     = jetBlack                                      // #000000 Primary Text & Numbers
-    public static let textSecondary   = jetBlack.opacity(0.60)                        // Readable medium contrast text
-    public static let textMuted       = jetBlack.opacity(0.40)                        // Lower hierarchy labels & captions
+    public static let textSecondary   = jetBlack.opacity(0.62)                        // Readable medium contrast text
+    public static let textMuted       = jetBlack.opacity(0.48)                        // Lower hierarchy labels & captions (elevated contrast)
     public static let borderSubtle    = jetBlack.opacity(0.08)                        // Quiet Apple HIG hairline borders
     public static let borderHairline  = jetBlack.opacity(0.05)                        // Ultra-subtle dividers
     public static let divider         = jetBlack.opacity(0.08)
@@ -123,15 +139,15 @@ public extension Color {
     static let emeraldGreen = MoneyCityTheme.emeraldGreen
     static let oceanBlue = MoneyCityTheme.oceanBlue
 
-    // Slates (now derived from Jet Black hierarchy)
+    // Slates (pure neutral Jet Black hierarchy)
     static let slate100 = Color.white
-    static let slate200 = MoneyCityTheme.warmCream
-    static let slate300 = MoneyCityTheme.babyBlue
-    static let slate400 = MoneyCityTheme.jetBlack.opacity(0.40)
-    static let slate500 = MoneyCityTheme.jetBlack.opacity(0.60)
-    static let slate700 = MoneyCityTheme.jetBlack.opacity(0.75)
-    static let slate800 = MoneyCityTheme.jetBlack.opacity(0.88)
-    static let slate900 = MoneyCityTheme.jetBlack.opacity(0.95)
+    static let slate200 = MoneyCityTheme.jetBlack.opacity(0.04)
+    static let slate300 = MoneyCityTheme.jetBlack.opacity(0.08)
+    static let slate400 = MoneyCityTheme.jetBlack.opacity(0.25)
+    static let slate500 = MoneyCityTheme.jetBlack.opacity(0.48)
+    static let slate700 = MoneyCityTheme.jetBlack.opacity(0.70)
+    static let slate800 = MoneyCityTheme.jetBlack.opacity(0.85)
+    static let slate900 = MoneyCityTheme.jetBlack.opacity(0.92)
     static let slate950 = MoneyCityTheme.jetBlack
 
     /// Initialize a Color from a hexadecimal string (e.g., "#9333EA", "9333EA", "#FFF")

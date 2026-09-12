@@ -321,7 +321,7 @@ public struct BigQuickAmountOverlay: View {
                         Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Expense")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
-                    .foregroundColor(canSubmit ? .white : Color.textMuted)
+                    .foregroundColor(canSubmit ? MoneyCityTheme.jetBlack : Color.textMuted)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
                     .background(canSubmit ? Color.spentGreen : Color.black.opacity(0.06))

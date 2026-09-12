@@ -766,6 +766,7 @@ public struct QuickAddSheet: View {
     // MARK: - 4. Big Save Button
     @ViewBuilder @MainActor
     private var saveTransactionButton: some View {
+        let canSave = parseAmount(amountText) != nil && selectedCategory != nil
         Button(action: {
             if let cat = selectedCategory {
                 submit(category: cat)
@@ -775,15 +776,15 @@ public struct QuickAddSheet: View {
             }
         }) {
             HStack(spacing: 8) {
-                MoneyIcon(.checkCircle, size: 20)
+                MoneyIcon(.checkCircle, size: 20, color: canSave ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.40))
                 Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Transaction")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
-            .foregroundColor(.white)
+            .foregroundColor(canSave ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.40))
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .background(
-                (parseAmount(amountText) != nil && selectedCategory != nil)
+                canSave
                     ? MoneyCityTheme.brandPrimary
                     : MoneyCityTheme.brandPrimary.opacity(0.35)
             )

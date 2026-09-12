@@ -27,6 +27,41 @@ public struct DonutArcShape: Shape {
     }
 }
 
+/// A crisp radial separator line between donut slices
+public struct DonutRadialSeparator: Shape {
+    public var angle: Double
+    public var innerRadius: CGFloat
+    public var outerRadius: CGFloat
+
+    public var animatableData: Double {
+        get { angle }
+        set { angle = newValue }
+    }
+
+    public init(angle: Double, innerRadius: CGFloat = 63, outerRadius: CGFloat = 93) {
+        self.angle = angle
+        self.innerRadius = innerRadius
+        self.outerRadius = outerRadius
+    }
+
+    public func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let rad = CGFloat(angle) * .pi / 180.0
+        let p1 = CGPoint(
+            x: center.x + innerRadius * cos(rad),
+            y: center.y + innerRadius * sin(rad)
+        )
+        let p2 = CGPoint(
+            x: center.x + outerRadius * cos(rad),
+            y: center.y + outerRadius * sin(rad)
+        )
+        path.move(to: p1)
+        path.addLine(to: p2)
+        return path
+    }
+}
+
 public struct DonutSliceData: Identifiable {
     public let id: String
     public let category: SpendingCategory

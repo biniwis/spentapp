@@ -54,7 +54,7 @@ public struct CityProgressSheet: View {
                         Button { dismiss() } label: {
                             Text(he ? "בואו נראה בעיר" : "Meet in the city")
                                 .font(.headline).frame(maxWidth: .infinity).padding(16)
-                                .foregroundColor(.white)
+                                .foregroundColor(MoneyCityTheme.jetBlack)
                                 .background(MoneyCityTheme.brandPrimary, in: RoundedRectangle(cornerRadius: 16))
                         }
                     }

@@ -70,16 +70,10 @@ public struct ResolvePendingAmountSheet: View {
                 }) {
                     Text(l10n.language == .hebrew ? "שמור בעיר" : "Save to City")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(MoneyCityTheme.jetBlack)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
-                        .background(
-                            LinearGradient(
-                                colors: [Color.spentGreen, Color(red: 22/255, green: 163/255, blue: 74/255)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                        .background(MoneyCityTheme.brandPrimary)
                         .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
                 }
                 .buttonStyle(.plain)

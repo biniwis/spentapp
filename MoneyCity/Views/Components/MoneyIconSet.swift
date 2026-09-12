@@ -5,15 +5,15 @@ import SwiftUI
 // based on the canonical 70-icon reference set.
 
 public struct IconPalette {
-    // ── Canonical SPENT V2 Icon Paintbox ──
-    public static let jetBlack   = Color(red: 0/255, green: 0/255, blue: 0/255)       // #000000 (crisp outline & detail)
-    public static let luckyGreen = Color(red: 45/255, green: 158/255, blue: 101/255)  // #2D9E65
-    public static let violetBlue = Color(red: 86/255, green: 83/255, blue: 232/255)   // #5653E8
-    public static let orangeRed  = Color(red: 255/255, green: 100/255, blue: 70/255)  // #FF6446
-    public static let babyBlue   = Color(red: 215/255, green: 231/255, blue: 255/255) // #D7E7FF
-    public static let neonLime   = Color(red: 209/255, green: 209/255, blue: 117/255) // #D1D175
-    public static let warmCream  = Color(red: 255/255, green: 242/255, blue: 230/255) // #FFF2E6
-    public static let white      = Color.white                                         // #FFFFFF
+    // ── Canonical SPENT V2 Icon Paintbox (single source of truth: MoneyCityTheme) ──
+    public static let jetBlack   = MoneyCityTheme.jetBlack
+    public static let luckyGreen = MoneyCityTheme.luckyGreen
+    public static let violetBlue = MoneyCityTheme.violetBlue
+    public static let orangeRed  = MoneyCityTheme.orangeRed
+    public static let babyBlue   = MoneyCityTheme.babyBlue
+    public static let neonLime   = MoneyCityTheme.neonLime
+    public static let warmCream  = MoneyCityTheme.warmCream
+    public static let white      = MoneyCityTheme.white
 
     // ── Aliases & Backward-Compatibility mapped onto Canonical Paintbox ──
     public static let black  = jetBlack

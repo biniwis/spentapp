@@ -15,6 +15,7 @@ public struct SpentWidgetEntry: TimelineEntry {
     public let savingsAmount: Double
     public let recentMerchant: String
     public let isHebrew: Bool
+    public let currencySymbol: String
     
     public init(
         date: Date = Date(),
@@ -22,7 +23,8 @@ public struct SpentWidgetEntry: TimelineEntry {
         budgetAmount: Double = 0.0,
         savingsAmount: Double = 0.0,
         recentMerchant: String = "",
-        isHebrew: Bool = true
+        isHebrew: Bool = true,
+        currencySymbol: String = "₪"
     ) {
         self.date = date
         self.spentAmount = spentAmount
@@ -30,6 +32,7 @@ public struct SpentWidgetEntry: TimelineEntry {
         self.savingsAmount = savingsAmount
         self.recentMerchant = recentMerchant
         self.isHebrew = isHebrew
+        self.currencySymbol = currencySymbol
     }
 }
 
@@ -44,7 +47,8 @@ public struct SpentWidgetProvider: TimelineProvider {
             budgetAmount: 0,
             savingsAmount: 0,
             recentMerchant: "",
-            isHebrew: true
+            isHebrew: true,
+            currencySymbol: "₪"
         )
     }
 
@@ -71,6 +75,7 @@ public struct SpentWidgetProvider: TimelineProvider {
         let savings = defaults.double(forKey: "widget_monthly_savings")
         let merchant = defaults.string(forKey: "widget_recent_merchant") ?? ""
         let isHebrew = (defaults.string(forKey: "app_language_pref") ?? defaults.string(forKey: "app_language") ?? "he") == "he"
+        let currency = defaults.string(forKey: "widget_currency_symbol") ?? "₪"
         
         return SpentWidgetEntry(
             date: Date(),
@@ -78,7 +83,8 @@ public struct SpentWidgetProvider: TimelineProvider {
             budgetAmount: budget,
             savingsAmount: savings,
             recentMerchant: merchant,
-            isHebrew: isHebrew
+            isHebrew: isHebrew,
+            currencySymbol: currency
         )
     }
 }
@@ -138,7 +144,7 @@ public struct spent_fastEntryView: View {
                     .font(.system(size: 11, weight: .bold, design: .rounded))
             }
             
-            Text("₪\(Int(entry.spentAmount)) / ₪\(Int(entry.budgetAmount))")
+            Text("\(entry.currencySymbol)\(Int(entry.spentAmount)) / \(entry.currencySymbol)\(Int(entry.budgetAmount))")
                 .font(.system(size: 14, weight: .black, design: .rounded))
             
             Text(entry.isHebrew ? "הוספה מהירה +" : "Tap for Quick Add +")
@@ -151,7 +157,7 @@ public struct spent_fastEntryView: View {
     private var lockScreenInlineView: some View {
         HStack(spacing: 3) {
             Image(systemName: "creditcard.fill")
-            Text("₪\(Int(entry.spentAmount)) \(entry.isHebrew ? "החודש • + הוסף" : "spent • + Add")")
+            Text("\(entry.currencySymbol)\(Int(entry.spentAmount)) \(entry.isHebrew ? "החודש • + הוסף" : "spent • + Add")")
         }
     }
     
@@ -170,13 +176,13 @@ public struct spent_fastEntryView: View {
             }
             
             // Amount
-            Text("₪\(Int(entry.spentAmount))")
+            Text("\(entry.currencySymbol)\(Int(entry.spentAmount))")
                 .font(.system(size: 22, weight: .black, design: .rounded))
                 .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                 .padding(.top, 2)
             
             let remaining = max(entry.budgetAmount - entry.spentAmount, 0)
-            Text(entry.isHebrew ? "נותרו ₪\(Int(remaining)) בתקציב" : "₪\(Int(remaining)) left")
+            Text(entry.isHebrew ? "נותרו \(entry.currencySymbol)\(Int(remaining)) בתקציב" : "\(entry.currencySymbol)\(Int(remaining)) left")
                 .font(.system(size: 9, weight: .semibold, design: .rounded))
                 .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                 .padding(.top, 1)
@@ -216,12 +222,12 @@ public struct spent_fastEntryView: View {
                         .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                 }
                 
-                Text("₪\(Int(entry.spentAmount))")
+                Text("\(entry.currencySymbol)\(Int(entry.spentAmount))")
                     .font(.system(size: 26, weight: .black, design: .rounded))
                     .foregroundColor(Color(red: 15/255, green: 23/255, blue: 42/255))
                 
                 let pct = entry.budgetAmount > 0 ? Int((entry.spentAmount / entry.budgetAmount) * 100) : 0
-                Text(entry.isHebrew ? "\(pct)% מהתקציב · חיסכון ₪\(Int(entry.savingsAmount))" : "\(pct)% budget · Savings ₪\(Int(entry.savingsAmount))")
+                Text(entry.isHebrew ? "\(pct)% מהתקציב · חיסכון \(entry.currencySymbol)\(Int(entry.savingsAmount))" : "\(pct)% budget · Savings \(entry.currencySymbol)\(Int(entry.savingsAmount))")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                 

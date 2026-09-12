@@ -20,6 +20,14 @@ public enum MerchantRuleService {
             .joined(separator: " ")
     }
 
+    /// Checks if a rule key matches text respecting word boundaries.
+    public static func matchesKey(ruleKey: String, in text: String) -> Bool {
+        guard let range = text.range(of: ruleKey) else { return false }
+        let validStart = range.lowerBound == text.startIndex || !text[text.index(before: range.lowerBound)].isLetter
+        let validEnd = range.upperBound == text.endIndex || !text[range.upperBound].isLetter
+        return validStart && validEnd
+    }
+
     /// The rule that should win for this merchant.
     ///
     /// An exact match always beats a substring match, and among substring matches the
@@ -33,7 +41,7 @@ public enum MerchantRuleService {
         }
 
         return rules
-            .filter { $0.merchantKey.count >= minimumSubstringLength && key.contains($0.merchantKey) }
+            .filter { $0.merchantKey.count >= minimumSubstringLength && matchesKey(ruleKey: $0.merchantKey, in: key) }
             .max(by: { $0.merchantKey.count < $1.merchantKey.count })
     }
 

@@ -607,7 +607,7 @@ public struct AnalyticsView: View {
         let dailyAvg = dailyAverageSpent
         let txCount = activeTransactionCount
         let topTx = topTransactionThisMonth
-        let maxTxText = topTx.map { l10n.format(amount: $0.amount.rounded()) } ?? "₪0"
+        let maxTxText = topTx.map { l10n.format(amount: $0.amount.rounded()) } ?? l10n.format(amount: 0)
 
         return HStack(alignment: .top, spacing: 0) {
             // 1. Daily Average

@@ -106,7 +106,10 @@ public final class LocalizationManager: ObservableObject {
     }
 
     @AppStorage("app_currency_pref") public var baseCurrencyRaw: String = CurrencyType.ils.rawValue {
-        didSet { objectWillChange.send() }
+        didSet {
+            UserDefaults(suiteName: "group.com.moneycity.app")?.set(baseCurrency.symbol, forKey: "widget_currency_symbol")
+            objectWillChange.send()
+        }
     }
 
     @AppStorage("auto_convert_fx") public var autoConvertForeign: Bool = true {

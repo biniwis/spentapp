@@ -69,7 +69,7 @@ public struct SettingsSheet: View {
                                     Text(l10n.language == .hebrew ? "המרת מטבע אוטומטית" : "Automatic Currency Conversion")
                                         .font(.system(size: 13, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.deepNavy)
-                                    Text(l10n.language == .hebrew ? "עדכון שערי יציג חי של בנק ישראל" : "Live Bank of Israel rates")
+                                    Text(l10n.language == .hebrew ? "שערי יציג עדכניים (הערכה)" : "Live exchange rates (estimated)")
                                         .font(.system(size: 11, design: .rounded))
                                         .foregroundColor(Color.textMuted)
                                 }

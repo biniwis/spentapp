@@ -624,4 +624,12 @@ public final class DatabaseService {
             return []
         }
     }
+
+    public func incrementMerchantRuleHitCount(for merchant: String) {
+        let rules = fetchMerchantRules()
+        if let rule = MerchantRuleService.rule(for: merchant, in: rules) {
+            rule.hitCount += 1
+            _ = DatabaseService.safeSave(context)
+        }
+    }
 }

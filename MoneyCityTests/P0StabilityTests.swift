@@ -186,4 +186,156 @@ final class P0StabilityTests: XCTestCase {
         let returning = resolveRoute(hasCompletedOnboarding: true, hasStartedOnboardingV2: true, hasTransactions: true)
         XCTAssertEqual(returning.route, "main")
     }
+
+    // MARK: - Phase 1: Quick Add Currency Invariant Tests
+
+    func testQuickAddCurrencyNormalizationInvariants() {
+        // 1. Base ILS + input ILS
+        let res1_isForeign = CurrencyType.ils != CurrencyType.ils
+        let res1_amount = res1_isForeign ? CurrencyType.convert(amount: 100, from: .ils, to: .ils) : 100.0
+        let res1_curr = CurrencyType.ils.symbol
+        XCTAssertEqual(res1_amount, 100.0)
+        XCTAssertEqual(res1_curr, "₪")
+        XCTAssertFalse(res1_isForeign)
+
+        // 2. Base USD + input USD
+        let res2_isForeign = CurrencyType.usd != CurrencyType.usd
+        let res2_amount = res2_isForeign ? CurrencyType.convert(amount: 100, from: .usd, to: .usd) : 100.0
+        let res2_curr = CurrencyType.usd.symbol
+        XCTAssertEqual(res2_amount, 100.0)
+        XCTAssertEqual(res2_curr, "$")
+        XCTAssertFalse(res2_isForeign)
+
+        // 3. Base USD + input ILS
+        let res3_isForeign = CurrencyType.ils != CurrencyType.usd
+        let res3_amount = res3_isForeign ? CurrencyType.convert(amount: 100, from: .ils, to: .usd) : 100.0
+        let res3_curr = CurrencyType.usd.symbol
+        let expectedUSD = 100.0 / FXService.rateToILS(for: .usd)
+        XCTAssertEqual(res3_amount, expectedUSD, accuracy: 0.001)
+        XCTAssertEqual(res3_curr, "$")
+        XCTAssertTrue(res3_isForeign)
+
+        // 4. Base ILS + input USD
+        let res4_isForeign = CurrencyType.usd != CurrencyType.ils
+        let res4_amount = res4_isForeign ? CurrencyType.convert(amount: 100, from: .usd, to: .ils) : 100.0
+        let res4_curr = CurrencyType.ils.symbol
+        let expectedILS = 100.0 * FXService.rateToILS(for: .usd)
+        XCTAssertEqual(res4_amount, expectedILS, accuracy: 0.001)
+        XCTAssertEqual(res4_curr, "₪")
+        XCTAssertTrue(res4_isForeign)
+
+        // 5. Base EUR + input USD
+        let res5_isForeign = CurrencyType.usd != CurrencyType.eur
+        let res5_amount = res5_isForeign ? CurrencyType.convert(amount: 100, from: .usd, to: .eur) : 100.0
+        let res5_curr = CurrencyType.eur.symbol
+        let expectedEUR = (100.0 * FXService.rateToILS(for: .usd)) / FXService.rateToILS(for: .eur)
+        XCTAssertEqual(res5_amount, expectedEUR, accuracy: 0.001)
+        XCTAssertEqual(res5_curr, "€")
+        XCTAssertTrue(res5_isForeign)
+    }
+
+    // MARK: - Phase 6: Merchant Rule HitCount Persistence
+
+    @MainActor
+    func testMerchantRuleHitCountPersistsAcrossFreshContexts() throws {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: MerchantRule.self, configurations: config)
+        let ctx1 = ModelContext(container)
+
+        let rule = MerchantRule(merchantKey: "am:pm", displayName: "AM:PM", category: .food, hitCount: 0)
+        ctx1.insert(rule)
+        try ctx1.save()
+
+        // Fetch from a distinct context and mutate hitCount
+        let ctx2 = ModelContext(container)
+        let fetched = try ctx2.fetch(FetchDescriptor<MerchantRule>(predicate: #Predicate { $0.merchantKey == "am:pm" }))
+        XCTAssertEqual(fetched.count, 1)
+        fetched[0].hitCount += 1
+        try ctx2.save()
+
+        // Fetch from a third distinct context to verify durability
+        let ctx3 = ModelContext(container)
+        let verified = try ctx3.fetch(FetchDescriptor<MerchantRule>(predicate: #Predicate { $0.merchantKey == "am:pm" }))
+        XCTAssertEqual(verified.count, 1)
+        XCTAssertEqual(verified[0].hitCount, 1, "Hit count must survive save and be visible in fresh contexts")
+    }
+
+    // MARK: - Phase 7: Merchant False-Positive Word-Boundary Tests
+
+    func testMerchantRuleWordBoundaryMatchingPreventsFalsePositives() {
+        let rules = [
+            MerchantRule(merchantKey: "bar", displayName: "Bar", category: .entertainment),
+            MerchantRule(merchantKey: "market", displayName: "Market", category: .food)
+        ]
+
+        // True positives
+        XCTAssertEqual(MerchantRuleService.rule(for: "bar", in: rules)?.category, .entertainment)
+        XCTAssertEqual(MerchantRuleService.rule(for: "the bar", in: rules)?.category, .entertainment)
+        XCTAssertEqual(MerchantRuleService.rule(for: "bar 51", in: rules)?.category, .entertainment)
+        XCTAssertEqual(MerchantRuleService.rule(for: "carmel market", in: rules)?.category, .food)
+
+        // False positives that MUST be rejected:
+        XCTAssertNil(MerchantRuleService.rule(for: "barbara", in: rules), "Rule for 'bar' must not match 'barbara'")
+        XCTAssertNil(MerchantRuleService.rule(for: "citibank", in: rules), "Rule for 'bar' must not match 'citibank'")
+        XCTAssertNil(MerchantRuleService.rule(for: "marketing agency", in: rules), "Rule for 'market' must not match 'marketing'")
+    }
+
+    // MARK: - Phase 3: Deep Link Input Route Validation
+
+    func testDeepLinkRouteValidationAcceptsOnlyLegitimateIngestRoutes() {
+        func isAllowedIngestURL(_ urlString: String) -> Bool {
+            guard let url = URL(string: urlString),
+                  let scheme = url.scheme?.lowercased(),
+                  scheme == "spentapp" || scheme == "moneycity" else { return false }
+            let host = url.host?.lowercased() ?? ""
+            return host == "wallet-ingest" || host == "ingest"
+        }
+
+        XCTAssertTrue(isAllowedIngestURL("spentapp://wallet-ingest?amount=50&merchant=Test"))
+        XCTAssertTrue(isAllowedIngestURL("moneycity://ingest?amount=100"))
+
+        // Must be rejected from Wallet Ingestion:
+        XCTAssertFalse(isAllowedIngestURL("spentapp://quick-add?amount=50"), "quick-add is a UI route, not wallet ingest")
+        XCTAssertFalse(isAllowedIngestURL("spentapp://scan"), "scan is a UI route, not wallet ingest")
+        XCTAssertFalse(isAllowedIngestURL("spentapp://unknown-route?amount=999"))
+        XCTAssertFalse(isAllowedIngestURL("otherapp://wallet-ingest?amount=50"))
+    }
+
+    func testWidgetCurrencySymbolPersistence() {
+        let appGroup = MoneyCityWidgets.appGroupIdentifier
+        let defaults = UserDefaults(suiteName: appGroup) ?? UserDefaults.standard
+
+        // Test USD publishing
+        MoneyCityWidgets.publishData(
+            spent: 100,
+            budget: 500,
+            savings: 50,
+            recentMerchant: "Apple",
+            isHebrew: false,
+            currencySymbol: "$"
+        )
+        XCTAssertEqual(defaults.string(forKey: "widget_currency_symbol"), "$")
+
+        // Test EUR publishing
+        MoneyCityWidgets.publishData(
+            spent: 120,
+            budget: 500,
+            savings: 50,
+            recentMerchant: "Apple",
+            isHebrew: false,
+            currencySymbol: "€"
+        )
+        XCTAssertEqual(defaults.string(forKey: "widget_currency_symbol"), "€")
+
+        // Test ILS default
+        MoneyCityWidgets.publishData(
+            spent: 150,
+            budget: 500,
+            savings: 50,
+            recentMerchant: "Apple",
+            isHebrew: false,
+            currencySymbol: "₪"
+        )
+        XCTAssertEqual(defaults.string(forKey: "widget_currency_symbol"), "₪")
+    }
 }

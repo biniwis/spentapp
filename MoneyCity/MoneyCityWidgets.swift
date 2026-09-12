@@ -16,7 +16,8 @@ public enum MoneyCityWidgets {
         budget: Double,
         savings: Double,
         recentMerchant: String,
-        isHebrew: Bool
+        isHebrew: Bool,
+        currencySymbol: String = "₪"
     ) {
         guard let defaults = UserDefaults(suiteName: appGroupIdentifier) else {
             #if DEBUG
@@ -34,7 +35,8 @@ public enum MoneyCityWidgets {
            defaults.double(forKey: "widget_monthly_savings") == savings,
            defaults.string(forKey: "widget_recent_merchant") == recentMerchant,
            defaults.string(forKey: "app_language_pref") == language,
-           defaults.string(forKey: "app_language") == language { return }
+           defaults.string(forKey: "app_language") == language,
+           defaults.string(forKey: "widget_currency_symbol") == currencySymbol { return }
 
         defaults.set(spent, forKey: "widget_monthly_spent")
         defaults.set(budget, forKey: "widget_monthly_budget")
@@ -42,6 +44,7 @@ public enum MoneyCityWidgets {
         defaults.set(recentMerchant, forKey: "widget_recent_merchant")
         defaults.set(isHebrew ? "he" : "en", forKey: "app_language_pref")
         defaults.set(isHebrew ? "he" : "en", forKey: "app_language")
+        defaults.set(currencySymbol, forKey: "widget_currency_symbol")
 
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()

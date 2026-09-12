@@ -12,10 +12,12 @@ public struct QuickAddSheet: View {
     
     public init(
         initialCategory: SpendingCategory? = nil,
+        initialCurrency: CurrencyType? = nil,
         onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
         self.initialCategory = initialCategory
         self.onSave = onSave
+        _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
     }
     
     @State private var amountText: String = ""
@@ -199,12 +201,12 @@ public struct QuickAddSheet: View {
                         .padding(.top, 10)
                         .padding(.bottom, 6)
 
-                        // Currency switcher pill if not ILS
-                        if selectedCurrency != .ils, let val = parseAmount(amountText), val > 0 {
-                            let inILS = val * selectedCurrency.rateToILS
+                        // Currency switcher pill if foreign
+                        if selectedCurrency != l10n.baseCurrency, let val = parseAmount(amountText), val > 0 {
+                            let inBase = CurrencyType.convert(amount: val, from: selectedCurrency, to: l10n.baseCurrency)
                             HStack(spacing: 4) {
                                 ExchangeVectorIcon(color: Color.themeMint)
-                                Text("≈ \(l10n.format(amount: inILS, showDecimals: true))")
+                                Text("≈ \(l10n.format(amount: inBase, showDecimals: true))")
                                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                             }
                             .environment(\.layoutDirection, .leftToRight)
@@ -380,6 +382,9 @@ public struct QuickAddSheet: View {
 
             }
             .onAppear {
+                if amountText.isEmpty && selectedCurrency != l10n.baseCurrency {
+                    selectedCurrency = l10n.baseCurrency
+                }
                 if let initial = initialCategory {
                     selectedCategory = initial
                 } else if selectedCategory == nil {
@@ -812,7 +817,8 @@ public struct QuickAddSheet: View {
             return
         }
 
-        let converted = selectedCurrency == .ils ? amount : (amount * selectedCurrency.rateToILS)
+        let isForeign = selectedCurrency != l10n.baseCurrency
+        let converted = isForeign ? CurrencyType.convert(amount: amount, from: selectedCurrency, to: l10n.baseCurrency) : amount
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackMerchant: String = {
             if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
@@ -821,9 +827,9 @@ public struct QuickAddSheet: View {
             return category.displayName
         }()
         let merchant = typed.isEmpty ? fallbackMerchant : typed
-        let origAmt: Double? = selectedCurrency == .ils ? nil : amount
-        let origCurr: String? = selectedCurrency == .ils ? nil : selectedCurrency.symbol
-        let rate: Double? = selectedCurrency == .ils ? nil : selectedCurrency.rateToILS
+        let origAmt: Double? = isForeign ? amount : nil
+        let origCurr: String? = isForeign ? selectedCurrency.symbol : nil
+        let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
 
         onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId)
         Haptics.notify(.success)
@@ -834,10 +840,11 @@ public struct QuickAddSheet: View {
     /// the building they picked, and the currency they entered it in. Both are passed on now,
     /// so a split payment records exactly what a single payment would.
     private func submitInstallments(category: SpendingCategory, total: Double) {
-        let converted = selectedCurrency == .ils ? total : (total * selectedCurrency.rateToILS)
-        let origAmt: Double? = selectedCurrency == .ils ? nil : total
-        let origCurr: String? = selectedCurrency == .ils ? nil : selectedCurrency.symbol
-        let rate: Double? = selectedCurrency == .ils ? nil : selectedCurrency.rateToILS
+        let isForeign = selectedCurrency != l10n.baseCurrency
+        let converted = isForeign ? CurrencyType.convert(amount: total, from: selectedCurrency, to: l10n.baseCurrency) : total
+        let origAmt: Double? = isForeign ? total : nil
+        let origCurr: String? = isForeign ? selectedCurrency.symbol : nil
+        let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackMerchant: String = {
             if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {

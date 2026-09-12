@@ -158,10 +158,7 @@ public enum WalletIngestCoordinator {
                 log.resolvedMerchant = transaction.merchant
                 log.categoryDetected = transaction.category.shortName
                 log.outcome = transaction.isConfirmed ? "נשמר בהצלחה" : "נשמר — ממתין לאישור"
-                if let rule = MerchantRuleService.rule(for: transaction.merchant,
-                                                       in: DatabaseService.shared.fetchMerchantRules()) {
-                    rule.hitCount += 1
-                }
+                DatabaseService.shared.incrementMerchantRuleHitCount(for: transaction.merchant)
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(amount: abs(transaction.amount),
                     currency: transaction.currency, categoryName: transaction.category.shortName(for: AppLanguage.current),

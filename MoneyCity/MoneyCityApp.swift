@@ -140,40 +140,11 @@ struct MoneyCityApp: App {
                 }
                 .environmentObject(l10n)
                 .onAppear {
-                    // Background fetch latest currency exchange rates
-                    Task {
-                        await FXService.shared.fetchLatestRatesIfNeeded()
-                    }
-
-                    // Age out stale raw payloads even if no new one has arrived.
-                    DatabaseService.shared.pruneIngestLog()
-
-                    // Post any fixed expenses that came due while the app was closed.
-                    RecurringExpenseService.materializeDue(context: DatabaseService.shared.context)
-
-                    // Post any installment charges that came due while the app was closed.
-                    InstallmentService.materializeDue(context: DatabaseService.shared.context)
-
-                    // Reconcile savings goals in background to ensure 100% parity with ledger.
-                    SavingsGoalService.reconcileAll(context: DatabaseService.shared.context)
-
-                    NotificationService.sync(
-                        enabled: NotificationService.isEnabled,
-                        isHebrew: l10n.language == .hebrew
-                    )
-                    
-                    MoneyCityShortcuts.updateAppShortcutParameters()
-                    syncPendingWidgetTransactions()
-                    Task {
-                        await WalletIngestCoordinator.drainPendingBackgroundCompletions()
-                    }
+                    performAppMaintenance()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
-                        syncPendingWidgetTransactions()
-                        Task {
-                            await WalletIngestCoordinator.drainPendingBackgroundCompletions()
-                        }
+                        performAppMaintenance()
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in
@@ -183,6 +154,10 @@ struct MoneyCityApp: App {
                 }
                 .onOpenURL { url in
                     Task {
+                        guard let scheme = url.scheme?.lowercased(),
+                              scheme == "spentapp" || scheme == "moneycity" else { return }
+                        let host = url.host?.lowercased() ?? ""
+                        guard host == "wallet-ingest" || host == "ingest" else { return }
                         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true) else { return }
                         let amount = MoneyAmount.sanitized(components.queryItems?.first(where: { $0.name == "amount" })?.value.flatMap(Double.init))
                         let merchant = components.queryItems?.first(where: { $0.name == "merchant" })?.value
@@ -200,6 +175,36 @@ struct MoneyCityApp: App {
                 }
         }
         .modelContainer(DatabaseService.shared.container)
+    }
+
+    private func performAppMaintenance() {
+        // Background fetch latest currency exchange rates
+        Task {
+            await FXService.shared.fetchLatestRatesIfNeeded()
+        }
+
+        // Age out stale raw payloads even if no new one has arrived.
+        DatabaseService.shared.pruneIngestLog()
+
+        // Post any fixed expenses that came due while the app was closed/backgrounded.
+        RecurringExpenseService.materializeDue(context: DatabaseService.shared.context)
+
+        // Post any installment charges that came due while the app was closed/backgrounded.
+        InstallmentService.materializeDue(context: DatabaseService.shared.context)
+
+        // Reconcile savings goals in background to ensure 100% parity with ledger.
+        SavingsGoalService.reconcileAll(context: DatabaseService.shared.context)
+
+        NotificationService.sync(
+            enabled: NotificationService.isEnabled,
+            isHebrew: l10n.language == .hebrew
+        )
+
+        MoneyCityShortcuts.updateAppShortcutParameters()
+        syncPendingWidgetTransactions()
+        Task {
+            await WalletIngestCoordinator.drainPendingBackgroundCompletions()
+        }
     }
     
     private func syncPendingWidgetTransactions() {

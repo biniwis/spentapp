@@ -662,7 +662,7 @@ public struct MainCityView: View {
         .sheet(isPresented: $showQuickAdd, onDismiss: {
             quickAddPreselectedCategory = nil
         }) {
-            QuickAddSheet(initialCategory: quickAddPreselectedCategory) { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId in
+            QuickAddSheet(initialCategory: quickAddPreselectedCategory, initialCurrency: l10n.baseCurrency) { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId in
                 let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
                 let tx = Transaction(
                     amount: amount,
@@ -844,7 +844,8 @@ public struct MainCityView: View {
             budget: budget,
             savings: savings,
             recentMerchant: merchant,
-            isHebrew: l10n.language == .hebrew
+            isHebrew: l10n.language == .hebrew,
+            currencySymbol: l10n.baseCurrency.symbol
         )
         #endif
     }

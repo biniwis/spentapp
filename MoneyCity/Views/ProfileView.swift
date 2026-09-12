@@ -26,7 +26,7 @@ public struct ProfileView: View {
     @State private var showApplePayGuideSheet = false
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
-    @State private var showOnboardingSheet = false
+    @State private var showOnboardingTour = false
     @State private var selectedMonth: String? = nil
     @State private var showDetailedYear = false
     @State private var showDetailedTransactions = false
@@ -259,13 +259,13 @@ public struct ProfileView: View {
             BackupSheet()
                 .environmentObject(l10n)
         }
-        .sheet(isPresented: $showOnboardingSheet) {
+        .fullScreenCover(isPresented: $showOnboardingTour) {
             OnboardingWizardView(
                 initialStep: 1,
                 initialPhase: "intro",
                 canDismiss: true,
                 onComplete: {
-                    showOnboardingSheet = false
+                    showOnboardingTour = false
                 },
                 onTriggerSampleTransaction: {}
             )
@@ -855,7 +855,7 @@ public struct ProfileView: View {
             ) {
                 MoneyIcon(.citySkyline, size: 24)
             } action: {
-                showOnboardingSheet = true
+                showOnboardingTour = true
             }
         }
         .background(Color.white)

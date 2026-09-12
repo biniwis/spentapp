@@ -17,6 +17,55 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
+/// Root view determining top-level application presentation:
+/// - First launch: Full-screen OnboardingWizardView
+/// - Returning / legacy user: MainCityView
+struct AppRootView: View {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("userName") private var userName: String = ""
+    @AppStorage("monthly_budget") private var monthlyBudget: Double = 0
+    @Query private var allTransactions: [Transaction]
+
+    @State private var justCompletedOnboarding: Bool = false
+
+    /// Legacy user detection: user has existing ledger data or profile settings from older versions
+    /// where hasCompletedOnboarding wasn't explicitly set.
+    private var hasExistingUserState: Bool {
+        !allTransactions.isEmpty || !userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || monthlyBudget > 0
+    }
+
+    private var shouldShowOnboarding: Bool {
+        !hasCompletedOnboarding && !hasExistingUserState
+    }
+
+    var body: some View {
+        Group {
+            if shouldShowOnboarding {
+                OnboardingWizardView(
+                    canDismiss: false,
+                    onComplete: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            hasCompletedOnboarding = true
+                            justCompletedOnboarding = true
+                        }
+                    },
+                    onTriggerSampleTransaction: {}
+                )
+                .transition(.opacity)
+            } else {
+                MainCityView(skipBrandSplash: justCompletedOnboarding)
+                    .transition(.opacity)
+            }
+        }
+        .onAppear {
+            // One-time legacy migration: existing users bypass onboarding automatically
+            if !hasCompletedOnboarding && hasExistingUserState {
+                hasCompletedOnboarding = true
+            }
+        }
+    }
+}
+
 @main
 struct MoneyCityApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
@@ -25,7 +74,7 @@ struct MoneyCityApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainCityView()
+            AppRootView()
                 // Sits over the city rather than in a settings screen: in the memory-only
                 // case every second the user spends typing an expense is wasted, so the
                 // warning has to be the first thing on screen, not something to go find.

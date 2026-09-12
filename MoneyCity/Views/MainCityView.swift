@@ -43,7 +43,6 @@ public struct MainCityView: View {
     @State private var quickActionAmountText: String = ""
     @State private var showFeed = false
     @State private var showProgressSheet = false
-    @State private var showOnboarding = false
     @Environment(\.scenePhase) private var companionScenePhase
     @AppStorage("cityCompanionsStartedAt") private var companionsStartedAt: Double = 0
     @State private var companionNow = Date()
@@ -107,7 +106,7 @@ public struct MainCityView: View {
     @ObservedObject private var confirmationCoordinator = ExpenseConfirmationCoordinator.shared
     @State private var animatedSpentValue: Double? = nil
     @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
-    @State private var showBrandSplash: Bool = true
+    @State private var showBrandSplash: Bool
 
     // ── In-App Pending Wallet Ingests (Missing Amount Fallback) ──
     @State private var pendingWalletItems: [PendingWalletIngest] = []
@@ -122,7 +121,9 @@ public struct MainCityView: View {
     @State private var showRecurringCoachmark: Bool = false
     @State private var showRecurringExpensesSheet: Bool = false
     
-    public init() {}
+    public init(skipBrandSplash: Bool = false) {
+        _showBrandSplash = State(initialValue: !skipBrandSplash)
+    }
     
     private var displayTransactions: [Transaction] {
         currentMonthTransactions
@@ -148,7 +149,7 @@ public struct MainCityView: View {
     private var canPresentCityLesson: Bool {
         hasCompletedOnboarding && activeTab == "city" && !isChromeHidden
             && companionScenePhase == .active && !showBrandSplash
-            && !showQuickAdd && !showOnboarding && !showFeed && !showProgressSheet
+            && !showQuickAdd && !showFeed && !showProgressSheet
             && !showSortingHubSheet && !showReserveSanctuarySheet
             && resolvingPendingItem == nil && activeNewMonthRecap == nil
             && pendingRecapForNewMonth == nil && pendingWalletItems.isEmpty
@@ -315,7 +316,7 @@ public struct MainCityView: View {
                     tutorialBuildingId: cityTutorialBuildingId,
                     language: l10n.language == .hebrew ? "he" : "en",
                     isPaused: activeTab != "city" || companionScenePhase != .active
-                        || showQuickAdd || showFeed || showProgressSheet || showOnboarding
+                        || showQuickAdd || showFeed || showProgressSheet
                         || showSortingHubSheet || showReserveSanctuarySheet,
                     onSelectDistrict: handleSelectDistrict,
                     onBuildingSelected: handleSelectBuilding,
@@ -613,11 +614,6 @@ public struct MainCityView: View {
                 companionsStartedAt = min(previousStart ?? Date(), Date()).timeIntervalSince1970
             }
             companionNow = Date()
-            if !hasCompletedOnboarding {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    showOnboarding = true
-                }
-            }
             syncWidgetData()
             checkWeeklyEnrichmentPrompt()
             refreshPendingWalletItems()
@@ -776,22 +772,6 @@ public struct MainCityView: View {
             )
             .environmentObject(l10n)
         }
-        .sheet(isPresented: $showOnboarding) {
-            OnboardingWizardView(
-                onComplete: {
-                    hasCompletedOnboarding = true
-                    showOnboarding = false
-                },
-                onTriggerSampleTransaction: {
-                    // Deliberately empty. This used to write a real ₪14 "ארומה קפה" expense into
-                    // the ledger on first launch, so every user's first history entry, first
-                    // building total and first recap contained a purchase they never made.
-                    // The city starts empty and fills with the user's own spending.
-                }
-            )
-            .environmentObject(l10n)
-            .interactiveDismissDisabled(true)
-        }
         .sheet(isPresented: $showSortingHubSheet) {
             CitySortingHubSheet(
                 transactions: currentMonthTransactions.filter { $0.category == .other },
@@ -926,7 +906,7 @@ public struct MainCityView: View {
     }
     
     private func checkWeeklyEnrichmentPrompt() {
-        guard hasCompletedOnboarding, !isSnapshotMode, !showProgressSheet, !showOnboarding else { return }
+        guard hasCompletedOnboarding, !isSnapshotMode, !showProgressSheet else { return }
         guard !weeklyRewardOptions.isEmpty else { return }
         
         let currentWeek = currentCalendarWeekKey
@@ -936,7 +916,7 @@ public struct MainCityView: View {
         guard lastPromptWeek != currentWeek else { return }
         
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                guard !weeklyRewardOptions.isEmpty, !showOnboarding, !isSnapshotMode else { return }
+                guard !weeklyRewardOptions.isEmpty, !isSnapshotMode else { return }
                 UserDefaults.standard.set(currentWeek, forKey: "lastAdditionsPromptWeekKey")
                 showProgressSheet = true
             }
@@ -1047,7 +1027,7 @@ public struct MainCityView: View {
               !displayTransactions.isEmpty else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.35) {
             guard canPresentCityLesson, !isSnapshotMode, !hasSeenCityTapHint, !displayTransactions.isEmpty,
-                  !showQuickAdd, !showOnboarding, activeTab == "city",
+                  !showQuickAdd, activeTab == "city",
                   inspectedBuilding == nil, selectedDistrict == nil else { return }
             withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.8)) {
                 showCityTapHint = true
@@ -1068,7 +1048,7 @@ public struct MainCityView: View {
               !isSnapshotMode, showCityTapHint == false, !showRecurringExpensesSheet else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             guard canPresentCityLesson, hasSeenCityTapHint, !hasSeenRecurringPrompt,
-                  !isSnapshotMode, !showQuickAdd, !showOnboarding, activeTab == "city",
+                  !isSnapshotMode, !showQuickAdd, activeTab == "city",
                   inspectedBuilding == nil, selectedDistrict == nil, !showRecurringExpensesSheet else { return }
             withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.8)) {
                 showRecurringCoachmark = true

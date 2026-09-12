@@ -16,7 +16,7 @@ public struct SettingsSheet: View {
     @State private var showResetConfirmation = false
     @State private var showPrivacySheet = false
     @State private var showAboutSheet = false
-    @State private var showOnboardingSheet = false
+    @State private var showOnboardingTour = false
 
     public var body: some View {
         NavigationStack {
@@ -222,7 +222,7 @@ public struct SettingsSheet: View {
                             Divider().background(Color.borderSubtle).padding(.vertical, 4)
 
                             // Onboarding Replay
-                            Button(action: { showOnboardingSheet = true }) {
+                            Button(action: { showOnboardingTour = true }) {
                                 HStack(spacing: 10) {
                                     MoneyIcon(.citySkyline, size: 18, color: Color.spentGreen)
                                     VStack(alignment: .leading, spacing: 2) {
@@ -288,13 +288,13 @@ public struct SettingsSheet: View {
                 AboutSpentSheet()
                     .environmentObject(l10n)
             }
-            .sheet(isPresented: $showOnboardingSheet) {
+            .fullScreenCover(isPresented: $showOnboardingTour) {
                 OnboardingWizardView(
                     initialStep: 1,
                     initialPhase: "intro",
                     canDismiss: true,
                     onComplete: {
-                        showOnboardingSheet = false
+                        showOnboardingTour = false
                     },
                     onTriggerSampleTransaction: {}
                 )

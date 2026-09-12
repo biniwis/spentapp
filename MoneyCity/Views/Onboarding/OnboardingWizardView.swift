@@ -1,14 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Onboarding Wizard:
-/// A mature, modern, architectural first-run experience adhering to SPENT_DESIGN_CONSTITUTION.md:
-/// - Young, modern, editorial, architectural, confident, and premium.
-/// - Borderless, direct-on-canvas hierarchy: zero cards, frames, or pill stacks.
-/// - SF Rounded used selectively for hero numbers, city titles, and key amounts; standard SF Pro for body/instructions.
-/// - Real, directly-editable hero spending amount with keyboard support.
-/// - Precise, non-judgmental copy accurately explaining Apple Shortcuts automation without misleading Wallet/bank claims.
-/// - Refined 18pt corner radius CTA buttons without colored glow.
+/// Editorial onboarding with adaptive forms and a shared, event-driven city illustration kit.
 public struct OnboardingWizardView: View {
     public let onComplete: () -> Void
     public let onTriggerSampleTransaction: () -> Void
@@ -16,6 +9,9 @@ public struct OnboardingWizardView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var headlineSize: CGFloat = 48
+    @ScaledMetric(relativeTo: .title) private var inputSize: CGFloat = 34
 
     @AppStorage("userName") private var storedUserName: String = ""
     @AppStorage("monthly_budget") private var storedMonthlyBudget: Double = 0
@@ -67,64 +63,73 @@ public struct OnboardingWizardView: View {
     }
 
     public var body: some View {
-        ZStack {
-            Color.appBackground.ignoresSafeArea()
+        GeometryReader { geometry in
+            ZStack {
+                activeOnboardingStep.posterBackground.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                // Top Navigation (Back button + quiet progress indicators)
-                topNavigationRow
-                    .padding(.horizontal, 24)
-                    .padding(.top, 14)
-                    .padding(.bottom, 6)
+                VStack(spacing: 0) {
+                    topNavigationRow
+                        .padding(.horizontal, 24)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
 
-                // 5 Dots Progress Indicator (Quiet, subtle)
-                stepProgressIndicator
-                    .padding(.bottom, 6)
+                    ScrollViewReader { scroll in
+                        ScrollView(showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                stepTitleSection
+                                    .padding(.horizontal, 26)
 
-                // Continuous Miniature City Scene (Direct on canvas, zero frames)
-                OnboardingCityScene(
-                    step: activeOnboardingStep,
-                    mayorName: userNameInput,
-                    targetAmountText: budgetInputText,
-                    isRTL: isHebrew,
-                    height: (focusedField != nil) ? 130 : 230
-                )
-                .animation(.spring(response: 0.35, dampingFraction: 0.82), value: focusedField)
-                .padding(.bottom, focusedField != nil ? 4 : 8)
+                                OnboardingCityScene(
+                                    step: activeOnboardingStep,
+                                    mayorName: userNameInput,
+                                    targetAmountText: formattedBudgetText,
+                                    isRTL: isHebrew,
+                                    height: heroHeight(availableHeight: geometry.size.height)
+                                )
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, focusedField == nil ? 16 : 8)
 
-                // Scrollable Step Body (Direct on canvas, intentional whitespace)
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
-                        // Title & Subtitle Section
-                        stepTitleSection
+                                VStack(alignment: .leading, spacing: 18) {
+                                    Text(stepSubtitleText)
+                                        .font(.system(.body, design: .default))
+                                        .foregroundStyle(posterInk.opacity(0.75))
+                                        .multilineTextAlignment(.leading)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .lineSpacing(3)
 
-                        // Interactive Step Form Content
-                        stepBodyContent
+                                    stepBodyContent
+                                        .id("onboardingInput")
+                                }
+                                .padding(.horizontal, 26)
 
-                        Spacer(minLength: 20)
+                                Spacer(minLength: 20)
+                            }
+                            .frame(maxWidth: 560, alignment: .leading)
+                            .frame(maxWidth: .infinity)
+                            .id("\(currentStep)_\(shortcutPhase)")
+                            .transition(reduceMotion ? .opacity : .asymmetric(
+                                insertion: .offset(x: transitionDirection * 30).combined(with: .opacity),
+                                removal: .offset(x: -transitionDirection * 20).combined(with: .opacity)
+                            ))
+                        }
+                        .scrollDismissesKeyboard(.interactively)
+                        .onChange(of: focusedField) { _, field in
+                            if field != nil {
+                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
+                                    scroll.scrollTo("onboardingInput", anchor: .bottom)
+                                }
+                            }
+                        }
                     }
-                    .padding(.horizontal, 26)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        // Tapping background dismisses keyboard
-                        focusedField = nil
-                    }
-                    .id("\(currentStep)_\(shortcutPhase)")
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .asymmetric(
-                                insertion: .offset(x: CGFloat(slideDirection) * 24).combined(with: .opacity),
-                                removal: .offset(x: CGFloat(-slideDirection) * 24).combined(with: .opacity)
-                            )
-                    )
+
+                    bottomActionBar
+                        .frame(maxWidth: 508)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 10)
+                        .padding(.bottom, 14)
+                        .frame(maxWidth: .infinity)
+                        .background(activeOnboardingStep.posterBackground)
                 }
-
-                // Sticky Bottom Action Bar
-                bottomActionBar
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 14)
-                    .background(Color.appBackground)
             }
         }
         .onAppear {
@@ -147,51 +152,69 @@ public struct OnboardingWizardView: View {
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
 
-    // MARK: - Top Navigation Row
+    private var posterInk: Color { currentStep == 5 ? .white : .jetBlack }
+    private var pageAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.3)
+    }
+    private var transitionDirection: CGFloat {
+        CGFloat(slideDirection) * (isHebrew ? -1 : 1)
+    }
+
+    private func heroHeight(availableHeight: CGFloat) -> CGFloat {
+        if currentStep == 4 && shortcutPhase == "guide" { return 170 }
+        if focusedField != nil || dynamicTypeSize.isAccessibilitySize { return 190 }
+        return min(320, max(230, availableHeight * 0.39))
+    }
+
+    // MARK: - Stable navigation and five editorial progress rules
     private var topNavigationRow: some View {
-        HStack {
-            if currentStep > 1 || (currentStep == 4 && shortcutPhase == "guide") {
-                Button(action: handleBackNavigation) {
-                    HStack(spacing: 4) {
-                        Image(systemName: isHebrew ? "chevron.right" : "chevron.left")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text(isHebrew ? "חזרה" : "Back")
-                            .font(.system(size: 14, weight: .medium, design: .default))
-                    }
-                    .foregroundColor(Color.textSecondary)
-                }
-                .buttonStyle(.plain)
-                .bouncyPress(scale: 0.96)
+        HStack(spacing: 18) {
+            Button(action: handleBackNavigation) {
+                Image(systemName: isHebrew ? "arrow.right" : "arrow.left")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(posterInk)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isHebrew ? "חזרה" : "Back")
+            .opacity(currentStep > 1 ? 1 : 0)
+            .disabled(currentStep == 1)
+            .accessibilityHidden(currentStep == 1)
 
-            Spacer()
+            stepProgressIndicator
 
-            if canDismiss {
-                Button(action: onComplete) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(Color.textSecondary)
-                        .frame(width: 28, height: 28)
-                        .background(Color.black.opacity(0.05))
-                        .clipShape(Circle())
+            Group {
+                if canDismiss {
+                    Button(action: onComplete) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(posterInk)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isHebrew ? "סגירה" : "Close")
+                } else {
+                    Color.clear.frame(width: 44, height: 44)
+                        .accessibilityHidden(true)
                 }
-                .buttonStyle(.plain)
-                .bouncyPress(scale: 0.94)
             }
         }
-        .frame(height: 28)
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
     }
 
     private func handleBackNavigation() {
         Haptics.selection()
         if currentStep == 4 && shortcutPhase == "guide" {
             slideDirection = -1
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+            withAnimation(pageAnimation) {
                 shortcutPhase = "intro"
             }
         } else if currentStep > 1 {
             slideDirection = -1
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+            withAnimation(pageAnimation) {
                 currentStep -= 1
                 if currentStep == 4 {
                     shortcutPhase = "intro"
@@ -200,33 +223,27 @@ public struct OnboardingWizardView: View {
         }
     }
 
-    // MARK: - 5 Dots Progress Indicator (Quiet, mature)
     private var stepProgressIndicator: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             ForEach(1...5, id: \.self) { stepNumber in
-                Capsule()
-                    .fill(stepNumber == currentStep ? Color.deepNavy : Color.borderSubtle.opacity(0.8))
-                    .frame(width: stepNumber == currentStep ? 18 : 5, height: 5)
-                    .animation(.spring(response: 0.28, dampingFraction: 0.82), value: currentStep)
+                Rectangle()
+                    .fill(posterInk.opacity(stepNumber == currentStep ? 1 : 0.22))
+                    .frame(height: 2)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isHebrew ? "שלב \(currentStep) מתוך 5" : "Step \(currentStep) of 5")
     }
 
-    // MARK: - Title Section
     private var stepTitleSection: some View {
-        VStack(spacing: 6) {
-            Text(stepTitleText)
-                .font(.system(size: 22, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-                .multilineTextAlignment(.center)
-
-            Text(stepSubtitleText)
-                .font(.system(size: 13.5, weight: .regular, design: .default))
-                .foregroundColor(Color.textSecondary)
-                .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .padding(.horizontal, 10)
-        }
+        Text(stepTitleText)
+            .font(.system(size: headlineSize, weight: .heavy, design: .default))
+            .tracking(isHebrew ? -1 : -1.8)
+            .foregroundStyle(posterInk)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: - Step Body Content Router
@@ -250,83 +267,42 @@ public struct OnboardingWizardView: View {
         }
     }
 
-    // MARK: Step 1 - Concept Body (Clean typographic narrative, subtle colored dots)
+    // MARK: Step 1 — one quiet supporting fact
     private var step1ConceptBody: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            editorialFactRow(
-                dotColor: Color.themeOrange,
-                text: isHebrew ? "הוצאות משנות את העיר" : "Spending shapes the city"
-            )
-
-            editorialFactRow(
-                dotColor: Color.spentGreen,
-                text: isHebrew ? "הפארק משקף איך החודש מתקדם מול היעד" : "The park reflects month progress against target"
-            )
-
-            editorialFactRow(
-                dotColor: Color.primaryBlue,
-                text: isHebrew ? "המידע נשאר על המכשיר" : "Data stays strictly on your device"
-            )
-        }
-        .padding(.top, 14)
-        .padding(.horizontal, 12)
+        Label(isHebrew ? "המידע נשאר על המכשיר" : "Your data stays on your device",
+              systemImage: "lock")
+            .font(.system(.footnote, design: .default))
+            .foregroundStyle(posterInk.opacity(0.7))
+            .padding(.top, 4)
     }
 
-    private func editorialFactRow(dotColor: Color, text: String) -> some View {
-        HStack(spacing: 12) {
-            Circle()
-                .fill(dotColor)
-                .frame(width: 6, height: 6)
-
-            Text(text)
-                .font(.system(size: 14, weight: .medium, design: .default))
-                .foregroundColor(Color.deepNavy)
-
-            Spacer()
-        }
-    }
-
-    // MARK: Step 2 - Mayor Input (Tonal editable surface; direct keyboard interaction)
+    // MARK: Step 2 — live city sign, simple editable baseline
     private var step2MayorInput: some View {
-        VStack(spacing: 8) {
-            Text(isHebrew ? "השם שלך" : "Your Name")
-                .font(.system(size: 13, weight: .medium, design: .default))
-                .foregroundColor(Color.textMuted)
+        VStack(alignment: .leading, spacing: 9) {
+            Text(isHebrew ? "השם שלך" : "Your name")
+                .font(.system(.subheadline, design: .default))
+                .foregroundStyle(Color.jetBlack.opacity(0.7))
 
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.spentGreen.opacity(focusedField == .mayorName ? 0.08 : 0.045))
-                    .frame(height: 64)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        focusedField = .mayorName
-                    }
-
-                if userNameInput.isEmpty && focusedField != .mayorName {
-                    Text(isHebrew ? "השם שלך" : "Your name")
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.textMuted.opacity(0.35))
-                        .allowsHitTesting(false)
+            TextField(isHebrew ? "איך קוראים לך?" : "What’s your name?", text: $userNameInput)
+                .font(.system(size: inputSize, weight: .bold))
+                .foregroundStyle(Color.jetBlack)
+                .tint(.jetBlack)
+                .multilineTextAlignment(.leading)
+                .focused($focusedField, equals: .mayorName)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(true)
+                .submitLabel(.next)
+                .onSubmit {
+                    saveMayor()
+                    nextStep()
                 }
+                .accessibilityLabel(isHebrew ? "השם שלך" : "Your name")
+                .padding(.vertical, 8)
 
-                TextField("", text: $userNameInput)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .multilineTextAlignment(.center)
-                    .focused($focusedField, equals: .mayorName)
-                    .textInputAutocapitalization(.words)
-                    .disableAutocorrection(true)
-                    .submitLabel(.next)
-                    .onSubmit {
-                        saveMayor()
-                        nextStep()
-                    }
-                    .accessibilityLabel(isHebrew ? "השם שלך" : "Your name")
-                    .padding(.horizontal, 16)
-            }
-            .animation(.easeOut(duration: 0.18), value: focusedField)
+            Rectangle()
+                .fill(Color.jetBlack.opacity(focusedField == .mayorName ? 1 : 0.35))
+                .frame(height: focusedField == .mayorName ? 2 : 1)
         }
-        .padding(.top, 14)
     }
 
     // MARK: Step 3 - Monthly Spending Target (Tonal editable surface, clean presets, BUDGET ≠ INCOME)
@@ -342,134 +318,82 @@ public struct OnboardingWizardView: View {
     }
 
     private var step3BudgetConfig: some View {
-        VStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.spentGreen.opacity(focusedField == .budget ? 0.08 : 0.045))
-                    .frame(height: 72)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        focusedField = .budget
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(l10n.baseCurrency.symbol)
+                    .font(.system(size: inputSize * 0.8, weight: .medium))
+                ZStack(alignment: .leading) {
+                    if focusedField != .budget {
+                        Text(formattedBudgetText)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
                     }
-
-                HStack(spacing: 6) {
-                    Text(l10n.baseCurrency.symbol)
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.spentGreen)
-
-                    ZStack {
-                        if focusedField != .budget {
-                            Text(formattedBudgetText)
-                                .font(.system(size: 38, weight: .heavy, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                                .allowsHitTesting(false)
-                        }
-
-                        TextField("", text: $budgetInputText)
-                            .font(.system(size: 38, weight: .heavy, design: .rounded))
-                            .foregroundColor(focusedField == .budget ? Color.deepNavy : Color.clear)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.center)
-                            .focused($focusedField, equals: .budget)
-                            .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
-                    }
-                    .fixedSize(horizontal: false, vertical: true)
+                    TextField("", text: $budgetInputText)
+                        .foregroundStyle(focusedField == .budget ? Color.jetBlack : .clear)
+                        .keyboardType(.numberPad)
+                        .focused($focusedField, equals: .budget)
+                        .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
                 }
-                .padding(.horizontal, 20)
+                .font(.system(size: inputSize * 1.4, weight: .heavy, design: .rounded))
+                .tint(.jetBlack)
             }
-            .animation(.easeOut(duration: 0.18), value: focusedField)
-            .padding(.top, 4)
+            .foregroundStyle(Color.jetBlack)
+            .environment(\.layoutDirection, .leftToRight)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+            .onTapGesture { focusedField = .budget }
 
-            // Preset Quick Suggestions (Quiet suggestions, not heavy buttons)
-            HStack(spacing: 8) {
-                budgetPresetOption(amount: "5000")
-                budgetPresetOption(amount: "8000")
-                budgetPresetOption(amount: "12000")
-                budgetPresetOption(amount: "15000")
+            Rectangle()
+                .fill(Color.jetBlack.opacity(focusedField == .budget ? 1 : 0.35))
+                .frame(height: focusedField == .budget ? 2 : 1)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { budgetPresets }
+                VStack(alignment: .leading, spacing: 4) { budgetPresets }
             }
 
-            // Quiet supporting label
-            Text(isHebrew ? "יעד הוצאה חודשי · אפשר לשנות אחר כך" : "Monthly spending target · can be changed later")
-                .font(.system(size: 12, weight: .medium, design: .default))
-                .foregroundColor(Color.textMuted)
+            Text(isHebrew ? "אפשר לשנות את היעד אחר כך" : "You can change your target later")
+                .font(.system(.footnote, design: .default))
+                .foregroundStyle(Color.jetBlack.opacity(0.7))
         }
-        .padding(.top, 6)
+    }
+
+    private var budgetPresets: some View {
+        ForEach(["5000", "8000", "12000", "15000"], id: \.self) { amount in
+            budgetPresetOption(amount: amount)
+        }
     }
 
     private func budgetPresetOption(amount: String) -> some View {
         let isSelected = budgetInputText == amount
         return Button(action: {
             Haptics.selection()
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) {
-                budgetInputText = amount
-                focusedField = nil
-            }
+            budgetInputText = amount
+            focusedField = nil
         }) {
-            Text("₪\(amount)")
-                .font(.system(size: 12.5, weight: isSelected ? .bold : .regular, design: .rounded))
-                .foregroundColor(isSelected ? Color.white : Color.deepNavy)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(isSelected ? Color.deepNavy : Color.black.opacity(0.04))
-                )
+            Text("\(l10n.baseCurrency.symbol)\(amount)")
+                .font(.system(.subheadline, design: .rounded, weight: isSelected ? .bold : .regular))
+                .fixedSize()
+                .foregroundStyle(Color.jetBlack)
+                .padding(.horizontal, 8)
+                .frame(minHeight: 44)
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(isSelected ? Color.jetBlack : .clear).frame(height: 2)
+                }
         }
         .buttonStyle(.plain)
-        .bouncyPress(scale: 0.96)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    // MARK: Step 4A - Shortcuts Intro (Flatter, mature typographic flow)
+    // MARK: Step 4A — the hero scene carries the payment → Shortcuts → city relationship
     private var step4AIntroContent: some View {
-        VStack(spacing: 20) {
-            // Mature 3-node flow: Payment → Shortcuts → SPENT
-            HStack(spacing: 16) {
-                if isHebrew {
-                    // RTL reading: תשלום (Right) → קיצורים (Center) → SPENT (Left)
-                    flowConceptNode(label: "תשלום", sublabel: "Apple Pay")
-                    flowArrowIndicator
-                    flowConceptNode(label: "קיצורים", sublabel: "אוטומציה")
-                    flowArrowIndicator
-                    flowConceptNode(label: "SPENT", sublabel: "בניית העיר")
-                } else {
-                    // LTR reading: Payment (Left) → Shortcuts (Center) → SPENT (Right)
-                    flowConceptNode(label: "Payment", sublabel: "Apple Pay")
-                    flowArrowIndicator
-                    flowConceptNode(label: "Shortcuts", sublabel: "Automation")
-                    flowArrowIndicator
-                    flowConceptNode(label: "SPENT", sublabel: "Builds City")
-                }
-            }
-            .padding(.top, 12)
-
-            // Technical accuracy & privacy clarification directly on canvas
-            Text(isHebrew
-                ? "\u{200F}SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות."
-                : "SPENT never connects to your bank or reads Wallet directly.")
-                .font(.system(size: 12, weight: .regular, design: .default))
-                .foregroundColor(Color.textMuted)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 16)
-        }
-        .padding(.top, 4)
-    }
-
-    private func flowConceptNode(label: String, sublabel: String) -> some View {
-        VStack(spacing: 3) {
-            Text(label)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-            Text(sublabel)
-                .font(.system(size: 10.5, weight: .regular, design: .default))
-                .foregroundColor(Color.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var flowArrowIndicator: some View {
-        Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundColor(Color.textMuted.opacity(0.8))
+        Text(isHebrew
+            ? "\u{200F}SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות."
+            : "SPENT never connects to your bank or reads Wallet directly.")
+            .font(.system(.footnote, design: .default))
+            .foregroundStyle(Color.jetBlack.opacity(0.7))
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: Step 4B - Shortcuts Setup Guide (Direct-on-canvas editorial numbered flow: 01 / 02 / 03)
@@ -506,11 +430,11 @@ public struct OnboardingWizardView: View {
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(isHebrew ? "חבר את נתוני העסקה" : "Connect Transaction Data")
-                            .font(.system(size: 13.5, weight: .semibold, design: .default))
+                            .font(.system(.subheadline, design: .default, weight: .semibold))
                             .foregroundColor(Color.deepNavy)
 
                         Text(isHebrew ? "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : "Tap each field, select \"Shortcut Input\" then the attribute:")
-                            .font(.system(size: 11.5, weight: .regular, design: .default))
+                            .font(.system(.footnote, design: .default))
                             .foregroundColor(Color.textSecondary)
                     }
                 }
@@ -541,11 +465,11 @@ public struct OnboardingWizardView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 13.5, weight: .semibold, design: .default))
+                    .font(.system(.subheadline, design: .default, weight: .semibold))
                     .foregroundColor(Color.deepNavy)
 
                 Text(instruction)
-                    .font(.system(size: 11.5, weight: .regular, design: .default))
+                    .font(.system(.footnote, design: .default))
                     .foregroundColor(Color.textSecondary)
                     .lineSpacing(2)
             }
@@ -582,7 +506,7 @@ public struct OnboardingWizardView: View {
 
     // MARK: Step 5 - Final City Reveal (Cinematic city payoff, minimal copy)
     private var step5LaunchSummary: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             let name = userNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
             let mayorDisplayName = name.isEmpty ? (isHebrew ? "ראש העיר" : "Mayor") : name
             let amount = parsedBudget ?? (storedMonthlyBudget > 0 ? storedMonthlyBudget : 8000)
@@ -594,8 +518,8 @@ public struct OnboardingWizardView: View {
 
             // Quiet metadata line directly on canvas
             Text(isHebrew ? "\(mayorDisplayName) · יעד חודשי ₪\(formattedBudget)" : "\(mayorDisplayName) · Monthly Target ₪\(formattedBudget)")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .foregroundStyle(Color.white)
                 .padding(.top, 14)
         }
     }
@@ -637,7 +561,7 @@ public struct OnboardingWizardView: View {
         VStack(spacing: 8) {
             primaryActionButton(title: isHebrew ? "יאללה, בוא נגדיר" : "Let's Set It Up") {
                 slideDirection = 1
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                withAnimation(pageAnimation) {
                     shortcutPhase = "guide"
                 }
             }
@@ -645,12 +569,12 @@ public struct OnboardingWizardView: View {
             Button(action: {
                 Haptics.selection()
                 slideDirection = 1
-                withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                withAnimation(pageAnimation) {
                     currentStep = 5
                 }
             }) {
                 Text(isHebrew ? "אעשה את זה אחר כך" : "I'll do this later")
-                    .font(.system(size: 13.5, weight: .medium, design: .default))
+                    .font(.system(.subheadline, design: .default, weight: .medium))
                     .foregroundColor(Color.textSecondary)
                     .frame(minHeight: 44)
             }
@@ -669,20 +593,21 @@ public struct OnboardingWizardView: View {
                     UIApplication.shared.open(url)
                 }) {
                     HStack(spacing: 6) {
-                        MoneyIcon(.lightning, size: 15, color: .white)
+                        MoneyIcon(.lightning, size: 18, color: .jetBlack)
                         Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .font(.system(.body, design: .default, weight: .semibold))
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(.jetBlack)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                    .padding(.vertical, 17)
+                    .frame(minHeight: 56)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(Color.themeOrange)
                     )
                 }
                 .buttonStyle(.plain)
-                .bouncyPress(scale: 0.97)
+                .bouncyPress(scale: reduceMotion ? 1 : 0.97)
             }
             #endif
 
@@ -696,30 +621,30 @@ public struct OnboardingWizardView: View {
         }
     }
 
-    // Refined, mature primary CTA: 54pt height, 18pt corner radius, flat with subtle neutral depth
+    // One graphic primary action across the sequence.
     private func primaryActionButton(title: String, action: @escaping () -> Void) -> some View {
         Button(action: {
             Haptics.impact(.medium)
             action()
         }) {
             Text(title)
-                .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(.body, design: .default, weight: .semibold))
+                .foregroundColor(currentStep == 5 ? .jetBlack : .white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .padding(.vertical, 17)
+                .frame(minHeight: 56)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.spentGreen)
+                        .fill(currentStep == 5 ? Color.neonLime : Color.jetBlack)
                 )
-                .shadow(color: Color.black.opacity(0.04), radius: 3, y: 1.5)
         }
         .buttonStyle(.plain)
-        .bouncyPress(scale: 0.97)
+        .bouncyPress(scale: reduceMotion ? 1 : 0.97)
     }
 
     private func nextStep() {
         slideDirection = 1
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+        withAnimation(pageAnimation) {
             currentStep += 1
             if currentStep == 4 {
                 shortcutPhase = "intro"
@@ -766,19 +691,19 @@ public struct OnboardingWizardView: View {
     private var stepTitleText: String {
         switch currentStep {
         case 1:
-            return isHebrew ? "ההוצאות שלך בונות עיר" : "Your Spending Builds a City"
+            return isHebrew ? "ההוצאות שלך\nבונות עיר" : "Your spending.\nA city in the making."
         case 2:
-            return isHebrew ? "מי ראש העיר?" : "Who's the Mayor?"
+            return isHebrew ? "עיר עם\nהשם שלך" : "A city with\nyour name."
         case 3:
-            return isHebrew ? "כמה היית רוצה להוציא החודש?" : "How much would you like to spend?"
+            return isHebrew ? "מסגרת\nלחודש שלך" : "Your month.\nYour target."
         case 4:
             if shortcutPhase == "guide" {
-                return isHebrew ? "הגדרת האוטומציה" : "Configure Automation"
+                return isHebrew ? "מחברים\nאת הקיצורים" : "Set up\nShortcuts."
             } else {
-                return isHebrew ? "רוצה שהעיר תתעדכן לבד?" : "Want your city to update automatically?"
+                return isHebrew ? "משלמים.\nהעיר מתעדכנת." : "Make a payment.\nShape your city."
             }
         default:
-            return isHebrew ? "העיר שלך מוכנה" : "Your City Is Ready"
+            return isHebrew ? "העיר שלך\nמוכנה" : "Your city\nis ready."
         }
     }
 
@@ -794,8 +719,8 @@ public struct OnboardingWizardView: View {
                 : "Just a name so the city knows who it belongs to."
         case 3:
             return isHebrew
-                ? "זה יעד להוצאות, לא הכנסה. הוא נותן לחודש שלך מסגרת בלי לשפוט אותך."
-                : "A spending target, not income. It gives your month context without judgment."
+                ? "כמה היית רוצה להוציא החודש? זה יעד להוצאות, לא הכנסה."
+                : "How much would you like to spend this month? This is a spending target, not income."
         case 4:
             if shortcutPhase == "guide" {
                 return isHebrew
@@ -812,4 +737,41 @@ public struct OnboardingWizardView: View {
                 : "From here, it will grow and change alongside your month."
         }
     }
+}
+
+// Isolated previews use an in-memory model container; no onboarding navigation is required.
+#Preview("Onboarding • Concept") {
+    OnboardingWizardView(initialStep: 1, onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
+}
+
+#Preview("Onboarding • Name") {
+    OnboardingWizardView(initialStep: 2, onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
+}
+
+#Preview("Onboarding • Target") {
+    OnboardingWizardView(initialStep: 3, onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
+}
+
+#Preview("Onboarding • Shortcuts") {
+    OnboardingWizardView(initialStep: 4, onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
+}
+
+#Preview("Onboarding • Shortcuts guide") {
+    OnboardingWizardView(initialStep: 4, initialPhase: "guide", onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
+}
+
+#Preview("Onboarding • Reveal") {
+    OnboardingWizardView(initialStep: 5, onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
 }

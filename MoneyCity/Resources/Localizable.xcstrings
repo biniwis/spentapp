@@ -40,16 +40,6 @@
     "%@ — איזה כיף שבאת!" : {
 
     },
-    "%@ · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · %2$@"
-          }
-        }
-      }
-    },
     "%@ · Monthly Target ₪%@" : {
       "localizations" : {
         "en" : {
@@ -314,9 +304,6 @@
 
     },
     "$" : {
-
-    },
-    "₪%@" : {
 
     },
     "₪%lld" : {
@@ -966,9 +953,6 @@
     "Maybe later" : {
 
     },
-    "MAYOR" : {
-
-    },
     "Mayor Name" : {
 
     },
@@ -1040,9 +1024,6 @@
 
     },
     "Monthly spending target" : {
-
-    },
-    "Monthly spending target · can be changed later" : {
 
     },
     "Name" : {
@@ -1482,6 +1463,9 @@
     "Status:" : {
 
     },
+    "Step %lld of 5" : {
+
+    },
     "Tap each blue field, select 'Shortcut Input' then the attribute:" : {
 
     },
@@ -1539,6 +1523,9 @@
 
     },
     "This month: %@" : {
+
+    },
+    "THIS MONTH’S TARGET" : {
 
     },
     "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
@@ -1678,6 +1665,12 @@
     "Welcome to the city" : {
 
     },
+    "WELCOME TO THE CITY OF" : {
+
+    },
+    "What’s your name?" : {
+
+    },
     "When the transaction took place" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1732,6 +1725,9 @@
     "Without income, the savings figure rests on a number the app invented." : {
 
     },
+    "You can change your target later" : {
+
+    },
     "You're All Caught Up" : {
 
     },
@@ -1745,6 +1741,9 @@
 
     },
     "Your companions are here to stay. There are no more companions to choose right now." : {
+
+    },
+    "Your data stays on your device" : {
 
     },
     "Your everyday spending in the last 7 days was %@ lower than in the previous 7 days. Choose one companion to stay in your city." : {
@@ -1762,9 +1761,6 @@
     "Your name" : {
 
     },
-    "Your Name" : {
-
-    },
     "אגלה בעצמי" : {
 
     },
@@ -1775,6 +1771,9 @@
 
     },
     "אולי אחר כך" : {
+
+    },
+    "איך קוראים לך?" : {
 
     },
     "אין הוצאות בחודש הזה" : {
@@ -1820,6 +1819,9 @@
 
     },
     "אפשר לנסות לשתף שוב." : {
+
+    },
+    "אפשר לשנות את היעד אחר כך" : {
 
     },
     "ארכיון סיכומים" : {
@@ -1878,6 +1880,9 @@
 
     },
     "בצע הפקדה לחיסכון" : {
+
+    },
+    "ברוכים הבאים לעיר של" : {
 
     },
     "גיבוי ושחזור" : {
@@ -2028,6 +2033,12 @@
 
     },
     "המידע הפיננסי נשמר במכשיר שלך" : {
+
+    },
+    "המידע נשאר על המכשיר" : {
+
+    },
+    "המסגרת של החודש" : {
 
     },
     "המצב הנוכחי יישמר כגיבוי נוסף לפני ההחלפה, כך שאפשר יהיה לחזור ממנו." : {
@@ -2193,9 +2204,6 @@
 
     },
     "יעד הוצאה חודשי" : {
-
-    },
-    "יעד הוצאה חודשי · אפשר לשנות אחר כך" : {
 
     },
     "יעד חדש" : {
@@ -2537,9 +2545,6 @@
     "קצב ההוצאות של החודש" : {
 
     },
-    "ראש העיר" : {
-
-    },
     "רצף ימים פעיל" : {
 
     },
@@ -2575,6 +2580,9 @@
 
     },
     "שכר דירה" : {
+
+    },
+    "שלב %lld מתוך 5" : {
 
     },
     "שלום, %@" : {

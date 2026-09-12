@@ -36,9 +36,17 @@ public struct CityProgressSheet: View {
     }
 
     private func hero(_ option: ProgressRewardOption, size: CGFloat) -> some View {
-        // Reuse SPENT's illustrated icon language until dedicated 2D companion portraits exist.
-        MoneyIcon(option.type == .pet ? .paw : (option.id == "resident_artist" ? .pencil : .user), size: size)
-            .accessibilityHidden(true)
+        Group {
+            if let uiImage = UIImage(named: "companion_\(option.id)") {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: size, height: size)
+            } else {
+                MoneyIcon(option.type == .pet ? .paw : (option.id == "resident_artist" ? .pencil : .user), size: size)
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     private var reason: String {

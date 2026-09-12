@@ -17,8 +17,10 @@ public struct OnboardingWizardView: View {
     @AppStorage("monthly_budget") private var storedMonthlyBudget: Double = 0
 
     // Persistent state across scene lifecycle (e.g. switching to Shortcuts and back)
-    @SceneStorage("spent.onboarding.currentStep") private var currentStep: Int = 1
-    @SceneStorage("spent.onboarding.shortcutPhase") private var shortcutPhase: String = "intro" // "intro" (4A) or "guide" (4B)
+    @AppStorage("spent.onboarding.currentStep") private var storedCurrentStep: Int = 1
+    @AppStorage("spent.onboarding.shortcutPhase") private var storedShortcutPhase: String = "intro" // "intro" (4A) or "guide" (4B)
+    @State private var currentStep: Int = 1
+    @State private var shortcutPhase: String = "intro"
 
     private enum OnboardingField: Hashable {
         case mayorName
@@ -29,15 +31,19 @@ public struct OnboardingWizardView: View {
     @State private var slideDirection: Int = 1 // 1 = forward, -1 = backward
     @State private var didInitializeInputs: Bool = false
     @State private var userNameInput: String = ""
-    @State private var budgetInputText: String = "8000"
+    @State private var budgetInputText: String = ""
     @State private var hasOpenedShortcuts: Bool = false
 
     private let initialStepOverride: Int?
     private let initialPhaseOverride: String?
     private let canDismiss: Bool
 
+    private func sanitizedBudgetDigits(_ text: String) -> String {
+        String(text.filter { $0 >= "0" && $0 <= "9" }.prefix(9))
+    }
+
     private var parsedBudget: Double? {
-        let digits = budgetInputText.filter { $0.isNumber }
+        let digits = sanitizedBudgetDigits(budgetInputText)
         guard let val = Double(digits), val > 0 else { return nil }
         return val
     }
@@ -50,7 +56,7 @@ public struct OnboardingWizardView: View {
     }
 
     private func formatBudgetString(_ text: String) -> String {
-        let digits = text.filter { $0.isNumber }
+        let digits = sanitizedBudgetDigits(text)
         guard let val = Double(digits), val > 0 else { return text }
         return formatBudgetValue(val)
     }
@@ -114,12 +120,12 @@ public struct OnboardingWizardView: View {
                                 step: activeOnboardingStep,
                                 mayorName: userNameInput,
                                 targetAmountText: formatBudgetString(budgetInputText),
+                                currencySymbol: l10n.baseCurrency.symbol,
                                 isRTL: isHebrew,
                                 height: heroHeight(availableHeight: geometry.size.height)
                             )
                             .environment(\.layoutDirection, .leftToRight)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 14)
 
                             VStack(alignment: .leading, spacing: 18) {
                                 Text(stepSubtitleText)
@@ -146,6 +152,8 @@ public struct OnboardingWizardView: View {
                     }
                     .scrollDismissesKeyboard(.interactively)
 
+                    Spacer(minLength: 16)
+
                     bottomActionBar
                         .frame(maxWidth: 508)
                         .padding(.horizontal, 24)
@@ -157,13 +165,12 @@ public struct OnboardingWizardView: View {
             }
         }
         .onAppear {
-            guard !didInitializeInputs else { return }
-            didInitializeInputs = true
-            if let initialStep = initialStepOverride {
-                currentStep = initialStep
-            }
-            if let initialPhase = initialPhaseOverride {
-                shortcutPhase = initialPhase
+            if canDismiss {
+                currentStep = initialStepOverride ?? 1
+                shortcutPhase = initialPhaseOverride ?? "intro"
+            } else {
+                currentStep = initialStepOverride ?? storedCurrentStep
+                shortcutPhase = initialPhaseOverride ?? storedShortcutPhase
             }
             if !storedUserName.isEmpty && userNameInput.isEmpty {
                 userNameInput = storedUserName
@@ -171,17 +178,24 @@ public struct OnboardingWizardView: View {
             if storedMonthlyBudget > 0 {
                 budgetInputText = String(format: "%.0f", storedMonthlyBudget)
             } else {
-                budgetInputText = "8000"
+                budgetInputText = ""
             }
         }
-        .onChange(of: currentStep) { _, _ in
+        .onChange(of: currentStep) { _, newStep in
+            if !canDismiss {
+                storedCurrentStep = newStep
+            }
             focusedField = nil
         }
+        .onChange(of: shortcutPhase) { _, newPhase in
+            if !canDismiss {
+                storedShortcutPhase = newPhase
+            }
+        }
         .onChange(of: budgetInputText) { _, newValue in
-            let digitsOnly = newValue.filter { $0.isNumber }
-            let clamped = String(digitsOnly.prefix(9))
-            if clamped != newValue {
-                budgetInputText = clamped
+            let sanitized = sanitizedBudgetDigits(newValue)
+            if sanitized != newValue {
+                budgetInputText = sanitized
             }
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
@@ -328,8 +342,11 @@ public struct OnboardingWizardView: View {
                 .disableAutocorrection(true)
                 .submitLabel(.next)
                 .onSubmit {
-                    saveMayor()
-                    nextStep()
+                    let isNameValid = !userNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    if isNameValid {
+                        saveMayor()
+                        nextStep()
+                    }
                 }
                 .accessibilityLabel(isHebrew ? "השם שלך" : "Your name")
                 .padding(.vertical, 8)
@@ -348,13 +365,20 @@ public struct OnboardingWizardView: View {
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.jetBlack)
 
-                TextField("0", text: $budgetInputText)
+                TextField("8,000", text: $budgetInputText)
                     .font(.system(size: 36, weight: .heavy, design: .rounded))
                     .foregroundStyle(Color.jetBlack)
                     .tint(Color.jetBlack)
                     .keyboardType(.asciiCapableNumberPad)
                     .focused($focusedField, equals: .budget)
                     .modifier(NumericLTRTextFieldModifier())
+                    .onSubmit {
+                        let isBudgetValid = (parsedBudget ?? 0) > 0
+                        if isBudgetValid {
+                            saveBudget()
+                            nextStep()
+                        }
+                    }
                     .accessibilityLabel(isHebrew ? "יעד הוצאה חודשי" : "Monthly spending target")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -528,15 +552,20 @@ public struct OnboardingWizardView: View {
         VStack(alignment: .leading, spacing: 8) {
             let name = userNameInput.trimmingCharacters(in: .whitespacesAndNewlines)
             let mayorDisplayName = name.isEmpty ? (isHebrew ? "ראש העיר" : "Mayor") : name
-            let amount = parsedBudget ?? (storedMonthlyBudget > 0 ? storedMonthlyBudget : 8000)
-            let formattedBudget: String = {
-                let formatter = NumberFormatter()
-                formatter.numberStyle = .decimal
-                return formatter.string(from: NSNumber(value: amount)) ?? budgetInputText
+            let amount = parsedBudget ?? (storedMonthlyBudget > 0 ? storedMonthlyBudget : nil)
+            let targetText: String = {
+                if let amount = amount {
+                    let formatter = NumberFormatter()
+                    formatter.numberStyle = .decimal
+                    let formattedBudget = formatter.string(from: NSNumber(value: amount)) ?? budgetInputText
+                    return "\(l10n.baseCurrency.symbol)\(formattedBudget)"
+                } else {
+                    return "—"
+                }
             }()
 
             // Quiet metadata line directly on canvas
-            Text(isHebrew ? "\(mayorDisplayName) · יעד חודשי ₪\(formattedBudget)" : "\(mayorDisplayName) · Monthly Target ₪\(formattedBudget)")
+            Text(isHebrew ? "\(mayorDisplayName) · יעד חודשי \(targetText)" : "\(mayorDisplayName) · Monthly Target \(targetText)")
                 .font(.system(.subheadline, design: .rounded, weight: .semibold))
                 .foregroundStyle(Color.white)
                 .padding(.top, 14)
@@ -552,12 +581,22 @@ public struct OnboardingWizardView: View {
                 nextStep()
             }
         case 2:
-            primaryActionButton(title: isHebrew ? "המשך ליעד" : "Continue to Target") {
+            let isNameValid = !userNameInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            primaryActionButton(
+                title: isHebrew ? "המשך ליעד" : "Continue to Target",
+                isEnabled: isNameValid
+            ) {
+                guard isNameValid else { return }
                 saveMayor()
                 nextStep()
             }
         case 3:
-            primaryActionButton(title: isHebrew ? "המשך לאוטומציה" : "Continue to Automation") {
+            let isBudgetValid = (parsedBudget ?? 0) > 0
+            primaryActionButton(
+                title: isHebrew ? "המשך לאוטומציה" : "Continue to Automation",
+                isEnabled: isBudgetValid
+            ) {
+                guard isBudgetValid else { return }
                 saveBudget()
                 nextStep()
             }
@@ -641,8 +680,13 @@ public struct OnboardingWizardView: View {
     }
 
     // One graphic primary action across the sequence.
-    private func primaryActionButton(title: String, action: @escaping () -> Void) -> some View {
+    private func primaryActionButton(
+        title: String,
+        isEnabled: Bool = true,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: {
+            guard isEnabled else { return }
             Haptics.impact(.medium)
             action()
         }) {
@@ -656,9 +700,11 @@ public struct OnboardingWizardView: View {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(currentStep == 5 ? Color.neonLime : Color.jetBlack)
                 )
+                .opacity(isEnabled ? 1.0 : 0.38)
         }
         .buttonStyle(.plain)
-        .bouncyPress(scale: reduceMotion ? 1 : 0.97)
+        .disabled(!isEnabled)
+        .bouncyPress(scale: (reduceMotion || !isEnabled) ? 1 : 0.97)
     }
 
     private func nextStep() {
@@ -685,23 +731,15 @@ public struct OnboardingWizardView: View {
         if let b = parsedBudget {
             storedMonthlyBudget = b
         }
-        // Remove legacy onboarding IncomeSource entries if any exist
-        let descriptor = FetchDescriptor<IncomeSource>()
-        if let items = try? modelContext.fetch(descriptor) {
-            var didDelete = false
-            for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
-                modelContext.delete(item)
-                didDelete = true
-            }
-            if didDelete {
-                try? modelContext.save()
-            }
-        }
     }
 
     private func saveAllAndFinish() {
         saveMayor()
         saveBudget()
+        if !canDismiss {
+            storedCurrentStep = 1
+            storedShortcutPhase = "intro"
+        }
         onTriggerSampleTransaction()
         onComplete()
     }

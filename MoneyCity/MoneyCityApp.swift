@@ -30,6 +30,9 @@ enum RootRoute {
 /// - Returning / legacy user: MainCityView
 struct AppRootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("hasStartedOnboardingV2") private var hasStartedOnboardingV2: Bool = false
+    @AppStorage("didMigrateLegacyMonthlyTargetIncome") private var didMigrateLegacyMonthlyTargetIncome: Bool = false
+    @Environment(\.modelContext) private var modelContext
     @Query private var allTransactions: [Transaction]
 
     @State private var route: RootRoute = .resolving
@@ -67,6 +70,7 @@ struct AppRootView: View {
             }
         }
         .onAppear {
+            migrateLegacyMonthlyTargetIncomeIfNeeded()
             resolveInitialRoute()
         }
     }
@@ -76,14 +80,34 @@ struct AppRootView: View {
 
         if hasCompletedOnboarding {
             route = .main
+        } else if hasStartedOnboardingV2 {
+            // Once Onboarding V2 has started, background transactions must never cause it to be skipped as a legacy user
+            route = .onboarding
         } else if !allTransactions.isEmpty {
-            // Legacy user with real transaction history in ledger
+            // Legacy user from older version before Onboarding V2 existed
             hasCompletedOnboarding = true
             route = .main
         } else {
-            // New user or user in progress of onboarding
+            // New user starting Onboarding V2
+            hasStartedOnboardingV2 = true
             route = .onboarding
         }
+    }
+
+    private func migrateLegacyMonthlyTargetIncomeIfNeeded() {
+        guard !didMigrateLegacyMonthlyTargetIncome else { return }
+        let descriptor = FetchDescriptor<IncomeSource>()
+        if let items = try? modelContext.fetch(descriptor) {
+            var didDelete = false
+            for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
+                modelContext.delete(item)
+                didDelete = true
+            }
+            if didDelete {
+                try? modelContext.save()
+            }
+        }
+        didMigrateLegacyMonthlyTargetIncome = true
     }
 }
 

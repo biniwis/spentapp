@@ -23,6 +23,7 @@ public struct OnboardingCityScene: View {
     let step: OnboardingStep
     let mayorName: String
     let targetAmountText: String
+    let currencySymbol: String
     let isRTL: Bool
     let height: CGFloat
     let animateEntrance: Bool
@@ -33,10 +34,12 @@ public struct OnboardingCityScene: View {
     @State private var phase = 0
 
     public init(step: OnboardingStep, mayorName: String, targetAmountText: String,
+                currencySymbol: String = "₪",
                 isRTL: Bool = false, height: CGFloat = 300, animateEntrance: Bool = true) {
         self.step = step
         self.mayorName = mayorName
         self.targetAmountText = targetAmountText
+        self.currencySymbol = currencySymbol
         self.isRTL = isRTL
         self.height = height
         self.animateEntrance = animateEntrance
@@ -128,9 +131,15 @@ public struct OnboardingCityScene: View {
             .position(x: boardRect.midX, y: boardRect.midY)
         case .spendingTarget:
             let cardRect = rtlSafeRect(IllustrationTextSlot.targetPanel)
-            let digits = targetAmountText.filter { $0.isNumber }
-            let formattedVal = digits.isEmpty ? "8,000" : (formatTargetAmount(digits) ?? targetAmountText)
-            let displayAmount = "₪\(formattedVal)"
+            let digits = targetAmountText.filter { $0 >= "0" && $0 <= "9" }
+            let displayAmount: String = {
+                if digits.isEmpty {
+                    return "—"
+                } else {
+                    let formattedVal = formatTargetAmount(digits) ?? targetAmountText
+                    return "\(currencySymbol)\(formattedVal)"
+                }
+            }()
 
             VStack(spacing: 3) {
                 Text(isRTL ? "המסגרת של החודש" : "THIS MONTH’S TARGET")

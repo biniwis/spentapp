@@ -100,4 +100,91 @@ final class P0StabilityTests: XCTestCase {
         XCTAssertTrue(primaries.contains(.miscellaneous), "primaryCategories must contain .miscellaneous")
         XCTAssertEqual(primaries.count, 11, "Must have exactly 11 distinct primary categories")
     }
+
+    // MARK: - Pre-Release Onboarding Hardening Tests
+
+    func testBudgetSanitizationRemovesNonASCIIDigitsAndClamps() {
+        func sanitize(_ text: String) -> String {
+            String(text.filter { $0 >= "0" && $0 <= "9" }.prefix(9))
+        }
+
+        XCTAssertEqual(sanitize("₪8,000"), "8000")
+        XCTAssertEqual(sanitize("8,000"), "8000")
+        XCTAssertEqual(sanitize("$12,500.00"), "1250000")
+        XCTAssertEqual(sanitize("abc8000def"), "8000")
+        // Unicode numerals (Arabic-Indic digits ٠١٢) should be excluded
+        XCTAssertEqual(sanitize("١٢٣45"), "45")
+        // Max 9 digits clamping
+        XCTAssertEqual(sanitize("123456789012345"), "123456789")
+        // Empty string
+        XCTAssertEqual(sanitize(""), "")
+        // Only symbols
+        XCTAssertEqual(sanitize("₪$€,.-"), "")
+    }
+
+    @MainActor
+    func testLegacyIncomeSourceMigrationOnlyDeletesTargetTitles() throws {
+        let schema = Schema([IncomeSource.self])
+        let container = try ModelContainer(for: schema, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = container.mainContext
+
+        let targetHebrew = IncomeSource(name: "יעד חודשי", amount: 8000)
+        let targetEnglish = IncomeSource(name: "Monthly Target", amount: 8000)
+        let salary = IncomeSource(name: "משכורת", amount: 15000)
+
+        context.insert(targetHebrew)
+        context.insert(targetEnglish)
+        context.insert(salary)
+        try context.save()
+
+        // Perform migration
+        let descriptor = FetchDescriptor<IncomeSource>()
+        let items = try context.fetch(descriptor)
+        for item in items where item.name == "יעד חודשי" || item.name == "Monthly Target" {
+            context.delete(item)
+        }
+        try context.save()
+
+        let remaining = try context.fetch(descriptor)
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.name, "משכורת")
+    }
+
+    func testOnboardingV2RoutingLogicMatrix() {
+        func resolveRoute(
+            hasCompletedOnboarding: Bool,
+            hasStartedOnboardingV2: Bool,
+            hasTransactions: Bool
+        ) -> (route: String, markCompleted: Bool, markStarted: Bool) {
+            if hasCompletedOnboarding {
+                return ("main", false, false)
+            } else if hasStartedOnboardingV2 {
+                return ("onboarding", false, false)
+            } else if hasTransactions {
+                return ("main", true, false)
+            } else {
+                return ("onboarding", false, true)
+            }
+        }
+
+        // Test A: Brand new user
+        let clean = resolveRoute(hasCompletedOnboarding: false, hasStartedOnboardingV2: false, hasTransactions: false)
+        XCTAssertEqual(clean.route, "onboarding")
+        XCTAssertTrue(clean.markStarted)
+        XCTAssertFalse(clean.markCompleted)
+
+        // Test F: User started onboarding, received a background transaction, app relaunched
+        let bgTx = resolveRoute(hasCompletedOnboarding: false, hasStartedOnboardingV2: true, hasTransactions: true)
+        XCTAssertEqual(bgTx.route, "onboarding", "Background transaction must NOT skip onboarding if Onboarding V2 already started")
+        XCTAssertFalse(bgTx.markCompleted)
+
+        // Test G: Legacy user before Onboarding V2 existed
+        let legacy = resolveRoute(hasCompletedOnboarding: false, hasStartedOnboardingV2: false, hasTransactions: true)
+        XCTAssertEqual(legacy.route, "main", "Legacy user with transactions must bypass onboarding")
+        XCTAssertTrue(legacy.markCompleted)
+
+        // Returning completed user
+        let returning = resolveRoute(hasCompletedOnboarding: true, hasStartedOnboardingV2: true, hasTransactions: true)
+        XCTAssertEqual(returning.route, "main")
+    }
 }

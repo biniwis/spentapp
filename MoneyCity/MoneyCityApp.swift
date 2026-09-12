@@ -17,51 +17,72 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
+/// Root route states for top-level application presentation
+enum RootRoute {
+    case resolving
+    case onboarding
+    case main
+}
+
 /// Root view determining top-level application presentation:
-/// - First launch: Full-screen OnboardingWizardView
+/// - Latched explicit route state resolved once on app startup
+/// - New user: Full-screen OnboardingWizardView
 /// - Returning / legacy user: MainCityView
 struct AppRootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
-    @AppStorage("userName") private var userName: String = ""
-    @AppStorage("monthly_budget") private var monthlyBudget: Double = 0
     @Query private var allTransactions: [Transaction]
 
+    @State private var route: RootRoute = .resolving
     @State private var justCompletedOnboarding: Bool = false
 
-    /// Legacy user detection: user has existing ledger data or profile settings from older versions
-    /// where hasCompletedOnboarding wasn't explicitly set.
-    private var hasExistingUserState: Bool {
-        !allTransactions.isEmpty || !userName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || monthlyBudget > 0
-    }
-
-    private var shouldShowOnboarding: Bool {
-        !hasCompletedOnboarding && !hasExistingUserState
-    }
-
     var body: some View {
-        Group {
-            if shouldShowOnboarding {
+        ZStack {
+            switch route {
+            case .resolving:
+                Color.appBackground
+                    .ignoresSafeArea()
+
+            case .onboarding:
                 OnboardingWizardView(
                     canDismiss: false,
                     onComplete: {
                         withAnimation(.easeInOut(duration: 0.3)) {
                             hasCompletedOnboarding = true
                             justCompletedOnboarding = true
+                            route = .main
                         }
                     },
                     onTriggerSampleTransaction: {}
                 )
                 .transition(.opacity)
-            } else {
+
+            case .main:
                 MainCityView(skipBrandSplash: justCompletedOnboarding)
+                    .overlay(alignment: .top) {
+                        if DatabaseService.shared.storageMode != .persistent {
+                            StorageHealthBanner(mode: DatabaseService.shared.storageMode)
+                        }
+                    }
                     .transition(.opacity)
             }
         }
         .onAppear {
-            // One-time legacy migration: existing users bypass onboarding automatically
-            if !hasCompletedOnboarding && hasExistingUserState {
-                hasCompletedOnboarding = true
-            }
+            resolveInitialRoute()
+        }
+    }
+
+    private func resolveInitialRoute() {
+        guard route == .resolving else { return }
+
+        if hasCompletedOnboarding {
+            route = .main
+        } else if !allTransactions.isEmpty {
+            // Legacy user with real transaction history in ledger
+            hasCompletedOnboarding = true
+            route = .main
+        } else {
+            // New user or user in progress of onboarding
+            route = .onboarding
         }
     }
 }
@@ -75,14 +96,6 @@ struct MoneyCityApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView()
-                // Sits over the city rather than in a settings screen: in the memory-only
-                // case every second the user spends typing an expense is wasted, so the
-                // warning has to be the first thing on screen, not something to go find.
-                .overlay(alignment: .top) {
-                    if DatabaseService.shared.storageMode != .persistent {
-                        StorageHealthBanner(mode: DatabaseService.shared.storageMode)
-                    }
-                }
                 .preferredColorScheme(.light)
                 .moneyCityFont()
                 .environment(\.layoutDirection, l10n.layoutDirection)

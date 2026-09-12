@@ -182,6 +182,10 @@ public struct ThreeDioramaView: ViewRepresentable {
             public let onlinePackagesCount: Int
             public let hasTravelOrFlight: Bool
             public let activeSubscriptionsCount: Int
+            /// Named delivery intensity tier: "quiet" | "normal" | "active" | "high" | "extreme"
+            public let deliveryTier: String
+            /// 0–1 frequency score for the delivery tier (drives actor counts and crowd).
+            public let deliveryFrequencyScore: Double
         }
         
         public let food: Double
@@ -277,7 +281,9 @@ public struct ThreeDioramaView: ViewRepresentable {
                 coffeeCount: habits.coffeeCount,
                 onlinePackagesCount: habits.onlinePackagesCount,
                 hasTravelOrFlight: habits.hasTravelOrFlight,
-                activeSubscriptionsCount: habits.activeSubscriptionsCount
+                activeSubscriptionsCount: habits.activeSubscriptionsCount,
+                deliveryTier: habits.deliveryIntensity.tier.rawValue,
+                deliveryFrequencyScore: habits.deliveryIntensity.frequencyScore
             )
         )
         

@@ -37,6 +37,7 @@ public struct OnboardingWizardView: View {
     private let initialStepOverride: Int?
     private let initialPhaseOverride: String?
     private let canDismiss: Bool
+    private let isPreview: Bool
 
     public static func sanitizedBudgetDigits(_ text: String) -> String {
         let beforeDecimal = text.components(separatedBy: ".").first ?? text
@@ -95,12 +96,14 @@ public struct OnboardingWizardView: View {
         initialStep: Int? = nil,
         initialPhase: String? = nil,
         canDismiss: Bool = false,
+        isPreview: Bool = false,
         onComplete: @escaping () -> Void,
         onTriggerSampleTransaction: @escaping () -> Void
     ) {
         self.initialStepOverride = initialStep
         self.initialPhaseOverride = initialPhase
         self.canDismiss = canDismiss
+        self.isPreview = isPreview
         self.onComplete = onComplete
         self.onTriggerSampleTransaction = onTriggerSampleTransaction
     }
@@ -170,7 +173,7 @@ public struct OnboardingWizardView: View {
             }
         }
         .onAppear {
-            if canDismiss {
+            if canDismiss || isPreview {
                 currentStep = initialStepOverride ?? 1
                 shortcutPhase = initialPhaseOverride ?? "intro"
             } else {
@@ -179,21 +182,23 @@ public struct OnboardingWizardView: View {
             }
             if !storedUserName.isEmpty && userNameInput.isEmpty {
                 userNameInput = storedUserName
+            } else if isPreview && userNameInput.isEmpty {
+                userNameInput = isHebrew ? "דניאל" : "Alex"
             }
             if storedMonthlyBudget > 0 {
                 budgetInputText = String(format: "%.0f", storedMonthlyBudget)
-            } else {
-                budgetInputText = ""
+            } else if isPreview && budgetInputText.isEmpty {
+                budgetInputText = "8000"
             }
         }
         .onChange(of: currentStep) { _, newStep in
-            if !canDismiss {
+            if !canDismiss && !isPreview {
                 storedCurrentStep = newStep
             }
             focusedField = nil
         }
         .onChange(of: shortcutPhase) { _, newPhase in
-            if !canDismiss {
+            if !canDismiss && !isPreview {
                 storedShortcutPhase = newPhase
             }
         }
@@ -739,13 +744,15 @@ public struct OnboardingWizardView: View {
     }
 
     private func saveAllAndFinish() {
-        saveMayor()
-        saveBudget()
-        if !canDismiss {
-            storedCurrentStep = 1
-            storedShortcutPhase = "intro"
+        if !isPreview {
+            saveMayor()
+            saveBudget()
+            if !canDismiss {
+                storedCurrentStep = 1
+                storedShortcutPhase = "intro"
+            }
+            onTriggerSampleTransaction()
         }
-        onTriggerSampleTransaction()
         onComplete()
     }
 

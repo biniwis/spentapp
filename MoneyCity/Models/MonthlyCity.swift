@@ -4,26 +4,39 @@ import SwiftUI
 /// Behavioral habits extracted from the transaction stream to drive the Living Map
 public struct BehavioralHabits: Sendable, Equatable {
     public var woltDeliveryCount: Int
+    /// Distinct calendar days on which at least one delivery transaction occurred.
+    public var woltActiveDays: Int
+    /// Total amount spent on delivery venues this month.
+    public var woltTotalSpend: Double
     public var coffeeCount: Int
     public var onlinePackagesCount: Int
     public var hasTravelOrFlight: Bool
     public var activeSubscriptionsCount: Int
     public var totalGroceryBags: Int
-    
+    /// Computed delivery intensity — carries tier, frequency score and spend score.
+    public var deliveryIntensity: DeliveryIntensity
+
     public init(
         woltDeliveryCount: Int = 0,
+        woltActiveDays: Int = 0,
+        woltTotalSpend: Double = 0,
         coffeeCount: Int = 0,
         onlinePackagesCount: Int = 0,
         hasTravelOrFlight: Bool = false,
         activeSubscriptionsCount: Int = 0,
-        totalGroceryBags: Int = 0
+        totalGroceryBags: Int = 0,
+        deliveryIntensity: DeliveryIntensity = DeliveryIntensityEngine.compute(
+            orderCount: 0, totalSpend: 0, activeDays: 0, elapsedDays: 1)
     ) {
         self.woltDeliveryCount = woltDeliveryCount
+        self.woltActiveDays = woltActiveDays
+        self.woltTotalSpend = woltTotalSpend
         self.coffeeCount = coffeeCount
         self.onlinePackagesCount = onlinePackagesCount
         self.hasTravelOrFlight = hasTravelOrFlight
         self.activeSubscriptionsCount = activeSubscriptionsCount
         self.totalGroceryBags = totalGroceryBags
+        self.deliveryIntensity = deliveryIntensity
     }
 }
 

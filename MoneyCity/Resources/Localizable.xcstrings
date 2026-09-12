@@ -160,6 +160,46 @@
         }
       }
     },
+    "%@%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$lld"
+          }
+        }
+      }
+    },
+    "%@%lld / %@%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$lld / %3$@%4$lld"
+          }
+        }
+      }
+    },
+    "%@%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$lld %3$@"
+          }
+        }
+      }
+    },
+    "%@%lld left" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$lld left"
+          }
+        }
+      }
+    },
     "%lld" : {
 
     },
@@ -198,22 +238,22 @@
     "%lld%%" : {
 
     },
-    "%lld%% budget · Savings ₪%lld" : {
+    "%lld%% budget · Savings %@%lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$lld%% budget · Savings ₪%2$lld"
+            "value" : "%1$lld%% budget · Savings %2$@%3$lld"
           }
         }
       }
     },
-    "%lld%% מהתקציב · חיסכון ₪%lld" : {
+    "%lld%% מהתקציב · חיסכון %@%lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$lld%% מהתקציב · חיסכון ₪%2$lld"
+            "value" : "%1$lld%% מהתקציב · חיסכון %2$@%3$lld"
           }
         }
       }
@@ -306,33 +346,13 @@
     "$" : {
 
     },
-    "₪%lld" : {
-
-    },
-    "₪%lld / ₪%lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "₪%1$lld / ₪%2$lld"
-          }
-        }
-      }
-    },
-    "₪%lld %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "₪%1$lld %2$@"
-          }
-        }
-      }
-    },
-    "₪%lld left" : {
+    "₪480 Saved" : {
 
     },
     "0" : {
+
+    },
+    "1 → 5" : {
 
     },
     "1x" : {
@@ -342,6 +362,9 @@
 
     },
     "4" : {
+
+    },
+    "6 / 6" : {
 
     },
     "6-Month Overview" : {
@@ -444,6 +467,9 @@
       }
     },
     "All" : {
+
+    },
+    "All Companions Unlocked State" : {
 
     },
     "All sorted & clean!" : {
@@ -610,6 +636,9 @@
     "Change currency" : {
 
     },
+    "Check state when all 6 companions have already joined the city" : {
+
+    },
     "Choose a Category" : {
 
     },
@@ -692,6 +721,12 @@
     "Day %lld each month" : {
 
     },
+    "DEBUG" : {
+
+    },
+    "DEBUG ONLY" : {
+
+    },
     "Defaults to the base currency selected in the app" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -740,6 +775,12 @@
 
     },
     "Deposits & funds" : {
+
+    },
+    "Design Lab 🧪" : {
+
+    },
+    "DEVELOPMENT & DESIGN" : {
 
     },
     "Done" : {
@@ -821,7 +862,13 @@
     "Fixed monthly total" : {
 
     },
+    "Full journey from city concept to reveal, with all transitions" : {
+
+    },
     "Full Map View" : {
+
+    },
+    "Full Onboarding Flow" : {
 
     },
     "Future transactions at %@ will auto-categorize" : {
@@ -929,13 +976,22 @@
     "Income sources" : {
 
     },
+    "Individual Step Previews:" : {
+
+    },
     "Installments" : {
 
     },
     "Instant Purchase Alerts" : {
 
     },
+    "Interactive WebGL 3D diorama with live controls for density, buildings, park & traffic" : {
+
+    },
     "Interface Language" : {
+
+    },
+    "Isolated Preview Sandbox" : {
 
     },
     "Keep streak tomorrow" : {
@@ -947,7 +1003,13 @@
     "Limited Time" : {
 
     },
-    "Live Bank of Israel rates" : {
+    "Live 3D City Density Lab" : {
+
+    },
+    "Live exchange rates (estimated)" : {
+
+    },
+    "Live interactive 3D diorama lab with real-time density switching from Day 1 to Mega Metropolis:" : {
 
     },
     "Main Category" : {
@@ -1095,6 +1157,9 @@
     "One choice every seven days when everyday spending decreases by more than ₪10 compared with the previous week. Existing companions always stay." : {
 
     },
+    "Open 3D ↗" : {
+
+    },
     "Open Shortcuts" : {
 
     },
@@ -1143,6 +1208,9 @@
 
     },
     "Please try sharing again." : {
+
+    },
+    "Preview weekly companion rewards, unlock flow, and animated join ceremonies:" : {
 
     },
     "Previous" : {
@@ -1412,6 +1480,9 @@
     "Show Less" : {
 
     },
+    "Simulates positive weekly progress (₪480 saved), interactive selection & join animation" : {
+
+    },
     "Spending Breakdown" : {
 
     },
@@ -1470,6 +1541,9 @@
 
     },
     "Step %lld of 5" : {
+
+    },
+    "Tap any preset to view the full story & editorial animations with mock data:" : {
 
     },
     "Tap each blue field, select 'Shortcut Input' then the attribute:" : {
@@ -1659,7 +1733,13 @@
     "View ✨" : {
 
     },
+    "View Story" : {
+
+    },
     "We compare two weeks of everyday spending, excluding housing, subscriptions, health, finance and savings. A decrease of more than ₪10 can unlock a new companion. There's no need to skip things you need." : {
+
+    },
+    "Weekly Companion Ceremony" : {
 
     },
     "Welcome" : {
@@ -1767,6 +1847,9 @@
     "Your name" : {
 
     },
+    "Zero writes to SwiftData. Does not modify real transactions, budget, city progression, or onboarding completion flags." : {
+
+    },
     "אגלה בעצמי" : {
 
     },
@@ -1792,6 +1875,9 @@
 
     },
     "אין עדיין תצלומים." : {
+
+    },
+    "אין שמירה ב־SwiftData, אין שינוי בהוצאות אמיתיות, בתקציב, בהתקדמות העיר או בדגל השלמת ה־Onboarding." : {
 
     },
     "איפוס" : {
@@ -1843,6 +1929,15 @@
 
     },
     "בגלל ש-iOS שומרת על פרטיות, נדרש חיבור קצר באפליקציית 'קיצורים' (Shortcuts) כדי שכל תשלום ייקלט מיד בעיר שלך." : {
+
+    },
+    "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
+
+    },
+    "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 החברים בעיר" : {
+
+    },
+    "בדיקת מסכים בודדים:" : {
 
     },
     "בוא לראות איך העיר שלך נראית ומה היו השיאים" : {
@@ -1928,6 +2023,12 @@
 
     },
     "הגדרת תקציב" : {
+
+    },
+    "הדמיית הדיורמה התלת-ממדית עם שליטה מיידית בצפיפות, מבנים, פארק ותנועה" : {
+
+    },
+    "הדמיית התקדמות שבועית חיובית (₪480 חיסכון), בחירה אינטראקטיבית ואנימציית הצטרפות" : {
 
     },
     "הדרכת פתיחה והיכרות" : {
@@ -2131,6 +2232,9 @@
     "הקש על הבניין המסומן בעיר כדי לגלות אילו הוצאות בנו אותו." : {
 
     },
+    "הקש על כל Preset כדי להריץ את הסטורי והאנימציות האמיתיות עם נתוני Mock:" : {
+
+    },
     "הקש פעמיים לפתיחת סיכום חודשי" : {
 
     },
@@ -2176,6 +2280,9 @@
     "זמין לזמן מוגבל" : {
 
     },
+    "זרימה מלאה מקונספט העיר ועד פתיחת הדלתות, כולל מעברים ואנימציות" : {
+
+    },
     "חבר את נתוני העסקה" : {
 
     },
@@ -2194,6 +2301,9 @@
     "חזרה לעיר" : {
 
     },
+    "חיסכון ₪480" : {
+
+    },
     "חפש עסקה או קטגוריה..." : {
 
     },
@@ -2201,6 +2311,9 @@
 
     },
     "טיול ליפן" : {
+
+    },
+    "טקס בחירת חבר שבועי" : {
 
     },
     "טרם הגדרת יעדי חיסכון" : {
@@ -2338,10 +2451,16 @@
     "ממוצע: %@/חודש" : {
 
     },
+    "מעבדת תלת-ממד אינטראקטיבית" : {
+
+    },
     "מעקב הוצאות ובניית עיר חכמה" : {
 
     },
     "מפענח סכום ופרטי עסק מתמונת הקבלה..." : {
+
+    },
+    "מצב סיום: כל החברים כבר בעיר" : {
 
     },
     "מצטרפים לעיר" : {
@@ -2380,8 +2499,15 @@
     "נותרו %@ ליעד" : {
 
     },
-    "נותרו ₪%lld בתקציב" : {
-
+    "נותרו %@%lld בתקציב" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "נותרו %1$@%2$lld בתקציב"
+          }
+        }
+      }
     },
     "נחסך החודש" : {
 
@@ -2390,6 +2516,12 @@
 
     },
     "נמחקה: %@" : {
+
+    },
+    "סביבת בדיקות מבודדת" : {
+
+    },
+    "סביבת פיתוח ועיצוב" : {
 
     },
     "סגור" : {
@@ -2419,6 +2551,9 @@
     "סיום" : {
 
     },
+    "סיור Onboarding מלא" : {
+
+    },
     "סיכום חודשי" : {
 
     },
@@ -2441,9 +2576,6 @@
 
     },
     "סקירת 12 חודשים" : {
-
-    },
-    "עדכון שערי יציג חי של בנק ישראל" : {
 
     },
     "עזרה ומשוב" : {
@@ -2515,6 +2647,9 @@
     "פתח את קיצורים" : {
 
     },
+    "פתח תלת-ממד ↗" : {
+
+    },
     "צור" : {
 
     },
@@ -2522,6 +2657,9 @@
 
     },
     "צפה ✨" : {
+
+    },
+    "צפה בסטורי" : {
 
     },
     "צפייה מחדש בסיור העיר וההגדרות" : {
@@ -2627,10 +2765,16 @@
     "שמורת הטבע" : {
 
     },
+    "שערי יציג עדכניים (הערכה)" : {
+
+    },
     "שפת ממשק" : {
 
     },
     "תוספת קטנה על ההתקדמות השבועית שלך" : {
+
+    },
+    "תצוגת 3D אינטראקטיבית עם החלפת מצבי צפיפות בזמן אמת – מתחילת חודש ועד מגה-מטרופולין:" : {
 
     },
     "תצוגת מפה מלאה" : {

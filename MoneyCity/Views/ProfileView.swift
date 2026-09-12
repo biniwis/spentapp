@@ -26,13 +26,15 @@ public struct ProfileView: View {
     @State private var showApplePayGuideSheet = false
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
-    @State private var showOnboardingTour = false
     @State private var selectedMonth: String? = nil
     @State private var showDetailedYear = false
     @State private var showDetailedTransactions = false
     @State private var showDetailedStreak = false
     @State private var showDetailedBudget = false
     @State private var activeRecapForSheet: MonthlyRecap? = nil
+    #if DEBUG
+    @State private var showDesignLab = false
+    #endif
 
     private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus)? {
         let status = MonthlyRecapService.checkRecapWindow()
@@ -224,6 +226,11 @@ public struct ProfileView: View {
                     // ── Management Navigation Menu Cards (Inset Grouped) ──
                     managementMenuCard
 
+                    #if DEBUG
+                    // ── Internal Development & Design Lab (Debug Only) ──
+                    designLabSection
+                    #endif
+
                     Spacer(minLength: 120)
                 }
             }
@@ -231,6 +238,12 @@ public struct ProfileView: View {
         .fullScreenCover(item: $activeRecapForSheet) { recap in
             MonthlyRecapSheet(recap: recap, onNavigateToCity: onNavigateToCity)
         }
+        #if DEBUG
+        .sheet(isPresented: $showDesignLab) {
+            DesignLabView()
+                .environmentObject(l10n)
+        }
+        #endif
         .sheet(isPresented: $showSettings) {
             SettingsSheet()
                 .environmentObject(l10n)
@@ -258,18 +271,6 @@ public struct ProfileView: View {
         .sheet(isPresented: $showBackupSheet) {
             BackupSheet()
                 .environmentObject(l10n)
-        }
-        .fullScreenCover(isPresented: $showOnboardingTour) {
-            OnboardingWizardView(
-                initialStep: 1,
-                initialPhase: "intro",
-                canDismiss: true,
-                onComplete: {
-                    showOnboardingTour = false
-                },
-                onTriggerSampleTransaction: {}
-            )
-            .environmentObject(l10n)
         }
     }
 
@@ -843,20 +844,6 @@ public struct ProfileView: View {
             } action: {
                 showBackupSheet = true
             }
-
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
-
-            menuRow(
-                title: l10n.language == .hebrew ? "הדרכת פתיחה והיכרות" : "Welcome & Onboarding",
-                subtitle: l10n.language == .hebrew
-                    ? "סיור היכרות בעיר, הגדרת יעד והאוטומציה"
-                    : "City tour, spending target, and automation guide",
-                iconBg: Color(red: 236/255, green: 253/255, blue: 245/255)
-            ) {
-                MoneyIcon(.citySkyline, size: 24)
-            } action: {
-                showOnboardingTour = true
-            }
         }
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
@@ -907,6 +894,45 @@ public struct ProfileView: View {
     private func shortAmt(_ v: Double) -> String {
         v >= 1000 ? String(format: "%.1fK", v/1000) : "\(Int(v))"
     }
+
+    #if DEBUG
+    // MARK: - Internal Development & Design Lab Section (Debug Only)
+    private var designLabSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(l10n.language == .hebrew ? "סביבת פיתוח ועיצוב" : "DEVELOPMENT & DESIGN")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .tracking(0.8)
+                Spacer()
+                Text("DEBUG")
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2.5)
+                    .background(Color(red: 139/255, green: 92/255, blue: 246/255))
+                    .clipShape(Capsule())
+            }
+            .padding(.horizontal, 4)
+
+            menuRow(
+                title: "Design Lab 🧪",
+                subtitle: l10n.language == .hebrew
+                    ? "תצוגות מקדימות של Onboarding, סיכומי חודש ו-Presets"
+                    : "Previews for Onboarding, Monthly Recap & Presets",
+                iconBg: Color(red: 243/255, green: 232/255, blue: 255/255)
+            ) {
+                MoneyIcon(.sliders, size: 24, color: Color(red: 139/255, green: 92/255, blue: 246/255))
+            } action: {
+                showDesignLab = true
+            }
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+        }
+        .padding(.horizontal, 16)
+    }
+    #endif
 }
 
 

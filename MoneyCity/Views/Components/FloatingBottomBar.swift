@@ -30,14 +30,12 @@ public struct FloatingBottomBar: View {
 
     public var body: some View {
         HStack(spacing: 0) {
-            navButton(id: "city", label: l10n.text(for: "tab_city")) { isSel, _ in
+            navButton(id: "city", label: l10n.text(for: "tab_city")) { _, _ in
                 MoneyIcon(.home, size: 24)
-                    .opacity(isSel ? 1.0 : 0.72)
             }
             
-            navButton(id: "analytics", label: l10n.text(for: "tab_analytics")) { isSel, _ in
+            navButton(id: "analytics", label: l10n.text(for: "tab_analytics")) { _, _ in
                 MoneyIcon(.barChart, size: 24)
-                    .opacity(isSel ? 1.0 : 0.72)
             }
 
             // Central Action Button (Lucky Green Plus Circle - Tactile Long Press)
@@ -83,14 +81,12 @@ public struct FloatingBottomBar: View {
                     }
             )
 
-            navButton(id: "history", label: l10n.text(for: "tab_history")) { isSel, _ in
+            navButton(id: "history", label: l10n.text(for: "tab_history")) { _, _ in
                 MoneyIcon(.receipt, size: 24)
-                    .opacity(isSel ? 1.0 : 0.72)
             }
             
-            navButton(id: "profile", label: l10n.text(for: "tab_profile")) { isSel, _ in
+            navButton(id: "profile", label: l10n.text(for: "tab_profile")) { _, _ in
                 MoneyIcon(.user, size: 24)
-                    .opacity(isSel ? 1.0 : 0.72)
             }
         }
         .padding(.horizontal, 16)
@@ -120,16 +116,21 @@ public struct FloatingBottomBar: View {
         }) {
             VStack(spacing: 3) {
                 icon(isSelected, tintColor)
+                    .grayscale(isSelected ? 0.0 : 1.0)
+                    .opacity(isSelected ? 1.0 : 0.38)
                     .scaleEffect(isSelected ? 1.08 : 1.0)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.75), value: isSelected)
                 
                 Text(label)
                     .font(.system(size: 10, weight: isSelected ? .black : .semibold, design: .rounded))
                     .foregroundColor(tintColor)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.75), value: isSelected)
 
                 // Clean minimal indicator dot
                 Circle()
                     .fill(isSelected ? MoneyCityTheme.jetBlack : Color.clear)
                     .frame(width: 3.5, height: 3.5)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.75), value: isSelected)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())

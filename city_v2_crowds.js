@@ -116,8 +116,14 @@ function placeCrowdWalker(record, route, phase) {
 }
 
 function applyVenueCrowds() {
-  if (typeof cancelCityEncounters === "function") cancelCityEncounters();
   crowdSnapshot = allocateCrowds(venueStates);
+  // Preserve ongoing moments on identical native refreshes. Cancel before a borrowed
+  // actor is removed, repositioned or recycled for another venue.
+  if (typeof cancelCityEncounters === "function" && crowdWalkers.some(function (c) {
+    if (!c.encounter) return false;
+    const entry = crowdSnapshot.find(function (e) { return e.id === c.crowdVenue; });
+    return !entry || entry.walkers !== c.crowdCount;
+  })) cancelCityEncounters();
   const previous = new Map(crowdWalkers.filter(function (c) { return c.obj.visible; }).map(function (c) { return [c.crowdKey, c]; }));
   const used = new Set(), pending = [];
   crowdSnapshot.forEach(function (entry) {

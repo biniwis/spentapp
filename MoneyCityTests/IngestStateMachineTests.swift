@@ -108,7 +108,7 @@ final class DioramaContractTests: XCTestCase {
             districts: [.init(id: "food", amount: 0, share: 0, activity: 0, prominence: "active")],
             venues: [], pendingSortingCount: 0, targetDistrict: nil, language: "he", enrichments: [],
             newlyUnlockedId: nil, slotPlacements: [:],
-            habits: .init(woltCount: 0, coffeeCount: 0, onlinePackagesCount: 0, hasTravelOrFlight: false, activeSubscriptionsCount: 0))
+            habits: .init(woltCount: 0, coffeeCount: 0, onlinePackagesCount: 0, hasTravelOrFlight: false, activeSubscriptionsCount: 0, deliveryTier: "quiet", deliveryFrequencyScore: 0))
         let json = String(decoding: try JSONEncoder().encode(payload), as: UTF8.self)
         let htmlURL = try XCTUnwrap(Bundle.main.url(forResource: "diorama", withExtension: "html"))
         let html = try String(contentsOf: htmlURL)

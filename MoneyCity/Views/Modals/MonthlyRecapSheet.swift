@@ -183,8 +183,7 @@ public struct MonthlyRecapSheet: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Color.deepNavy)
                     .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.92), in: Circle())
-                    .shadow(color: Color.deepNavy.opacity(0.08), radius: 4, y: 2)
+                    .background(Color.white, in: Circle())
             }
             .disabled(index == 0).opacity(index == 0 ? 0.25 : 1)
             .accessibilityLabel(he ? "הקודם" : "Previous")
@@ -198,8 +197,7 @@ public struct MonthlyRecapSheet: View {
                         .foregroundStyle(Color.deepNavy)
                         .padding(.horizontal, 18)
                         .frame(height: 46)
-                        .background(Color.white.opacity(0.92), in: Capsule())
-                        .shadow(color: Color.deepNavy.opacity(0.08), radius: 4, y: 2)
+                        .background(Color.white, in: Capsule())
                 }
                 .opacity(time >= 6.5 || still ? 1 : 0)
                 .disabled(time < 6.5 && !still)
@@ -209,8 +207,7 @@ public struct MonthlyRecapSheet: View {
                     .foregroundStyle(Color.deepNavy.opacity(0.7))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 7)
-                    .background(Color.white.opacity(0.88), in: Capsule())
-                    .shadow(color: Color.deepNavy.opacity(0.06), radius: 4, y: 1)
+                    .background(Color.white, in: Capsule())
             }
 
             Button {
@@ -222,7 +219,6 @@ public struct MonthlyRecapSheet: View {
                     .padding(.horizontal, 22)
                     .frame(height: 46)
                     .background(Color.deepNavy, in: Capsule())
-                    .shadow(color: Color.deepNavy.opacity(0.18), radius: 6, y: 3)
             }
         }
         .buttonStyle(.plain)
@@ -387,12 +383,18 @@ struct RecapSceneFrame: View {
     var export = false
     private var beat: RecapBeat { .init(time: time) }
     private var copy: RecapEditorialCopy { .init(shot: shot, recap: recap, he: he, currency: currency) }
+    // Editorial colors come from the onboarding posters, independent of category chart colors.
     private var accent: Color {
         switch shot {
-        case .activity: IconPalette.blue
-        case .district: recap.biggestDistrict?.category.themeColor ?? IconPalette.green
-        case .insight(let i): i.category?.themeColor ?? IconPalette.blue
-        default: IconPalette.green
+        case .activity: .violetBlue
+        case .district: .orangeRed
+        case .insight(let insight):
+            switch insight.type {
+            case .merchantRepeat, .biggestPurchase: .orangeRed
+            case .biggestDay, .monthChange: .babyBlue
+            case .categoryChange, .weekendRhythm: .luckyGreen
+            }
+        default: .babyBlue
         }
     }
     private let W: CGFloat = 390
@@ -410,9 +412,17 @@ struct RecapSceneFrame: View {
     }
     private var background: Color {
         switch shot {
-        case .district: accent.opacity(0.18)
-        case .activity: IconPalette.blue.opacity(0.10)
-        default: .appBackground
+        case .opening, .portrait: .warmCream
+        case .total: .neonLime
+        case .activity: .babyBlue
+        case .district: .warmCream
+        case .insight(let insight):
+            switch insight.type {
+            case .merchantRepeat, .biggestDay: .white
+            case .biggestPurchase: .babyBlue
+            case .monthChange: .warmCream
+            case .categoryChange, .weekendRhythm: .neonLime
+            }
         }
     }
     private var canvas: some View {
@@ -439,8 +449,8 @@ struct RecapSceneFrame: View {
     private var alignment: Alignment { .leading }
     private var hAlignment: HorizontalAlignment { .leading }
     private func text(_ value: String, size: CGFloat, at start: Double, width: CGFloat = 338, hero: Bool = false) -> some View {
-        Text(value).font(.appFont(size, weight: hero ? .black : .medium))
-            .tracking(hero && !he ? -2 : 0)
+        Text(value).font(.appFont(size, weight: hero ? .heavy : .medium))
+            .tracking(hero ? (he ? -1 : -1.8) : 0)
             .multilineTextAlignment(textAlignment)
             .lineLimit(hero && (shot == .total || shot == .activity) ? 1 : (hero ? 2 : 3)).minimumScaleFactor(hero ? 0.48 : 0.75)
             .frame(width: width, alignment: alignment)
@@ -453,7 +463,7 @@ struct RecapSceneFrame: View {
     }
     private var opening: some View {
         ZStack(alignment: .topLeading) {
-            Circle().fill(accent.opacity(0.3)).frame(width: 320, height: 320)
+            RecapPosterRays().stroke(Color.jetBlack, style: StrokeStyle(lineWidth: 2.8, lineCap: .round)).frame(width: 320, height: 320)
                 .offset(x: 230 - 45 * beat.ease(0.5, 1.8), y: -70)
                 .opacity(Double(beat.progress(0.5, 0.3)))
 
@@ -486,9 +496,7 @@ struct RecapSceneFrame: View {
     private var activity: some View {
         ZStack(alignment: .topLeading) {
             // Skyscraper bleeding off the right and bottom edges
-            RoundedRectangle(cornerRadius: 12)
-                .fill(IconPalette.blue)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.deepNavy, lineWidth: 3))
+            RecapFacade(fill: .violetBlue)
                 .frame(width: 350, height: 620)
                 .offset(x: 88, y: 310)
 
@@ -569,7 +577,7 @@ struct RecapSceneFrame: View {
             }
         case .monthChange:
             ZStack(alignment: .topLeading) {
-                RecapSkyline(beat: beat, start: 0.1, lights: 20, accent: accent.opacity(0.45), quiet: false)
+                RecapSkyline(beat: beat, start: 0.1, lights: 20, accent: .warmCream, quiet: false)
                     .frame(width: 330, height: 150).offset(x: 34 - 400 * beat.ease(1.1, 0.7), y: 520)
                 RecapSkyline(beat: beat, start: 1.3, lights: 4.5, accent: accent, quiet: insight.primaryValue < 0)
                     .frame(width: 350, height: 180).offset(x: 26 + 390 * (1 - beat.ease(1.3, 0.7)), y: 490)
@@ -612,15 +620,15 @@ struct RecapSceneFrame: View {
     }
     private var portrait: some View {
         ZStack(alignment: .topLeading) {
-            // Decorative yellow circle — smooth top right accent, not sliced off
-            Circle().fill(IconPalette.yellow.opacity(0.40)).frame(width: 220, height: 220)
+            // Onboarding-style drawn emphasis, carried by the original reveal beat.
+            RecapPosterRays().stroke(Color.jetBlack, style: StrokeStyle(lineWidth: 2.8, lineCap: .round)).frame(width: 220, height: 220)
                 .offset(x: 260, y: -20).opacity(Double(beat.ease(2.1)))
 
             // City illustration (anchored in lower section, ends cleanly above footer)
             ZStack(alignment: .bottom) {
                 RecapSkyline(beat: beat, start: 1.2, lights: 5.2, accent: accent, quiet: recap.transactionCount == 0)
                     .frame(width: 300, height: 200).offset(x: 14, y: -38)
-                RecapStorefront(accent: recap.biggestDistrict?.category.themeColor ?? accent, sign: "SPENT", beat: beat, start: -0.7)
+                RecapStorefront(accent: Color.warmCream, sign: "SPENT", beat: beat, start: -0.7)
                     .frame(width: 125, height: 130).offset(x: -64, y: -20)
                 RecapPark(beat: beat, start: 2.1).frame(width: 175, height: 115).offset(x: 100, y: 22)
             }
@@ -701,6 +709,61 @@ struct RecapSceneFrame: View {
 
 // MARK: - Shared graphic city vocabulary
 
+// Static drawing only: entrance, illumination and movement remain owned by RecapBeat.
+// Matches the onboarding kit: 2.8pt round ink, shallow black side, white roof lip.
+private struct RecapFacade: View {
+    let fill: Color
+    var body: some View {
+        Canvas { context, size in
+            let w = size.width, h = size.height
+            let lip = min(12, w * 0.12)
+            let roof = min(10, h * 0.07)
+            let stroke = StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round)
+            func polygon(_ points: [CGPoint], color: Color) {
+                var path = Path()
+                path.addLines(points)
+                path.closeSubpath()
+                context.fill(path, with: .color(color))
+                context.stroke(path, with: .color(.jetBlack), style: stroke)
+            }
+            polygon([CGPoint(x: w - lip, y: roof), CGPoint(x: w, y: 0),
+                     CGPoint(x: w, y: h - roof), CGPoint(x: w - lip, y: h)], color: .jetBlack)
+            let face = Path(roundedRect: CGRect(x: 0, y: roof, width: w - lip, height: max(0, h - roof)), cornerRadius: 2)
+            context.fill(face, with: .color(fill))
+            context.stroke(face, with: .color(.jetBlack), style: stroke)
+            polygon([CGPoint(x: 0, y: roof), CGPoint(x: lip, y: 0),
+                     CGPoint(x: w, y: 0), CGPoint(x: w - lip, y: roof)], color: .white)
+        }
+    }
+}
+
+private struct RecapGround: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.addLines([
+            CGPoint(x: rect.minX, y: rect.height * 0.40),
+            CGPoint(x: rect.width * 0.44, y: 0),
+            CGPoint(x: rect.maxX, y: rect.height * 0.35),
+            CGPoint(x: rect.width * 0.85, y: rect.height * 0.85),
+            CGPoint(x: rect.width * 0.28, y: rect.maxY)
+        ])
+        path.closeSubpath()
+        return path
+    }
+}
+
+private struct RecapPosterRays: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        for (start, end) in [(CGPoint(x: 0.20, y: 0.66), CGPoint(x: 0.20, y: 0.59)),
+                             (CGPoint(x: 0.28, y: 0.70), CGPoint(x: 0.33, y: 0.65))] {
+            path.move(to: CGPoint(x: start.x * rect.width, y: start.y * rect.height))
+            path.addLine(to: CGPoint(x: end.x * rect.width, y: end.y * rect.height))
+        }
+        return path
+    }
+}
+
 private struct RecapWindowGrid: View {
     let rows: Int
     let columns: Int
@@ -715,8 +778,13 @@ private struct RecapWindowGrid: View {
                 HStack(spacing: 10) {
                     ForEach(0..<columns, id: \.self) { column in
                         let on = row * columns + column < lit
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(on ? light.opacity(0.16 + 0.84 * Double(beat.ease(start + Double(row + column) * wave, 0.2))) : Color.deepNavy.opacity(0.13))
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(on ? light.opacity(0.16 + 0.84 * Double(beat.ease(start + Double(row + column) * wave, 0.2))) : Color.jetBlack)
+                            .background(Color.jetBlack, in: RoundedRectangle(cornerRadius: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 1).stroke(Color.jetBlack, lineWidth: 2.8))
+                            .overlay(alignment: .topLeading) {
+                                Capsule().fill(Color.white).frame(width: 2, height: 7).padding(4)
+                            }
                     }
                 }
             }
@@ -731,21 +799,17 @@ private struct RecapBuilding: View {
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .top) {
-                // Main facade
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(accent)
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.deepNavy, lineWidth: 2.5))
-                    .padding(.top, g.size.height * 0.07)
-                // Roofline ledge
-                Rectangle()
-                    .fill(accent)
-                    .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
-                    .frame(height: g.size.height * 0.07)
+                RecapFacade(fill: accent)
                 // Windows
                 RecapWindowGrid(rows: rows, columns: 2, lit: rows + 1, beat: beat, start: lights)
-                    .padding(.horizontal, g.size.width * 0.14)
+                    .padding(.leading, g.size.width * 0.14)
+                    .padding(.trailing, g.size.width * 0.26)
                     .padding(.top, g.size.height * 0.11)
-                    .padding(.bottom, g.size.height * 0.05)
+                    .padding(.bottom, g.size.height * 0.22)
+                Rectangle().fill(Color.violetBlue)
+                    .overlay(Rectangle().stroke(Color.jetBlack, lineWidth: 2.8))
+                    .frame(width: g.size.width * 0.22, height: g.size.height * 0.16)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
             }
         }
     }
@@ -761,7 +825,7 @@ private struct RecapSkyline: View {
             HStack(alignment: .bottom, spacing: quiet ? 24 : 8) {
                 ForEach(0..<(quiet ? 3 : 5), id: \.self) { item in
                     let fraction: CGFloat = quiet ? [0.3, 0.5, 0.35][item] : [0.35, 0.52, 0.69, 1, 0.6][item]
-                    RecapBuilding(accent: item % 2 == 0 ? accent : accent.opacity(0.5), rows: item == 3 ? 5 : (item == 0 || quiet ? 2 : 3), beat: beat, lights: lights + Double(item) * 0.08)
+                    RecapBuilding(accent: item % 2 == 0 ? accent : (item == 3 ? Color.orangeRed : Color.warmCream), rows: item == 3 ? 5 : (item == 0 || quiet ? 2 : 3), beat: beat, lights: lights + Double(item) * 0.08)
                         .frame(height: geo.size.height * fraction)
                         .scaleEffect(y: beat.ease(start + Double(item) * 0.13, 0.65), anchor: .bottom)
                 }
@@ -778,49 +842,30 @@ private struct RecapStorefront: View {
         GeometryReader { g in
             let w = g.size.width, h = g.size.height
             ZStack(alignment: .bottom) {
-                // Facade wall
-                Rectangle()
-                    .fill(Color.appBackground)
-                    .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
-                    .padding(.top, h * 0.28)
-                // Awning stripes
+                RecapFacade(fill: accent)
+                    .padding(.top, h * 0.10)
                 HStack(spacing: 0) {
-                    ForEach(0..<9) { i in
-                        Rectangle().fill(i.isMultiple(of: 2) ? accent : accent.opacity(0.32))
+                    ForEach(0..<6) { i in
+                        Rectangle().fill(i.isMultiple(of: 2) ? Color.orangeRed : Color.warmCream)
+                            .overlay(Rectangle().stroke(Color.jetBlack, lineWidth: 2.8))
                     }
                 }
                 .frame(height: h * 0.13)
-                .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
-                .offset(y: -(h * 0.57))
-                // Sign panel
-                Text(sign).font(.appFont(w * 0.10, weight: .black)).lineLimit(1).minimumScaleFactor(0.4)
-                    .frame(width: w * 0.82, height: h * 0.16)
-                    .background(accent).overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2.5))
-                    .offset(y: -(h * 0.70))
-                // Display window + arched door
-                HStack(spacing: 5) {
-                    // Large window
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(accent.opacity(0.18))
-                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(Color.deepNavy, lineWidth: 2))
-                        .frame(width: w * 0.50, height: h * 0.27)
-                    // Door (arch top + rectangular body)
-                    VStack(spacing: 0) {
-                        UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 0,
-                                              bottomTrailingRadius: 0, topTrailingRadius: 5)
-                            .fill(accent.opacity(0.25))
-                            .overlay(UnevenRoundedRectangle(topLeadingRadius: 5, bottomLeadingRadius: 0,
-                                                            bottomTrailingRadius: 0, topTrailingRadius: 5)
-                                        .stroke(Color.deepNavy, lineWidth: 2))
-                            .frame(width: w * 0.22, height: h * 0.09)
-                        Rectangle()
-                            .fill(accent.opacity(0.25))
-                            .overlay(Rectangle().stroke(Color.deepNavy, lineWidth: 2))
-                            .frame(width: w * 0.22, height: h * 0.18)
-                    }
+                .offset(y: -(h * 0.40))
+                Text(sign).font(.appFont(w * 0.10, weight: .heavy)).lineLimit(1).minimumScaleFactor(0.4)
+                    .foregroundStyle(Color.jetBlack)
+                    .frame(width: w * 0.78, height: h * 0.16)
+                    .background(Color.warmCream)
+                    .overlay(Rectangle().stroke(Color.jetBlack, lineWidth: 2.8))
+                    .offset(y: -(h * 0.64))
+                HStack(alignment: .top, spacing: w * 0.18) {
+                    Rectangle().fill(Color.jetBlack)
+                        .frame(width: w * 0.25, height: h * 0.29)
+                    Rectangle().fill(Color.white)
+                        .overlay(Rectangle().stroke(Color.jetBlack, lineWidth: 2.8))
+                        .frame(width: w * 0.27, height: h * 0.19)
                 }
-                .padding(.horizontal, 7)
-                .offset(y: -(h * 0.03))
+                .frame(maxWidth: .infinity)
             }
             .scaleEffect(y: beat.ease(start, 0.6), anchor: .bottom)
             .frame(width: w, height: h)
@@ -862,23 +907,17 @@ private struct RecapTree: View {
     var body: some View {
         GeometryReader { g in
             let w = g.size.width, h = g.size.height
-            ZStack(alignment: .bottom) {
-                // Trunk — thicker, brown
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(red: 101/255, green: 67/255, blue: 33/255))
-                    .frame(width: max(4, w * 0.18), height: h * 0.40)
-                // Back canopy (larger, slightly darker)
-                Circle().fill(accent.opacity(0.58))
-                    .overlay(Circle().stroke(Color.deepNavy, lineWidth: 2))
-                    .frame(width: w * 0.76, height: w * 0.76).offset(y: -(h * 0.44))
-                // Mid canopy
-                Circle().fill(accent.opacity(0.84))
-                    .overlay(Circle().stroke(Color.deepNavy, lineWidth: 2))
-                    .frame(width: w * 0.64, height: w * 0.64).offset(x: -w * 0.06, y: -(h * 0.52))
-                // Front highlight
-                Circle().fill(accent)
-                    .overlay(Circle().stroke(Color.deepNavy, lineWidth: 1.5))
-                    .frame(width: w * 0.44, height: w * 0.44).offset(x: w * 0.08, y: -(h * 0.58))
+            Canvas { context, _ in
+                let stroke = StrokeStyle(lineWidth: 2.8, lineCap: .round, lineJoin: .round)
+                let canopy = Path(ellipseIn: CGRect(x: w * 0.23, y: h * 0.04, width: w * 0.54, height: h * 0.70))
+                context.fill(canopy, with: .color(accent))
+                context.stroke(canopy, with: .color(.jetBlack), style: stroke)
+                var branches = Path()
+                branches.move(to: CGPoint(x: w * 0.5, y: h))
+                branches.addLine(to: CGPoint(x: w * 0.5, y: h * 0.32))
+                branches.move(to: CGPoint(x: w * 0.5, y: h * 0.57))
+                branches.addLine(to: CGPoint(x: w * 0.36, y: h * 0.45))
+                context.stroke(branches, with: .color(.jetBlack), style: stroke)
             }.frame(width: w, height: h)
         }
     }
@@ -890,28 +929,29 @@ private struct RecapPark: View {
         GeometryReader { g in
             let w = g.size.width, h = g.size.height
             ZStack {
-                // Ground grass ellipse
-                Ellipse().fill(IconPalette.green.opacity(0.14))
+                // Flat planted island, like the onboarding target poster.
+                RecapGround().fill(Color.neonLime)
+                    .overlay(RecapGround().stroke(Color.jetBlack, style: StrokeStyle(lineWidth: 2.8, lineJoin: .round)))
                     .frame(width: w * 0.88, height: h * 0.26).offset(y: h * 0.36)
                 // Path stripe
-                RoundedRectangle(cornerRadius: 2).fill(Color.deepNavy.opacity(0.07))
+                RoundedRectangle(cornerRadius: 2).fill(Color.warmCream)
                     .frame(width: w * 0.10, height: h * 0.24).offset(x: w * 0.04, y: h * 0.30)
                 // Bench
                 ZStack(alignment: .bottom) {
-                    Rectangle().fill(Color.deepNavy.opacity(0.40)).frame(width: w * 0.16, height: 2)
+                    Rectangle().fill(Color.orangeRed).frame(width: w * 0.16, height: 5)
                     HStack(spacing: w * 0.08) {
-                        Rectangle().fill(Color.deepNavy.opacity(0.40)).frame(width: 2, height: h * 0.055)
-                        Rectangle().fill(Color.deepNavy.opacity(0.40)).frame(width: 2, height: h * 0.055)
+                        Rectangle().fill(Color.jetBlack).frame(width: 2, height: h * 0.055)
+                        Rectangle().fill(Color.jetBlack).frame(width: 2, height: h * 0.055)
                     }
                 }.offset(x: w * 0.10, y: h * 0.24)
                 // Small left tree
-                RecapTree(accent: IconPalette.green.opacity(0.60))
+                RecapTree(accent: Color.luckyGreen)
                     .frame(width: w * 0.20, height: h * 0.50).offset(x: -w * 0.28, y: h * 0.16)
                 // Tall centre tree
-                RecapTree(accent: IconPalette.green)
+                RecapTree(accent: Color.luckyGreen)
                     .frame(width: w * 0.30, height: h * 0.80).offset(x: w * 0.08)
                 // Medium right tree
-                RecapTree(accent: IconPalette.green.opacity(0.74))
+                RecapTree(accent: Color.luckyGreen)
                     .frame(width: w * 0.22, height: h * 0.58).offset(x: w * 0.29, y: h * 0.10)
             }
             .frame(width: w, height: h)
@@ -953,7 +993,7 @@ private struct RecapCar: View {
                 // Cabin roof
                 UnevenRoundedRectangle(topLeadingRadius: h * 0.22, bottomLeadingRadius: 0,
                                        bottomTrailingRadius: 0, topTrailingRadius: h * 0.22)
-                    .fill(accent.opacity(0.84))
+                    .fill(accent)
                     .overlay(UnevenRoundedRectangle(topLeadingRadius: h * 0.22, bottomLeadingRadius: 0,
                                                    bottomTrailingRadius: 0, topTrailingRadius: h * 0.22)
                                 .stroke(Color.deepNavy, lineWidth: 2))
@@ -961,14 +1001,14 @@ private struct RecapCar: View {
                 // Windshield
                 UnevenRoundedRectangle(topLeadingRadius: h * 0.12, bottomLeadingRadius: 0,
                                        bottomTrailingRadius: 0, topTrailingRadius: h * 0.12)
-                    .fill(IconPalette.blue.opacity(0.28))
+                    .fill(Color.babyBlue)
                     .frame(width: w * 0.42, height: h * 0.26).offset(y: -(h * 0.53))
                 // Wheels — solid discs with hub dots
                 HStack(spacing: w * 0.34) {
                     ForEach(0..<2) { _ in
                         ZStack {
                             Circle().fill(Color.deepNavy).frame(width: h * 0.38, height: h * 0.38)
-                            Circle().fill(Color.white.opacity(0.38)).frame(width: h * 0.14, height: h * 0.14)
+                            Circle().fill(Color.warmCream).frame(width: h * 0.14, height: h * 0.14)
                         }
                     }
                 }.padding(.horizontal, w * 0.08).offset(y: h * 0.24)
@@ -982,7 +1022,7 @@ private struct RecapStreet: View {
     var body: some View {
         GeometryReader { g in
             ZStack {
-                RecapRoad(progress: beat.ease(0.0), color: accent.opacity(0.18)).frame(height: 64).offset(y: 38)
+                RecapRoad(progress: beat.ease(0.0), color: .jetBlack).frame(height: 64).offset(y: 38)
                 ForEach(0..<3) { item in
                     RecapCar(accent: accent).frame(width: 66, height: 36)
                         .offset(x: -240 + 510 * beat.progress(0.8 + Double(item) * 0.25, 0.7), y: 30 + CGFloat(item % 2) * 19)

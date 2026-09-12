@@ -111,6 +111,8 @@ public final class CitySimulationEngine: Sendable {
         typicalCommittedSpend: Double = 0,
         everydayBudget: Double = 0,
         budgetedEverydayCategories: Set<SpendingCategory> = [],
+        historicalWoltCounts: [Int] = [],
+        historicalWoltSpends: [Double] = [],
         now: Date = Date()
     ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]
@@ -139,6 +141,8 @@ public final class CitySimulationEngine: Sendable {
         ]
         
         var woltCount = 0
+        var woltActiveDaysSet: Set<String> = []
+        var woltTotalSpend: Double = 0
         var coffeeCount = 0
         var onlinePkgCount = 0
         var hasTravel = false
@@ -153,6 +157,10 @@ public final class CitySimulationEngine: Sendable {
             let m = t.merchant.lowercased()
             if bId == "food_wolt" || m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") {
                 woltCount += 1
+                woltTotalSpend += t.amount
+                // Track distinct calendar days using "yyyy-MM-dd" key
+                let dayKey = Calendar.current.startOfDay(for: t.timestamp).description
+                woltActiveDaysSet.insert(dayKey)
             }
             if bId == "food_coffee" || t.category == .coffee || m.contains("aroma") || m.contains("קפה") || m.contains("cafe") || m.contains("ארומה") {
                 coffeeCount += 1
@@ -253,13 +261,32 @@ public final class CitySimulationEngine: Sendable {
         let highestCategory = totals.filter { $0.key != .savings && $0.key != .other }
             .max(by: { $0.value < $1.value })?.key ?? .food
         
+        // Compute elapsed days in the current month for partial-month confidence gating.
+        let elapsedDays: Int = {
+            let cal = Calendar.current
+            if !cal.isDate(monthDate, equalTo: now, toGranularity: .month) { return 30 }
+            return max(1, cal.component(.day, from: now))
+        }()
+
+        let deliveryIntensity = DeliveryIntensityEngine.compute(
+            orderCount: woltCount,
+            totalSpend: woltTotalSpend,
+            activeDays: woltActiveDaysSet.count,
+            elapsedDays: elapsedDays,
+            historicalOrderCounts: historicalWoltCounts,
+            historicalSpends: historicalWoltSpends
+        )
+
         let habits = BehavioralHabits(
             woltDeliveryCount: woltCount,
+            woltActiveDays: woltActiveDaysSet.count,
+            woltTotalSpend: woltTotalSpend,
             coffeeCount: coffeeCount,
             onlinePackagesCount: onlinePkgCount,
             hasTravelOrFlight: hasTravel,
             activeSubscriptionsCount: activeSubs,
-            totalGroceryBags: groceryBags
+            totalGroceryBags: groceryBags,
+            deliveryIntensity: deliveryIntensity
         )
         let districtStates = CitySimulationEngine.districtStates(for: totals)
         let venueStates = CityLifeEngine.states(for: transactions.map {

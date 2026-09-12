@@ -279,7 +279,7 @@ ${threeMinJs}
       venueActors.push({ obj: obj, venue: venue, threshold: threshold });
     }
     function visibleInScene(obj) {
-      for (let p = obj; p; p = p.parent) if (!p.visible) return false;
+      for (let p = obj; p; p = p.parent) if (!p.visible || p.userData.ambientHidden) return false;
       return true;
     }
     const interactiveCitizens  = [];
@@ -2436,7 +2436,7 @@ ${threeMinJs}
     });
     addBenchAt(-2.2, 3.1, 0.7);
     addBenchAt(2.2, 3.1, -0.7);
-    addBenchAt(3.0, 1.0, -Math.PI / 2);
+    const ambientBench = addBenchAt(3.0, 1.0, -Math.PI / 2);
     (function () { const h = new THREE.Group(); h.position.set(1.9, Y_WALK, 3.8); root.add(h); trashBin(h, 0, 0); })();
 
     // Busker by the fountain
@@ -4582,7 +4582,7 @@ ${threeMinJs}
 
       // Step looping vehicles (calm cruising, subtle suspension breathing)
       vehicleState.forEach(function (v) {
-        if (!v.obj.visible) return;
+        if (!v.obj.visible || ambientTrafficBlocked(v.obj)) return;
         v.progress = ((v.progress + dt * v.speed * trafficSpeed) % 1.0 + 1.0) % 1.0;
         const segs = v.path.length;
         const p = v.progress * segs;
@@ -4756,7 +4756,7 @@ ${threeMinJs}
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,
-        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, crowdBatches: crowdBatches },
+        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, ambient: CityAmbientEventSystem, crowdBatches: crowdBatches },
       slots: slotItems,
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },

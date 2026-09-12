@@ -204,7 +204,7 @@ public struct AnalyticsView: View {
 
         // If user wasn't in the app before this month, don't show an artificial difference vs zero
         guard hasPreviousMonthHistory else {
-            return (isHe ? "חודש ראשון לדיווח באפליקציה 🎉" : "First month tracking in SPENT 🎉", nil, MoneyCityTheme.brandPrimary, MoneyCityTheme.surfaceSoft)
+            return (isHe ? "חודש ראשון לדיווח באפליקציה\u{00A0}🎉" : "First month tracking in SPENT\u{00A0}🎉", nil, MoneyCityTheme.brandPrimary, MoneyCityTheme.surfaceSoft)
         }
 
         let diff = totalSpent - prevTotalSpent
@@ -393,15 +393,19 @@ public struct AnalyticsView: View {
 
     private var heroKpiSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(l10n.format(amount: selectedTab == "savings" ? currentCitySavings : (selectedTab == "income" ? expectedIncome : totalSpent)))
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
                 if let info = comparisonInfo {
                     Text(info.text)
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
                         .foregroundColor(info.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(info.bgColor)

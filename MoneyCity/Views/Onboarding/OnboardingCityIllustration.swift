@@ -85,7 +85,7 @@ public struct OnboardingCityScene: View {
     }
 
     private enum IllustrationTextSlot {
-        static let conceptStoreSign = CGRect(x: 186, y: 150, width: 122, height: 26)
+        static let conceptStoreSign = CGRect(x: 186, y: 144, width: 122, height: 26)
         static let mayorBillboard = CGRect(x: 57, y: 34, width: 258, height: 89)
         static let targetPanel = CGRect(x: 147, y: 181, width: 176, height: 70)
         static let automationCardCenter = CGPoint(x: 94, y: 71)
@@ -195,7 +195,7 @@ public struct OnboardingCityScene: View {
             .foregroundStyle(color)
             .lineLimit(1)
             .minimumScaleFactor(0.4)
-            .frame(width: safeRect.width - 8, height: safeRect.height - 4)
+            .frame(width: safeRect.width - 8, height: safeRect.height - 4, alignment: .center)
             .rotationEffect(rotation)
             .position(x: safeRect.midX, y: safeRect.midY)
     }

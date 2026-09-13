@@ -68,7 +68,12 @@ function applyCompanions(ids) {
     });
     entry.x = occupied && def.fallback ? def.fallback[0] : def.x;
     entry.z = occupied && def.fallback ? def.fallback[1] : def.z;
-    entry.group.position.set(entry.x, def.y, entry.z); entry.group.visible = true;
+    if (!entry.life || !entry.group.visible || entry.homeX !== entry.x || entry.homeZ !== entry.z) {
+      entry.group.position.set(entry.x, def.y, entry.z);
+      entry.life = { state: 'idle', age: 0, duration: 4 + cityLifeRandom() * 8, index: 0, offset: 0 };
+      entry.homeX=entry.x; entry.homeZ=entry.z;
+    }
+    entry.group.visible = true;
   });
 }
 function welcomeCompanion(id) {
@@ -90,17 +95,37 @@ function welcomeCompanion(id) {
 function animateCompanions(now, dt) {
   const reduced = companionMotionPreference.matches;
   companionInstances.forEach(function (entry) {
-    const g = entry.group; if (!g.visible || reduced) return;
-    const t = now * 0.001;
-    if (entry.def.id === "resident_skater") {
-      // A short glide along the pedestrian strip, never into roads or shop fronts.
-      g.position.z = entry.z + Math.sin(t * 0.55) * 0.20;
-      g.rotation.y = Math.PI / 2;
+    const g = entry.group, life=entry.life; if (!g.visible || !life) return;
+    if (reduced || energyMode === 'critical') { g.scale.setScalar(1); return; }
+    life.age += dt;
+    const id=entry.def.id, pet=id.startsWith('pet_'), skater=id==='resident_skater';
+    const states=skater?['idle','push','glide','turn','pause','return']:
+      pet?['idle','walk','watch',id==='pet_golden_dog'?'sniff':'stretch','return','rest']:
+      ['idle','working','watch','rest'];
+    if(life.age>=life.duration) {
+      life.index=(life.index+1)%states.length;life.state=states[life.index];life.age=0;
+      life.from=life.offset;life.duration=3+cityLifeRandom()*6;
     }
-    if (entry.def.id === "pet_golden_dog") g.rotation.y = Math.sin(t * 0.35) * 0.5;
-    if (entry.def.id === "pet_cat_rooftop") g.scale.y = 1 + Math.sin(t * 1.1) * 0.015;
-    if (g.userData.strumArm) g.userData.strumArm.rotation.x = -0.65 + Math.sin(t * 3) * 0.12;
-    if (g.userData.balloon) g.userData.balloon.rotation.z = Math.sin(t * 0.8) * 0.08;
+    const state=life.state, u=Math.min(1,life.age/life.duration), smooth=u*u*(3-2*u);
+    if(state==='walk' || state==='glide' || state==='push') life.offset=(life.from||0)+(0.30-(life.from||0))*smooth;
+    if(state==='return')life.offset=(life.from||0)*(1-smooth);
+    g.position.z=entry.z+life.offset;
+    g.rotation.y=skater?(state==='return'?Math.PI:0):state==='watch'?Math.sin(u*Math.PI)*0.7:state==='return'?Math.PI:0;
+    // Small, bounded poses keep paws grounded and avoid moving into adjacent lots.
+    const pose=Math.sin(u*Math.PI);
+    g.scale.y=state==='rest'?1-pose*0.20:state==='sniff'?1-pose*0.12:state==='stretch'?1-pose*0.14:1;
+    g.scale.z=state==='stretch'?1+pose*0.12:1;
+    if(entry.encounter && entry.encounter.kind==='dog_walk') {
+      const e=entry.encounter,t=e.age-e.travel;
+      if(t>=0 && t<=e.scene.duration) {
+        const offset=Math.sin(t/e.scene.duration*Math.PI)*0.4;
+        g.position.z=entry.z+offset;
+        e.people[0].c.obj.position.z=e.anchor.point[1]+offset;
+        ambientPose(e.people[0].c,t,true);
+      }
+    }
+    if(g.userData.strumArm)g.userData.strumArm.rotation.x=-0.65+(state==='working'||entry.encounter?Math.sin(life.age*3)*0.12:0);
+    if(g.userData.balloon)g.userData.balloon.rotation.z=Math.sin(life.age*0.8)*0.06;
   });
   if (companionWelcome) {
     companionWelcome.elapsed += dt;

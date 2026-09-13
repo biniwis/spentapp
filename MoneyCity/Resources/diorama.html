@@ -3576,6 +3576,14 @@ function normalizedSlotPlacements(input) {
     ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34);
 
     // ────────────────────────────────────────────────────────────────
+    // Two park neighbours use the same actor pool and authored court-side paths.
+    [0xBC8055, 0x527FA7].forEach(function (shirt, i) {
+      addCitizen(shirt, 0x45536A, null, [
+        {x:-10.0+i*0.7,z:9.6}, {x:-9.5+i*0.7,z:9.6},
+        {x:-9.5+i*0.7,z:9.9}, {x:-10.0+i*0.7,z:9.9}
+      ], [], [], false, 0.24);
+    });
+
     // Derived frontages are not rewards or a second financial ledger.
     // Inlined into the scene closure by build_diorama.js. No extra network or bundle resource.
 // Amount = anchor mass; repeated purchases = life; habitual presence = additional places.
@@ -3696,12 +3704,7 @@ function makeLifePlace(id, variant) {
   return { group: g, proxy: proxy };
 }
 
- function applyCityLife(data) {
-  // Sync delivery intensity globals before any actor/crowd updates read them.
-  const validTiers = { quiet:1, normal:1, active:1, high:1, extreme:1 };
-  deliveryTier    = (data.habits && validTiers[data.habits.deliveryTier]) ? data.habits.deliveryTier : "quiet";
-  deliveryFreqScore = (data.habits && typeof data.habits.deliveryFrequencyScore === "number")
-                      ? Math.max(0, Math.min(1, data.habits.deliveryFrequencyScore)) : 0;
+function applyCityLife(data) {
   syncVenueStates(data.venues);
   // Old callers still render safely, but no visits or new businesses are invented from ₪.
   Object.keys(cityBuildings).forEach(function (id) {
@@ -3734,99 +3737,23 @@ function makeLifePlace(id, variant) {
   applyHabitTraffic();
 }
 
-// ── Delivery intensity globals (set from payload in syncDiorama) ───────────────
-// Tier string: "quiet" | "normal" | "active" | "high" | "extreme"
-let deliveryTier = "quiet";
-// 0–1 frequency score (drives moving actor count)
-let deliveryFreqScore = 0;
-
-// ── Tier → visual parameters ──────────────────────────────────────────────────
-// Each tier defines how many of the courier pool are active, how many stationary
-// couriers park near the venue, and the encounter probability multiplier.
-const DELIVERY_TIER_PARAMS = {
-  quiet:   { movingCouriers: 0, stationaryCouriers: 0, encounterChance: 0.00, rushChance: 0.00 },
-  normal:  { movingCouriers: 1, stationaryCouriers: 1, encounterChance: 0.15, rushChance: 0.00 },
-  active:  { movingCouriers: 3, stationaryCouriers: 2, encounterChance: 0.30, rushChance: 0.00 },
-  high:    { movingCouriers: 5, stationaryCouriers: 3, encounterChance: 0.50, rushChance: 0.08 },
-  extreme: { movingCouriers: 7, stationaryCouriers: 4, encounterChance: 0.70, rushChance: 0.18 }
-};
-
-// ── Moving courier pool (7 actors) ───────────────────────────────────────────
-// All created once; activation/deactivation is controlled every frame via applyHabitTraffic.
-// Alternating paths and staggered start positions ensure they appear spread across roads.
-const MOVING_COURIER_DEFS = [
-  { path: "cw",  progress: 0.13, speed: 0.020, color: 0x45ADBD },
-  { path: "ccw", progress: 0.42, speed: 0.019, color: 0x45ADBD },
-  { path: "cw",  progress: 0.71, speed: 0.021, color: 0x45ADBD },
-  { path: "ccw", progress: 0.28, speed: 0.018, color: 0x3AA8C1 },
-  { path: "cw",  progress: 0.56, speed: 0.022, color: 0x3AA8C1 },
-  { path: "ccw", progress: 0.85, speed: 0.020, color: 0x3AA8C1 },
-  { path: "cw",  progress: 0.07, speed: 0.019, color: 0x45ADBD }
-];
-const movingCourierPool = [];
-for (let i = 0; i < MOVING_COURIER_DEFS.length; i++) {
-  const def = MOVING_COURIER_DEFS[i];
-  const courier = makeCourier(def.color);
-  courier.position.y = Y_WALK;
-  courier.visible = false;
-  root.add(courier);
-  movingCourierPool.push({
-    obj: courier,
-    path: def.path === "cw" ? roadClockwise : roadCounterClockwise,
-    progress: def.progress,
-    speed: def.speed,
-    baseY: Y_WALK,
-    purpose: "delivery",
-    poolIndex: i
-  });
-  vehicleState.push(movingCourierPool[i]);
-}
-
-// ── Stationary/waiting courier pool (4 actors) ───────────────────────────────
-// These sit near the food_wolt venue. Unlike moving couriers they are NOT in
-// vehicleState (they don't follow road paths). Positioned around the delivery
-// venue entrance for visual clustering.
-const STATIONARY_COURIER_POSITIONS = [
-  { x: 10.25, z: 3.85, yaw:  0.5 },  // near venue door left
-  { x: 10.65, z: 4.05, yaw: -0.3 },  // near venue door right
-  { x: 10.10, z: 3.40, yaw:  1.1 },  // pavement approach
-  { x: 10.45, z: 2.90, yaw:  0.0 }   // further back waiting
-];
-const stationaryCourierPool = [];
-for (let i = 0; i < STATIONARY_COURIER_POSITIONS.length; i++) {
-  const pos = STATIONARY_COURIER_POSITIONS[i];
-  const sc = makeCourier(0x45ADBD);
-  sc.position.set(pos.x, Y_WALK, pos.z);
-  sc.rotation.y = pos.yaw;
-  sc.visible = false;
-  root.add(sc);
-  stationaryCourierPool.push({ obj: sc, pos: pos });
-}
-
 function applyHabitTraffic() {
-  const transport = venueActivity("trans_station");
+  const transport = venueActivity("trans_station"), delivery = venueActivity("food_wolt");
   trafficSpeed = 0.85 + transport * 0.2;
-
-  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
-
-  // Activate the first N moving couriers based on tier
-  for (let i = 0; i < movingCourierPool.length; i++) {
-    movingCourierPool[i].obj.visible = i < params.movingCouriers;
-  }
-
-  // Activate stationary couriers near the venue
-  for (let i = 0; i < stationaryCourierPool.length; i++) {
-    stationaryCourierPool[i].obj.visible = i < params.stationaryCouriers;
-  }
-
-  // Non-delivery vehicles (transports) — unchanged behaviour
-  vehicleState.forEach(function (v) {
-    if (v.purpose !== "delivery") {
-      const threshold = v.threshold !== undefined ? v.threshold : (v.poolIndex === 1 || v.poolIndex === 3 ? 0 : 0.18);
-      v.obj.visible = threshold === 0 || transport >= threshold;
-    }
+  vehicleState.forEach(function (v, index) {
+    const purpose = v.purpose || (index === 2 ? "delivery" : "transport");
+    const activity = purpose === "delivery" ? delivery : transport;
+    const threshold = v.threshold !== undefined ? v.threshold : (index === 1 || index === 3 ? 0 : 0.18);
+    v.obj.visible = threshold === 0 || activity >= threshold;
   });
   transportUnits.forEach(function (u, i) { u.visible = i === 0 || transport >= i * 0.22; });
+}
+
+// Three extra couriers are a visible delivery rhythm, rather than a crowded dine-in patio.
+for (let i = 0; i < 3; i++) {
+  const courier = makeCourier(0x45ADBD); courier.position.y = Y_WALK; courier.visible = false; root.add(courier);
+  vehicleState.push({ obj: courier, path: i % 2 ? roadClockwise : roadCounterClockwise,
+    progress: 0.13 + i * 0.29, speed: 0.020, baseY: Y_WALK, purpose: "delivery", threshold: 0.30 + i * 0.22 });
 }
 
     // Local footfall is derived from visits, not money. Fixed territories and bounded pools
@@ -3843,9 +3770,7 @@ const CROWD_FRONTAGES = {
   food_bistro:   { x: 10.98, z: -1.05, rot: Math.PI / 2, width: 1.70, routeOffset: 1.56, laneWidth: 0.10,
     maxWait: 3, waitSlots: [[0, -0.20], [0, 0.12], [0, 0.43]] },
   food_coffee:   { x: 10.88, z: 1.15, rot: Math.PI / 2, width: 1.70, cafe: true, routeOffset: 1.66, laneWidth: 0.10 },
-  food_wolt:     { x: 10.88, z: 3.30, rot: Math.PI / 2, width: 1.80, routeOffset: 1.66, laneWidth: 0.10,
-    get maxWalk() { return { quiet:1, normal:2, active:3, high:4, extreme:5 }[deliveryTier] || 2; },
-    get maxWait() { return { quiet:0, normal:1, active:2, high:3, extreme:5 }[deliveryTier] || 1; } },
+  food_wolt:     { x: 10.88, z: 3.30, rot: Math.PI / 2, width: 1.80, routeOffset: 1.66, laneWidth: 0.10, maxWalk: 3, maxWait: 3 },
   shop_boutique: { x: -7.40, z: -3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.20, waitOffset: -0.30 },
   shop_tech:     { x: -7.40, z: -1.10, rot: Math.PI / 2, width: 1.30, routeOffset: 0.20, waitOffset: -0.30 },
   shop_travel:   { x: -7.40, z: 1.15, rot: Math.PI / 2, width: 1.30, routeOffset: 0.20, waitOffset: -0.30, maxWalk: 3, maxWait: 3 },
@@ -4012,12 +3937,19 @@ function applyVenueCrowds() {
 const cityEncounters = [];
 const ambientMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const CityAmbientEventSystem = {
-  clock: 0, nextAttempt: 25 + Math.random() * 65, nextHero: 180 + Math.random() * 120,
+  clock: 0, nextAttempt: 12, nextHero: 35,
+  bag: [], recent: [], lastAnchor: null, cooldowns: {}, variants: {},
+  seed: Number(new Date().toISOString().slice(0, 10).replace(/-/g, "")),
   maxEvents: 2, maxActors: 4,
+  // Delivery encounter state — managed separately from the citizen encounter pool
+  nextDeliveryAttempt: 40 + Math.random() * 40,
+  deliveryRushActive: false, deliveryRushEnd: 0,
   anchors: {
-    boutique: { building: 'shop_boutique', district: 'shopping', lane: [-7.20, -3.30], door: [-7.88, -3.30], inside: [-8.40, -3.30] },
-    bench: { district: 'city', approach: [2.52, 1.0], seat: [3.0, 1.0], yaw: -Math.PI / 2 },
-    taxi: { district: 'transport', lane: [10.12, 6.95], door: [10.12, 7.42], inside: [10.62, 7.42] }
+    boutique:  { building: 'shop_boutique', district: 'shopping', lane: [-7.20, -3.30], door: [-7.88, -3.30], inside: [-8.40, -3.30] },
+    bench:     { district: 'city', approach: [2.52, 1.0], seat: [3.0, 1.0], yaw: -Math.PI / 2 },
+    taxi:      { district: 'transport', lane: [10.12, 6.95], door: [10.12, 7.42], inside: [10.62, 7.42] },
+    // Delivery venue entrance — used by courier encounter choreography
+    delivery:  { venue: 'food_wolt', approach: [10.55, 3.60], door: [10.88, 3.85], inside: [11.20, 3.85] }
   }
 };
 function ambientPoint(p) { return new THREE.Vector3(p[0], Y_WALK, p[1]); }
@@ -4088,8 +4020,10 @@ function finishEncounter(event, cancelled) {
     }
     c.obj.scale.copy(saved.scale); c.ambientHidden = false; c.obj.userData.ambientHidden = false; ambientPose(c, 0, false);
     c.obj.position.y = c.baseY; c.encounter = null; c.ambientState = 'walking';
-    c.encounterCooldown = CityAmbientEventSystem.clock + 45 + Math.random() * 45;
+    c.encounterCooldown = CityAmbientEventSystem.clock + 45 + cityLifeRandom() * 45;
   });
+  if (event.ball) { root.remove(event.ball); event.ball.geometry.dispose(); }
+  if (event.anchor && event.anchor.companion) event.anchor.companion.encounter = null;
   if (event.kind === 'taxi') {
     parkedTaxi.position.copy(event.carPosition); parkedTaxi.rotation.y = event.carYaw;
     parkedTaxi.userData.passengerDoor.rotation.y = 0;
@@ -4199,59 +4133,294 @@ function stepAmbientTogether(event, dt) {
   }
   return event.age >= event.duration;
 }
-function chooseAmbientEvent() {
+// Weighted shuffle without replacement; history survives bag refills and data redraws.
+function cityLifeRandom() {
+  const s = CityAmbientEventSystem;
+  s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0;
+  return s.seed / 4294967296;
+}
+const CityLifeScenes = [
+  { id: 'bench', anchor: 'bench', actors: 1, duration: 6, cooldown: 55, weight: 1, hero: false, variants: ['rest', 'look'] },
+  { id: 'building', anchor: 'boutique', actors: 1, duration: 9, cooldown: 70, weight: 1, hero: false, variants: ['visit'] },
+  { id: 'together', anchor: 'promenade', actors: 2, duration: 6, cooldown: 45, weight: 1.2, hero: false, variants: ['greet', 'chat'] },
+  { id: 'taxi', anchor: 'taxi', actors: 1, duration: 90, cooldown: 180, weight: 0.5, hero: true, variants: ['pickup'] },
+  { id: 'basketball', anchor: 'court', actors: 2, duration: 22, cooldown: 65, weight: 1.3, hero: true, variants: ['solo', 'shootaround', 'pass'] },
+  { id: 'musician_listener', anchor: 'resident_musician', actors: 1, duration: 9, cooldown: 65, weight: 1, hero: false, variants: ['listen', 'linger'] },
+  { id: 'artist_working', anchor: 'resident_artist', actors: 1, duration: 8, cooldown: 65, weight: 1, hero: false, variants: ['watch'] },
+  { id: 'dog_walk', anchor: 'pet_golden_dog', actors: 1, duration: 12, cooldown: 65, weight: 1, hero: false, variants: ['stroll'] }
+];
+function sceneCandidate(scene, available) {
   const system = CityAmbientEventSystem;
-  const visible = walkingCitizens.filter(function (c) { return c.obj.visible; });
-  const available = visible.filter(ambientEligible);
-  if (!available.length || Math.random() > 0.72) return;
-  // Visibility influences cost/eligibility, never camera targeting. Offscreen micro
-  // moments still occur; hero moments wait while a district is tightly focused.
-  const heroAllowed = currentMode === 'city' && visible.length >= 10 && energyMode === 'normal';
-  const passenger = available.find(function (c) { return c.crowdVenue === 'trans_station'; });
-  if (heroAllowed && passenger && system.clock >= system.nextHero && cityEncounters.length === 0) {
-    startEncounter('taxi', [passenger], system.anchors.taxi); system.nextHero = system.clock + 180 + Math.random() * 180; return;
+  if (scene.hero && (deliveryHeroEvent || currentMode !== 'city' || energyMode !== 'normal' || system.clock < system.nextHero || cityEncounters.some(e => e.scene && e.scene.hero))) return null;
+  if (scene.id === 'taxi' && walkingCitizens.filter(c => c.obj.visible).length < 10) return null;
+  let anchor = system.anchors[scene.anchor], people;
+  if (scene.id === 'building') {
+    const building = cityBuildings[anchor.building];
+    if (!building || building.tier < 2 || !building.shell.visible) return null;
+    people = available.filter(c => c.crowdVenue === anchor.building).slice(0, 1);
+  } else if (scene.id === 'taxi') people = available.filter(c => c.crowdVenue === 'trans_station').slice(0, 1);
+  else if (scene.id === 'bench') {
+    if (!ambientBench.visible) return null;
+    people = available.filter(c => Math.hypot(c.obj.position.x - 2.52, c.obj.position.z - 1) < 1.4).slice(0, 1);
+  } else if (scene.id === 'together') {
+    for (const a of available) for (const b of available) {
+      if (a === b || !a.crowdVenue || a.crowdVenue !== b.crowdVenue || a.pIdx !== b.pIdx) continue;
+      const p = a.path[a.pIdx], q = a.path[(a.pIdx + 1) % a.path.length];
+      const remaining = Math.hypot(q.x-p.x,q.z-p.z)-Math.max(a.t,b.t), gap = a.obj.position.distanceTo(b.obj.position);
+      if (gap >= 0.42 && gap <= 0.95 && remaining > 0.5) return { people: [a,b], remaining: remaining };
+    }
+    return null;
+  } else if (scene.id === 'basketball') {
+    anchor = { point: [courtGroup.position.x, courtGroup.position.z + 0.6] };
+    people = available.filter(c => Math.hypot(c.obj.position.x-anchor.point[0],c.obj.position.z-anchor.point[1]) < 3.5).slice(0,2);
+    if (!people.length) return null;
+    const variant = scene.variants[(system.variants[scene.id] || 0) % scene.variants.length];
+    if (variant === 'pass' && people.length < 2) return null;
+    return { people: variant === 'pass' ? people : people.slice(0,1), anchor: anchor };
+  } else {
+    const companion = companionInstances.get(scene.anchor);
+    if (!companion || !companion.group.visible || companion.encounter) return null;
+    anchor = { point: [companion.x, companion.z + 0.65], companion: companion };
+    people = available.filter(c => Math.hypot(c.obj.position.x-anchor.point[0],c.obj.position.z-anchor.point[1]) < 2.5).slice(0,1);
   }
-  const kinds = Math.random() < 0.5 ? ['bench', 'building', 'together'] : ['building', 'together', 'bench'];
-  for (const kind of kinds) {
-    if (cityEncounters.some(function (e) { return e.kind === kind; })) continue;
-    if (kind === 'building') {
-      const anchor = system.anchors.boutique, building = cityBuildings[anchor.building];
-      const person = available.find(function (c) { return c.crowdVenue === anchor.building; });
-      if (person && building && building.tier >= 2 && building.shell.visible) { startEncounter(kind, [person], anchor); return; }
-    } else if (kind === 'bench') {
-      const person = available.find(function (c) { return !c.crowdVenue && c.obj.position.x > 1.6 && c.obj.position.x < 2.6 && c.obj.position.z > 0.6 && c.obj.position.z < 1.9; });
-      if (person && ambientBench.visible) { startEncounter(kind, [person], system.anchors.bench); return; }
-    } else if (visible.length >= 6) {
-      for (let i = 0; i < available.length; i++) for (let j = i + 1; j < available.length; j++) {
-        const a = available[i], b = available[j];
-        if (!a.crowdVenue || a.crowdVenue !== b.crowdVenue || a.pIdx !== b.pIdx) continue;
-        const p = a.path[a.pIdx], q = a.path[(a.pIdx + 1) % a.path.length];
-        const length = Math.hypot(q.x - p.x, q.z - p.z), separation = a.obj.position.distanceTo(b.obj.position);
-        if (separation < 0.42 || separation > 0.95 || length - Math.max(a.t, b.t) < 0.45) continue;
-        const e = startEncounter('together', [a, b]);
-        if (e) { e.speed = Math.min(a.speed, b.speed) * 0.8; e.duration = 2.2 + Math.min(4.0, (length - Math.max(a.t, b.t) - 0.03) / e.speed); }
-        return;
-      }
+  return people.length === scene.actors ? { people: people, anchor: anchor } : null;
+}
+function chooseAmbientEvent() {
+  const s = CityAmbientEventSystem, available = walkingCitizens.filter(ambientEligible);
+  if (!available.length) return;
+  if (!s.bag.length) s.bag = CityLifeScenes.map(scene => ({scene:scene, key: -Math.log(Math.max(1e-9,cityLifeRandom())) / scene.weight})).sort((a,b)=>a.key-b.key).map(x=>x.scene);
+  for (let i=0; i<s.bag.length; i++) {
+    const scene=s.bag[i];
+    if (s.recent.includes(scene.id) || s.lastAnchor===scene.anchor || s.clock<(s.cooldowns[scene.id]||0)) continue;
+    const candidate=sceneCandidate(scene,available); if (!candidate) continue;
+    const e=startEncounter(scene.id,candidate.people,candidate.anchor); if (!e) continue;
+    e.scene=scene; e.variant=scene.variants[(s.variants[scene.id]||0)%scene.variants.length];
+    s.variants[scene.id]=(s.variants[scene.id]||0)+1;
+    if (scene.id==='together') { e.speed=Math.min(...candidate.people.map(c=>c.speed))*0.8; e.duration=2.2+Math.min(4,(candidate.remaining-0.03)/e.speed); }
+    if (candidate.anchor && candidate.anchor.point) prepareLifeScene(e);
+    s.bag.splice(i,1); s.recent.push(scene.id); if(s.recent.length>3)s.recent.shift();
+    s.lastAnchor=scene.anchor; s.cooldowns[scene.id]=s.clock+scene.cooldown;
+    if(scene.hero)s.nextHero=s.clock+65+cityLifeRandom()*40;
+    return;
+  }
+  // Unavailable entries must not starve newly unlocked scenes. Preserve recent history.
+  s.bag=[];
+}
+function prepareLifeScene(e) {
+  e.routes=e.people.map((saved,i)=>ambientRoute([saved.position.clone(),ambientPoint([e.anchor.point[0]+i*0.65,e.anchor.point[1]])]));
+  e.travel=Math.max(...e.routes.map(r=>r.length))/0.42;
+  if(e.anchor.companion)e.anchor.companion.encounter=e;
+  if(e.kind==='basketball') {
+    e.ball=mesh(new THREE.SphereGeometry(0.075,10,8),M_WOOD,0,0,0); root.add(e.ball);
+    e.shot=new THREE.Vector3(courtGroup.position.x,courtGroup.position.y+1.10,courtGroup.position.z-0.93);
+    e.release=new THREE.Vector3(); e.landing=new THREE.Vector3();
+  }
+}
+function stepLifeScene(e,dt) {
+  const t=e.age-e.travel, duration=e.scene.duration;
+  e.people.forEach((saved,i)=>{
+    const c=saved.c,route=e.routes[i];
+    if(t<0 || t>duration) {
+      const back=t>duration, distance=back?route.length-(t-duration)*0.42:Math.min(route.length,e.age*0.42);
+      ambientFollow(c.obj,route,distance,back,dt);ambientPose(c,e.age,true);
+    } else {
+      c.obj.position.copy(route.points[route.points.length-1]);
+      ambientPose(c,e.age,false);
+      const target=e.shot || (e.anchor.companion && e.anchor.companion.group.position);
+      if(target)ambientTurn(c.obj,Math.atan2(target.x-c.obj.position.x,target.z-c.obj.position.z),dt);
+    }
+  });
+  if(e.ball) {
+    e.ball.visible=t>=0 && t<=duration;
+    const pass=e.variant==='pass' && e.people.length>1;
+    const cycle=e.variant==='shootaround'?9:11, phase=((Math.max(0,t)%cycle)/cycle);
+    const shooter=e.people[pass?1:0].c.obj.position;
+    e.release.copy(shooter);e.release.y+=0.7;
+    e.landing.copy(shooter);e.landing.z-=0.3;e.landing.y=shooter.y+0.075;
+    if(pass && phase<0.18) {
+      const other=e.people[0].c.obj.position;
+      e.ball.position.copy(other).lerp(shooter,phase/0.18);e.ball.position.y+=0.55+Math.sin(phase/0.18*Math.PI)*0.15;
+    } else if(phase<0.4) {
+      e.ball.position.copy(shooter);e.ball.position.x+=0.2;e.ball.position.y+=0.09+Math.abs(Math.sin(t*5))*0.42;
+    } else if(phase<0.65) {
+      const u=(phase-0.4)/0.25;e.ball.position.copy(e.release).lerp(e.shot,u);e.ball.position.y+=Math.sin(u*Math.PI)*0.65;
+      e.people[pass?1:0].c.armR.rotation.x=-2.2;
+    } else if(phase<0.8) {
+      const u=(phase-0.65)/0.15;e.ball.position.copy(e.shot).lerp(e.landing,u);e.ball.position.y+=Math.sin(u*Math.PI)*(e.variant==='shootaround'?0.35:0.1);
+    } else {
+      const u=(phase-0.8)/0.2;e.ball.position.copy(e.landing).lerp(e.release,u);
+      const c=e.people[pass?1:0].c;c.obj.position.z-=Math.sin(u*Math.PI)*0.3;ambientPose(c,t,true);
+    }
+  }
+  return t>duration+e.travel;
+}
+// ── Delivery Encounter System ─────────────────────────────────────────────────
+// Uses stationaryCourierPool actors (real courier meshes near the venue),
+// not generic crowd walkers. This ensures the activity reads as delivery, not
+// generic pedestrian traffic, especially at High and Extreme tiers.
+
+// Track which stationary couriers are currently doing an encounter so we don't
+// double-assign them.
+const deliveryCourierInEncounter = new Set();
+
+// Choreography for a single courier approaching the delivery venue entrance
+// (arrival/hero pattern). Returns a plain state object — not a cityEncounters entry.
+let deliveryHeroEvent = null;
+
+function startDeliveryHero() {
+  if (deliveryHeroEvent) return;
+  if (typeof stationaryCourierPool === 'undefined' || stationaryCourierPool.length === 0) return;
+  // Pick a visible, idle stationary courier
+  const idle = stationaryCourierPool.filter(function (sc, i) {
+    return sc.obj.visible && !deliveryCourierInEncounter.has(i);
+  });
+  if (!idle.length) return;
+  const pick = idle[Math.floor(Math.random() * idle.length)];
+  const idx = stationaryCourierPool.indexOf(pick);
+  deliveryCourierInEncounter.add(idx);
+  const anchor = CityAmbientEventSystem.anchors.delivery;
+  const start = pick.obj.position.clone();
+  const door  = new THREE.Vector3(anchor.door[0], Y_WALK, anchor.door[1]);
+  deliveryHeroEvent = {
+    courier: pick, idx: idx,
+    phase: 'approach', elapsed: 0, age: 0,
+    startPos: start,
+    doorPos: door,
+    savedPos: start.clone(),
+    savedYaw: pick.obj.rotation.y
+  };
+}
+
+function stepDeliveryHero(dt) {
+  if (!deliveryHeroEvent) return;
+  const ev = deliveryHeroEvent;
+  ev.age += dt; ev.elapsed += dt;
+  const courier = ev.courier.obj;
+  if (ev.phase === 'approach') {
+    const t = Math.min(1, ev.elapsed * 0.28);
+    courier.position.lerpVectors(ev.startPos, ev.doorPos, t);
+    const yaw = Math.atan2(ev.doorPos.x - ev.startPos.x, ev.doorPos.z - ev.startPos.z);
+    ambientTurn(courier, yaw, dt);
+    if (t >= 1) { ev.phase = 'pause'; ev.elapsed = 0; }
+  } else if (ev.phase === 'pause') {
+    if (ev.elapsed > 3.0) { ev.phase = 'return'; ev.elapsed = 0; }
+  } else if (ev.phase === 'return') {
+    const t = Math.min(1, ev.elapsed * 0.28);
+    courier.position.lerpVectors(ev.doorPos, ev.savedPos, t);
+    ambientTurn(courier, ev.savedYaw, dt);
+    if (t >= 1) {
+      courier.position.copy(ev.savedPos);
+      courier.rotation.y = ev.savedYaw;
+      deliveryCourierInEncounter.delete(ev.idx);
+      deliveryHeroEvent = null;
     }
   }
 }
+
+// Delivery rush: briefly speed up the first few moving couriers for ~6s
+let deliveryRushElapsed = 0;
+const DELIVERY_RUSH_BASE_SPEEDS = [];
+let deliveryRushInitialised = false;
+
+function triggerDeliveryRush() {
+  if (CityAmbientEventSystem.deliveryRushActive) return;
+  if (typeof movingCourierPool === 'undefined') return;
+  if (!deliveryRushInitialised) {
+    for (let i = 0; i < movingCourierPool.length; i++) DELIVERY_RUSH_BASE_SPEEDS.push(movingCourierPool[i].speed);
+    deliveryRushInitialised = true;
+  }
+  CityAmbientEventSystem.deliveryRushActive = true;
+  deliveryRushElapsed = 0;
+  // Boost speed on active moving couriers only
+  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
+  for (let i = 0; i < Math.min(params.movingCouriers, movingCourierPool.length); i++) {
+    movingCourierPool[i].speed = DELIVERY_RUSH_BASE_SPEEDS[i] * 1.7;
+  }
+}
+
+function stepDeliveryRush(dt) {
+  if (!CityAmbientEventSystem.deliveryRushActive) return;
+  deliveryRushElapsed += dt;
+  if (deliveryRushElapsed >= 6.0) {
+    // Restore speeds
+    if (deliveryRushInitialised) {
+      for (let i = 0; i < movingCourierPool.length; i++) movingCourierPool[i].speed = DELIVERY_RUSH_BASE_SPEEDS[i];
+    }
+    CityAmbientEventSystem.deliveryRushActive = false;
+  }
+}
+
+function stepDeliveryEncounters(dt) {
+  const system = CityAmbientEventSystem;
+  if (ambientMotion.matches || energyMode === 'critical') {
+    // Cancel any active delivery events on reduce-motion / critical energy
+    if (deliveryHeroEvent) {
+      const ev = deliveryHeroEvent;
+      ev.courier.obj.position.copy(ev.savedPos);
+      ev.courier.obj.rotation.y = ev.savedYaw;
+      deliveryCourierInEncounter.delete(ev.idx);
+      deliveryHeroEvent = null;
+    }
+    if (system.deliveryRushActive) {
+      if (deliveryRushInitialised) {
+        for (let i = 0; i < movingCourierPool.length; i++) movingCourierPool[i].speed = DELIVERY_RUSH_BASE_SPEEDS[i];
+      }
+      system.deliveryRushActive = false;
+    }
+    return;
+  }
+
+  stepDeliveryHero(dt);
+  stepDeliveryRush(dt);
+
+  // Attempt new delivery events on cooldown
+  if (system.clock < system.nextDeliveryAttempt) return;
+
+  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
+  if (params.encounterChance === 0) {
+    system.nextDeliveryAttempt = system.clock + 30 + Math.random() * 30;
+    return;
+  }
+
+  // Rush event (rare, High+ only)
+  if (!system.deliveryRushActive && params.rushChance > 0 && Math.random() < params.rushChance) {
+    triggerDeliveryRush();
+    system.nextDeliveryAttempt = system.clock + 25 + Math.random() * 25;
+    return;
+  }
+
+  // Hero arrival event (Extreme only, very rare)
+  const heroAllowed = cityEncounters.length === 0 && deliveryTier === 'extreme' && !deliveryHeroEvent && Math.random() < 0.05 && system.clock >= system.nextHero;
+  if (heroAllowed) {
+    startDeliveryHero();
+    system.nextHero = system.clock + 120 + Math.random() * 120;
+    system.nextDeliveryAttempt = system.clock + 20 + Math.random() * 20;
+    return;
+  }
+
+  system.nextDeliveryAttempt = system.clock + 20 + Math.random() * 40;
+}
+
 function stepCityEncounters(dt) {
   const system = CityAmbientEventSystem;
   system.clock += dt;
-  if (ambientMotion.matches || energyMode === 'critical') { cancelCityEncounters(); return; }
+  if (ambientMotion.matches || energyMode === 'critical') { cancelCityEncounters(); stepDeliveryEncounters(dt); return; }
   for (let i = cityEncounters.length - 1; i >= 0; i--) {
     const event = cityEncounters[i]; event.age += dt; event.elapsed += dt;
     const invalid = event.people.some(function (s) { return !s.c.obj.visible; }) ||
+      (event.anchor && event.anchor.companion && !event.anchor.companion.group.visible) ||
       (event.kind === 'building' && (!cityBuildings[event.anchor.building] || cityBuildings[event.anchor.building].tier < 2));
     if (invalid || event.age > 180) { finishEncounter(event, true); cityEncounters.splice(i, 1); continue; }
-    if (event.kind === 'together' ? stepAmbientTogether(event, dt) : stepAmbientExcursion(event, dt)) {
+    if (event.routes ? stepLifeScene(event, dt) : event.kind === 'together' ? stepAmbientTogether(event, dt) : stepAmbientExcursion(event, dt)) {
       finishEncounter(event, false); cityEncounters.splice(i, 1);
     }
   }
   if (system.clock >= system.nextAttempt) {
-    system.nextAttempt = system.clock + 25 + Math.random() * 65;
+    system.nextAttempt = system.clock + 16 + cityLifeRandom() * 20;
     if (cityEncounters.length < system.maxEvents) chooseAmbientEvent();
   }
+  // Delivery encounters run on their own pool and cooldown, independently of citizen encounters.
+  stepDeliveryEncounters(dt);
 }
 
 
@@ -4552,7 +4721,12 @@ function applyCompanions(ids) {
     });
     entry.x = occupied && def.fallback ? def.fallback[0] : def.x;
     entry.z = occupied && def.fallback ? def.fallback[1] : def.z;
-    entry.group.position.set(entry.x, def.y, entry.z); entry.group.visible = true;
+    if (!entry.life || !entry.group.visible || entry.homeX !== entry.x || entry.homeZ !== entry.z) {
+      entry.group.position.set(entry.x, def.y, entry.z);
+      entry.life = { state: 'idle', age: 0, duration: 4 + cityLifeRandom() * 8, index: 0, offset: 0 };
+      entry.homeX=entry.x; entry.homeZ=entry.z;
+    }
+    entry.group.visible = true;
   });
 }
 function welcomeCompanion(id) {
@@ -4574,17 +4748,37 @@ function welcomeCompanion(id) {
 function animateCompanions(now, dt) {
   const reduced = companionMotionPreference.matches;
   companionInstances.forEach(function (entry) {
-    const g = entry.group; if (!g.visible || reduced) return;
-    const t = now * 0.001;
-    if (entry.def.id === "resident_skater") {
-      // A short glide along the pedestrian strip, never into roads or shop fronts.
-      g.position.z = entry.z + Math.sin(t * 0.55) * 0.20;
-      g.rotation.y = Math.PI / 2;
+    const g = entry.group, life=entry.life; if (!g.visible || !life) return;
+    if (reduced || energyMode === 'critical') { g.scale.setScalar(1); return; }
+    life.age += dt;
+    const id=entry.def.id, pet=id.startsWith('pet_'), skater=id==='resident_skater';
+    const states=skater?['idle','push','glide','turn','pause','return']:
+      pet?['idle','walk','watch',id==='pet_golden_dog'?'sniff':'stretch','return','rest']:
+      ['idle','working','watch','rest'];
+    if(life.age>=life.duration) {
+      life.index=(life.index+1)%states.length;life.state=states[life.index];life.age=0;
+      life.from=life.offset;life.duration=3+cityLifeRandom()*6;
     }
-    if (entry.def.id === "pet_golden_dog") g.rotation.y = Math.sin(t * 0.35) * 0.5;
-    if (entry.def.id === "pet_cat_rooftop") g.scale.y = 1 + Math.sin(t * 1.1) * 0.015;
-    if (g.userData.strumArm) g.userData.strumArm.rotation.x = -0.65 + Math.sin(t * 3) * 0.12;
-    if (g.userData.balloon) g.userData.balloon.rotation.z = Math.sin(t * 0.8) * 0.08;
+    const state=life.state, u=Math.min(1,life.age/life.duration), smooth=u*u*(3-2*u);
+    if(state==='walk' || state==='glide' || state==='push') life.offset=(life.from||0)+(0.30-(life.from||0))*smooth;
+    if(state==='return')life.offset=(life.from||0)*(1-smooth);
+    g.position.z=entry.z+life.offset;
+    g.rotation.y=skater?(state==='return'?Math.PI:0):state==='watch'?Math.sin(u*Math.PI)*0.7:state==='return'?Math.PI:0;
+    // Small, bounded poses keep paws grounded and avoid moving into adjacent lots.
+    const pose=Math.sin(u*Math.PI);
+    g.scale.y=state==='rest'?1-pose*0.20:state==='sniff'?1-pose*0.12:state==='stretch'?1-pose*0.14:1;
+    g.scale.z=state==='stretch'?1+pose*0.12:1;
+    if(entry.encounter && entry.encounter.kind==='dog_walk') {
+      const e=entry.encounter,t=e.age-e.travel;
+      if(t>=0 && t<=e.scene.duration) {
+        const offset=Math.sin(t/e.scene.duration*Math.PI)*0.4;
+        g.position.z=entry.z+offset;
+        e.people[0].c.obj.position.z=e.anchor.point[1]+offset;
+        ambientPose(e.people[0].c,t,true);
+      }
+    }
+    if(g.userData.strumArm)g.userData.strumArm.rotation.x=-0.65+(state==='working'||entry.encounter?Math.sin(life.age*3)*0.12:0);
+    if(g.userData.balloon)g.userData.balloon.rotation.z=Math.sin(life.age*0.8)*0.06;
   });
   if (companionWelcome) {
     companionWelcome.elapsed += dt;
@@ -5409,8 +5603,6 @@ window.dioramaEnergyState = function () {
       }
       if (!data.habits || typeof data.habits.hasTravelOrFlight !== "boolean") fail("habits");
       ["woltCount","coffeeCount","onlinePackagesCount","activeSubscriptionsCount"].forEach(k => number(data.habits[k], "habits." + k));
-      if (data.habits.deliveryTier != null && typeof data.habits.deliveryTier !== "string") fail("habits.deliveryTier");
-      if (data.habits.deliveryFrequencyScore != null) number(data.habits.deliveryFrequencyScore, "habits.deliveryFrequencyScore");
       ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
       if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
       if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");

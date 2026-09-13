@@ -3531,6 +3531,14 @@ ${threeMinJs}
     ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34);
 
     // ────────────────────────────────────────────────────────────────
+    // Two park neighbours use the same actor pool and authored court-side paths.
+    [0xBC8055, 0x527FA7].forEach(function (shirt, i) {
+      addCitizen(shirt, 0x45536A, null, [
+        {x:-10.0+i*0.7,z:9.6}, {x:-9.5+i*0.7,z:9.6},
+        {x:-9.5+i*0.7,z:9.9}, {x:-10.0+i*0.7,z:9.9}
+      ], [], [], false, 0.24);
+    });
+
     // Derived frontages are not rewards or a second financial ledger.
     ${cityLifeJs}
     ${cityCrowdsJs}

@@ -3,7 +3,9 @@
 const cityEncounters = [];
 const ambientMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
 const CityAmbientEventSystem = {
-  clock: 0, nextAttempt: 25 + Math.random() * 65, nextHero: 180 + Math.random() * 120,
+  clock: 0, nextAttempt: 12, nextHero: 35,
+  bag: [], recent: [], lastAnchor: null, cooldowns: {}, variants: {},
+  seed: Number(new Date().toISOString().slice(0, 10).replace(/-/g, "")),
   maxEvents: 2, maxActors: 4,
   // Delivery encounter state — managed separately from the citizen encounter pool
   nextDeliveryAttempt: 40 + Math.random() * 40,
@@ -84,8 +86,10 @@ function finishEncounter(event, cancelled) {
     }
     c.obj.scale.copy(saved.scale); c.ambientHidden = false; c.obj.userData.ambientHidden = false; ambientPose(c, 0, false);
     c.obj.position.y = c.baseY; c.encounter = null; c.ambientState = 'walking';
-    c.encounterCooldown = CityAmbientEventSystem.clock + 45 + Math.random() * 45;
+    c.encounterCooldown = CityAmbientEventSystem.clock + 45 + cityLifeRandom() * 45;
   });
+  if (event.ball) { root.remove(event.ball); event.ball.geometry.dispose(); }
+  if (event.anchor && event.anchor.companion) event.anchor.companion.encounter = null;
   if (event.kind === 'taxi') {
     parkedTaxi.position.copy(event.carPosition); parkedTaxi.rotation.y = event.carYaw;
     parkedTaxi.userData.passengerDoor.rotation.y = 0;
@@ -195,41 +199,126 @@ function stepAmbientTogether(event, dt) {
   }
   return event.age >= event.duration;
 }
-function chooseAmbientEvent() {
+// Weighted shuffle without replacement; history survives bag refills and data redraws.
+function cityLifeRandom() {
+  const s = CityAmbientEventSystem;
+  s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0;
+  return s.seed / 4294967296;
+}
+const CityLifeScenes = [
+  { id: 'bench', anchor: 'bench', actors: 1, duration: 6, cooldown: 55, weight: 1, hero: false, variants: ['rest', 'look'] },
+  { id: 'building', anchor: 'boutique', actors: 1, duration: 9, cooldown: 70, weight: 1, hero: false, variants: ['visit'] },
+  { id: 'together', anchor: 'promenade', actors: 2, duration: 6, cooldown: 45, weight: 1.2, hero: false, variants: ['greet', 'chat'] },
+  { id: 'taxi', anchor: 'taxi', actors: 1, duration: 90, cooldown: 180, weight: 0.5, hero: true, variants: ['pickup'] },
+  { id: 'basketball', anchor: 'court', actors: 2, duration: 22, cooldown: 65, weight: 1.3, hero: true, variants: ['solo', 'shootaround', 'pass'] },
+  { id: 'musician_listener', anchor: 'resident_musician', actors: 1, duration: 9, cooldown: 65, weight: 1, hero: false, variants: ['listen', 'linger'] },
+  { id: 'artist_working', anchor: 'resident_artist', actors: 1, duration: 8, cooldown: 65, weight: 1, hero: false, variants: ['watch'] },
+  { id: 'dog_walk', anchor: 'pet_golden_dog', actors: 1, duration: 12, cooldown: 65, weight: 1, hero: false, variants: ['stroll'] }
+];
+function sceneCandidate(scene, available) {
   const system = CityAmbientEventSystem;
-  const visible = walkingCitizens.filter(function (c) { return c.obj.visible; });
-  const available = visible.filter(ambientEligible);
-  if (!available.length || Math.random() > 0.72) return;
-  // Visibility influences cost/eligibility, never camera targeting. Offscreen micro
-  // moments still occur; hero moments wait while a district is tightly focused.
-  const heroAllowed = currentMode === 'city' && visible.length >= 10 && energyMode === 'normal';
-  const passenger = available.find(function (c) { return c.crowdVenue === 'trans_station'; });
-  if (heroAllowed && passenger && system.clock >= system.nextHero && cityEncounters.length === 0) {
-    startEncounter('taxi', [passenger], system.anchors.taxi); system.nextHero = system.clock + 180 + Math.random() * 180; return;
+  if (scene.hero && (deliveryHeroEvent || currentMode !== 'city' || energyMode !== 'normal' || system.clock < system.nextHero || cityEncounters.some(e => e.scene && e.scene.hero))) return null;
+  if (scene.id === 'taxi' && walkingCitizens.filter(c => c.obj.visible).length < 10) return null;
+  let anchor = system.anchors[scene.anchor], people;
+  if (scene.id === 'building') {
+    const building = cityBuildings[anchor.building];
+    if (!building || building.tier < 2 || !building.shell.visible) return null;
+    people = available.filter(c => c.crowdVenue === anchor.building).slice(0, 1);
+  } else if (scene.id === 'taxi') people = available.filter(c => c.crowdVenue === 'trans_station').slice(0, 1);
+  else if (scene.id === 'bench') {
+    if (!ambientBench.visible) return null;
+    people = available.filter(c => Math.hypot(c.obj.position.x - 2.52, c.obj.position.z - 1) < 1.4).slice(0, 1);
+  } else if (scene.id === 'together') {
+    for (const a of available) for (const b of available) {
+      if (a === b || !a.crowdVenue || a.crowdVenue !== b.crowdVenue || a.pIdx !== b.pIdx) continue;
+      const p = a.path[a.pIdx], q = a.path[(a.pIdx + 1) % a.path.length];
+      const remaining = Math.hypot(q.x-p.x,q.z-p.z)-Math.max(a.t,b.t), gap = a.obj.position.distanceTo(b.obj.position);
+      if (gap >= 0.42 && gap <= 0.95 && remaining > 0.5) return { people: [a,b], remaining: remaining };
+    }
+    return null;
+  } else if (scene.id === 'basketball') {
+    anchor = { point: [courtGroup.position.x, courtGroup.position.z + 0.6] };
+    people = available.filter(c => Math.hypot(c.obj.position.x-anchor.point[0],c.obj.position.z-anchor.point[1]) < 3.5).slice(0,2);
+    if (!people.length) return null;
+    const variant = scene.variants[(system.variants[scene.id] || 0) % scene.variants.length];
+    if (variant === 'pass' && people.length < 2) return null;
+    return { people: variant === 'pass' ? people : people.slice(0,1), anchor: anchor };
+  } else {
+    const companion = companionInstances.get(scene.anchor);
+    if (!companion || !companion.group.visible || companion.encounter) return null;
+    anchor = { point: [companion.x, companion.z + 0.65], companion: companion };
+    people = available.filter(c => Math.hypot(c.obj.position.x-anchor.point[0],c.obj.position.z-anchor.point[1]) < 2.5).slice(0,1);
   }
-  const kinds = Math.random() < 0.5 ? ['bench', 'building', 'together'] : ['building', 'together', 'bench'];
-  for (const kind of kinds) {
-    if (cityEncounters.some(function (e) { return e.kind === kind; })) continue;
-    if (kind === 'building') {
-      const anchor = system.anchors.boutique, building = cityBuildings[anchor.building];
-      const person = available.find(function (c) { return c.crowdVenue === anchor.building; });
-      if (person && building && building.tier >= 2 && building.shell.visible) { startEncounter(kind, [person], anchor); return; }
-    } else if (kind === 'bench') {
-      const person = available.find(function (c) { return !c.crowdVenue && c.obj.position.x > 1.6 && c.obj.position.x < 2.6 && c.obj.position.z > 0.6 && c.obj.position.z < 1.9; });
-      if (person && ambientBench.visible) { startEncounter(kind, [person], system.anchors.bench); return; }
-    } else if (visible.length >= 6) {
-      for (let i = 0; i < available.length; i++) for (let j = i + 1; j < available.length; j++) {
-        const a = available[i], b = available[j];
-        if (!a.crowdVenue || a.crowdVenue !== b.crowdVenue || a.pIdx !== b.pIdx) continue;
-        const p = a.path[a.pIdx], q = a.path[(a.pIdx + 1) % a.path.length];
-        const length = Math.hypot(q.x - p.x, q.z - p.z), separation = a.obj.position.distanceTo(b.obj.position);
-        if (separation < 0.42 || separation > 0.95 || length - Math.max(a.t, b.t) < 0.45) continue;
-        const e = startEncounter('together', [a, b]);
-        if (e) { e.speed = Math.min(a.speed, b.speed) * 0.8; e.duration = 2.2 + Math.min(4.0, (length - Math.max(a.t, b.t) - 0.03) / e.speed); }
-        return;
-      }
+  return people.length === scene.actors ? { people: people, anchor: anchor } : null;
+}
+function chooseAmbientEvent() {
+  const s = CityAmbientEventSystem, available = walkingCitizens.filter(ambientEligible);
+  if (!available.length) return;
+  if (!s.bag.length) s.bag = CityLifeScenes.map(scene => ({scene:scene, key: -Math.log(Math.max(1e-9,cityLifeRandom())) / scene.weight})).sort((a,b)=>a.key-b.key).map(x=>x.scene);
+  for (let i=0; i<s.bag.length; i++) {
+    const scene=s.bag[i];
+    if (s.recent.includes(scene.id) || s.lastAnchor===scene.anchor || s.clock<(s.cooldowns[scene.id]||0)) continue;
+    const candidate=sceneCandidate(scene,available); if (!candidate) continue;
+    const e=startEncounter(scene.id,candidate.people,candidate.anchor); if (!e) continue;
+    e.scene=scene; e.variant=scene.variants[(s.variants[scene.id]||0)%scene.variants.length];
+    s.variants[scene.id]=(s.variants[scene.id]||0)+1;
+    if (scene.id==='together') { e.speed=Math.min(...candidate.people.map(c=>c.speed))*0.8; e.duration=2.2+Math.min(4,(candidate.remaining-0.03)/e.speed); }
+    if (candidate.anchor && candidate.anchor.point) prepareLifeScene(e);
+    s.bag.splice(i,1); s.recent.push(scene.id); if(s.recent.length>3)s.recent.shift();
+    s.lastAnchor=scene.anchor; s.cooldowns[scene.id]=s.clock+scene.cooldown;
+    if(scene.hero)s.nextHero=s.clock+65+cityLifeRandom()*40;
+    return;
+  }
+  // Unavailable entries must not starve newly unlocked scenes. Preserve recent history.
+  s.bag=[];
+}
+function prepareLifeScene(e) {
+  e.routes=e.people.map((saved,i)=>ambientRoute([saved.position.clone(),ambientPoint([e.anchor.point[0]+i*0.65,e.anchor.point[1]])]));
+  e.travel=Math.max(...e.routes.map(r=>r.length))/0.42;
+  if(e.anchor.companion)e.anchor.companion.encounter=e;
+  if(e.kind==='basketball') {
+    e.ball=mesh(new THREE.SphereGeometry(0.075,10,8),M_WOOD,0,0,0); root.add(e.ball);
+    e.shot=new THREE.Vector3(courtGroup.position.x,courtGroup.position.y+1.10,courtGroup.position.z-0.93);
+    e.release=new THREE.Vector3(); e.landing=new THREE.Vector3();
+  }
+}
+function stepLifeScene(e,dt) {
+  const t=e.age-e.travel, duration=e.scene.duration;
+  e.people.forEach((saved,i)=>{
+    const c=saved.c,route=e.routes[i];
+    if(t<0 || t>duration) {
+      const back=t>duration, distance=back?route.length-(t-duration)*0.42:Math.min(route.length,e.age*0.42);
+      ambientFollow(c.obj,route,distance,back,dt);ambientPose(c,e.age,true);
+    } else {
+      c.obj.position.copy(route.points[route.points.length-1]);
+      ambientPose(c,e.age,false);
+      const target=e.shot || (e.anchor.companion && e.anchor.companion.group.position);
+      if(target)ambientTurn(c.obj,Math.atan2(target.x-c.obj.position.x,target.z-c.obj.position.z),dt);
+    }
+  });
+  if(e.ball) {
+    e.ball.visible=t>=0 && t<=duration;
+    const pass=e.variant==='pass' && e.people.length>1;
+    const cycle=e.variant==='shootaround'?9:11, phase=((Math.max(0,t)%cycle)/cycle);
+    const shooter=e.people[pass?1:0].c.obj.position;
+    e.release.copy(shooter);e.release.y+=0.7;
+    e.landing.copy(shooter);e.landing.z-=0.3;e.landing.y=shooter.y+0.075;
+    if(pass && phase<0.18) {
+      const other=e.people[0].c.obj.position;
+      e.ball.position.copy(other).lerp(shooter,phase/0.18);e.ball.position.y+=0.55+Math.sin(phase/0.18*Math.PI)*0.15;
+    } else if(phase<0.4) {
+      e.ball.position.copy(shooter);e.ball.position.x+=0.2;e.ball.position.y+=0.09+Math.abs(Math.sin(t*5))*0.42;
+    } else if(phase<0.65) {
+      const u=(phase-0.4)/0.25;e.ball.position.copy(e.release).lerp(e.shot,u);e.ball.position.y+=Math.sin(u*Math.PI)*0.65;
+      e.people[pass?1:0].c.armR.rotation.x=-2.2;
+    } else if(phase<0.8) {
+      const u=(phase-0.65)/0.15;e.ball.position.copy(e.shot).lerp(e.landing,u);e.ball.position.y+=Math.sin(u*Math.PI)*(e.variant==='shootaround'?0.35:0.1);
+    } else {
+      const u=(phase-0.8)/0.2;e.ball.position.copy(e.landing).lerp(e.release,u);
+      const c=e.people[pass?1:0].c;c.obj.position.z-=Math.sin(u*Math.PI)*0.3;ambientPose(c,t,true);
     }
   }
+  return t>duration+e.travel;
 }
 // ── Delivery Encounter System ─────────────────────────────────────────────────
 // Uses stationaryCourierPool actors (real courier meshes near the venue),
@@ -367,7 +456,7 @@ function stepDeliveryEncounters(dt) {
   }
 
   // Hero arrival event (Extreme only, very rare)
-  const heroAllowed = deliveryTier === 'extreme' && !deliveryHeroEvent && Math.random() < 0.05 && system.clock >= system.nextHero;
+  const heroAllowed = cityEncounters.length === 0 && deliveryTier === 'extreme' && !deliveryHeroEvent && Math.random() < 0.05 && system.clock >= system.nextHero;
   if (heroAllowed) {
     startDeliveryHero();
     system.nextHero = system.clock + 120 + Math.random() * 120;
@@ -381,18 +470,19 @@ function stepDeliveryEncounters(dt) {
 function stepCityEncounters(dt) {
   const system = CityAmbientEventSystem;
   system.clock += dt;
-  if (ambientMotion.matches || energyMode === 'critical') { cancelCityEncounters(); return; }
+  if (ambientMotion.matches || energyMode === 'critical') { cancelCityEncounters(); stepDeliveryEncounters(dt); return; }
   for (let i = cityEncounters.length - 1; i >= 0; i--) {
     const event = cityEncounters[i]; event.age += dt; event.elapsed += dt;
     const invalid = event.people.some(function (s) { return !s.c.obj.visible; }) ||
+      (event.anchor && event.anchor.companion && !event.anchor.companion.group.visible) ||
       (event.kind === 'building' && (!cityBuildings[event.anchor.building] || cityBuildings[event.anchor.building].tier < 2));
     if (invalid || event.age > 180) { finishEncounter(event, true); cityEncounters.splice(i, 1); continue; }
-    if (event.kind === 'together' ? stepAmbientTogether(event, dt) : stepAmbientExcursion(event, dt)) {
+    if (event.routes ? stepLifeScene(event, dt) : event.kind === 'together' ? stepAmbientTogether(event, dt) : stepAmbientExcursion(event, dt)) {
       finishEncounter(event, false); cityEncounters.splice(i, 1);
     }
   }
   if (system.clock >= system.nextAttempt) {
-    system.nextAttempt = system.clock + 25 + Math.random() * 65;
+    system.nextAttempt = system.clock + 16 + cityLifeRandom() * 20;
     if (cityEncounters.length < system.maxEvents) chooseAmbientEvent();
   }
   // Delivery encounters run on their own pool and cooldown, independently of citizen encounters.

@@ -4,6 +4,9 @@ const THREE = require('../vendor/three.min.js');
 const source = fs.readFileSync(require('path').join(__dirname, '../city_v2_encounters.js'), 'utf8');
 function setup() {
   const scope = vm.createContext({ THREE, Math: Object.assign(Object.create(Math), { random: () => 0.3 }),
+    Date, root: new THREE.Group(), courtGroup: {position: new THREE.Vector3(-9.2, .14, 8.8)},
+    M_WOOD: new THREE.MeshBasicMaterial(), mesh: (geometry,material)=>new THREE.Mesh(geometry,material), companionInstances: new Map(),
+    deliveryTier: 'quiet', DELIVERY_TIER_PARAMS: {quiet: {encounterChance: 0}},
     Y_WALK: 0.14, window: { matchMedia: () => ({ matches: false }) }, energyMode: 'normal', currentMode: 'city',
     walkingCitizens: [], vehicleState: [], cityBuildings: { shop_boutique: { tier: 2, shell: { visible: true } } },
     ambientBench: new THREE.Group(), parkedTaxi: new THREE.Group(), transportYard: new THREE.Group(),
@@ -56,3 +59,38 @@ for (const kind of ['building','bench','taxi']) {
 const html=fs.readFileSync(require('path').join(__dirname,'../MoneyCity/Resources/diorama.html'),'utf8');
 for(const match of html.matchAll(/<script>([\s\S]*?)<\/script>/g))new Function(match[1]);
 console.log('PASS: entry/exit, seating, shared walk continuity, taxi circuit, actor release, reduced motion, sparse city, generated syntax.');
+
+// All three basketball variants complete, release actors, and dispose their ball.
+for (let variant=0;variant<3;variant++) {
+  const s=setup();person(s,-9.5,9.6);person(s,-8.8,9.6);
+  s.system.clock=100;s.system.nextHero=0;s.system.variants.basketball=variant;
+  vm.runInContext("CityAmbientEventSystem.bag=[CityLifeScenes.find(s=>s.id==='basketball')]",s);
+  s.chooseAmbientEvent();assert.equal(s.events.length,1);
+  const e=s.events[0],origins=e.people.map(p=>p.position.clone());s.system.nextAttempt=Infinity;
+  for(let i=0;i<1800 && s.events.length;i++)s.stepCityEncounters(1/30);
+  assert.equal(s.events.length,0);assert.equal(e.ball.parent,null);
+  e.people.forEach((p,i)=>assert(p.c.obj.position.distanceTo(origins[i])<1e-7));
+}
+{
+ const s=setup();person(s,-9.5,9.6);person(s,-8.8,9.6);s.system.clock=100;s.system.nextHero=0;
+ vm.runInContext("CityAmbientEventSystem.bag=[CityLifeScenes.find(s=>s.id==='basketball')]",s);
+ s.chooseAmbientEvent();s.cancelCityEncounters();s.system.clock=1000;s.system.nextHero=0;
+ s.walkingCitizens.forEach(c=>c.encounterCooldown=0);
+ vm.runInContext("CityAmbientEventSystem.bag=[CityLifeScenes.find(s=>s.id==='basketball')]",s);
+ s.chooseAmbientEvent();assert.equal(s.events.length,0,'Recent scene stays blocked after refill');
+}
+console.log('PASS: basketball variants, return continuity, ball cleanup, recent history across refill.');
+{
+  const s=setup();
+  s.propCat=s.propDog=s.propArtist=()=>{};
+  vm.runInContext(fs.readFileSync(require('path').join(__dirname,'../city_v2_companions.js'),'utf8')+'\nthis.friends=companionInstances;this.friendMotion=companionMotionPreference;',s);
+  for(const id of ['pet_cat_rooftop','pet_golden_dog','resident_skater','resident_musician']) {
+    const entry={def:{id},group:new THREE.Group(),x:0,z:0,life:{state:'idle',age:0,duration:4,index:0,offset:0}};
+    s.friends.set(id,entry);const states=new Set();
+    for(let i=0;i<1800;i++){s.animateCompanions(i*100,0.1);states.add(entry.life.state);assert(Math.abs(entry.group.position.z)<=0.31);}
+    assert(states.size>=3,id+' has varied states');
+    const position=entry.group.position.clone();s.friendMotion.matches=true;s.animateCompanions(999999,1);
+    assert(entry.group.position.equals(position),'Reduced motion freezes travel');s.friendMotion.matches=false;
+  }
+}
+console.log('PASS: companion states, bounded travel, reduced motion.');

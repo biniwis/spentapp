@@ -502,6 +502,10 @@ public struct DesignLabView: View {
     @State private var showAllCompanionsCompletedSheet = false
     @State private var showCityDensityLab = false
     @State private var showCandidateLab = false
+    @State private var showNotificationsLab = false
+    @State private var showErrorStatesLab = false
+    @State private var showEmptyStatesLab = false
+    @State private var showCityArchiveLab = false
 
     private var isHe: Bool { l10n.language == .hebrew }
 
@@ -754,6 +758,22 @@ public struct DesignLabView: View {
         }
         .sheet(isPresented: $showCandidateLab) {
             RecapCandidateLabSheet()
+                .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showNotificationsLab) {
+            SystemNotificationsLabSheet()
+                .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showErrorStatesLab) {
+            ErrorStatesLabSheet()
+                .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showEmptyStatesLab) {
+            EmptyStatesLabSheet()
+                .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showCityArchiveLab) {
+            CityArchiveLabSheet()
                 .environmentObject(l10n)
         }
     }
@@ -1038,34 +1058,41 @@ public struct DesignLabView: View {
 
             VStack(spacing: 10) {
                 #if DEBUG
-                Button("Open Reward Selection") {
-                    debugRewardJoined = false
-                    showWeeklyRewardSheet = true
-                }
-                Button("Trigger Weekly Reward") {
-                    var engine = CityRewardEngine()
-                    engine.debugTrigger(.weeklyPresence)
-                    engine.save()
-                    debugRewardTrigger = .weeklyPresence
-                    debugRewardJoined = false
-                    showWeeklyRewardSheet = true
-                }
-                Button("Trigger Surprise Reward") {
-                    var engine = CityRewardEngine()
-                    engine.debugTrigger(.quietPeriod)
-                    engine.save()
-                    debugRewardTrigger = .quietPeriod
-                    debugRewardJoined = false
-                    showWeeklyRewardSheet = true
-                }
-                Button("Open Reward Claimed State") {
-                    debugRewardJoined = true
-                    showWeeklyRewardSheet = true
-                }
-                Button("Reset Reward Cooldowns") {
-                    var engine = CityRewardEngine()
-                    engine.debugResetCooldowns()
-                    engine.save()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        rewardQuickActionButton(isHe ? "בחר תוספת" : "Select Reward", icon: .star) {
+                            debugRewardJoined = false
+                            showWeeklyRewardSheet = true
+                        }
+                        rewardQuickActionButton(isHe ? "טריגר שבועי" : "Trigger Weekly", icon: .calendar) {
+                            var engine = CityRewardEngine()
+                            engine.debugTrigger(.weeklyPresence)
+                            engine.save()
+                            debugRewardTrigger = .weeklyPresence
+                            debugRewardJoined = false
+                            showWeeklyRewardSheet = true
+                        }
+                        rewardQuickActionButton(isHe ? "טריגר הפתעה" : "Trigger Surprise", icon: .gift) {
+                            var engine = CityRewardEngine()
+                            engine.debugTrigger(.quietPeriod)
+                            engine.save()
+                            debugRewardTrigger = .quietPeriod
+                            debugRewardJoined = false
+                            showWeeklyRewardSheet = true
+                        }
+                        rewardQuickActionButton(isHe ? "מצב נאסף" : "Claimed State", icon: .checkCircle) {
+                            debugRewardJoined = true
+                            showWeeklyRewardSheet = true
+                        }
+                        rewardQuickActionButton(isHe ? "איפוס Cooldown" : "Reset Cooldown", icon: .refresh) {
+                            var engine = CityRewardEngine()
+                            engine.debugResetCooldowns()
+                            engine.save()
+                            Haptics.notify(.success)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                    .padding(.bottom, 2)
                 }
                 #endif
                 // Active Choice Ceremony
@@ -1217,39 +1244,109 @@ public struct DesignLabView: View {
         }
     }
 
-    // MARK: - Section 5: Future Labs (Extensibility)
+    // MARK: - Section 5: Extended Preview Labs
     private var futureLabsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeader(
                 title: isHe ? "מעבדות נוספות" : "More Preview Labs",
-                badge: "COMING SOON"
+                badge: "4 INTERACTIVE"
             )
 
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
-                futureLabTile(title: isHe ? "התראות מערכת" : "Notifications", icon: .bell)
-                futureLabTile(title: isHe ? "מצבי שגיאה" : "Error States", icon: .warningCircle)
-                futureLabTile(title: isHe ? "מצבי ריקון (Empty)" : "Empty States", icon: .folder)
-                futureLabTile(title: isHe ? "ארכיון עיר" : "City Archive", icon: .calendar)
+                labTileButton(
+                    title: isHe ? "התראות מערכת" : "Notifications",
+                    icon: .bell,
+                    badge: isHe ? "באנרים והתראות" : "Banners & Push"
+                ) {
+                    showNotificationsLab = true
+                }
+                labTileButton(
+                    title: isHe ? "מצבי שגיאה" : "Error States",
+                    icon: .warningCircle,
+                    badge: isHe ? "חריגות ותקלות" : "Edge Cases"
+                ) {
+                    showErrorStatesLab = true
+                }
+                labTileButton(
+                    title: isHe ? "מצבי ריקון (Empty)" : "Empty States",
+                    icon: .folder,
+                    badge: isHe ? "מסכים ריקים" : "6 States"
+                ) {
+                    showEmptyStatesLab = true
+                }
+                labTileButton(
+                    title: isHe ? "ארכיון עיר" : "City Archive",
+                    icon: .calendar,
+                    badge: isHe ? "גלויות וחודשים" : "Postcards"
+                ) {
+                    showCityArchiveLab = true
+                }
             }
         }
     }
 
-    private func futureLabTile(title: String, icon: MoneyIconName) -> some View {
-        HStack(spacing: 8) {
-            MoneyIcon(icon, size: 16, color: Color.textMuted)
-            Text(title)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundColor(Color.textMuted)
-            Spacer()
+    private func labTileButton(title: String, icon: MoneyIconName, badge: String, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            Haptics.impact(.medium)
+            action()
+        }) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(MoneyCityTheme.babyBlue)
+                            .frame(width: 32, height: 32)
+                        MoneyIcon(icon, size: 16, color: Color.deepNavy)
+                    }
+                    Spacer()
+                    MoneyIcon(isHe ? .chevronLeft : .chevronRight, size: 10, color: Color.textMuted)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                        .lineLimit(1)
+
+                    Text(badge)
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .lineLimit(1)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.borderSubtle, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.025), radius: 4, y: 1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.white.opacity(0.6))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.borderSubtle, lineWidth: 1)
-        )
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.97)
+    }
+
+    private func rewardQuickActionButton(_ title: String, icon: MoneyIconName, action: @escaping () -> Void) -> some View {
+        Button(action: {
+            Haptics.impact(.light)
+            action()
+        }) {
+            HStack(spacing: 5) {
+                MoneyIcon(icon, size: 11, color: Color.deepNavy)
+                Text(title)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.white)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.borderSubtle, lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.02), radius: 3, y: 1)
+        }
+        .buttonStyle(.plain)
     }
 
     private func sectionHeader(title: String, badge: String) -> some View {
@@ -2083,6 +2180,908 @@ struct RecapCandidateLabSheet: View {
         .padding(14)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+    }
+}
+
+// MARK: - Helper Header for Preview Labs
+private func labHeader(title: String, subtitle: String, icon: MoneyIconName) -> some View {
+    HStack(alignment: .top, spacing: 14) {
+        ZStack {
+            Circle()
+                .fill(MoneyCityTheme.babyBlue)
+                .frame(width: 44, height: 44)
+            MoneyIcon(icon, size: 22, color: Color.deepNavy)
+        }
+
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+
+            Text(subtitle)
+                .font(.system(size: 12, weight: .regular, design: .default))
+                .foregroundColor(Color.textSecondary)
+                .lineSpacing(2)
+        }
+    }
+    .padding(16)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Color.white)
+    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+}
+
+// MARK: - 1. System Notifications & Banners Lab
+public struct SystemNotificationsLabSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    @State private var samplePendingConfirmation: PendingExpenseConfirmation? = PendingExpenseConfirmation(
+        amount: 34.50,
+        merchant: "קפה נחת תל אביב",
+        timestamp: Date()
+    )
+    @State private var showRecapBanner = true
+    @State private var showUndoBanner = true
+    @State private var actionMessage: String? = nil
+    @State private var activeRecapForStory: MonthlyRecap? = nil
+
+    private var isHe: Bool { l10n.language == .hebrew }
+
+    private var sampleRecap: MonthlyRecap {
+        RecapPreviewData.delivery
+    }
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        labHeader(
+                            title: isHe ? "מעבדת התראות ובאנרים" : "Notifications & Banners Lab",
+                            subtitle: isHe
+                                ? "בדיקת אינטראקציות חיות של באנרים עירוניים, התראות מערכת והודעות Push"
+                                : "Live preview of in-app city banners, confirmation toasts, and push notifications",
+                            icon: .bell
+                        )
+
+                        if let actionMessage {
+                            HStack {
+                                MoneyIcon(.checkCircle, size: 14, color: Color.themeMint)
+                                Text(actionMessage)
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.themeMint)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.themeMint.opacity(0.12))
+                            .clipShape(Capsule())
+                            .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // ── 1. City Confirmation Banner (Pending Expense) ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "באנר קליטת עסקה בעיר" : "City Expense Confirmation Banner", tag: "IN-APP BANNER")
+
+                            if let pending = samplePendingConfirmation {
+                                CityConfirmationBanner(banner: pending)
+                                    .padding(.horizontal, -4)
+                            } else {
+                                Button(isHe ? "איפוס והצגת באנר קליטה" : "Reset Confirmation Banner") {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        samplePendingConfirmation = PendingExpenseConfirmation(
+                                            amount: 34.50,
+                                            merchant: "קפה נחת תל אביב",
+                                            timestamp: Date()
+                                        )
+                                        flashMessage(isHe ? "באנר שוחזר" : "Banner restored")
+                                    }
+                                }
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.primaryBlue)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.white)
+                                .clipShape(Capsule())
+                            }
+                        }
+
+                        // ── 2. City New Month Recap Ready Banner ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "באנר סיכום חודש חדש מוכן" : "New Month Recap Ready Banner", tag: "MILESTONE BANNER")
+
+                            if showRecapBanner {
+                                CityNewMonthRecapBanner(
+                                    recap: sampleRecap,
+                                    onOpen: {
+                                        activeRecapForStory = sampleRecap
+                                    },
+                                    onDismiss: {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showRecapBanner = false
+                                            flashMessage(isHe ? "באנר הסיכום הוסר" : "Recap banner dismissed")
+                                        }
+                                    }
+                                )
+                                .padding(.horizontal, -4)
+                            } else {
+                                Button(isHe ? "הצג באנר סיכום שוב" : "Show Recap Banner Again") {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        showRecapBanner = true
+                                    }
+                                }
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.primaryBlue)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.white)
+                                .clipShape(Capsule())
+                            }
+                        }
+
+                        // ── 3. Undo Delete Toast Banner ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "באנר ביטול מחיקה (Undo Toast)" : "Undo Delete Toast", tag: "TOAST")
+
+                            if showUndoBanner {
+                                HStack(spacing: 12) {
+                                    TrashVectorIcon(color: MoneyCityTheme.destructive)
+                                    Text(isHe ? "נמחקה: זארה — ₪199.90" : "Deleted: Zara — ₪199.90")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    Button(action: {
+                                        Haptics.notify(.success)
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showUndoBanner = false
+                                            flashMessage(isHe ? "המחיקה בוטלה בהצלחה!" : "Deletion undone!")
+                                        }
+                                    }) {
+                                        Text(isHe ? "בטל" : "Undo")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(MoneyCityTheme.brandPrimary)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.white.opacity(0.18))
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.deepNavy)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
+                            } else {
+                                Button(isHe ? "הצג באנר ביטול מחיקה" : "Show Undo Toast") {
+                                    withAnimation(.spring(response: 0.3)) {
+                                        showUndoBanner = true
+                                    }
+                                }
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.primaryBlue)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(Color.white)
+                                .clipShape(Capsule())
+                            }
+                        }
+
+                        // ── 4. Apple Pay / Shortcuts Push Notification Mockups ──
+                        VStack(alignment: .leading, spacing: 10) {
+                            labelBadge(isHe ? "התראות Push (מסך נעילה / מרכז עדכונים)" : "Lock Screen Push Notifications", tag: "SIMULATION")
+
+                            pushNotificationCard(
+                                title: isHe ? "עסקה נקלטה בהצלחה" : "Transaction Logged",
+                                body: isHe
+                                    ? "קנית ב-Wolt ב-₪89.00 • המבנה נוסף לרובע האוכל בעיר שלך 🛵"
+                                    : "Bought at Wolt for ₪89.00 • Added to your Food District 🛵",
+                                time: isHe ? "לפני דקה" : "1m ago"
+                            )
+
+                            pushNotificationCard(
+                                title: isHe ? "🔥 רצף פעילות של 5 ימים!" : "🔥 5-Day Active Streak!",
+                                body: isHe
+                                    ? "העיר שלך פורחת. נותרו עוד יומיים לפתיחת תוספת שבועית חדשה."
+                                    : "Your city is flourishing. 2 more days to unlock your weekly companion.",
+                                time: isHe ? "לפני 3 שעות" : "3h ago"
+                            )
+
+                            pushNotificationCard(
+                                title: isHe ? "סיכום חודש שעבר מוכן ✨" : "Monthly Recap Ready ✨",
+                                body: isHe
+                                    ? "חודש אוגוסט הסתיים! בוא לגלות איזו עיר בנית ומה הרגלי ההוצאה שלך."
+                                    : "August has ended! Discover what city you built and explore your habits.",
+                                time: isHe ? "אתמול" : "Yesterday"
+                            )
+                        }
+
+                        Spacer(minLength: 30)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                }
+            }
+            .navigationTitle(isHe ? "התראות מערכת" : "Notifications")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isHe ? "סגור" : "Close") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+            }
+            .fullScreenCover(item: $activeRecapForStory) { recap in
+                MonthlyRecapSheet(recap: recap)
+                    .environmentObject(l10n)
+            }
+        }
+        .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
+    }
+
+    private func flashMessage(_ msg: String) {
+        withAnimation(.spring(response: 0.3)) {
+            actionMessage = msg
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            withAnimation(.spring(response: 0.3)) {
+                if actionMessage == msg { actionMessage = nil }
+            }
+        }
+    }
+
+    private func labelBadge(_ text: String, tag: String) -> some View {
+        HStack {
+            Text(text)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+            Spacer()
+            Text(tag)
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .foregroundColor(Color.textMuted)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                .clipShape(Capsule())
+        }
+    }
+
+    private func pushNotificationCard(title: String, body: String, time: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.deepNavy)
+                    .frame(width: 36, height: 36)
+                MoneyIcon(.citySkyline, size: 20, color: MoneyCityTheme.brandPrimary)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack {
+                    Text("SPENT")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Spacer()
+                    Text(time)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                }
+
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+
+                Text(body)
+                    .font(.system(size: 12, weight: .regular, design: .default))
+                    .foregroundColor(Color.textSecondary)
+                    .lineSpacing(2)
+            }
+        }
+        .padding(14)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: Color.black.opacity(0.04), radius: 6, y: 2)
+    }
+}
+
+// MARK: - 2. Error States & Edge Cases Lab
+public struct ErrorStatesLabSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+    @State private var testAmountText = "-15"
+    @State private var actionNotice: String? = nil
+
+    private var isHe: Bool { l10n.language == .hebrew }
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        labHeader(
+                            title: isHe ? "מצבי שגיאה וחריגות" : "Error States & Edge Cases",
+                            subtitle: isHe
+                                ? "הדמיית כל התרחישים הבעייתיים: שגיאות סריקה, ניתוק רשת, חריגות תקציב וקלט שגוי"
+                                : "Preview of receipt OCR failures, connectivity issues, budget overruns, and validation",
+                            icon: .warningCircle
+                        )
+
+                        if let actionNotice {
+                            HStack {
+                                MoneyIcon(.checkCircle, size: 14, color: Color.themeMint)
+                                Text(actionNotice)
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.themeMint)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.themeMint.opacity(0.12))
+                            .clipShape(Capsule())
+                        }
+
+                        // ── 1. Receipt Scan OCR Failure ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "שגיאת פענוח קבלה / סריקה" : "Receipt Scan Extraction Failure", tag: "OCR / VISION")
+
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color(red: 254/255, green: 226/255, blue: 226/255))
+                                            .frame(width: 40, height: 40)
+                                        MoneyIcon(.warningCircle, size: 22, color: Color(red: 220/255, green: 38/255, blue: 38/255))
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(isHe ? "לא הצלחנו לפענח את החשבונית" : "Could not extract receipt")
+                                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                        Text(isHe ? "התמונה מטושטשת או שהסכום אינו קריא" : "Image is blurry or amount is unreadable")
+                                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                                            .foregroundColor(Color.textMuted)
+                                    }
+                                }
+
+                                Text(isHe
+                                    ? "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור."
+                                    : "Ensure the receipt is flat, well-lit, and the total line is clearly visible.")
+                                    .font(.system(size: 12, weight: .regular, design: .default))
+                                    .foregroundColor(Color.textSecondary)
+                                    .lineSpacing(2)
+
+                                HStack(spacing: 10) {
+                                    Button(action: {
+                                        Haptics.impact(.medium)
+                                        actionNotice = isHe ? "נפתחה מצלמה לצילום מחדש" : "Camera opened for retrying"
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            MoneyIcon(.camera, size: 14)
+                                            Text(isHe ? "צלם שוב" : "Scan Again")
+                                                .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                                        }
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 10)
+                                        .background(Color.deepNavy)
+                                        .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    Button(action: {
+                                        Haptics.impact(.light)
+                                        actionNotice = isHe ? "מעבר להזנה ידנית" : "Switched to manual entry"
+                                    }) {
+                                        Text(isHe ? "הזן ידנית" : "Enter Manually")
+                                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 10)
+                                            .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                                            .clipShape(Capsule())
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(16)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+                        }
+
+                        // ── 2. Offline / Network Unavailable ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "מצב לא מקוון / אין רשת" : "Offline / Network Unavailable", tag: "CONNECTIVITY")
+
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color(red: 254/255, green: 243/255, blue: 199/255))
+                                        .frame(width: 40, height: 40)
+                                    MoneyIcon(.refresh, size: 18, color: Color(red: 180/255, green: 83/255, blue: 9/255))
+                                }
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(isHe ? "פועל במצב לא מקוון (Offline)" : "Operating in Offline Mode")
+                                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+
+                                    Text(isHe
+                                        ? "עסקאות ופעולות נשמרות מקומית על המכשיר ויעודכנו כשהרשת תחזור."
+                                        : "Actions are safely stored on-device and will sync once online.")
+                                        .font(.system(size: 11.5, weight: .regular, design: .default))
+                                        .foregroundColor(Color.textSecondary)
+                                }
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+                        }
+
+                        // ── 3. Over-Budget Alert ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "חריגה מתוכנית ההוצאות" : "Budget Plan Overrun Warning", tag: "FINANCIAL GUARD")
+
+                            HStack(alignment: .top, spacing: 12) {
+                                MoneyIcon(.warningCircle, size: 20, color: Color.red)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(isHe ? "חריגה של ₪650 מהתכנון החודשי" : "₪650 over monthly plan")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.red)
+
+                                    Text(isHe
+                                        ? "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. הפארק בעיר מאט את צמיחתו עד לאיזון."
+                                        : "Current spending exceeds planned income. City park growth slows down.")
+                                        .font(.system(size: 12, weight: .medium, design: .default))
+                                        .foregroundColor(Color.textSecondary)
+                                }
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.red.opacity(0.06))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(Color.red.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+
+                        // ── 4. Input Field Validation Error ──
+                        VStack(alignment: .leading, spacing: 8) {
+                            labelBadge(isHe ? "שגיאת קלט סכום לא תקין" : "Amount Input Validation Error", tag: "FORM VALIDATION")
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Text("₪")
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.red)
+                                    TextField("0", text: $testAmountText)
+                                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .stroke(Color.red, lineWidth: 1.5)
+                                )
+
+                                Text(isHe ? "הסכום חייב להיות מספר חיובי הגדול מ-0" : "Amount must be a positive number greater than 0")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.red)
+                                    .padding(.horizontal, 4)
+                            }
+                        }
+
+                        Spacer(minLength: 30)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                }
+            }
+            .navigationTitle(isHe ? "מצבי שגיאה" : "Error States")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isHe ? "סגור" : "Close") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+            }
+        }
+        .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
+    }
+
+    private func labelBadge(_ text: String, tag: String) -> some View {
+        HStack {
+            Text(text)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+            Spacer()
+            Text(tag)
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .foregroundColor(Color.textMuted)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                .clipShape(Capsule())
+        }
+    }
+}
+
+// MARK: - 3. Empty States Gallery Lab
+public struct EmptyStatesLabSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+    @State private var selectedIndex = 0
+    @State private var feedbackText: String? = nil
+
+    private var isHe: Bool { l10n.language == .hebrew }
+
+    private struct EmptyStateSpec {
+        let titleHe: String
+        let titleEn: String
+        let subtitleHe: String
+        let subtitleEn: String
+        let icon: MoneyIconType
+        let actionHe: String?
+        let actionEn: String?
+        let screenTag: String
+    }
+
+    private let specs: [EmptyStateSpec] = [
+        EmptyStateSpec(
+            titleHe: "אין עדיין עסקאות החודש",
+            titleEn: "No transactions yet this month",
+            subtitleHe: "העסקאות שתקליט יקימו את המבנים והרחובות בעיר שלך.",
+            subtitleEn: "Your transactions build the structures and streets of your city.",
+            icon: .receipt,
+            actionHe: "הוסף עסקה ראשונה",
+            actionEn: "Add First Transaction",
+            screenTag: "HISTORY"
+        ),
+        EmptyStateSpec(
+            titleHe: "לא נמצאו עסקאות בסינון",
+            titleEn: "No matching transactions",
+            subtitleHe: "אין עסקאות שתואמות את הסינון או החיפוש שנבחרו.",
+            subtitleEn: "No transactions match the selected filter or search term.",
+            icon: .sliders,
+            actionHe: "אפס סינונים",
+            actionEn: "Reset Filters",
+            screenTag: "FILTERED HISTORY"
+        ),
+        EmptyStateSpec(
+            titleHe: "התמונה תתמלא עם ההוצאות",
+            titleEn: "Your spending brings the picture together",
+            subtitleHe: "כאן יופיע הפירוט לפי קטגוריות והתפלגות ההוצאות כשיירשמו עסקאות בחודש הזה.",
+            subtitleEn: "Your category breakdown will appear here when expenses are recorded this month.",
+            icon: .pieChart,
+            actionHe: nil,
+            actionEn: nil,
+            screenTag: "ANALYTICS"
+        ),
+        EmptyStateSpec(
+            titleHe: "אין עדיין יעדי חיסכון",
+            titleEn: "No savings goals yet",
+            subtitleHe: "יעד נותן סיבה לפתוח את האפליקציה גם כשלא קנית כלום.",
+            subtitleEn: "A goal gives you a reason to open the app on a day you bought nothing.",
+            icon: .target,
+            actionHe: "הגדר יעד ראשון",
+            actionEn: "Create First Goal",
+            screenTag: "GOALS & PARK"
+        ),
+        EmptyStateSpec(
+            titleHe: "אין הוצאות קבועות",
+            titleEn: "No recurring expenses",
+            subtitleHe: "הוצאות שחוזרות על עצמן מדי חודש — כמו שכירות, מנויים או חשבונות.",
+            subtitleEn: "Fixed monthly commitments such as rent, bills, or subscriptions.",
+            icon: .refresh,
+            actionHe: "הוסף הוצאה קבועה",
+            actionEn: "Add Recurring Expense",
+            screenTag: "RECURRING"
+        ),
+        EmptyStateSpec(
+            titleHe: "אין עדיין סיכומים בארכיון",
+            titleEn: "No monthly recaps yet",
+            subtitleHe: "הסיכום החודשי הראשון שלך יופיע כאן בסיום החודש הנוכחי.",
+            subtitleEn: "Your first monthly recap will appear here at the end of the month.",
+            icon: .calendar,
+            actionHe: nil,
+            actionEn: nil,
+            screenTag: "ARCHIVE"
+        )
+    ]
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        labHeader(
+                            title: isHe ? "גלריית מצבי ריקון (Empty States)" : "Empty States Gallery",
+                            subtitle: isHe
+                                ? "סקירה של כל מסכי הריקון באפליקציה לפי העיצוב המקורי של SPENT"
+                                : "Review of all branded empty screens and their call-to-action interactions",
+                            icon: .folder
+                        )
+
+                        // Selector chips
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(specs.indices, id: \.self) { idx in
+                                    let s = specs[idx]
+                                    let isSelected = selectedIndex == idx
+                                    Button(action: {
+                                        Haptics.selection()
+                                        withAnimation(.spring(response: 0.28)) {
+                                            selectedIndex = idx
+                                            feedbackText = nil
+                                        }
+                                    }) {
+                                        HStack(spacing: 6) {
+                                            MoneyIcon(s.icon, size: 14)
+                                            Text(s.screenTag)
+                                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        }
+                                        .foregroundColor(isSelected ? .white : Color.deepNavy)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(isSelected ? Color.deepNavy : Color.white)
+                                        .clipShape(Capsule())
+                                        .overlay(Capsule().stroke(Color.borderSubtle, lineWidth: isSelected ? 0 : 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 2)
+                        }
+
+                        if let feedbackText {
+                            HStack {
+                                MoneyIcon(.checkCircle, size: 14, color: Color.themeMint)
+                                Text(feedbackText)
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.themeMint)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.themeMint.opacity(0.12))
+                            .clipShape(Capsule())
+                            .transition(.scale.combined(with: .opacity))
+                        }
+
+                        // The rendered empty state container
+                        let currentSpec = specs[selectedIndex]
+                        VStack(spacing: 16) {
+                            HStack {
+                                Text(currentSpec.screenTag)
+                                    .font(.system(size: 10, weight: .black, design: .rounded))
+                                    .foregroundColor(Color.textMuted)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                                    .clipShape(Capsule())
+                                Spacer()
+                            }
+
+                            SpentEmptyState(
+                                icon: currentSpec.icon,
+                                title: isHe ? currentSpec.titleHe : currentSpec.titleEn,
+                                message: isHe ? currentSpec.subtitleHe : currentSpec.subtitleEn,
+                                actionTitle: isHe ? currentSpec.actionHe : currentSpec.actionEn,
+                                action: {
+                                    Haptics.impact(.medium)
+                                    withAnimation(.spring(response: 0.3)) {
+                                        feedbackText = isHe ? "הופעלה פעולה: \(currentSpec.actionHe ?? "")" : "Action triggered"
+                                    }
+                                }
+                            )
+                        }
+                        .padding(20)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.04), radius: 10, y: 3)
+
+                        Spacer(minLength: 30)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                }
+            }
+            .navigationTitle(isHe ? "מצבי ריקון" : "Empty States")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isHe ? "סגור" : "Close") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+            }
+        }
+        .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
+    }
+}
+
+// MARK: - 4. City Archive Lab
+public struct CityArchiveLabSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    @State private var selectedTab: Int = 0 // 0: Mock Postcard Gallery, 1: Live SwiftData Archive
+    @State private var activeMockRecap: MonthlyRecap? = nil
+
+    private var isHe: Bool { l10n.language == .hebrew }
+
+    private let mockArchivePresets: [RecapPresetItem] = [
+        RecapPresetItem(
+            id: "delivery",
+            nameHe: "עיר המשלוחים (חודש שעבר)",
+            nameEn: "Delivery Month (Last Month)",
+            subtitleHe: "רוב האוכל הגיע מ־Wolt — הרגל ברור ומזמין ניתוח",
+            subtitleEn: "Most food arrived via Wolt — a clear habit",
+            emoji: "🛵",
+            badgeColor: Color(red: 0/255, green: 194/255, blue: 232/255),
+            recap: { RecapPreviewData.delivery }
+        ),
+        RecapPresetItem(
+            id: "coffee",
+            nameHe: "עיר הקפה (לפני חודשיים)",
+            nameEn: "Coffee Month (2 Months Ago)",
+            subtitleHe: "כמעט כל יום קפה — הרגל חם וחוזר",
+            subtitleEn: "Coffee almost every day — a warm, repeated habit",
+            emoji: "☕",
+            badgeColor: Color(red: 180/255, green: 83/255, blue: 9/255),
+            recap: { RecapPreviewData.coffee }
+        ),
+        RecapPresetItem(
+            id: "richNoticed",
+            nameHe: "עיר שוקקת חיים (לפני 3 חודשים)",
+            nameEn: "Vibrant City (3 Months Ago)",
+            subtitleHe: "קניות זינקו, יום שיא וצמיחה מואצת בעיר",
+            subtitleEn: "Surging shopping, peak day and rapid city expansion",
+            emoji: "🎡",
+            badgeColor: Color(red: 8/255, green: 145/255, blue: 178/255),
+            recap: { RecapPreviewData.richNoticed }
+        ),
+        RecapPresetItem(
+            id: "normal",
+            nameHe: "חודש מאוזן ויציב (לפני 4 חודשים)",
+            nameEn: "Balanced Month (4 Months Ago)",
+            subtitleHe: "הוצאה מאוזנת ופארק ירוק ומטופח",
+            subtitleEn: "Balanced spend and a thriving green park",
+            emoji: "🌟",
+            badgeColor: Color(red: 59/255, green: 130/255, blue: 246/255),
+            recap: { RecapPreviewData.normal }
+        )
+    ]
+
+    public var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground.ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    // Mode Picker
+                    Picker("", selection: $selectedTab) {
+                        Text(isHe ? "גלויות חודשיות (Mock)" : "Postcards (Mock)").tag(0)
+                        Text(isHe ? "ארכיון מקומי (SwiftData)" : "Live Archive").tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
+
+                    if selectedTab == 0 {
+                        ScrollView(showsIndicators: false) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                labHeader(
+                                    title: isHe ? "ארכיון גלויות חודשיות" : "Monthly Postcards Archive",
+                                    subtitle: isHe
+                                        ? "צפייה בגלויות הערים של החודשים שעברו. הקש על כל גלויה להפעלת הסיפור המלא:"
+                                        : "Inspect archived monthly city postcards. Tap any card to view the full recap:",
+                                    icon: .calendar
+                                )
+
+                                ForEach(mockArchivePresets) { preset in
+                                    let recap = preset.recap()
+                                    Button(action: {
+                                        Haptics.impact(.medium)
+                                        activeMockRecap = recap
+                                    }) {
+                                        postcardRow(preset: preset, recap: recap)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .bouncyPress(scale: 0.98)
+                                }
+
+                                Spacer(minLength: 30)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 4)
+                        }
+                    } else {
+                        MonthlyRecapArchiveView()
+                    }
+                }
+            }
+            .navigationTitle(isHe ? "ארכיון עיר" : "City Archive")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(isHe ? "סגור" : "Close") { dismiss() }
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                }
+            }
+            .fullScreenCover(item: $activeMockRecap) { recap in
+                MonthlyRecapSheet(recap: recap)
+                    .environmentObject(l10n)
+            }
+        }
+        .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
+    }
+
+    private func postcardRow(preset: RecapPresetItem, recap: MonthlyRecap) -> some View {
+        let palette = ArchiveCityPalette.forDate(recap.date)
+        let isRTL = l10n.language == .hebrew
+        let monthTitle = isRTL ? recap.monthNameHe : recap.monthNameEn
+        let countText = isRTL ? "\(recap.transactionCount) עסקאות" : "\(recap.transactionCount) visits"
+        let spentText = l10n.format(amount: recap.totalSpent)
+
+        return HStack(alignment: .bottom, spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    Text("\(preset.emoji) \(monthTitle)")
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    MoneyIcon(isRTL ? .chevronLeft : .chevronRight, size: 10, color: Color.borderSubtle)
+                }
+
+                Text(isRTL ? preset.subtitleHe : preset.subtitleEn)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .lineLimit(2)
+                    .padding(.top, 4)
+
+                Spacer(minLength: 12)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(spentText)
+                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Text(countText)
+                        .font(.system(size: 10.5, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+            ArchiveCityArtwork(
+                mode: .completed(vibe: recap.cityVibe.type, seed: 42),
+                palette: palette,
+                isRTL: isRTL
+            )
+            .frame(width: 140, height: 120, alignment: .bottom)
+            .allowsHitTesting(false)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 124)
+        .background(palette.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(palette.roofPrimary.opacity(0.1), lineWidth: 1)
+        )
         .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
     }
 }

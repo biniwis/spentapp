@@ -258,7 +258,7 @@ public struct MonthlyRecapArchiveView: View {
 
 // MARK: - Curated Palette System (Rooted in SPENT Visual Language)
 
-private struct ArchiveCityPalette: Sendable {
+struct ArchiveCityPalette: Sendable {
     let cardBackground: Color
     let buildingPrimary: Color
     let buildingSecondary: Color
@@ -376,7 +376,7 @@ private struct ArchiveCityPalette: Sendable {
 
 // MARK: - Native SwiftUI City Artwork
 
-private struct ArchiveCityArtwork: View {
+struct ArchiveCityArtwork: View {
     enum Mode {
         case completed(vibe: MonthlyRecap.VibeType, seed: Int)
         case construction(seed: Int)

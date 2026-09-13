@@ -87,10 +87,15 @@ public struct CitySlot: Identifiable, Hashable, Sendable {
         if anchored.contains(defaultItemId) || anchored.contains(itemId) { return defaultItemId == itemId }
         return Self.allSlots.contains { $0.defaultItemId == itemId }
     }
+    /// Visual defaults only. Baseline city decorations must NEVER be treated as owned
+    /// inventory or claimed rewards, and must never create CityEnrichment records.
+    public static let defaultItemIds: Set<String> = Set(allSlots.map(\.defaultItemId))
+
     /// Explicit placements precede legacy/default fallbacks. Collisions use another free
     /// compatible location; earned items are never silently overwritten in the view.
     public static func resolvedPlacements(_ inventory: [CityPlacement]) -> [String: String] {
         let active = inventory.filter { $0.isApplied }
+        guard !active.isEmpty else { return [:] }
         var result: [String: String] = [:], placed = Set<String>()
         for entry in active {
             guard !placed.contains(entry.itemId), let raw = entry.slotId,

@@ -104,9 +104,18 @@ function makeLifePlace(id, variant) {
     cafeTableSet(g, 0.12, 1.02, { occupied: true, venue: id, threshold: 0.18 + variant * 0.15,
       umbrella: variant % 2 ? family.color : null, shirt: variant % 2 ? 0x507FA7 : 0xBE806D });
   }
-  const visitor = makeFigure({ shirt: family.color, bag: family.kind === "shop" ? 0xB38B58 : null });
+  const visitor = makeFigure({ appearance: buildAppearanceProfile(id + ':visitor:' + variant) });
   visitor.position.set(-0.48, 0, 0.77); visitor.rotation.y = 0.35;
   packRigidModel(visitor); g.add(visitor); bindVenueActor(visitor, id, 0.30 + variant * 0.15);
+  if (typeof registerCharacterIdle === "function") {
+    registerCharacterIdle({
+      mode: "visitor",
+      ref: visitor,
+      baseYaw: 0.35,
+      baseY: 0,
+      phase: hashCitizenKey(id + ":visitor:" + variant) % 1000
+    });
+  }
   // Separate visual instance ID from the financial destination. Never add this proxy to
   // interactiveBuildings: that is the canonical amount registry and must not double-count.
   const proxy = hitProxy(w + 0.1, 1.55, d + 0.5);
@@ -175,7 +184,7 @@ const STATIONARY_COURIER_POSITIONS = [
 const stationaryCourierPool = [];
 for (let i = 0; i < STATIONARY_COURIER_POSITIONS.length; i++) {
   const pos = STATIONARY_COURIER_POSITIONS[i];
-  const sc = makeCourier(0x45ADBD);
+  const sc = makeCourier(0x45ADBD, i);
   sc.position.set(pos.x, Y_WALK, pos.z);
   sc.rotation.y = pos.yaw;
   sc.visible = false;

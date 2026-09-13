@@ -263,7 +263,7 @@ public struct MainCityView: View {
     }
     private var weeklyRewardOptions: [ProgressRewardOption] {
         guard hasCompletedOnboarding, rewardEngine.state.pending != nil else { return [] }
-        let unlockedIds = Set(allEnrichments.map { $0.itemId })
+        let unlockedIds = Set(allEnrichments.filter { $0.isApplied }.map { $0.itemId })
         return CityProgressEngine.shared.availableWeeklyOptions(unlockedItemIds: unlockedIds)
     }
     
@@ -731,7 +731,7 @@ public struct MainCityView: View {
         }) {
             CityProgressSheet(
                 options: weeklyRewardOptions,
-                unlockedEnrichments: allEnrichments,
+                unlockedEnrichments: allEnrichments.filter { $0.isApplied },
                 rewardContext: rewardEngine.state.pending,
                 onSelectOption: { opt in
                     companionNow = Date()

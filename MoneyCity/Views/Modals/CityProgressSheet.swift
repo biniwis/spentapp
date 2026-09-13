@@ -109,9 +109,7 @@ public struct CityProgressSheet: View {
                     Text(he ? "תוספות לעיר" : "City additions").font(.largeTitle.bold())
                     Text(he ? "מדי פעם תופיע כאן תוספת חדשה." : "From time to time, someone new will arrive here.")
                         .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
-                    ForEach(CityProgressEngine.shared.allCatalogOptions.filter { option in
-                        unlockedEnrichments.contains { $0.itemId == option.id }
-                    }) { option in
+                    ForEach(renderedOwnedOptions) { option in
                         HStack(spacing: 16) {
                             hero(option, size: 52)
                             Text(title(option)).font(.headline)
@@ -135,7 +133,21 @@ public struct CityProgressSheet: View {
         } message: {
             Text(he ? "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : "Saving failed or the choice is no longer available. Please try again.")
         }
-        .onAppear { joined = previewJoined }
+        .onAppear {
+            joined = previewJoined
+            if options.isEmpty {
+                let owned = renderedOwnedOptions
+                let appliedItems = unlockedEnrichments.map { "\($0.itemId) (isApplied: \($0.isApplied))" }.joined(separator: ", ")
+                let renderedIds = owned.map(\.id).joined(separator: ", ")
+                print("[CityProgressSheet] Runtime Verification -> Total enrichments: \(unlockedEnrichments.count); Items: [\(appliedItems)]; Rendered owned IDs: [\(renderedIds)]; Visible count: \(owned.count)")
+            }
+        }
+    }
+
+    public var renderedOwnedOptions: [ProgressRewardOption] {
+        CityProgressEngine.shared.allCatalogOptions.filter { option in
+            unlockedEnrichments.contains { $0.isApplied && $0.itemId == option.id }
+        }
     }
 
     private func companionCard(_ option: ProgressRewardOption) -> some View {

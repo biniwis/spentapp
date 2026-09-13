@@ -370,7 +370,7 @@ ${threeMinJs}
         (owner || scene).add(one);
         for (let i = 0; i < meshes.length; i++) {
           meshes[i].parent.remove(meshes[i]);
-          meshes[i].geometry.dispose();
+          if (!meshes[i].geometry.userData.citizenShared) meshes[i].geometry.dispose();
         }
         saved += meshes.length - 1;
       });
@@ -383,8 +383,8 @@ ${threeMinJs}
     function packRigidModel(group) {
       const parts = [];
       group.traverse(function (o) {
-        if (!o.isMesh || Array.isArray(o.material)) return;
-        for (let p = o; p && p !== group; p = p.parent) if (p.userData.lifeActor || p.userData.rewardJoint) return;
+        if (!o.isMesh || !o.visible || Array.isArray(o.material)) return;
+        for (let p = o; p && p !== group; p = p.parent) if (!p.visible || p.userData.lifeActor || p.userData.rewardJoint) return;
         parts.push(o);
       });
       mergeStaticScenery(group, parts);
@@ -1334,16 +1334,22 @@ ${threeMinJs}
     const CITIZEN_HAIR_COLORS = [0x2B211D, 0x4A3025, 0x68452F, 0x8C5A36, 0xB57A45, 0xC9A26B];
     const CITIZEN_TOPS        = [0x66879A, 0x6E8B73, 0xB97867, 0xC19A5B, 0x756C86, 0xA56F78, 0x596F88, 0x92745B];
     const CITIZEN_BOTTOMS     = [0x39495A, 0x505760, 0x62564D, 0x405650, 0x484955, 0x746C64];
-    const CITIZEN_HAIR_STYLES = ['crop', 'short', 'bob', 'long', 'bun', 'ponytail', 'shaved'];
+    const CITIZEN_HAIR_STYLES = ['crop', 'short', 'bob', 'long', 'bun', 'ponytail', 'shaved', 'medium', 'volume', 'lowBun'];
+    // Independent dimensions, shared by both presentations. Widths are half-widths.
     const CITIZEN_BODY_PROFILES = [
-      { id: 'compact',  h: 0.95, w: 1.02 },
-      { id: 'standard', h: 1.00, w: 1.00 },
-      { id: 'tall',     h: 1.05, w: 0.98 },
-      { id: 'broad',    h: 1.00, w: 1.05 }
+      { id: 'petite',   h: .94, shoulder: .105, top: .096, waist: .080, hip: .096, torso: .248, thigh: .180, shin: .176, spacing: .052, depth: .063, head: .97 },
+      { id: 'slim',     h: 1,   shoulder: .111, top: .100, waist: .078, hip: .091, torso: .280, thigh: .205, shin: .194, spacing: .051, depth: .061, head: .98 },
+      { id: 'compact',  h: .96, shoulder: .125, top: .114, waist: .103, hip: .108, torso: .282, thigh: .175, shin: .175, spacing: .061, depth: .077, head: 1.01 },
+      { id: 'standard', h: 1,   shoulder: .120, top: .110, waist: .092, hip: .104, torso: .280, thigh: .200, shin: .190, spacing: .058, depth: .071, head: 1 },
+      { id: 'tall',     h: 1.03,shoulder: .115, top: .104, waist: .086, hip: .098, torso: .291, thigh: .225, shin: .211, spacing: .055, depth: .067, head: .99 },
+      { id: 'broad',    h: 1,   shoulder: .143, top: .132, waist: .114, hip: .115, torso: .290, thigh: .197, shin: .190, spacing: .068, depth: .083, head: 1.03 },
+      { id: 'soft',     h: .99, shoulder: .124, top: .115, waist: .106, hip: .126, torso: .272, thigh: .192, shin: .185, spacing: .068, depth: .083, head: 1.01 }
     ];
-    const CITIZEN_TOP_STYLES  = ['basic', 'jacket', 'longTop', 'looseBtm'];
+    const CITIZEN_TOP_STYLES = ['basic', 'longSleeve', 'oversized', 'hoodie', 'sweater', 'jacket', 'longTop', 'dress'];
+    const CITIZEN_BOTTOM_STYLES = ['straight', 'slim', 'wide', 'shorts', 'skirt'];
+    const CITIZEN_SHOES = ['sneaker', 'shoe', 'boot'];
     const CITIZEN_ACCESSORIES = [null, 'backpack', 'crossbody', 'tote', 'cap', 'headphones'];
-    const CAP_BLOCKED_HAIR    = { long: true, bun: true, ponytail: true };
+    const CAP_BLOCKED_HAIR    = { long: true, bun: true, ponytail: true, lowBun: true, volume: true };
     const CITIZEN_MOTION_PROFILES = [
       { id: 'relaxed', speedMult: 0.90, swing: 0.85, cadence: 0.90 },
       { id: 'normal',  speedMult: 1.00, swing: 1.00, cadence: 1.00 },
@@ -1362,10 +1368,80 @@ ${threeMinJs}
     }
     const CITIZEN_SKIN_MATS = CITIZEN_SKIN_TONES.map(function (h) { return citizenMat(h, 0.82); });
 
+    function citizenLoft(rings, segments) {
+      const n = segments || 8, vertices = [], indices = [];
+      rings.forEach(function (r) {
+        for (let i = 0; i < n; i++) {
+          const t = i * Math.PI * 2 / n;
+          vertices.push(Math.sin(t) * r[1], r[0], Math.cos(t) * r[2] + (r[3] || 0));
+        }
+      });
+      for (let j = 0; j < rings.length - 1; j++) for (let i = 0; i < n; i++) {
+        const a = j * n + i, b = j * n + (i + 1) % n;
+        indices.push(a, b, a + n, b, b + n, a + n);
+      }
+      for (let i = 1; i < n - 1; i++) {
+        indices.push(0, i + 1, i);
+        const end = (rings.length - 1) * n; indices.push(end, end + i, end + i + 1);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+      geo.setIndex(indices); geo.computeVertexNormals();
+      geo.userData.citizenShared = true;
+      return geo;
+    }
+    const citizenTorsoCache = new Map();
+    function citizenDimensions(p) {
+      const b = CITIZEN_BODY_PROFILES.find(function (b) { return b.id === p.bodyId; });
+      const f = p.presentation === 'female';
+      return { shoulder: b.shoulder * (f ? .94 : 1.04), top: b.top * (f ? .96 : 1.03),
+        waist: b.waist * (f ? .96 : 1.02), hip: b.hip * (f ? 1.06 : .98),
+        length: b.torso, thigh: b.thigh, shin: b.shin, spacing: b.spacing,
+        depth: b.depth, head: b.head };
+    }
+    function citizenTorsoGeometry(p, d) {
+      const key = p.bodyId + ':' + p.presentation + ':' + p.topStyle;
+      if (!citizenTorsoCache.has(key)) {
+        const loose = ['oversized', 'hoodie', 'jacket', 'longTop'].includes(p.topStyle);
+        const bulk = loose ? 1.10 : 1;
+        const waist = loose ? Math.max(d.waist, d.top * .96) : d.waist;
+        citizenTorsoCache.set(key, citizenLoft([
+          [-.5, d.hip * bulk, d.depth], [-.40, d.hip * bulk, d.depth * 1.02],
+          [-.05, waist * bulk, d.depth * bulk], [.32, d.top * bulk, d.depth * bulk],
+          [.46, d.shoulder * bulk, d.depth * .86], [.5, d.shoulder * .83 * bulk, d.depth * .73]
+        ]));
+      }
+      return citizenTorsoCache.get(key);
+    }
+
     // Geometry cache — created once, shared across all citizens.
     const CITIZEN_GEO = (function () {
       const HR = 0.085;
       return {
+        pelvis: citizenLoft([[-.045,.086,.055],[.015,.103,.069],[.035,.098,.065]]),
+        neck: new THREE.CylinderGeometry(.032, .037, .07, 8),
+        head: citizenLoft([[-.090,.032,.041],[-.072,.052,.055],[-.025,.072,.067],[.028,.076,.069],[.067,.063,.058],[.091,.031,.028]], 10),
+        nose: citizenLoft([[-.015,.008,.010],[.002,.014,.018],[.020,.005,.006]], 6),
+        ear: new THREE.SphereGeometry(.016, 6, 4),
+        upper: citizenLoft([[-.14,.027,.027],[-.11,.033,.031],[-.025,.036,.034],[.008,.026,.026]]),
+        forearm: citizenLoft([[-.125,.020,.019],[-.090,.024,.022],[0,.026,.025]]),
+        hand: citizenLoft([[-.030,.013,.014],[-.021,.022,.017],[.014,.021,.016],[.022,.014,.014]]),
+        thigh: citizenLoft([[-1,.032,.035],[-.84,.036,.037],[-.20,.045,.048],[0,.040,.042]]),
+        shin: citizenLoft([[-1,.024,.026],[-.70,.028,.029],[-.22,.034,.035],[0,.032,.035]]),
+        sneaker: citizenLoft([[0,.032,.062,.025],[.013,.039,.073,.029],[.033,.035,.068,.028],[.056,.027,.037,.002]]),
+        shoe: citizenLoft([[0,.031,.062,.025],[.012,.035,.068,.028],[.031,.032,.063,.027],[.049,.025,.032,0]]),
+        boot: citizenLoft([[0,.033,.063,.023],[.018,.037,.071,.027],[.038,.033,.065,.023],[.055,.026,.031,0],[.095,.027,.030,0]]),
+        sole: citizenLoft([[0,.034,.065,.025],[.010,.038,.071,.028]]),
+        hairMass: citizenLoft([[-.17,.054,.025,-.060],[-.125,.083,.040,-.048],[-.035,.091,.056,-.025],[.035,.073,.054,-.006]]),
+        hairSide: citizenLoft([[-.105,.021,.027],[-.025,.032,.042],[.040,.024,.025]]),
+        ponyMass: citizenLoft([[-.115,.015,.019,-.021],[-.065,.027,.031,-.013],[-.018,.024,.025],[.02,.016,.017]]),
+        bunMass: citizenLoft([[-.028,.014,.021],[-.013,.030,.030],[.014,.030,.026],[.030,.014,.014]]),
+        panel: new THREE.BoxGeometry(1, 1, 1),
+        hood: citizenLoft([[-.052,.037,.026],[0,.061,.045],[.044,.053,.037]]),
+        skirt: citizenLoft([[-1,.145,.088],[-.9,.146,.089],[0,.101,.069]]),
+        phone: new THREE.BoxGeometry(.038,.065,.009),
+        coffee: new THREE.CylinderGeometry(.023,.018,.058,8),
+        lid: new THREE.CylinderGeometry(.025,.025,.007,8),
         hairCrop:     new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.40),
         hairShort:    new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
         hairBobBase:  new THREE.SphereGeometry(HR * 1.03, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
@@ -1390,35 +1466,38 @@ ${threeMinJs}
       };
     })();
 
+    Object.keys(CITIZEN_GEO).forEach(function (key) { CITIZEN_GEO[key].userData.citizenShared = true; });
+
     // Hair builder — adds meshes to a torso-child group using shared geometry.
+    // Reuse bounded mesh slots: identity changes swap geometry/material, never the rig.
+    function citizenPart(grp, index, geo, material, x, y, z, sx, sy, sz) {
+      while (grp.children.length <= index) {
+        const slot = mesh(geo, material, 0, 0, 0, false, false); slot.visible = false; grp.add(slot);
+      }
+      const part = grp.children[index];
+      part.geometry = geo; part.material = material; part.visible = true;
+      part.position.set(x || 0, y || 0, z || 0); part.rotation.set(0, 0, 0);
+      part.scale.set(sx === undefined ? 1 : sx, sy === undefined ? 1 : sy, sz === undefined ? 1 : sz);
+      return part;
+    }
+    function hideCitizenParts(grp) { grp.children.forEach(function (m) { m.visible = false; }); }
     function addHairToGroup(grp, style, colorHex) {
-      const hMat = citizenMat(colorHex, 0.90);
-      const HY = 0.291, HZ = -0.004; // torso-local coords matching existing hair position
-      switch (style) {
-        case 'crop':
-          grp.add(mesh(CITIZEN_GEO.hairCrop, hMat, 0, HY, HZ, false, false)); break;
-        case 'short':
-          grp.add(mesh(CITIZEN_GEO.hairShort, hMat, 0, HY, HZ, false, false)); break;
-        case 'bob': {
-          grp.add(mesh(CITIZEN_GEO.hairBobBase, hMat, 0, HY, HZ, false, false));
-          const chunk = mesh(CITIZEN_GEO.hairBobChunk, hMat, 0, HY - 0.034, HZ - 0.072, false, false);
-          chunk.rotation.x = 0.18; grp.add(chunk); break;
-        }
-        case 'long': {
-          grp.add(mesh(CITIZEN_GEO.hairLongBase, hMat, 0, HY, HZ, false, false));
-          const ext = mesh(CITIZEN_GEO.hairLongExt, hMat, 0, HY - 0.088, HZ - 0.076, false, false);
-          ext.rotation.x = 0.28; grp.add(ext); break;
-        }
-        case 'bun':
-          grp.add(mesh(CITIZEN_GEO.hairBunBase, hMat, 0, HY, HZ, false, false));
-          grp.add(mesh(CITIZEN_GEO.hairBunKnot, hMat, 0, HY + 0.056, HZ - 0.028, false, false)); break;
-        case 'ponytail': {
-          grp.add(mesh(CITIZEN_GEO.hairPonyBase, hMat, 0, HY, HZ, false, false));
-          const tail = mesh(CITIZEN_GEO.hairPonyTail, hMat, 0, HY - 0.018, HZ - 0.090, false, false);
-          tail.rotation.x = 0.52; grp.add(tail); break;
-        }
-        case 'shaved':
-          grp.add(mesh(CITIZEN_GEO.hairShaved, hMat, 0, HY, HZ, false, false)); break;
+      hideCitizenParts(grp);
+      const m = citizenMat(colorHex, .90), G = CITIZEN_GEO;
+      const cap = style === 'shaved' ? G.hairShaved : style === 'crop' ? G.hairCrop : G.hairShort;
+      citizenPart(grp, 0, cap, m, 0, .291, -.004, 1.02, 1, 1.02);
+      if (['bob','long','medium','volume'].includes(style)) {
+        const length = style === 'long' ? 1.22 : style === 'bob' ? .65 : .91;
+        citizenPart(grp, 1, G.hairMass, m, 0, .288, -.004, style === 'volume' ? 1.12 : 1, length, 1);
+        [-1,1].forEach(function (side, i) {
+          citizenPart(grp, i + 2, G.hairSide, m, side * .067, .279, -.007, .75, length, .88);
+        });
+      } else if (style === 'bun' || style === 'lowBun') {
+        citizenPart(grp, 1, G.bunMass, m, 0, style === 'bun' ? .336 : .253, -.069, 1.05, .94, 1);
+      } else if (style === 'ponytail') {
+        citizenPart(grp, 1, G.ponyMass, m, 0, .294, -.087).rotation.x = .30;
+      } else if (style === 'short') {
+        citizenPart(grp, 1, G.hairCrop, m, -.011, .308, .016, .79, .6, .81).rotation.z = -.16;
       }
     }
 
@@ -1471,7 +1550,7 @@ ${threeMinJs}
       const hairIdx     = Math.floor(rand() * CITIZEN_HAIR_STYLES.length);
       const hairColIdx  = Math.floor(rand() * CITIZEN_HAIR_COLORS.length);
       const bodyIdx     = Math.floor(rand() * CITIZEN_BODY_PROFILES.length);
-      const topStyleIdx = Math.floor(rand() * CITIZEN_TOP_STYLES.length);
+      const topStyleIdx = Math.floor(rand() * 7.45);
       const topColIdx   = Math.floor(rand() * CITIZEN_TOPS.length);
       const btmColIdx   = Math.floor(rand() * CITIZEN_BOTTOMS.length);
       const motionIdx   = Math.floor(rand() * CITIZEN_MOTION_PROFILES.length);
@@ -1484,12 +1563,20 @@ ${threeMinJs}
         accessory = CITIZEN_ACCESSORIES[accIdx];
       }
       const body    = CITIZEN_BODY_PROFILES[bodyIdx];
+      const presentation = rand() < .5 ? 'female' : 'male';
+      const bottomStyle = CITIZEN_BOTTOM_STYLES[Math.floor(rand() * 4.18)];
+      const shoeStyle = CITIZEN_SHOES[Math.floor(rand() * 2.5)];
+      const propRoll = rand();
+      const prop = accessory ? null : propRoll < .075 ? 'phone' : propRoll < .14 ? 'coffee' : null;
+      const restPose = prop || (rand() < .25 ? 'relaxed' : 'neutral');
+      const headShape = Math.floor(rand() * 3);
       const hJitter = 1 + (rand() - 0.5) * 0.018;
       const wJitter = 1 + (rand() - 0.5) * 0.018;
       return {
         key: fullKey, skinTone: skinIdx,
         hairStyle: hairStyle, hairColor: CITIZEN_HAIR_COLORS[hairColIdx],
-        bodyId: body.id, heightScale: body.h * hJitter, widthScale: body.w * wJitter,
+        bodyId: body.id, presentation: presentation, heightScale: body.h * hJitter, widthScale: wJitter,
+        bottomStyle: bottomStyle, shoeStyle: shoeStyle, prop: prop, restPose: restPose, headShape: headShape,
         topStyle: CITIZEN_TOP_STYLES[topStyleIdx],
         topColor: CITIZEN_TOPS[topColIdx], bottomColor: CITIZEN_BOTTOMS[btmColIdx],
         accessory: accessory, motion: CITIZEN_MOTION_PROFILES[motionIdx]
@@ -1498,7 +1585,7 @@ ${threeMinJs}
 
     // Appearance signature for clone prevention.
     function appearanceSig(p) {
-      return p.hairStyle + '|' + p.skinTone + '|' + p.topColor + '|' + p.bottomColor + '|' + p.bodyId;
+      return p.presentation + '|' + p.topStyle + '|' + p.bottomStyle + '|' + p.hairStyle + '|' + p.skinTone + '|' + p.topColor + '|' + p.bottomColor + '|' + p.bodyId;
     }
 
     // Slot chooser — pure profile generation + deterministic salt-based collision avoidance.
@@ -1527,34 +1614,164 @@ ${threeMinJs}
       // Pants (thigh + shin cylinders on both legs).
       const btmMat  = citizenMat(appearance.bottomColor, 0.86);
       if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
-      // Hair.
-      if (ud.hairGrp) {
-        while (ud.hairGrp.children.length) ud.hairGrp.remove(ud.hairGrp.children[0]);
-        addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
-      }
-      // Accessory.
-      if (ud.accGrp) {
-        while (ud.accGrp.children.length) ud.accGrp.remove(ud.accGrp.children[0]);
-        addAccessoryToGroup(ud.accGrp, appearance.accessory, appearance.topColor);
-      }
-      // Clothing silhouette — clear old detail, reset body scale, apply new topStyle.
-      if (ud.clothingGrp) {
-        while (ud.clothingGrp.children.length) ud.clothingGrp.remove(ud.clothingGrp.children[0]);
-      }
-      if (ud.bodyMesh) {
-        // Reset to default scale first, then re-apply longTop stretch if needed.
-        if (appearance.topStyle === 'longTop') {
-          ud.bodyMesh.scale.set(1, 1.12, 0.64);
-        } else {
-          ud.bodyMesh.scale.set(1, 1, 0.64);
-        }
-        if (ud.clothingGrp && appearance.topStyle !== 'basic' && appearance.topStyle !== 'longTop') {
-          addClothingDetail(ud.clothingGrp, appearance.topStyle, topMat);
-        }
-      }
+      addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
+      applyCitizenDesign(record.obj, appearance);
       record.motion        = appearance.motion;
       record.appearance    = appearance;
       record.appearanceKey = appearance.key;
+    }
+
+    // All transforms derive from joint dimensions, not an overall mannequin stretch.
+    function applyCitizenDesign(fig, p) {
+      const u = fig.userData, d = citizenDimensions(p), G = CITIZEN_GEO;
+      const top = citizenMat(p.topColor, .76), bottom = citizenMat(p.bottomColor, .86);
+      const skin = CITIZEN_SKIN_MATS[p.skinTone], dark = citizenMat(0x30343A, .85);
+      const sole = citizenMat(0xB9B4A9, .88);
+      const loose = ['oversized','hoodie','jacket','longTop'].includes(p.topStyle);
+      const bulk = loose ? 1.10 : 1;
+      const thigh = d.thigh;
+      // Seat contact is fixed in world space; lower legs reach the same floor for every stature.
+      const contact = .048 * (p.bottomStyle === 'wide' ? 1.32 : p.bottomStyle === 'slim' ? .85 : 1);
+      const hip = u.seated ? u.seatHeight / p.heightScale + contact : thigh + d.shin + .050;
+      const shin = u.seated ? hip - .050 : d.shin;
+      u.dimensions = d; u.hipHeight = hip; u.shinLength = shin; u.seatContact = contact; u.appearance = p;
+      u.torso.position.set(0, hip + d.length / 2, 0);
+      u.torso.rotation.set(0, 0, 0);
+      u.bodyMesh.geometry = citizenTorsoGeometry(p, d);
+      u.bodyMesh.scale.set(1, d.length, 1);
+      const headOffset = d.length / 2 - .14;
+      const headWidth = [1,.94,1.05][p.headShape] * d.head;
+      const headHeight = [1,1.055,.97][p.headShape] * d.head;
+      u.headMesh.scale.set(headWidth, headHeight, d.head);
+      u.headMesh.position.y = .255 + headOffset;
+      u.neckMesh.position.y = .17 + headOffset;
+      u.noseMesh.position.set(0,.245 + headOffset,.077 * d.head);
+      u.noseMesh.scale.set(.8,1,.8);
+      u.hairGrp.position.y = headOffset + .255 * (1 - headHeight);
+      u.hairGrp.scale.set(headWidth, headHeight, d.head);
+      if (!u.ears) {
+        u.ears = [-1,1].map(function (side) {
+          const ear = mesh(G.ear,skin,0,0,0,false,false); u.torso.add(ear); u.skinMeshes.push(ear); return ear;
+        });
+      }
+      u.ears.forEach(function (ear,i) { ear.material = skin; ear.position.set((i ? 1 : -1) * .073 * headWidth,.25 + headOffset,0); ear.scale.set(.64,1,.7); });
+      const longSleeve = ['longSleeve','hoodie','sweater','jacket','longTop'].includes(p.topStyle);
+      [u.armL,u.armR].forEach(function (arm,i) {
+        const side = i ? 1 : -1, fore = arm.children[1];
+        arm.position.set(side * (d.shoulder * bulk + .009),d.length * .42,0);
+        arm.rotation.set(u.seated ? -.62 : 0,0,side * .055);
+        u.upperMeshes[i].position.y = 0;
+        u.upperMeshes[i].scale.set(bulk,1,bulk);
+        fore.rotation.set(u.seated ? -.8 : -.16,0,0);
+        fore.children[0].position.y = 0;
+        fore.children[0].material = longSleeve ? top : skin;
+        fore.children[0].scale.set(longSleeve ? 1.12 : 1,1,longSleeve ? 1.12 : 1);
+        fore.children[1].position.y = -.14;
+        fore.children[1].material = skin;
+      });
+      const wide = p.bottomStyle === 'wide' ? 1.32 : p.bottomStyle === 'slim' ? .85 : 1;
+      [u.legL,u.legR].forEach(function (leg,i) {
+        const knee = i ? u.kneeR : u.kneeL;
+        leg.position.set((i ? 1 : -1) * d.spacing,hip,0);
+        leg.rotation.set(u.seated ? -Math.PI / 2 : 0,0,0);
+        knee.rotation.set(u.seated ? Math.PI / 2 : 0,0,0);
+        knee.position.y = -thigh;
+        u.thighMeshes[i].position.y = 0;
+        u.thighMeshes[i].scale.set(wide,thigh,wide);
+        u.shinMeshes[i].position.y = 0;
+        u.shinMeshes[i].scale.set(wide,shin,wide);
+        u.shinMeshes[i].material = p.bottomStyle === 'shorts' ? skin : bottom;
+        const shoe = knee.children[1]; shoe.geometry = G[p.shoeStyle]; shoe.material = dark;
+        shoe.position.set(0,-shin - .050,0); shoe.scale.set(1,1,1);
+        citizenPart(knee,2,G.sole,sole,0,-shin - .050,0);
+      });
+      const c = u.clothingGrp; hideCitizenParts(c);
+      // A visible hem, articulated sleeves and open jacket panels define clothing at zoom.
+      // The two bottom rings of the torso form its hem; no floating belt mesh.
+      if (p.topStyle === 'jacket') {
+        [-1,1].forEach(function (side,i) {
+          citizenPart(c,1+i,G.panel,top,side*d.top*.50,.006,d.depth*bulk+.004,d.top*.79,d.length*.88,.014);
+          citizenPart(c,3+i,G.panel,top,side*.038,d.length*.43,d.depth*.83,.045,.049,.016).rotation.z = side*.34;
+        });
+        citizenPart(c,5,G.panel,citizenMat(0xB9B4A9,.88),0,.004,d.depth*bulk+.003,.022,d.length*.80,.011);
+      } else if (p.topStyle === 'hoodie') {
+        citizenPart(c,1,G.hood,top,0,d.length*.39,-d.depth-.009);
+      } else if (p.topStyle === 'sweater' || p.topStyle === 'longSleeve') {
+        citizenPart(c,1,G.neck,top,0,d.length*.49,0,1.22,.34,1.22);
+      }
+      const drape = p.topStyle === 'dress' || p.bottomStyle === 'skirt' || p.topStyle === 'longTop';
+      u.hasDrape = drape;
+      if (!u.pelvis) { u.pelvis = mesh(G.pelvis,bottom,0,0,0,false,false); u.torso.add(u.pelvis); }
+      u.pelvis.material = bottom; u.pelvis.position.y = -d.length/2;
+      u.pelvis.scale.set(d.hip/.103,u.seated ? contact/.045 : 1,d.depth/.069);
+      if (drape) {
+        const fabric = p.topStyle === 'dress' || p.topStyle === 'longTop' ? top : bottom;
+        citizenPart(c,6,G.skirt,fabric,0,-d.length*.43,0,d.hip/.101,.22,1).visible = !u.seated;
+        // Two overlapping cloth panels follow the thighs when seated; no rigid cone through the chair.
+        [u.legL,u.legR].forEach(function (leg) {
+          citizenPart(leg,2,G.thigh,fabric,0,0,0,1.7,thigh,1.23).visible = !!u.seated;
+        });
+      } else [u.legL,u.legR].forEach(function (leg) { if (leg.children[2]) leg.children[2].visible = false; });
+      const a = u.accGrp; hideCitizenParts(a);
+      if (p.accessory === 'backpack') {
+        citizenPart(a,0,G.accBackpackBody,dark,0,.005,-d.depth-.050,.85,.89,.85);
+        [-1,1].forEach(function (side,i) { citizenPart(a,1+i,G.accBackpackStr,dark,side*d.shoulder*.53,.02,d.depth*bulk+.01,1,1,1); });
+      } else if (p.accessory === 'crossbody' || p.accessory === 'tote') {
+        const side = p.accessory === 'tote' ? 1 : -1;
+        citizenPart(a,0,p.accessory === 'tote' ? G.accTote : G.accCrossbody,dark,side*(d.hip*bulk+.052),-.09,0,.82,.91,.85);
+        citizenPart(a,1,G.panel,dark,side*(d.hip*bulk+.031),.032,0,.012,.24,.018).rotation.z = side*.12;
+      } else if (p.accessory === 'cap') {
+        citizenPart(a,0,G.accCapDome,dark,0,.305+headOffset,0,headWidth,headHeight,d.head);
+        citizenPart(a,1,G.accCapBrim,dark,0,.305+headOffset,.083,headWidth,1,1);
+      } else if (p.accessory === 'headphones') {
+        citizenPart(a,0,G.accHpBand,dark,0,.352+headOffset,0,headWidth,1,1);
+        [-1,1].forEach(function (side,i) { citizenPart(a,i+1,G.accHpCup,dark,side*.09*headWidth,.267+headOffset,0).rotation.z = Math.PI/2; });
+      }
+      if (!u.propGrp) { u.propGrp = new THREE.Group(); u.armR.children[1].add(u.propGrp); }
+      hideCitizenParts(u.propGrp);
+      if (p.prop === 'phone') citizenPart(u.propGrp,0,G.phone,dark,0,-.148,.022).rotation.x = -.2;
+      if (p.prop === 'coffee') {
+        citizenPart(u.propGrp,0,G.coffee,citizenMat(0xD6C8AF,.85),0,-.14,.035).rotation.x = Math.PI/2;
+        citizenPart(u.propGrp,1,G.lid,sole,0,-.14,.066).rotation.x = Math.PI/2;
+      }
+      citizenRestArms(u,0);
+    }
+    function citizenRestArms(u, swing) {
+      if (!u.appearance) return;
+      const p = u.appearance;
+      u.armL.rotation.x = (u.seated ? -.62 : 0) - swing*.8;
+      u.armR.rotation.x = p.prop ? -.72 + swing*.12 : (u.seated ? -.62 : p.restPose === 'relaxed' ? -.24 : 0) + swing*.8;
+      u.armR.children[1].rotation.x = p.prop ? -.85 : u.seated ? -.8 : -.16;
+      u.armL.rotation.z = -.055; u.armR.rotation.z = .055;
+      u.torso.rotation.y = p.restPose === 'relaxed' ? .035 : 0;
+    }
+    // Allocation-free contact calculation, including the forward toe under a bent knee.
+    function citizenFootY(u, leg, knee) {
+      const a = leg.rotation.x, b = a + knee.rotation.x;
+      return leg.position.y - u.dimensions.thigh*Math.cos(a) +
+        (-u.shinLength-.050)*Math.cos(b) - .028*Math.sin(b) - .071*Math.abs(Math.sin(b));
+    }
+    function groundCitizen(c) {
+      const u = c.obj.userData;
+      if (!u.appearance) return;
+      c.obj.position.y = (c.baseY === undefined ? Y_WALK : c.baseY) -
+        Math.min(citizenFootY(u,u.legL,u.kneeL),citizenFootY(u,u.legR,u.kneeR))*c.obj.scale.y;
+    }
+    function citizenSeatBlend(c, blend) {
+      const u = c.obj.userData;
+      if (!u.appearance) { c.obj.position.y = c.baseY - .12*blend; return; }
+      const targetHip = .3275 / c.obj.scale.y + u.seatContact;
+      u.pelvis.scale.y = 1 + (u.seatContact/.045 - 1)*blend;
+      c.obj.position.y = c.baseY + (targetHip-u.hipHeight)*c.obj.scale.y*blend;
+      const shin = u.dimensions.shin + (targetHip-.05-u.dimensions.shin)*blend;
+      u.shinLength = shin;
+      u.shinMeshes[0].scale.y = u.shinMeshes[1].scale.y = shin;
+      u.kneeL.children[1].position.y = u.kneeL.children[2].position.y = -shin-.05;
+      u.kneeR.children[1].position.y = u.kneeR.children[2].position.y = -shin-.05;
+      if (u.hasDrape) {
+        u.clothingGrp.children[6].visible = blend < .5;
+        u.legL.children[2].visible = u.legR.children[2].visible = blend >= .5;
+      }
     }
 
     // Rolling window for population-level clone prevention.
@@ -1582,15 +1799,15 @@ ${threeMinJs}
       const hipY = opts.seated ? 0.29 : 0.43;
       // Joint origins, not the centres of box legs: feet stay below knees when walking.
       const torso = new THREE.Group(); torso.position.y = hipY + 0.14; fig.add(torso);
-      const bodyMesh = mesh(new THREE.CylinderGeometry(0.115, 0.092, 0.28, 8), shirt, 0, 0, 0);
+      const bodyMesh = mesh((appearance ? citizenTorsoGeometry(appearance, citizenDimensions(appearance)) : new THREE.CylinderGeometry(0.115, 0.092, 0.28, 8)), shirt, 0, 0, 0);
       if (appearance && appearance.topStyle === 'longTop') bodyMesh.scale.set(1, 1.12, 0.64);
       else bodyMesh.scale.z = 0.64;
       torso.add(bodyMesh);
-      const neckMesh = mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.07, 8), skin, 0, 0.17, 0, false, false);
+      const neckMesh = mesh((appearance ? CITIZEN_GEO.neck : new THREE.CylinderGeometry(0.034, 0.038, 0.07, 8)), skin, 0, 0.17, 0, false, false);
       torso.add(neckMesh);
-      const headMesh = mesh(new THREE.SphereGeometry(0.085, 10, 8), skin, 0, 0.255, 0.005);
+      const headMesh = mesh((appearance ? CITIZEN_GEO.head : new THREE.SphereGeometry(0.085, 10, 8)), skin, 0, 0.255, 0.005);
       headMesh.scale.set(0.88, 1.13, 0.94); torso.add(headMesh);
-      const noseMesh = mesh(new THREE.SphereGeometry(0.020, 6, 5), skin, 0, 0.245, 0.080, false, false);
+      const noseMesh = mesh((appearance ? CITIZEN_GEO.nose : new THREE.SphereGeometry(0.020, 6, 5)), skin, 0, 0.245, 0.080, false, false);
       torso.add(noseMesh);
 
       // Hair group — always a named group so it can be swapped on crowd pool reuse.
@@ -1617,10 +1834,8 @@ ${threeMinJs}
       const clothingGrp = new THREE.Group(); clothingGrp.name = 'clothing'; torso.add(clothingGrp);
 
       if (appearance) {
-        addAccessoryToGroup(accGrp, appearance.accessory, appearance.topColor);
-        if (appearance.topStyle !== 'basic' && appearance.topStyle !== 'longTop') {
-          addClothingDetail(clothingGrp, appearance.topStyle, citizenMat(appearance.topColor, 0.76));
-        }
+        // Details are configured after all joint references exist.
+
       } else if (opts.bag) {
         const bagMat = mat(opts.bag, 0.8);
         torso.add(mesh(new THREE.BoxGeometry(0.16, 0.19, 0.085), bagMat, 0, 0.01, -0.12, false, false));
@@ -1633,11 +1848,11 @@ ${threeMinJs}
       const armUpperMeshes = [], forearmSkinMeshes = [];
       function arm(side) {
         const a = new THREE.Group(); a.position.set(side * 0.132, 0.105, 0); torso.add(a);
-        const upperMesh = mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.14, 7), shirt, 0, -0.065, 0, false, false);
+        const upperMesh = mesh((appearance ? CITIZEN_GEO.upper : new THREE.CylinderGeometry(0.036, 0.028, 0.14, 7)), shirt, 0, -0.065, 0, false, false);
         a.add(upperMesh); armUpperMeshes.push(upperMesh);
         const forearm = new THREE.Group(); forearm.position.y = -0.13; forearm.rotation.x = -0.18; a.add(forearm);
-        const forearmMesh = mesh(new THREE.CylinderGeometry(0.025, 0.021, 0.13, 7), skin, 0, -0.06, 0, false, false);
-        const handMesh   = mesh(new THREE.SphereGeometry(0.027, 7, 6), skin, 0, -0.135, 0, false, false);
+        const forearmMesh = mesh((appearance ? CITIZEN_GEO.forearm : new THREE.CylinderGeometry(0.025, 0.021, 0.13, 7)), skin, 0, -0.06, 0, false, false);
+        const handMesh   = mesh((appearance ? CITIZEN_GEO.hand : new THREE.SphereGeometry(0.027, 7, 6)), skin, 0, -0.135, 0, false, false);
         forearm.add(forearmMesh); forearm.add(handMesh);
         forearmSkinMeshes.push(forearmMesh, handMesh);
         if (opts.seated) { a.rotation.x = -0.62; forearm.rotation.x = -0.8; }
@@ -1648,12 +1863,12 @@ ${threeMinJs}
       const thighMeshes = [], shinMeshes = [];
       function leg(side) {
         const l = new THREE.Group(); l.position.set(side * 0.058, hipY, 0); fig.add(l);
-        const thighMesh = mesh(new THREE.CylinderGeometry(0.043, 0.033, 0.20, 7), pants, 0, -0.10, 0, false, false);
+        const thighMesh = mesh((appearance ? CITIZEN_GEO.thigh : new THREE.CylinderGeometry(0.043, 0.033, 0.20, 7)), pants, 0, -0.10, 0, false, false);
         l.add(thighMesh); thighMeshes.push(thighMesh);
         const knee = new THREE.Group(); knee.position.y = -0.20; l.add(knee);
-        const shinMesh = mesh(new THREE.CylinderGeometry(0.034, 0.027, 0.19, 7), pants, 0, -0.095, 0, false, false);
+        const shinMesh = mesh((appearance ? CITIZEN_GEO.shin : new THREE.CylinderGeometry(0.034, 0.027, 0.19, 7)), pants, 0, -0.095, 0, false, false);
         knee.add(shinMesh); shinMeshes.push(shinMesh);
-        knee.add(mesh(new THREE.BoxGeometry(0.075, 0.052, 0.125), M_DARKFRAME, 0, -0.205, 0.028, false, false));
+        knee.add(mesh((appearance ? CITIZEN_GEO.sneaker : new THREE.BoxGeometry(0.075, 0.052, 0.125)), M_DARKFRAME, 0, -0.205, 0.028, false, false));
         if (opts.seated) { l.rotation.x = -Math.PI / 2; knee.rotation.x = Math.PI / 2; }
         return { hip: l, knee: knee };
       }
@@ -1671,13 +1886,56 @@ ${threeMinJs}
         armL: armL, armR: armR, torso: torso, body: bodyMesh,
         // Appearance refs for crowd pool reuse.
         hairGrp: hairGrp, accGrp: accGrp, clothingGrp: clothingGrp,
-        bodyMesh: bodyMesh,
+        bodyMesh: bodyMesh, seated: !!opts.seated, seatHeight: opts.seatHeight || .2725, headMesh: headMesh, noseMesh: noseMesh, neckMesh: neckMesh,
+        upperMeshes: armUpperMeshes, thighMeshes: thighMeshes, shinMeshes: shinMeshes,
         // skinMeshes: head + nose + neck + both forearms + both hands (6 total).
         skinMeshes:  [headMesh, noseMesh, neckMesh].concat(forearmSkinMeshes),
         shirtMeshes: [bodyMesh].concat(armUpperMeshes),
         pantsMeshes: thighMeshes.concat(shinMeshes)
       };
+      if (appearance) applyAppearanceToFigure({ obj: fig }, appearance);
       return fig;
+    }
+
+    // Pose variant for seated cafe / dining guests before packing
+    function applySeatedPoseVariant(figure, variant) {
+      if (!figure || !figure.userData) return;
+      const ud = figure.userData;
+      switch (variant) {
+        case "leanBack":
+          if (ud.torso) { ud.torso.rotation.x = -0.10; ud.torso.position.z = -0.02; }
+          break;
+        case "leanForward":
+          if (ud.torso) ud.torso.rotation.x = 0.12;
+          if (ud.armL) ud.armL.rotation.x = -0.75;
+          if (ud.armR) ud.armR.rotation.x = -0.75;
+          break;
+        case "turnedSlightly":
+          if (ud.torso) ud.torso.rotation.y = 0.18;
+          if (ud.armR) ud.armR.rotation.x = -0.45;
+          break;
+        case "neutral":
+        default:
+          break;
+      }
+    }
+
+    // Register micro-idle animation in animObjects (no separate rAF or timer)
+    function registerCharacterIdle(config) {
+      animObjects.push({
+        type: "character_idle",
+        mode: config.mode,
+        ref: config.ref,
+        armR: config.armR,
+        armL: config.armL,
+        torso: config.torso,
+        baseArmRX: config.baseArmRX || 0,
+        baseArmLX: config.baseArmLX || 0,
+        baseTorsoY: config.baseTorsoY || 0,
+        baseYaw: config.baseYaw !== undefined ? config.baseYaw : (config.ref ? config.ref.rotation.y : 0),
+        baseY: config.baseY !== undefined ? config.baseY : (config.ref ? config.ref.position.y : Y_WALK),
+        phase: config.phase || 0
+      });
     }
 
     function makeDog(color) {
@@ -1696,7 +1954,7 @@ ${threeMinJs}
     }
 
     // Delivery rider. The city's most recognisable everyday spend after the supermarket.
-    function makeCourier(color) {
+    function makeCourier(color, poseVariant) {
       const g = new THREE.Group();
       const body = mat(color || 0x00C2E8, 0.35, 0.35);
       g.add(mesh(roundedBox(0.95, 0.20, 0.30, 0.08), body, 0, 0.22, 0, false, false));
@@ -1706,6 +1964,13 @@ ${threeMinJs}
       g.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_WHITE, 0.38, 0.58, 0, false, false));
       // The rider uses the same human proportions and bent knees as the cafe guests.
       const rider = makeFigure({ seated: true, shirt: color || 0x00C2E8, cap: 0x155E75, hair: false });
+      if (poseVariant === 1) {
+        if (rider.userData.torso) rider.userData.torso.rotation.y = 0.24;
+      } else if (poseVariant === 2) {
+        if (rider.userData.armR) { rider.userData.armR.rotation.x = -0.75; rider.userData.armR.rotation.z = 0.22; }
+      } else if (poseVariant === 3) {
+        if (rider.userData.torso) { rider.userData.torso.rotation.z = -0.14; rider.userData.torso.rotation.x = 0.08; }
+      }
       rider.position.set(-0.06, 0.04, 0); rider.rotation.y = Math.PI / 2; g.add(rider);
       g.add(mesh(roundedBox(0.30, 0.32, 0.30, 0.04), body, -0.30, 0.58, 0, false, false));
       g.add(mesh(new THREE.BoxGeometry(0.20, 0.20, 0.02), M_WHITE, -0.30, 0.58, 0.16, false, false));
@@ -1857,10 +2122,20 @@ ${threeMinJs}
           chair.add(mesh(new THREE.BoxGeometry(0.25, 0.06, 0.03), M_WOOD, 0, y, -0.11, false, false));
         });
         if (opts.occupied) {
-          const guest = makeFigure({ seated: true, shirt: i ? 0x527FA7 : (opts.shirt || 0xE49B4D), dark: i ? !opts.dark : !!opts.dark });
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile((opts.venue || 'cafe') + ':guest:' + x + ':' + z + ':' + i) });
           guest.position.z = 0.015; chair.add(guest);
+          const seatedPoses = ["neutral", "leanBack", "leanForward", "turnedSlightly"];
+          applySeatedPoseVariant(guest, seatedPoses[i % seatedPoses.length]);
           packRigidModel(guest);
+          guest.userData.lifeActor = true;
           if (opts.venue) bindVenueActor(guest, opts.venue, (opts.threshold || 0.18) + i * 0.28);
+          registerCharacterIdle({
+            mode: "seated",
+            ref: guest,
+            baseYaw: guest.rotation.y,
+            baseY: guest.position.y,
+            phase: (hashCitizenKey((opts.venue || "cafe") + ":guest:" + i) % 1000)
+          });
         }
         g.add(mesh(new THREE.CylinderGeometry(0.063, 0.063, 0.010, 12), M_WHITE, 0.035, 0.44, side * 0.145, false, false));
         g.add(mesh(new THREE.CylinderGeometry(0.040, 0.030, 0.067, 12), M_WHITE, 0.035, 0.475, side * 0.145, false, false));
@@ -1932,10 +2207,20 @@ ${threeMinJs}
       [-0.21, 0.21].forEach(function (xx) { [-0.24, 0.24].forEach(function (zz) { g.add(mesh(new THREE.BoxGeometry(0.035, 0.42, 0.035), M_DARKFRAME, xx, 0.21, zz)); }); });
       [-1, 1].forEach(function (side) {
         if (venue) {
-          const guest = makeFigure({ seated: true, shirt: side < 0 ? 0x417BA9 : 0xBC6978, dark: side > 0 });
+          const guest = makeFigure({ seated: true, seatHeight: .2775, appearance: buildAppearanceProfile(venue + ':dining:' + x + ':' + z + ':' + side) });
           guest.position.z = side * 0.48; guest.rotation.y = side > 0 ? Math.PI : 0;
+          const seatedPoses = ["leanBack", "turnedSlightly", "leanForward", "neutral"];
+          const poseIdx = (side > 0 ? 1 : 0) + (x < 0 ? 0 : 2);
+          applySeatedPoseVariant(guest, seatedPoses[poseIdx % seatedPoses.length]);
           g.add(guest); packRigidModel(guest);
           bindVenueActor(guest, venue, (x < 0 ? 0.18 : 0.45) + (side > 0 ? 0.28 : 0));
+          registerCharacterIdle({
+            mode: "seated",
+            ref: guest,
+            baseYaw: guest.rotation.y,
+            baseY: guest.position.y,
+            phase: (hashCitizenKey(venue + ":dining:" + side + ":" + x) % 1000)
+          });
         }
         g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), M_WHITE, 0, 0.50, side * 0.19));
         g.add(mesh(new THREE.BoxGeometry(0.025, 0.015, 0.16), M_MULLION, 0.17, 0.50, side * 0.19));
@@ -2017,15 +2302,25 @@ ${threeMinJs}
         st.add(mesh(new THREE.BoxGeometry(0.24, 0.32, 0.02), mat(0x18181B, 0.8), 0, 0.25, 0, false, false));
         st.add(mesh(new THREE.BoxGeometry(0.18, 0.24, 0.025), mat(0xF59E0B, 0.5), 0, 0.25, 0, false, false));
 
-        // Fashion Shopper with branded shopping bags
-        const shopper = makeFigure({ shirt: 0x475569, dark: true });
+        // Fashion Shopper with branded shopping bags (articulated micro-idle)
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:shopper') });
         shopper.position.set(w * 0.24, 0, d / 2 + 0.60);
         shopper.rotation.y = -0.35;
         shopper.add(mesh(roundedBox(0.11, 0.15, 0.07, 0.02), bagOrange, 0.22, 0.24, 0.08, false, false));
         shopper.add(mesh(roundedBox(0.10, 0.14, 0.06, 0.02), bagBlack, -0.22, 0.22, -0.05, false, false));
         g.add(shopper);
-        packRigidModel(shopper);
         bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({
+          mode: "shopper",
+          ref: shopper,
+          torso: shopper.userData.torso,
+          armL: shopper.userData.armL,
+          armR: shopper.userData.armR,
+          baseTorsoY: 0,
+          baseArmLX: 0,
+          baseArmRX: 0,
+          phase: hashCitizenKey("shop_boutique:shopper") % 1000
+        });
       },
       shop_tech: function (g, w, d) {
         // Rooftop antenna mast with calm, slow beacon breathing pulse
@@ -2748,8 +3043,8 @@ ${threeMinJs}
     const ambientBench = addBenchAt(3.0, 1.0, -Math.PI / 2);
     (function () { const h = new THREE.Group(); h.position.set(1.9, Y_WALK, 3.8); root.add(h); trashBin(h, 0, 0); })();
 
-    // Busker by the fountain
-    const busker = makeFigure({ shirt: 0x7C3AED, pants: 0x1E293B, hair: 0x1F1207 });
+    // Busker by the fountain (ambient micro-idle)
+    const busker = makeFigure({ appearance: buildAppearanceProfile('city:busker:plaza') });
     busker.position.set(-1.8, Y_WALK, 2.5);
     busker.rotation.y = 0.9;
     root.add(busker);
@@ -2760,6 +3055,17 @@ ${threeMinJs}
       const cse = mesh(roundedBox(0.34, 0.07, 0.22, 0.03), mat(0x92400E, 0.85), -0.35, 0.04, 0.16, false, false);
       busker.add(cse);
     })();
+    registerCharacterIdle({
+      mode: "busker",
+      ref: busker,
+      armR: busker.userData.armR,
+      armL: busker.userData.armL,
+      torso: busker.userData.torso,
+      baseArmRX: 0,
+      baseArmLX: 0,
+      baseTorsoY: 0,
+      phase: hashCitizenKey("city:busker:plaza") % 1000
+    });
     const pigeons = [];
     [[-1.0, 3.2], [-0.5, 3.6], [0.4, 3.9]].forEach(function (p) {
       const pg = makePigeon(); pg.position.set(p[0], Y_WALK, p[1]); pg.rotation.y = Math.random() * 6; root.add(pg);
@@ -4904,6 +5210,7 @@ ${threeMinJs}
         if (c.kneeL) c.kneeL.rotation.x = Math.max(0, legSwing) * 0.7;
         if (c.kneeR) c.kneeR.rotation.x = Math.max(0, -legSwing) * 0.7;
         c.obj.position.y = (c.baseY || Y_WALK) + Math.abs(Math.sin(walkCycle)) * 0.018;
+        if (c.appearance) { citizenRestArms(c.obj.userData, legSwing); groundCitizen(c); }
         if (c.dog) {
           c.dog.position.set(c.obj.position.x + Math.sin(c.obj.rotation.y + 1.2) * 0.45,
                              (c.baseY || Y_WALK),
@@ -5037,6 +5344,57 @@ ${threeMinJs}
               a.ref.rotation.y = (a.baseRotY || 0) + Math.sin(now * 0.0012 + a.phase) * 0.35;
             }
             break;
+          case "character_idle": {
+            const isReduced = (typeof ambientMotion !== "undefined" && ambientMotion.matches) ||
+                              (typeof companionMotionPreference !== "undefined" && companionMotionPreference.matches);
+            const isCritical = typeof energyMode !== "undefined" && energyMode === "critical";
+            if (isReduced || isCritical) {
+              if (!a.restored) {
+                if (a.mode === "busker") {
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.armL) a.armL.rotation.x = a.baseArmLX;
+                  if (a.torso) a.torso.rotation.y = a.baseTorsoY;
+                } else if (a.mode === "shopper") {
+                  if (a.torso) a.torso.rotation.y = a.baseTorsoY;
+                  if (a.armL) a.armL.rotation.x = a.baseArmLX;
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                } else if (a.mode === "visitor" || a.mode === "seated") {
+                  if (a.ref) {
+                    a.ref.position.y = a.baseY;
+                    a.ref.rotation.y = a.baseYaw;
+                  }
+                }
+                a.restored = true;
+              }
+              break;
+            }
+            a.restored = false;
+            if (a.ref && !visibleInScene(a.ref)) break;
+
+            if (a.mode === "busker") {
+              const strum = Math.sin(now * 0.005 + a.phase);
+              if (a.armR) a.armR.rotation.x = a.baseArmRX + strum * 0.12;
+              if (a.armL) a.armL.rotation.x = a.baseArmLX + Math.sin(now * 0.002 + a.phase) * 0.02;
+              if (a.torso) a.torso.rotation.y = a.baseTorsoY + Math.sin(now * 0.0016 + a.phase) * 0.025;
+            } else if (a.mode === "shopper") {
+              const sway = Math.sin(now * 0.0014 + a.phase);
+              if (a.torso) a.torso.rotation.y = a.baseTorsoY + sway * 0.025;
+              if (a.armL) a.armL.rotation.x = a.baseArmLX + Math.sin(now * 0.0018 + a.phase) * 0.04;
+            } else if (a.mode === "visitor") {
+              const breathe = Math.sin(now * 0.002 + a.phase);
+              if (a.ref) {
+                a.ref.position.y = a.baseY + Math.abs(breathe) * 0.003;
+                a.ref.rotation.y = a.baseYaw + Math.sin(now * 0.0012 + a.phase) * 0.025;
+              }
+            } else if (a.mode === "seated") {
+              const breathe = Math.sin(now * 0.0018 + a.phase);
+              if (a.ref) {
+                a.ref.position.y = a.baseY + Math.abs(breathe) * 0.002;
+                a.ref.rotation.y = a.baseYaw + Math.sin(now * 0.001 + a.phase) * 0.02;
+              }
+            }
+            break;
+          }
         }
       }
 

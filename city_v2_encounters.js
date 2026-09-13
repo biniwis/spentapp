@@ -38,6 +38,7 @@ function ambientPose(c, age, walking) {
   if (c.armR) c.armR.rotation.set(swing * 0.8, 0, 0);
   if (c.kneeL) c.kneeL.rotation.x = Math.max(0, swing) * 0.7;
   if (c.kneeR) c.kneeR.rotation.x = Math.max(0, -swing) * 0.7;
+  if (c.appearance) { citizenRestArms(c.obj.userData, swing); groundCitizen(c); }
 }
 function ambientEligible(c) {
   return c.obj.visible && !c.dog && !c.encounter && !c.ambientHidden &&
@@ -79,7 +80,7 @@ function finishEncounter(event, cancelled) {
       c.obj.position.copy(saved.position); c.obj.rotation.y = saved.yaw;
       c.pIdx = saved.pIdx; c.t = saved.t;
     }
-    c.obj.scale.copy(saved.scale); c.ambientHidden = false; c.obj.userData.ambientHidden = false; ambientPose(c, 0, false);
+    c.obj.scale.copy(saved.scale); if (c.appearance) citizenSeatBlend(c, 0); c.ambientHidden = false; c.obj.userData.ambientHidden = false; ambientPose(c, 0, false);
     c.obj.position.y = c.baseY; c.encounter = null; c.ambientState = 'walking';
     c.encounterCooldown = CityAmbientEventSystem.clock + 45 + cityLifeRandom() * 45;
   });
@@ -124,14 +125,14 @@ function stepAmbientExcursion(event, dt) {
     if (age > 0.65) ambientPhase(event, event.kind === 'bench' ? 'sit' : 'enter');
   } else if (event.phase === 'sit') {
     const blend = Math.min(1, age / 0.6);
-    c.obj.position.y = c.baseY - 0.12 * blend;
+    citizenSeatBlend(c, blend);
     c.legL.rotation.x = c.legR.rotation.x = -Math.PI / 2 * blend;
     c.kneeL.rotation.x = c.kneeR.rotation.x = Math.PI / 2 * blend;
     c.armL.rotation.x = c.armR.rotation.x = -0.55 * blend; c.ambientState = 'sitting';
     if (age > 6) ambientPhase(event, 'stand');
   } else if (event.phase === 'stand') {
     const blend = Math.max(0, 1 - age / 0.6);
-    c.obj.position.y = c.baseY - 0.12 * blend;
+    citizenSeatBlend(c, blend);
     c.legL.rotation.x = c.legR.rotation.x = -Math.PI / 2 * blend;
     c.kneeL.rotation.x = c.kneeR.rotation.x = Math.PI / 2 * blend;
     if (age > 0.6) ambientPhase(event, 'return');

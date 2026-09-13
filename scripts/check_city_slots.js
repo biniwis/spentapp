@@ -11,7 +11,7 @@ function productionFunction(name) {
 const scope = vm.createContext({ THREE, console, Y_GRASS: 0.09, Y_WALK: 0.14,
   animObjects: [], slotGrowth: [], slotItems: {}, root: new THREE.Group(), mergeQueue: [],
   // Only canvas texture creation is mocked; production geometry and batching run intact.
-  stripedAwningTex: () => new THREE.Texture() });
+  stripedAwningTex: () => new THREE.Texture(), cityLifeRandom: () => 0.5 });
 vm.runInContext(read('city_v2_slots.js') + '\nthis.defs = SLOT_DEFS; this.aliases = SLOT_ALIASES;', scope);
 const defs = scope.defs, normalize = scope.normalizedSlotPlacements;
 const swift = read('MoneyCity/Models/CitySlot.swift');
@@ -94,7 +94,7 @@ console.log('PASS: 156 replacements, animation/growth cleanup, owned texture dis
 
 // Production companion scene, no renderer. DOM stubs only exercise welcome lifecycle.
 scope.window = { matchMedia: () => ({ matches: false }) };
-scope.currentLang = 'en'; scope.spinVel = 0; scope.tiltVel = 0; scope.pointers = new Set();
+scope.currentLang = 'en'; scope.spinVel = 0; scope.tiltVel = 0; scope.pointers = new Set(); scope.energyMode = 'full';
 scope.targetCam = { lookX: 0, lookY: 0, lookZ: 0, zoom: 1 };
 scope.document = { createElement: () => ({ setAttribute() {}, style: {}, remove() {} }), getElementById: () => ({ appendChild() {} }) };
 vm.runInContext(read('city_v2_companions.js') + '\nthis.companions = companionInstances; this.locations = COMPANION_LOCATIONS;', scope);

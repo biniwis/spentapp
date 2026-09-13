@@ -82,13 +82,26 @@ function waitingPose(front, index) {
 
 function ensureCrowdBatches() {
   if (crowdBatches.length) return;
-  [0xBD795D, 0x527DA3, 0x709068, 0xAD6D8A].forEach(function (shirt, variant) {
-    const figure = makeFigure({ shirt: shirt, dark: variant % 2 === 1, pants: 0x45536A });
-    if (variant % 2) { figure.userData.armR.rotation.x = -0.65; figure.userData.armL.rotation.z = -0.14; }
+  Array.from({ length: 8 }, function (_, i) { return i; }).forEach(function (variant) {
+    const figure = makeFigure({ appearance: buildAppearanceProfile('city:waiting:' + variant) });
+    if (variant === 1) {
+      // Variant 1: one arm bent / looking aside
+      if (figure.userData.armR) { figure.userData.armR.rotation.x = -0.65; figure.userData.armR.rotation.z = -0.14; }
+      if (figure.userData.torso) figure.userData.torso.rotation.y = 0.20;
+    } else if (variant === 2) {
+      // Variant 2: slight lean + opposite arm
+      if (figure.userData.armL) { figure.userData.armL.rotation.x = -0.55; figure.userData.armL.rotation.z = 0.18; }
+      if (figure.userData.torso) { figure.userData.torso.rotation.z = -0.06; figure.userData.torso.rotation.y = -0.15; }
+    } else if (variant === 3) {
+      // Variant 3: casual stance / weight shift
+      if (figure.userData.armR) figure.userData.armR.rotation.x = -0.30;
+      if (figure.userData.armL) figure.userData.armL.rotation.x = 0.20;
+      if (figure.userData.torso) { figure.userData.torso.rotation.z = 0.05; figure.userData.torso.rotation.x = 0.04; }
+    }
     packRigidModel(figure); figure.updateMatrixWorld(true);
     const parts = [];
     figure.traverse(function (part) {
-      if (!part.isMesh) return;
+      if (!part.isMesh || !part.visible) return;
       // Bake each prototype part once; all waiting people share its geometry/material.
       const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld);
       const batch = new THREE.InstancedMesh(geometry, part.material, CROWD_LIMITS.waiting);
@@ -97,7 +110,7 @@ function ensureCrowdBatches() {
       batch.castShadow = false; batch.receiveShadow = true;
       batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       root.add(batch); parts.push(batch);
-      part.geometry.dispose();
+      if (!part.geometry.userData.citizenShared) part.geometry.dispose();
     });
     crowdBatches.push(parts);
   });
@@ -171,9 +184,9 @@ function applyVenueCrowds() {
     for (let i = 0; i < entry.waiting; i++) waiting.push(waitingPose(CROWD_FRONTAGES[entry.id], i));
   });
   if (waiting.length) ensureCrowdBatches();
-  const counts = [0, 0, 0, 0], transform = new THREE.Object3D();
+  const counts = new Array(8).fill(0), transform = new THREE.Object3D();
   waiting.forEach(function (pose, index) {
-    const variant = index % 4;
+    const variant = hashCitizenKey('waiting:' + pose.x + ':' + pose.z) % 8;
     transform.position.set(pose.x, Y_WALK, pose.z); transform.rotation.y = pose.yaw;
     transform.scale.setScalar(0.96 + (index % 3) * 0.035); transform.updateMatrix();
     crowdBatches[variant].forEach(function (batch) { batch.setMatrixAt(counts[variant], transform.matrix); });

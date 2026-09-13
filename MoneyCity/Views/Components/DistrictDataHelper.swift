@@ -1,4 +1,34 @@
 import Foundation
+import SwiftUI
+
+/// A structured presentation item representing a district/area row in the "All City" spending breakdown.
+public struct ExpenseDistrictBreakdownItem: Identifiable, Sendable {
+    public let id: String
+    public let districtId: String?
+    public let title: String
+    public let amount: Double
+    public let percentage: Int
+    public let bgColor: Color
+    public let iconType: MoneyIconType
+
+    public init(
+        id: String,
+        districtId: String?,
+        title: String,
+        amount: Double,
+        percentage: Int,
+        bgColor: Color,
+        iconType: MoneyIconType
+    ) {
+        self.id = id
+        self.districtId = districtId
+        self.title = title
+        self.amount = amount
+        self.percentage = percentage
+        self.bgColor = bgColor
+        self.iconType = iconType
+    }
+}
 
 /// Pure functional helpers for calculating district names, totals, and building pills.
 public enum DistrictDataHelper {
@@ -10,6 +40,7 @@ public enum DistrictDataHelper {
         case "housing": return isHebrew ? "מתחם המגורים והחשבונות" : "Housing & Bills Quarter"
         case "transport": return isHebrew ? "מרכז התחבורה והרכב" : "Mobility & Transport Hub"
         case "savings": return isHebrew ? "הפארק" : "The Park"
+        case "civic": return isHebrew ? "רובע השירותים והעירייה" : "Civic & Services Hub"
         default: return isHebrew ? "רובע בעיר" : "City District"
         }
     }
@@ -31,6 +62,12 @@ public enum DistrictDataHelper {
             return h + subs
         case "transport":
             return currentCity.categoryTotals[.transport] ?? 0
+        case "civic":
+            let health = currentCity.categoryTotals[.health] ?? 0
+            let fin = currentCity.categoryTotals[.finance] ?? 0
+            let misc = (currentCity.categoryTotals[.miscellaneous] ?? 0) + (currentCity.categoryTotals[.misc] ?? 0)
+            let other = currentCity.categoryTotals[.other] ?? 0
+            return health + fin + misc + other
         case "savings":
             return currentCity.totalSavings
         default:
@@ -102,8 +139,118 @@ public enum DistrictDataHelper {
             return [
                 BuildingPillItem(id: "trans_station", title: isHe ? "תחבורה ודלק" : "Transit & Fuel", amount: tr, info: DistrictBuildingInfo(id: "trans_station", districtId: "transport", name: isHe ? "תחבורה וחניה" : "Transit & Parking", amount: tr, visitCount: transVisits, trendText: transVisits == 0 ? (isHe ? "טרם נרשמו עסקאות החודש" : "No visits this month") : (isHe ? "\(transVisits) עסקאות החודש" : "\(transVisits) visits this month")))
             ]
+        case "civic":
+            let health = currentCity.buildingTotals["health_pharmacy"] ?? (currentCity.categoryTotals[.health] ?? 0)
+            let fin = currentCity.buildingTotals["finance_bank"] ?? (currentCity.categoryTotals[.finance] ?? 0)
+            let misc = currentCity.buildingTotals["museum_curiosities"] ?? ((currentCity.categoryTotals[.miscellaneous] ?? 0) + (currentCity.categoryTotals[.misc] ?? 0))
+            let other = currentCity.buildingTotals["city_sorting_hub"] ?? (currentCity.categoryTotals[.other] ?? 0)
+            return [
+                BuildingPillItem(id: "health_pharmacy", title: isHe ? "פארם ובריאות" : "Pharmacy", amount: health, info: DistrictBuildingInfo(id: "health_pharmacy", districtId: "civic", name: isHe ? "פארם ובריאות" : "Health & Pharmacy", amount: health, visitCount: buildingVisitCount(for: "health_pharmacy", transactions: transactions), trendText: buildingTrendText(for: "health_pharmacy", transactions: transactions, language: language))),
+                BuildingPillItem(id: "finance_bank", title: isHe ? "עמלות ובנקים" : "Banking", amount: fin, info: DistrictBuildingInfo(id: "finance_bank", districtId: "civic", name: isHe ? "עמלות ובנקים" : "Banking & Fees", amount: fin, visitCount: buildingVisitCount(for: "finance_bank", transactions: transactions), trendText: buildingTrendText(for: "finance_bank", transactions: transactions, language: language))),
+                BuildingPillItem(id: "museum_curiosities", title: isHe ? "שונות" : "Miscellaneous", amount: misc, info: DistrictBuildingInfo(id: "museum_curiosities", districtId: "civic", name: isHe ? "שונות" : "Miscellaneous", amount: misc, visitCount: buildingVisitCount(for: "museum_curiosities", transactions: transactions), trendText: buildingTrendText(for: "museum_curiosities", transactions: transactions, language: language))),
+                BuildingPillItem(id: "city_sorting_hub", title: isHe ? "לא מסווג" : "Uncategorized", amount: other, info: DistrictBuildingInfo(id: "city_sorting_hub", districtId: "civic", name: isHe ? "לא מסווג" : "Uncategorized", amount: other, visitCount: buildingVisitCount(for: "city_sorting_hub", transactions: transactions), trendText: buildingTrendText(for: "city_sorting_hub", transactions: transactions, language: language)))
+            ]
         default:
             return []
+        }
+    }
+
+    /// Builds the structured expense breakdown rows for the "All City" card.
+    ///
+    /// - Strictly excludes Savings / The Park (savings is not an expense).
+    /// - Includes all non-savings spending: Food, Shopping, Housing, Transport, and Civic
+    ///   (Health, Finance, Misc, Other).
+    /// - Filters out zero-spending rows to show where money actually went.
+    /// - Guarantees: sum(amounts) == currentCity.totalSpent.
+    /// - Guarantees: sum(percentages) == 100% whenever totalSpent > 0.
+    public static func expenseBreakdown(
+        for currentCity: MonthlyCity,
+        language: AppLanguage
+    ) -> [ExpenseDistrictBreakdownItem] {
+        let totalSpent = currentCity.totalSpent
+        guard totalSpent > 0 else { return [] }
+
+        let isHe = language == .hebrew
+
+        struct Candidate {
+            let id: String
+            let districtId: String?
+            let title: String
+            let amount: Double
+            let bgColor: Color
+            let iconType: MoneyIconType
+        }
+
+        let candidates: [Candidate] = [
+            Candidate(
+                id: "food",
+                districtId: "food",
+                title: isHe ? "רובע האוכל" : "Food District",
+                amount: districtTotal(for: "food", currentCity: currentCity),
+                bgColor: Color(red: 254/255, green: 242/255, blue: 232/255),
+                iconType: .cutlery
+            ),
+            Candidate(
+                id: "shopping",
+                districtId: "shopping",
+                title: isHe ? "שדרת הקניות" : "Shopping District",
+                amount: districtTotal(for: "shopping", currentCity: currentCity),
+                bgColor: Color(red: 253/255, green: 238/255, blue: 244/255),
+                iconType: .shoppingBag
+            ),
+            Candidate(
+                id: "housing",
+                districtId: "housing",
+                title: isHe ? "מתחם המגורים" : "Housing District",
+                amount: districtTotal(for: "housing", currentCity: currentCity),
+                bgColor: Color(red: 238/255, green: 245/255, blue: 254/255),
+                iconType: .home
+            ),
+            Candidate(
+                id: "transport",
+                districtId: "transport",
+                title: isHe ? "מרכז התחבורה" : "Transport Hub",
+                amount: districtTotal(for: "transport", currentCity: currentCity),
+                bgColor: Color(red: 235/255, green: 248/255, blue: 255/255),
+                iconType: .car
+            ),
+            Candidate(
+                id: "civic",
+                districtId: "civic",
+                title: isHe ? "רובע השירותים והעירייה" : "Civic & Services Hub",
+                amount: districtTotal(for: "civic", currentCity: currentCity),
+                bgColor: Color(red: 243/255, green: 244/255, blue: 246/255),
+                iconType: .citySkyline
+            )
+        ]
+
+        // Keep only active rows with positive spend
+        let active = candidates.filter { $0.amount > 0 }
+        guard !active.isEmpty else { return [] }
+
+        // Compute exact percentages and distribute integer shares via Largest Remainder Method
+        let exactPcts = active.map { ($0.amount / totalSpent) * 100.0 }
+        var integerPcts = exactPcts.map { Int(floor($0)) }
+        var deficit = 100 - integerPcts.reduce(0, +)
+
+        let remainders = exactPcts.enumerated().map { (index: $0.offset, rem: $0.element - floor($0.element)) }
+        let sortedRemainders = remainders.sorted { $0.rem > $1.rem }
+
+        for item in sortedRemainders where deficit > 0 {
+            integerPcts[item.index] += 1
+            deficit -= 1
+        }
+
+        return active.enumerated().map { index, cand in
+            ExpenseDistrictBreakdownItem(
+                id: cand.id,
+                districtId: cand.districtId,
+                title: cand.title,
+                amount: cand.amount,
+                percentage: integerPcts[index],
+                bgColor: cand.bgColor,
+                iconType: cand.iconType
+            )
         }
     }
 }

@@ -23,38 +23,54 @@ public struct CitySpendingCard: View {
     }
 
     public var body: some View {
-        let foodAmt = (currentCity.categoryTotals[.food] ?? 0) + (currentCity.categoryTotals[.groceries] ?? 0)
-        let shopAmt = currentCity.categoryTotals[.shopping] ?? 0
-        let houseAmt = currentCity.categoryTotals[.housing] ?? 0
-        let savingsAmt = currentCity.totalSavings
         let displayTotal = max(currentCity.totalSpent, 1.0)
 
         let (badgeBg, title, subtitle, amount): (Color, String, String, Double) = {
             switch selectedDistrict {
             case "food":
+                let amt = DistrictDataHelper.districtTotal(for: "food", currentCity: currentCity)
+                let pct = currentCity.totalSpent > 0 ? Int(round((amt / displayTotal) * 100)) : 0
                 return (Color(red: 254/255, green: 242/255, blue: 232/255),
                         l10n.language == .hebrew ? "רובע האוכל" : "Food District",
-                        l10n.language == .hebrew ? "\(Int(round((foodAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((foodAmt / displayTotal) * 100)))% of spending",
-                        foodAmt)
+                        l10n.language == .hebrew ? "\(pct)% מההוצאות" : "\(pct)% of spending",
+                        amt)
             case "shopping":
+                let amt = DistrictDataHelper.districtTotal(for: "shopping", currentCity: currentCity)
+                let pct = currentCity.totalSpent > 0 ? Int(round((amt / displayTotal) * 100)) : 0
                 return (Color(red: 253/255, green: 238/255, blue: 244/255),
                         l10n.language == .hebrew ? "שדרת הקניות" : "Shopping District",
-                        l10n.language == .hebrew ? "\(Int(round((shopAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((shopAmt / displayTotal) * 100)))% of spending",
-                        shopAmt)
+                        l10n.language == .hebrew ? "\(pct)% מההוצאות" : "\(pct)% of spending",
+                        amt)
             case "housing":
+                let amt = DistrictDataHelper.districtTotal(for: "housing", currentCity: currentCity)
+                let pct = currentCity.totalSpent > 0 ? Int(round((amt / displayTotal) * 100)) : 0
                 return (Color(red: 238/255, green: 245/255, blue: 254/255),
                         l10n.language == .hebrew ? "מתחם המגורים" : "Housing District",
-                        l10n.language == .hebrew ? "\(Int(round((houseAmt / displayTotal) * 100)))% מההוצאות" : "\(Int(round((houseAmt / displayTotal) * 100)))% of spending",
-                        houseAmt)
+                        l10n.language == .hebrew ? "\(pct)% מההוצאות" : "\(pct)% of spending",
+                        amt)
+            case "transport":
+                let amt = DistrictDataHelper.districtTotal(for: "transport", currentCity: currentCity)
+                let pct = currentCity.totalSpent > 0 ? Int(round((amt / displayTotal) * 100)) : 0
+                return (Color(red: 235/255, green: 248/255, blue: 255/255),
+                        l10n.language == .hebrew ? "מרכז התחבורה" : "Transport Hub",
+                        l10n.language == .hebrew ? "\(pct)% מההוצאות" : "\(pct)% of spending",
+                        amt)
+            case "civic":
+                let amt = DistrictDataHelper.districtTotal(for: "civic", currentCity: currentCity)
+                let pct = currentCity.totalSpent > 0 ? Int(round((amt / displayTotal) * 100)) : 0
+                return (Color(red: 243/255, green: 244/255, blue: 246/255),
+                        l10n.language == .hebrew ? "רובע השירותים והעירייה" : "Civic & Services Hub",
+                        l10n.language == .hebrew ? "\(pct)% מההוצאות" : "\(pct)% of spending",
+                        amt)
             case "savings":
                 return (Color(red: 234/255, green: 248/255, blue: 240/255),
                         l10n.language == .hebrew ? "שמורת הטבע" : "Savings Sanctuary",
                         l10n.language == .hebrew ? "יעדי חיסכון והשקעות" : "Savings & Investments",
-                        savingsAmt)
+                        currentCity.totalSavings)
             default:
                 return (Color(red: 243/255, green: 244/255, blue: 246/255),
                         l10n.language == .hebrew ? "כל העיר" : "All City",
-                        l10n.language == .hebrew ? "לחץ להצגת פירוט רבעים" : "Tap for district breakdown",
+                        l10n.language == .hebrew ? "פירוט ההוצאות לפי רובע" : "Spending breakdown by district",
                         currentCity.totalSpent)
             }
         }()
@@ -85,6 +101,10 @@ public struct CitySpendingCard: View {
                         } else if selectedDistrict == "food" {
                             DistrictBistroVectorIcon(color: Color(red: 249/255, green: 115/255, blue: 22/255))
                                 .scaleEffect(0.85)
+                        } else if selectedDistrict == "transport" {
+                            MoneyIcon(.car, size: 20, color: Color(red: 14/255, green: 165/255, blue: 233/255))
+                        } else if selectedDistrict == "civic" {
+                            MoneyIcon(.citySkyline, size: 20, color: Color(red: 100/255, green: 116/255, blue: 139/255))
                         } else {
                             DistrictSkylineVectorIcon(color: Color(red: 17/255, green: 24/255, blue: 39/255))
                                 .scaleEffect(0.85)
@@ -141,13 +161,7 @@ public struct CitySpendingCard: View {
             if isDetailsExpanded {
                 Divider().background(Color.borderSubtle)
 
-                let foodAmt = (currentCity.categoryTotals[.food] ?? 0) + (currentCity.categoryTotals[.groceries] ?? 0)
-                let shopAmt = currentCity.categoryTotals[.shopping] ?? 0
-                let houseAmt = currentCity.categoryTotals[.housing] ?? 0
-                let savingsAmt = currentCity.totalSavings
-                let displayTotal = max(currentCity.totalSpent, 1.0)
-
-                if currentCity.totalSpent <= 0 && savingsAmt <= 0 {
+                if currentCity.totalSpent <= 0 {
                     HStack(spacing: 8) {
                         DistrictSkylineVectorIcon(color: Color.textMuted)
                             .frame(width: 18, height: 18)
@@ -160,51 +174,24 @@ public struct CitySpendingCard: View {
                     .padding(.vertical, 10)
                     .transition(.opacity)
                 } else {
+                    let breakdownItems = DistrictDataHelper.expenseBreakdown(for: currentCity, language: l10n.language)
                     VStack(spacing: 4) {
-                        districtRow(
-                            bgColor: Color(red: 254/255, green: 242/255, blue: 232/255),
-                            title: l10n.language == .hebrew ? "רובע האוכל" : "Food District",
-                            amount: foodAmt,
-                            percentage: Int(round((foodAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.cutlery, size: 22) }
-                        ) {
-                            onSelectDistrict("food")
-                        }
+                        ForEach(Array(breakdownItems.enumerated()), id: \.element.id) { index, item in
+                            if index > 0 {
+                                Divider().background(Color.borderSubtle)
+                            }
 
-                        Divider().background(Color.borderSubtle)
-
-                        districtRow(
-                            bgColor: Color(red: 253/255, green: 238/255, blue: 244/255),
-                            title: l10n.language == .hebrew ? "שדרת הקניות" : "Shopping Street",
-                            amount: shopAmt,
-                            percentage: Int(round((shopAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.shoppingBag, size: 22) }
-                        ) {
-                            onSelectDistrict("shopping")
-                        }
-
-                        Divider().background(Color.borderSubtle)
-
-                        districtRow(
-                            bgColor: Color(red: 238/255, green: 245/255, blue: 254/255),
-                            title: l10n.language == .hebrew ? "מתחם המגורים" : "Housing Quarter",
-                            amount: houseAmt,
-                            percentage: Int(round((houseAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.home, size: 22) }
-                        ) {
-                            onSelectDistrict("housing")
-                        }
-
-                        Divider().background(Color.borderSubtle)
-
-                        districtRow(
-                            bgColor: Color(red: 234/255, green: 248/255, blue: 240/255),
-                            title: l10n.language == .hebrew ? "שמורת הטבע (חיסכון)" : "Savings Sanctuary",
-                            amount: savingsAmt,
-                            percentage: Int(round((savingsAmt / displayTotal) * 100)),
-                            icon: { MoneyIcon(.leaf, size: 22) }
-                        ) {
-                            onSelectDistrict("savings")
+                            districtRow(
+                                bgColor: item.bgColor,
+                                title: item.title,
+                                amount: item.amount,
+                                percentage: item.percentage,
+                                icon: { MoneyIcon(item.iconType, size: 22) }
+                            ) {
+                                if let dist = item.districtId {
+                                    onSelectDistrict(dist)
+                                }
+                            }
                         }
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))

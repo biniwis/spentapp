@@ -47,6 +47,7 @@ public func districtToCategory(_ dist: String) -> SpendingCategory {
     case "housing": return .housing
     case "savings": return .savings
     case "transport": return .transport
+    case "civic": return .other
     default: return .other
     }
 }

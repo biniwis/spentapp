@@ -56,11 +56,7 @@ public struct CityDistrictSelector: View {
         .padding(.vertical, 8)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(MoneyCityTheme.borderSubtle, lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.06), radius: 12, x: 0, y: 3)
+        .shadow(color: Color.black.opacity(0.045), radius: 14, x: 0, y: 3)
         .padding(.horizontal, 16)
     }
 

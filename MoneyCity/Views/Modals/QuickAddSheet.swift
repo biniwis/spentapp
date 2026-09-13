@@ -38,6 +38,7 @@ public struct QuickAddSheet: View {
 
     @Environment(\.modelContext) private var modelContext
     @FocusState private var isAmountFocused: Bool
+    @FocusState private var isNoteFocused: Bool
     
     private func parseAmount(_ text: String) -> Double? {
         let clean = text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -48,6 +49,7 @@ public struct QuickAddSheet: View {
 
     private func dismissKeyboard() {
         isAmountFocused = false
+        isNoteFocused = false
         #if os(iOS)
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         #endif
@@ -94,6 +96,9 @@ public struct QuickAddSheet: View {
     }
 
     private func handleKeypadPress(_ key: String) {
+        if isNoteFocused {
+            dismissKeyboard()
+        }
         if key == "⌫" {
             Haptics.impact(.medium)
             if !amountText.isEmpty {
@@ -140,10 +145,15 @@ public struct QuickAddSheet: View {
     public var body: some View {
         NavigationStack {
             ZStack {
-                Color.appBackground.ignoresSafeArea()
+                Color.appBackground
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        dismissKeyboard()
+                    }
 
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 0) {
                         // ── 1. Hero Amount Display (Reference: ₪0.00 with cursor) ──
                         HStack(alignment: .center, spacing: 6) {
                             Menu {
@@ -199,7 +209,7 @@ public struct QuickAddSheet: View {
                         .environment(\.layoutDirection, .leftToRight)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 10)
-                        .padding(.bottom, 6)
+                        .padding(.bottom, 12)
 
                         // Currency switcher pill if foreign
                         if selectedCurrency != l10n.baseCurrency, let val = parseAmount(amountText), val > 0 {
@@ -211,6 +221,7 @@ public struct QuickAddSheet: View {
                             }
                             .environment(\.layoutDirection, .leftToRight)
                             .foregroundColor(Color.themeMint)
+                            .padding(.bottom, 8)
                         }
 
                         // ── 2. Built-in Numeric Keypad (Reference Screen 5) ──
@@ -218,140 +229,55 @@ public struct QuickAddSheet: View {
                             .environment(\.layoutDirection, .leftToRight)
                             .padding(.horizontal, 20)
 
-                        // ── 3. Meta Rows (Merchant, Category, Date) ── Grouped Clean White Card
-                        VStack(spacing: 0) {
-                            // Merchant Input Row
-                            HStack(spacing: 12) {
-                                MoneyIcon(.pencil, size: 18)
-                                    .frame(width: 24)
+                        // ── 3. Category Cluster (Category + Subcategory Chips) ──
+                        categoryClusterSection
+                            .padding(.top, 18)
 
-                                TextField(l10n.language == .hebrew ? "בית עסק / תיאור" : "Merchant", text: $note)
-                                    .font(.system(size: 15, weight: .medium, design: .default))
-                                    .foregroundColor(Color.deepNavy)
-                            }
-                            .padding(.horizontal, 16)
-                            .frame(height: 52)
+                        // ── 4. Merchant Field ──
+                        merchantField
+                            .padding(.top, 14)
 
-                            Divider()
-                                .padding(.horizontal, 16)
-                                .opacity(0.5)
+                        // ── 5. Secondary Utility Row (Date + More Options) ──
+                        utilityRow
+                            .padding(.top, 10)
 
-                            // Category Selector Row
-                            Button(action: {
-                                categoryPickerSubcategoryCategory = nil
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    showCategoryPickerSheet.toggle()
-                                }
-                            }) {
-                                HStack(spacing: 12) {
-                                    if let cat = selectedCategory {
-                                        ZStack {
-                                            Circle()
-                                                .fill(cat.softBackgroundColor)
-                                                .frame(width: 32, height: 32)
-                                            CategoryVectorIcon(category: cat, size: 20)
-                                        }
-                                    } else {
-                                        Circle()
-                                            .fill(MoneyCityTheme.warmCream)
-                                            .frame(width: 32, height: 32)
-                                            .overlay(
-                                                MoneyIcon(.bookmark, size: 16)
-                                            )
-                                    }
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(l10n.language == .hebrew ? "קטגוריה" : "Category")
-                                            .font(.system(size: 15, weight: .medium, design: .default))
-                                            .foregroundColor(Color.deepNavy)
-
-                                        if let bId = selectedBuildingId, let b = CityBuilding.find(id: bId), selectedCategory != nil {
-                                            Text(b.displayName(for: l10n.language))
-                                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                                .foregroundColor(selectedCategory?.themeColor ?? Color.textMuted)
-                                        }
-                                    }
-
-                                    Spacer()
-
-                                    HStack(spacing: 4) {
-                                        Text(selectedCategory?.displayName ?? (l10n.language == .hebrew ? "בחר ∨" : "Select ∨"))
-                                            .font(.system(size: 14, weight: .semibold, design: .default))
-                                            .foregroundColor(selectedCategory != nil ? Color.deepNavy : Color.textMuted)
-
-                                        MoneyIcon(.chevronDown, size: 11)
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                                .frame(height: 52)
-                                .contentShape(Rectangle())
-                            }
-                            .bouncyPress(scale: 0.98)
-
-                            Divider()
-                                .padding(.horizontal, 16)
-                                .opacity(0.5)
-
-                            // Date Row
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3)) {
-                                    showDatePicker.toggle()
-                                }
-                            }) {
-                                HStack(spacing: 12) {
-                                    MoneyIcon(.calendar, size: 18)
-                                        .frame(width: 24)
-
-                                    Text(formattedDateString(transactionDate))
-                                        .font(.system(size: 15, weight: .medium, design: .default))
-                                        .foregroundColor(Color.deepNavy)
-
-                                    Spacer()
-                                }
-                                .padding(.horizontal, 16)
-                                .frame(height: 52)
-                                .contentShape(Rectangle())
-                            }
-                            .bouncyPress(scale: 0.98)
-
-                            if showDatePicker {
-                                Divider()
-                                    .padding(.horizontal, 16)
-                                    .opacity(0.5)
-
-                                DatePicker("", selection: $transactionDate, displayedComponents: [.date, .hourAndMinute])
-                                    .datePickerStyle(.graphical)
-                                    .padding(12)
-                                    .transition(.opacity)
-                            }
-                        }
-                        .background(Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                        .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
-                        .padding(.horizontal, 20)
-
-                        // Dynamic Building Chips
-                        if let cat = selectedCategory {
-                            let buildings = CityBuilding.buildings(for: cat)
-                            if buildings.count > 1 {
-                                buildingChipsSection(cat: cat, buildings: buildings)
-                            }
+                        if showDatePicker {
+                            DatePicker("", selection: $transactionDate, displayedComponents: [.date, .hourAndMinute])
+                                .datePickerStyle(.graphical)
+                                .padding(12)
+                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .shadow(color: Color.black.opacity(0.025), radius: 6, y: 1.5)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 8)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
-                        // Installment options toggle
-                        expandableMoreOptionsSection
+                        if showAdvancedOptions {
+                            expandableMoreOptionsSection
+                                .padding(.horizontal, 20)
+                                .padding(.top, 8)
+                        }
 
-                        // ── 4. Save Button (Solid Black Rounded Button) ──
+                        // ── 6. Save Button (Solid Black Rounded Button) ──
                         saveTransactionButton
+                            .padding(.top, 18)
 
-                        Spacer(minLength: 20)
+                        Spacer(minLength: 24)
                     }
                     .padding(.vertical, 8)
+                    .frame(maxWidth: .infinity)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        if isNoteFocused {
+                            dismissKeyboard()
+                        }
+                    }
                 }
+                .scrollDismissesKeyboard(.immediately)
 
                 // Modal Popup Overlay for Category Selection (fast popup, no page scrolling)
                 if showCategoryPickerSheet {
-                    Color.black.opacity(0.35)
+                    Color.black.opacity(0.28)
                         .ignoresSafeArea()
                         .onTapGesture {
                             withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
@@ -361,7 +287,7 @@ public struct QuickAddSheet: View {
                         .transition(.opacity)
 
                     categoryPickerModalView
-                        .transition(.scale(scale: 0.92).combined(with: .opacity))
+                        .transition(.scale(scale: 0.94).combined(with: .opacity))
                         .zIndex(100)
                 }
             }
@@ -440,7 +366,7 @@ public struct QuickAddSheet: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .frame(height: 50)
+        .frame(height: 56)
         .contentShape(Rectangle())
     }
 
@@ -457,273 +383,494 @@ public struct QuickAddSheet: View {
         }
     }
 
-    // MARK: - Dynamic Building Chips (Prominent & Clean, No Circle Stroke)
+    // MARK: - Dynamic Building Chips (Inside Category Cluster)
     @ViewBuilder @MainActor
-    private func buildingChipsSection(cat: SpendingCategory, buildings: [CityBuilding]) -> some View {
+    private func buildingChipsRow(cat: SpendingCategory, buildings: [CityBuilding]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 9) {
+            HStack(spacing: 8) {
                 ForEach(buildings) { b in
                     let isBSelected = (selectedBuildingId == b.id)
                     Button(action: {
+                        dismissKeyboard()
                         Haptics.selection()
                         withAnimation(.spring(response: 0.25)) {
                             selectedBuildingId = b.id
                         }
                     }) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             Circle()
-                                .fill(isBSelected ? cat.themeColor.opacity(0.18) : cat.softBackgroundColor)
-                                .frame(width: 30, height: 30)
+                                .fill(isBSelected ? cat.themeColor.opacity(0.18) : cat.softBackgroundColor.opacity(0.70))
+                                .frame(width: 26, height: 26)
                                 .overlay(
-                                    MoneyIcon(b.iconType, size: 18)
+                                    MoneyIcon(b.iconType, size: 15)
                                 )
 
                             Text(b.displayName(for: l10n.language))
-                                .font(.system(size: 13, weight: isBSelected ? .bold : .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: isBSelected ? .bold : .medium, design: .rounded))
+                                .fixedSize(horizontal: true, vertical: false)
                                 .foregroundColor(isBSelected ? cat.themeColor : Color.deepNavy)
                         }
                         .padding(.leading, 6)
-                        .padding(.trailing, 14)
-                        .padding(.vertical, 8)
-                        .background(isBSelected ? cat.softBackgroundColor.opacity(0.5) : Color.white)
+                        .padding(.trailing, 12)
+                        .padding(.vertical, 6)
+                        .background(isBSelected ? Color.white : Color.white.opacity(0.90))
                         .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(isBSelected ? cat.themeColor.opacity(0.40) : Color.borderSubtle, lineWidth: isBSelected ? 1.2 : 1)
-                        )
-                        .shadow(color: Color.black.opacity(isBSelected ? 0.08 : 0.04), radius: isBSelected ? 5 : 3, y: 1.5)
+                        .overlay {
+                            if isBSelected {
+                                Capsule()
+                                    .stroke(cat.themeColor.opacity(0.35), lineWidth: 1)
+                            }
+                        }
+                        .shadow(color: Color.black.opacity(isBSelected ? 0.05 : 0.02), radius: isBSelected ? 3 : 1.5, y: 1)
                     }
                     .bouncyPress(scale: 0.95)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
         }
-        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
-    // MARK: - Category Picker Popup Modal (2-Step Flow, Clean Circles Without Strokes)
+    // MARK: - Category Picker Popup Modal (Responsive Content Height)
     @ViewBuilder @MainActor
     private var categoryPickerModalView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 0) {
             if let pendingCat = categoryPickerSubcategoryCategory {
-                // ── STEP 2: Choose Building / Subcategory ──
-                let buildings = CityBuilding.buildings(for: pendingCat)
-
-                // Header: Back Button + Category Title + Close
-                HStack(spacing: 8) {
-                    Button(action: {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            categoryPickerSubcategoryCategory = nil
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: l10n.language == .hebrew ? "chevron.right" : "chevron.left")
-                                .font(.system(size: 12, weight: .bold))
-                            Text(l10n.language == .hebrew ? "קטגוריות" : "Categories")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        }
-                        .foregroundColor(Color.deepNavy)
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer()
-
-                    Text(pendingCat.displayName(for: l10n.language))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    Spacer()
-
-                    Button(action: {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            categoryPickerSubcategoryCategory = nil
-                            showCategoryPickerSheet = false
-                        }
-                    }) {
-                        MoneyIcon(.xmarkCircle, size: 22, color: Color.deepNavy)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 4)
-
-                // Buildings List
-                VStack(spacing: 8) {
-                    ForEach(buildings) { b in
-                        let isSelected = (selectedBuildingId == b.id && selectedCategory == pendingCat)
-                        Button(action: {
-                            Haptics.selection()
-                            selectedCategory = pendingCat
-                            selectedBuildingId = b.id
-                            showErrorHint = false
-                            isAmountFocused = false
-                            withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
-                                categoryPickerSubcategoryCategory = nil
-                                showCategoryPickerSheet = false
-                            }
-                        }) {
-                            HStack(spacing: 12) {
-                                Circle()
-                                    .fill(isSelected ? pendingCat.themeColor.opacity(0.18) : pendingCat.softBackgroundColor)
-                                    .frame(width: 40, height: 40)
-                                    .overlay(
-                                        MoneyIcon(b.iconType, size: 22)
-                                    )
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(b.displayName(for: l10n.language))
-                                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                                        .foregroundColor(isSelected ? pendingCat.themeColor : Color.deepNavy)
-
-                                    Text(b.description(for: l10n.language))
-                                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                                        .foregroundColor(Color.textSecondary)
-                                        .lineLimit(1)
-                                }
-
-                                Spacer()
-
-                                if isSelected {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(pendingCat.themeColor)
-                                }
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
-                            .background(isSelected ? pendingCat.softBackgroundColor.opacity(0.4) : Color(red: 248/255, green: 249/255, blue: 251/255))
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(isSelected ? pendingCat.themeColor.opacity(0.5) : Color.borderSubtle.opacity(0.6), lineWidth: 1)
-                            )
-                            .shadow(color: isSelected ? pendingCat.themeColor.opacity(0.12) : Color.clear, radius: 5, y: 2)
-                        }
-                        .bouncyPress(scale: 0.96)
-                    }
-                }
+                subcategoryPickerContent(for: pendingCat)
             } else {
-                // ── STEP 1: Choose Category Grid ──
-                HStack {
-                    Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    Spacer()
-
-                    Button(action: {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
-                            showCategoryPickerSheet = false
-                        }
-                    }) {
-                        MoneyIcon(.xmarkCircle, size: 22, color: Color.deepNavy)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 4)
-
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(allCategories) { cat in
-                        let isSelected = selectedCategory == cat
-                        Button(action: {
-                            Haptics.selection()
-                            let available = CityBuilding.buildings(for: cat)
-                            if available.count > 1 {
-                                withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) {
-                                    categoryPickerSubcategoryCategory = cat
-                                }
-                            } else {
-                                selectedCategory = cat
-                                selectedBuildingId = available.first?.id
-                                showErrorHint = false
-                                isAmountFocused = false
-                                withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
-                                    showCategoryPickerSheet = false
-                                }
-                            }
-                        }) {
-                            VStack(spacing: 8) {
-                                Circle()
-                                    .fill(isSelected ? cat.themeColor.opacity(0.18) : cat.softBackgroundColor)
-                                    .frame(width: 48, height: 48)
-                                    .overlay(
-                                        CategoryVectorIcon(
-                                            category: cat,
-                                            size: 26
-                                        )
-                                    )
-                                
-                                Text(cat.shortName)
-                                    .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
-                                    .foregroundColor(isSelected ? cat.themeColor : Color.deepNavy)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(isSelected ? cat.softBackgroundColor.opacity(0.4) : Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(isSelected ? cat.themeColor.opacity(0.5) : Color.borderSubtle.opacity(0.8), lineWidth: 1)
-                            )
-                            .shadow(color: isSelected ? cat.themeColor.opacity(0.15) : Color.black.opacity(0.02), radius: 5, y: 2)
-                        }
-                        .bouncyPress(scale: 0.94)
-                    }
-                }
+                primaryCategoryPickerContent
             }
         }
         .padding(20)
         .background(Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: Color.black.opacity(0.12), radius: 24, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.09), radius: 24, y: 10)
+        .frame(maxWidth: 420)
         .padding(.horizontal, 20)
     }
 
-    // MARK: - 3. Expandable More Options (Note, Installments)
+    // MARK: - Step 1: Primary Categories = Vertical Fast-Scan Navigation List
+    @ViewBuilder @MainActor
+    private var primaryCategoryPickerContent: some View {
+        VStack(spacing: 16) {
+            // Header: Editorial Title + Close Button
+            HStack {
+                Text(l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+
+                Spacer()
+
+                Button(action: {
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        showCategoryPickerSheet = false
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(width: 32, height: 32)
+                        .background(Color.black.opacity(0.05), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.92)
+                .accessibilityLabel(l10n.language == .hebrew ? "סגור" : "Close")
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 2)
+
+            // Scrollable Vertical Category List (Fast navigation scanning, capped at max height)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 8) {
+                    ForEach(allCategories) { cat in
+                        primaryCategoryRow(for: cat)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .frame(maxHeight: min(UIScreen.main.bounds.height * 0.78, 580))
+    }
+
+    @ViewBuilder @MainActor
+    private func primaryCategoryRow(for cat: SpendingCategory) -> some View {
+        Button(action: {
+            Haptics.selection()
+            let available = CityBuilding.buildings(for: cat)
+            if available.count > 1 {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                    categoryPickerSubcategoryCategory = cat
+                }
+            } else {
+                selectedCategory = cat
+                selectedBuildingId = available.first?.id
+                showErrorHint = false
+                isAmountFocused = false
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                    showCategoryPickerSheet = false
+                }
+            }
+        }) {
+            HStack(spacing: 16) {
+                Circle()
+                    .fill(cat.softBackgroundColor)
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        CategoryVectorIcon(
+                            category: cat,
+                            size: 24
+                        )
+                    )
+
+                Text(cat.displayName(for: l10n.language))
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Spacer()
+
+                Image(systemName: l10n.language == .hebrew ? "chevron.left" : "chevron.right")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(Color.deepNavy.opacity(0.20))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(minHeight: 64)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+            )
+            .shadow(
+                color: Color.black.opacity(0.02),
+                radius: 2,
+                y: 1
+            )
+        }
+        .bouncyPress(scale: 0.98)
+        .accessibilityLabel(cat.displayName(for: l10n.language))
+    }
+
+    // MARK: - Step 2: Subcategories = 2-Column Large Tactile Cards with Subtitle (Snug Height)
+    @ViewBuilder @MainActor
+    private func subcategoryPickerContent(for pendingCat: SpendingCategory) -> some View {
+        let buildings = CityBuilding.buildings(for: pendingCat)
+
+        VStack(spacing: 16) {
+            // Header: Back Button + Category Title + Close Button
+            HStack(spacing: 8) {
+                Button(action: {
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                        categoryPickerSubcategoryCategory = nil
+                    }
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: l10n.language == .hebrew ? "chevron.right" : "chevron.left")
+                            .font(.system(size: 12, weight: .bold))
+                        Text(l10n.language == .hebrew ? "קטגוריות" : "Categories")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(Color.deepNavy.opacity(0.70))
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.94)
+
+                Spacer()
+
+                Text(pendingCat.displayName(for: l10n.language))
+                    .font(.system(size: 19, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.80)
+
+                Spacer()
+
+                Button(action: {
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        categoryPickerSubcategoryCategory = nil
+                        showCategoryPickerSheet = false
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(width: 32, height: 32)
+                        .background(Color.black.opacity(0.05), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.92)
+                .accessibilityLabel(l10n.language == .hebrew ? "סגור" : "Close")
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 2)
+
+            // Dynamic 2-Column Grid: Snug intrinsic height (no excess empty space)
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: 12),
+                    GridItem(.flexible(), spacing: 12)
+                ],
+                spacing: 12
+            ) {
+                ForEach(buildings) { b in
+                    subcategoryTile(for: b, in: pendingCat)
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    @ViewBuilder @MainActor
+    private func subcategoryTile(for b: CityBuilding, in cat: SpendingCategory) -> some View {
+        let isSelected = (selectedBuildingId == b.id && selectedCategory == cat)
+        Button(action: {
+            Haptics.selection()
+            selectedCategory = cat
+            selectedBuildingId = b.id
+            showErrorHint = false
+            isAmountFocused = false
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                categoryPickerSubcategoryCategory = nil
+                showCategoryPickerSheet = false
+            }
+        }) {
+            VStack(spacing: 8) {
+                Circle()
+                    .fill(isSelected ? cat.themeColor.opacity(0.18) : cat.softBackgroundColor)
+                    .frame(width: 44, height: 44)
+                    .overlay(
+                        MoneyIcon(b.iconType, size: 22)
+                    )
+
+                VStack(spacing: 3) {
+                    Text(b.displayName(for: l10n.language))
+                        .font(.system(size: 16.5, weight: isSelected ? .bold : .semibold, design: .rounded))
+                        .foregroundColor(isSelected ? cat.themeColor : Color.deepNavy)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+
+                    Text(b.description(for: l10n.language))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 128)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 10)
+            .background(
+                isSelected
+                    ? cat.softBackgroundColor.opacity(0.35)
+                    : Color.white
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        isSelected
+                            ? cat.themeColor.opacity(0.55)
+                            : Color.black.opacity(0.04),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            )
+            .overlay(alignment: .topTrailing) {
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(cat.themeColor)
+                        .padding(8)
+                }
+            }
+            .shadow(
+                color: isSelected
+                    ? cat.themeColor.opacity(0.12)
+                    : Color.black.opacity(0.03),
+                radius: isSelected ? 8 : 4,
+                y: 2
+            )
+        }
+        .bouncyPress(scale: 0.95)
+        .accessibilityLabel("\(b.displayName(for: l10n.language)), \(b.description(for: l10n.language))")
+    }
+
+    // MARK: - Category Cluster Section (Prominent Unified Cluster)
+    private var categoryClusterSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Category row button
+            Button(action: {
+                dismissKeyboard()
+                Haptics.impact(.light)
+                categoryPickerSubcategoryCategory = nil
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                    showCategoryPickerSheet.toggle()
+                }
+            }) {
+                VStack(alignment: .leading, spacing: 6) {
+                    // Small secondary label
+                    Text(l10n.language == .hebrew ? "קטגוריה" : "Category")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+
+                    // Icon + Category Name + tight attached Chevron
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(selectedCategory?.softBackgroundColor ?? MoneyCityTheme.warmCream)
+                            .frame(width: 38, height: 38)
+                            .overlay {
+                                if let cat = selectedCategory {
+                                    CategoryVectorIcon(category: cat, size: 22)
+                                } else {
+                                    MoneyIcon(.bookmark, size: 18)
+                                }
+                            }
+
+                        Text(selectedCategory?.displayName(for: l10n.language) ?? (l10n.language == .hebrew ? "בחר קטגוריה" : "Select Category"))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color.deepNavy.opacity(0.40))
+                            .padding(.leading, 2)
+
+                        Spacer()
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .bouncyPress(scale: 0.98)
+
+            // Subcategory / Building Chips directly underneath (no divider!)
+            if let cat = selectedCategory {
+                let buildings = CityBuilding.buildings(for: cat)
+                if buildings.count > 1 {
+                    buildingChipsRow(cat: cat, buildings: buildings)
+                        .padding(.top, 2)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(MoneyCityTheme.warmCream.opacity(0.65))
+        )
+        .shadow(color: Color.black.opacity(0.02), radius: 6, y: 1.5)
+        .padding(.horizontal, 20)
+    }
+
+    // MARK: - Merchant / Note Field
+    private var merchantField: some View {
+        HStack(spacing: 10) {
+            MoneyIcon(.pencil, size: 14, color: Color.textSecondary.opacity(0.65))
+            TextField(l10n.language == .hebrew ? "בית עסק / תיאור" : "Merchant / Description", text: $note)
+                .font(.system(size: 15, weight: .medium, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+                .focused($isNoteFocused)
+                .submitLabel(.done)
+                .onSubmit {
+                    dismissKeyboard()
+                }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .frame(minHeight: 50)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white)
+                .shadow(color: Color.black.opacity(0.025), radius: 6, y: 1.5)
+        )
+        .padding(.horizontal, 20)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isNoteFocused = true
+        }
+    }
+
+    // MARK: - Utility Row (Date + More Options)
+    private var utilityRow: some View {
+        HStack(spacing: 10) {
+            dateButton
+            moreOptionsButton
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var dateButton: some View {
+        Button(action: {
+            dismissKeyboard()
+            withAnimation(.spring(response: 0.3)) {
+                showDatePicker.toggle()
+            }
+        }) {
+            HStack(spacing: 5) {
+                MoneyIcon(.calendar, size: 12, color: showDatePicker ? Color.deepNavy : Color.textSecondary)
+                Text(formattedDateString(transactionDate))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(showDatePicker ? Color.deepNavy : Color.textSecondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(showDatePicker ? Color.black.opacity(0.07) : Color.black.opacity(0.03))
+            )
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.96)
+    }
+
+    private var moreOptionsButton: some View {
+        Button(action: {
+            dismissKeyboard()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                showAdvancedOptions.toggle()
+            }
+        }) {
+            HStack(spacing: 5) {
+                MoneyIcon(showAdvancedOptions ? .chevronUp : .plusCircle, size: 12, color: showAdvancedOptions ? Color.deepNavy : Color.textSecondary)
+                Text(showAdvancedOptions
+                     ? (l10n.language == .hebrew ? "הסתר אפשרויות" : "Hide options")
+                     : (l10n.language == .hebrew ? "אפשרויות נוספות" : "More options")
+                )
+                .font(.system(size: 12, weight: .medium, design: .rounded))
+                .foregroundColor(showAdvancedOptions ? Color.deepNavy : Color.textSecondary)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(showAdvancedOptions ? Color.black.opacity(0.07) : Color.black.opacity(0.03))
+            )
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.96)
+    }
+
+    // MARK: - 3. Expandable More Options (Installments)
     @ViewBuilder @MainActor
     private var expandableMoreOptionsSection: some View {
         VStack(spacing: 8) {
-            Button(action: {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                    showAdvancedOptions.toggle()
-                }
-            }) {
-                HStack(spacing: 6) {
-                    MoneyIcon(showAdvancedOptions ? .chevronUp : .plusCircle, size: 14)
-                    Text(showAdvancedOptions
-                         ? (l10n.language == .hebrew ? "הסתר אפשרויות נוספות" : "Hide additional options")
-                         : (l10n.language == .hebrew ? "＋ אפשרויות נוספות (הערה, תשלומים)" : "＋ Additional options (note, installments)")
-                    )
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                }
-                .foregroundColor(Color.primaryBlue)
-                .padding(.vertical, 4)
-            }
-            
             if showAdvancedOptions {
                 VStack(spacing: 8) {
-                    // Note Field
-                    HStack(spacing: 8) {
-                        NoteVectorIcon(color: Color.textMuted)
-                        TextField(l10n.language == .hebrew ? "שם בית העסק / הערה (אופציונלי)" : "Note / Merchant name (optional)", text: $note)
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
-                    
                     // Installments Selector Card
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -765,7 +912,6 @@ public struct QuickAddSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
                 }
-                .padding(.horizontal, 20)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
@@ -777,6 +923,7 @@ public struct QuickAddSheet: View {
         let parsed = parseAmount(amountText)
         let canSave = (parsed ?? 0) > 0 && selectedCategory != nil
         Button(action: {
+            dismissKeyboard()
             if let cat = selectedCategory {
                 submit(category: cat)
             } else {
@@ -785,12 +932,12 @@ public struct QuickAddSheet: View {
             }
         }) {
             HStack(spacing: 8) {
-                MoneyIcon(.checkCircle, size: 20)
-                    .opacity(canSave ? 1.0 : 0.45)
+                MoneyIcon(.checkCircle, size: 20, color: canSave ? Color.white : Color.white.opacity(0.60))
+                    .opacity(canSave ? 1.0 : 0.60)
                 Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Transaction")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
-            .foregroundColor(canSave ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.40))
+            .foregroundColor(canSave ? Color.white : Color.white.opacity(0.60))
             .frame(maxWidth: .infinity)
             .frame(height: 52)
             .background(
@@ -946,3 +1093,9 @@ private struct SaveButtonInteractiveStyle: ButtonStyle {
             .animation(.spring(response: 0.16, dampingFraction: 0.65), value: configuration.isPressed)
     }
 }
+
+#Preview("Quick Add Sheet") {
+    QuickAddSheet { _, _, _, _, _, _, _ in }
+        .environmentObject(LocalizationManager.shared)
+}
+

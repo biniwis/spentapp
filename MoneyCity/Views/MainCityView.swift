@@ -1441,6 +1441,8 @@ public struct MainCityView: View {
                 case "housing": return tx.category == .housing || tx.category == .subscriptions
                 case "savings": return tx.category == .savings
                 case "transport": return tx.category == .transport
+                case "civic":
+                    return tx.category == .health || tx.category == .finance || tx.category == .miscellaneous || tx.category == .misc || tx.category == .other || tx.buildingId == "health_pharmacy" || tx.buildingId == "finance_bank" || tx.buildingId == "museum_curiosities" || tx.buildingId == "city_sorting_hub"
                 default: return true
                 }
             }

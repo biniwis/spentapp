@@ -381,6 +381,7 @@ ${threeMinJs}
     // Batch only rigid models in their own local space. Tier visibility and moving people
     // keep their original groups; a whole car or table can move without separate prop draws.
     function packRigidModel(group) {
+      if (group && group.userData && group.userData.lifeActor) return group;
       const parts = [];
       group.traverse(function (o) {
         if (!o.isMesh || !o.visible || Array.isArray(o.material)) return;
@@ -1922,19 +1923,40 @@ ${threeMinJs}
 
     // Register micro-idle animation in animObjects (no separate rAF or timer)
     function registerCharacterIdle(config) {
+      const ref = config.ref;
+      const ud = (ref && ref.userData) ? ref.userData : {};
+      const armR = config.armR || ud.armR || null;
+      const armL = config.armL || ud.armL || null;
+      const torso = config.torso || ud.torso || null;
+      const forearmR = config.forearmR || (armR && armR.children && armR.children[1] ? armR.children[1] : null);
+      const forearmL = config.forearmL || (armL && armL.children && armL.children[1] ? armL.children[1] : null);
       animObjects.push({
         type: "character_idle",
         mode: config.mode,
-        ref: config.ref,
-        armR: config.armR,
-        armL: config.armL,
-        torso: config.torso,
-        baseArmRX: config.baseArmRX || 0,
-        baseArmLX: config.baseArmLX || 0,
-        baseTorsoY: config.baseTorsoY || 0,
-        baseYaw: config.baseYaw !== undefined ? config.baseYaw : (config.ref ? config.ref.rotation.y : 0),
-        baseY: config.baseY !== undefined ? config.baseY : (config.ref ? config.ref.position.y : Y_WALK),
-        phase: config.phase || 0
+        ref: ref,
+        rider: config.rider || ud.rider || null,
+        armR: armR,
+        armL: armL,
+        torso: torso,
+        forearmR: forearmR,
+        forearmL: forearmL,
+        baseArmRX: config.baseArmRX !== undefined ? config.baseArmRX : (armR ? armR.rotation.x : 0),
+        baseArmRZ: config.baseArmRZ !== undefined ? config.baseArmRZ : (armR ? armR.rotation.z : 0.055),
+        baseArmLX: config.baseArmLX !== undefined ? config.baseArmLX : (armL ? armL.rotation.x : 0),
+        baseArmLZ: config.baseArmLZ !== undefined ? config.baseArmLZ : (armL ? armL.rotation.z : -0.055),
+        baseForearmRX: config.baseForearmRX !== undefined ? config.baseForearmRX : (forearmR ? forearmR.rotation.x : -0.18),
+        baseForearmLX: config.baseForearmLX !== undefined ? config.baseForearmLX : (forearmL ? forearmL.rotation.x : -0.18),
+        baseTorsoY: config.baseTorsoY !== undefined ? config.baseTorsoY : (torso ? torso.rotation.y : 0),
+        baseTorsoX: config.baseTorsoX !== undefined ? config.baseTorsoX : (torso ? torso.rotation.x : 0),
+        baseTorsoZ: config.baseTorsoZ !== undefined ? config.baseTorsoZ : (torso ? torso.rotation.z : 0),
+        baseYaw: config.baseYaw !== undefined ? config.baseYaw : (ref ? ref.rotation.y : 0),
+        basePitch: config.basePitch !== undefined ? config.basePitch : (ref ? ref.rotation.x : 0),
+        baseRoll: config.baseRoll !== undefined ? config.baseRoll : (ref ? ref.rotation.z : 0),
+        baseY: config.baseY !== undefined ? config.baseY : (ref ? ref.position.y : Y_WALK),
+        baseX: config.baseX !== undefined ? config.baseX : (ref ? ref.position.x : 0),
+        baseZ: config.baseZ !== undefined ? config.baseZ : (ref ? ref.position.z : 0),
+        phase: config.phase || 0,
+        subType: config.subType !== undefined ? config.subType : (Math.abs(config.phase || 0) % 4)
       });
     }
 
@@ -1964,6 +1986,7 @@ ${threeMinJs}
       g.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_WHITE, 0.38, 0.58, 0, false, false));
       // The rider uses the same human proportions and bent knees as the cafe guests.
       const rider = makeFigure({ seated: true, shirt: color || 0x00C2E8, cap: 0x155E75, hair: false });
+      rider.userData.lifeActor = true;
       if (poseVariant === 1) {
         if (rider.userData.torso) rider.userData.torso.rotation.y = 0.24;
       } else if (poseVariant === 2) {
@@ -1980,6 +2003,7 @@ ${threeMinJs}
       });
       // Traffic headings assume +z is forward, while the scooter is authored along +x.
       const vehicle = new THREE.Group(); g.rotation.y = -Math.PI / 2; vehicle.add(g);
+      vehicle.userData = { rider: rider, scooter: g };
       return packRigidModel(vehicle);
     }
 
@@ -2126,15 +2150,16 @@ ${threeMinJs}
           guest.position.z = 0.015; chair.add(guest);
           const seatedPoses = ["neutral", "leanBack", "leanForward", "turnedSlightly"];
           applySeatedPoseVariant(guest, seatedPoses[i % seatedPoses.length]);
-          packRigidModel(guest);
           guest.userData.lifeActor = true;
+          packRigidModel(guest);
           if (opts.venue) bindVenueActor(guest, opts.venue, (opts.threshold || 0.18) + i * 0.28);
           registerCharacterIdle({
             mode: "seated",
             ref: guest,
             baseYaw: guest.rotation.y,
             baseY: guest.position.y,
-            phase: (hashCitizenKey((opts.venue || "cafe") + ":guest:" + i) % 1000)
+            phase: (hashCitizenKey((opts.venue || "cafe") + ":guest:" + i) % 1000),
+            subType: i
           });
         }
         g.add(mesh(new THREE.CylinderGeometry(0.063, 0.063, 0.010, 12), M_WHITE, 0.035, 0.44, side * 0.145, false, false));
@@ -2212,6 +2237,7 @@ ${threeMinJs}
           const seatedPoses = ["leanBack", "turnedSlightly", "leanForward", "neutral"];
           const poseIdx = (side > 0 ? 1 : 0) + (x < 0 ? 0 : 2);
           applySeatedPoseVariant(guest, seatedPoses[poseIdx % seatedPoses.length]);
+          guest.userData.lifeActor = true;
           g.add(guest); packRigidModel(guest);
           bindVenueActor(guest, venue, (x < 0 ? 0.18 : 0.45) + (side > 0 ? 0.28 : 0));
           registerCharacterIdle({
@@ -2219,7 +2245,8 @@ ${threeMinJs}
             ref: guest,
             baseYaw: guest.rotation.y,
             baseY: guest.position.y,
-            phase: (hashCitizenKey(venue + ":dining:" + side + ":" + x) % 1000)
+            phase: (hashCitizenKey(venue + ":dining:" + side + ":" + x) % 1000),
+            subType: side > 0 ? 1 : 0
           });
         }
         g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), M_WHITE, 0, 0.50, side * 0.19));
@@ -5154,6 +5181,7 @@ ${threeMinJs}
       stepPlantings(dt);
       stepRising(dt);
       stepCrews(dt, now);
+      if (typeof stepWaitingQueues === "function") stepWaitingQueues(now);
       for (let i = 0; i < pigeons.length; i++) {
         const pg = pigeons[i];
         pg.obj.position.y = Y_WALK + Math.max(0, Math.sin(now * 0.0011 + pg.phase) - 0.86) * 1.6;
@@ -5350,19 +5378,14 @@ ${threeMinJs}
             const isCritical = typeof energyMode !== "undefined" && energyMode === "critical";
             if (isReduced || isCritical) {
               if (!a.restored) {
-                if (a.mode === "busker") {
-                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
-                  if (a.armL) a.armL.rotation.x = a.baseArmLX;
-                  if (a.torso) a.torso.rotation.y = a.baseTorsoY;
-                } else if (a.mode === "shopper") {
-                  if (a.torso) a.torso.rotation.y = a.baseTorsoY;
-                  if (a.armL) a.armL.rotation.x = a.baseArmLX;
-                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
-                } else if (a.mode === "visitor" || a.mode === "seated") {
-                  if (a.ref) {
-                    a.ref.position.y = a.baseY;
-                    a.ref.rotation.y = a.baseYaw;
-                  }
+                if (a.armR) a.armR.rotation.set(a.baseArmRX, 0, a.baseArmRZ !== undefined ? a.baseArmRZ : 0.055);
+                if (a.armL) a.armL.rotation.set(a.baseArmLX, 0, a.baseArmLZ !== undefined ? a.baseArmLZ : -0.055);
+                if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX !== undefined ? a.baseForearmRX : -0.18;
+                if (a.forearmL) a.forearmL.rotation.x = a.baseForearmLX !== undefined ? a.baseForearmLX : -0.18;
+                if (a.torso) a.torso.rotation.set(a.baseTorsoX !== undefined ? a.baseTorsoX : 0, a.baseTorsoY, a.baseTorsoZ !== undefined ? a.baseTorsoZ : 0);
+                if (a.ref) {
+                  a.ref.position.set(a.baseX !== undefined ? a.baseX : a.ref.position.x, a.baseY, a.baseZ !== undefined ? a.baseZ : a.ref.position.z);
+                  a.ref.rotation.set(a.basePitch !== undefined ? a.basePitch : 0, a.baseYaw, a.baseRoll !== undefined ? a.baseRoll : 0);
                 }
                 a.restored = true;
               }
@@ -5371,26 +5394,303 @@ ${threeMinJs}
             a.restored = false;
             if (a.ref && !visibleInScene(a.ref)) break;
 
+            function ease(val) { const c = Math.max(0, Math.min(1, val)); return c * c * (3 - 2 * c); }
+
             if (a.mode === "busker") {
-              const strum = Math.sin(now * 0.005 + a.phase);
-              if (a.armR) a.armR.rotation.x = a.baseArmRX + strum * 0.12;
-              if (a.armL) a.armL.rotation.x = a.baseArmLX + Math.sin(now * 0.002 + a.phase) * 0.02;
-              if (a.torso) a.torso.rotation.y = a.baseTorsoY + Math.sin(now * 0.0016 + a.phase) * 0.025;
+              const cycle = ((now * 0.001 + a.phase * 0.01) % 10.0);
+              const baselineStrum = Math.sin(now * 0.005 + a.phase) * 0.04;
+              const baselineTorso = Math.sin(now * 0.0016 + a.phase) * 0.02;
+
+              if (cycle < 4.2) {
+                // Phrase 1: Active rhythmic strumming across guitar strings
+                const pTime = cycle;
+                const stroke = Math.sin(pTime * 15.0);
+                const downbeat = Math.sin(pTime * 3.75) * 0.08;
+                const armLift = -0.42 + stroke * 0.28;
+                if (a.armR) {
+                  a.armR.rotation.x = a.baseArmRX + armLift;
+                  a.armR.rotation.z = (a.baseArmRZ || 0.055) + 0.12 + stroke * 0.05;
+                }
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18) + stroke * 0.24;
+                if (a.armL) a.armL.rotation.x = a.baseArmLX + Math.sin(pTime * 4.0) * 0.08;
+                if (a.torso) {
+                  a.torso.rotation.y = a.baseTorsoY + Math.sin(pTime * 3.75) * 0.12;
+                  a.torso.rotation.z = (a.baseTorsoZ || 0) + 0.06 + downbeat;
+                }
+              } else if (cycle < 6.0) {
+                // Pause 1: Stop, look out toward the plaza/fountain
+                const pauseT = ease((cycle - 4.2) / 0.6);
+                const returnT = ease((6.0 - cycle) / 0.4);
+                const blend = Math.min(pauseT, returnT);
+                if (a.armR) {
+                  a.armR.rotation.x = a.baseArmRX - 0.22 * blend + baselineStrum;
+                  a.armR.rotation.z = (a.baseArmRZ || 0.055);
+                }
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18);
+                if (a.torso) {
+                  a.torso.rotation.y = a.baseTorsoY + 0.24 * blend + baselineTorso;
+                  a.torso.rotation.z = a.baseTorsoZ || 0;
+                }
+              } else if (cycle < 8.8) {
+                // Phrase 2: Second energetic strumming phrase
+                const pTime = cycle - 6.0;
+                const stroke = Math.sin(pTime * 17.5);
+                const armLift = -0.46 + stroke * 0.32;
+                if (a.armR) {
+                  a.armR.rotation.x = a.baseArmRX + armLift;
+                  a.armR.rotation.z = (a.baseArmRZ || 0.055) + 0.14 + stroke * 0.06;
+                }
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18) + stroke * 0.26;
+                if (a.armL) a.armL.rotation.x = a.baseArmLX - Math.sin(pTime * 4.5) * 0.07;
+                if (a.torso) {
+                  a.torso.rotation.y = a.baseTorsoY - Math.sin(pTime * 4.0) * 0.14;
+                  a.torso.rotation.z = (a.baseTorsoZ || 0) + 0.07;
+                }
+              } else {
+                // Pause 2 before loop restarts
+                if (a.armR) a.armR.rotation.x = a.baseArmRX + baselineStrum;
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18);
+                if (a.torso) a.torso.rotation.y = a.baseTorsoY + baselineTorso;
+              }
+            } else if (a.mode === "seated") {
+              const cycle = ((now * 0.001 + a.phase * 0.01) % 18.0);
+              const role = a.subType % 4;
+              const breathe = Math.sin(now * 0.0018 + a.phase);
+              if (a.ref) {
+                a.ref.position.y = a.baseY + Math.abs(breathe) * 0.002;
+                a.ref.rotation.y = a.baseYaw + Math.sin(now * 0.001 + a.phase) * 0.015;
+              }
+
+              if (role === 0) {
+                // Role 0: Sip coffee -> look at street -> rest
+                if (cycle >= 4.0 && cycle < 9.0) {
+                  let sipProgress;
+                  if (cycle < 5.5) sipProgress = ease((cycle - 4.0) / 1.5);
+                  else if (cycle < 7.5) sipProgress = 1.0;
+                  else sipProgress = ease((9.0 - cycle) / 1.5);
+                  if (a.armR) {
+                    a.armR.rotation.x = a.baseArmRX + (-0.75 * sipProgress);
+                    a.armR.rotation.z = (a.baseArmRZ || 0.055) + 0.18 * sipProgress;
+                  }
+                  if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.8) - 0.45 * sipProgress;
+                  if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) - 0.08 * sipProgress;
+                } else if (cycle >= 12.0 && cycle < 16.0) {
+                  let lookProgress;
+                  if (cycle < 13.0) lookProgress = ease((cycle - 12.0) / 1.0);
+                  else if (cycle < 15.0) lookProgress = 1.0;
+                  else lookProgress = ease((16.0 - cycle) / 1.0);
+                  if (a.torso) a.torso.rotation.y = (a.baseTorsoY || 0) + 0.32 * lookProgress;
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX || -0.8;
+                } else {
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX || -0.8;
+                  if (a.torso) {
+                    a.torso.rotation.x = a.baseTorsoX || 0;
+                    a.torso.rotation.y = a.baseTorsoY || 0;
+                  }
+                }
+              } else if (role === 1) {
+                // Role 1: Conversational turn & gesture
+                if (cycle >= 3.5 && cycle < 10.5) {
+                  let talkProgress;
+                  if (cycle < 5.0) talkProgress = ease((cycle - 3.5) / 1.5);
+                  else if (cycle < 9.0) talkProgress = 1.0;
+                  else talkProgress = ease((10.5 - cycle) / 1.5);
+                  const gesture = talkProgress > 0.8 ? Math.sin((cycle - 5.0) * 4.0) * 0.14 : 0;
+                  if (a.torso) {
+                    a.torso.rotation.y = (a.baseTorsoY || 0) + (a.subType === 0 ? 0.30 : -0.30) * talkProgress;
+                    a.torso.rotation.x = (a.baseTorsoX || 0) + 0.10 * talkProgress;
+                  }
+                  if (a.armR) {
+                    a.armR.rotation.x = a.baseArmRX - 0.28 * talkProgress + gesture;
+                    a.armR.rotation.z = (a.baseArmRZ || 0.055) + 0.20 * talkProgress;
+                  }
+                } else {
+                  if (a.torso) {
+                    a.torso.rotation.y = a.baseTorsoY || 0;
+                    a.torso.rotation.x = a.baseTorsoX || 0;
+                  }
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                }
+              } else if (role === 2) {
+                // Role 2: Phone check
+                if (cycle >= 4.5 && cycle < 10.5) {
+                  let phoneProgress;
+                  if (cycle < 6.0) phoneProgress = ease((cycle - 4.5) / 1.5);
+                  else if (cycle < 9.0) phoneProgress = 1.0;
+                  else phoneProgress = ease((10.5 - cycle) / 1.5);
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.55 * phoneProgress;
+                  if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.8) - 0.38 * phoneProgress;
+                  if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) + 0.10 * phoneProgress;
+                } else {
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX || -0.8;
+                  if (a.torso) a.torso.rotation.x = a.baseTorsoX || 0;
+                }
+              } else {
+                // Role 3: Engaged lean forward -> stretch back
+                if (cycle >= 4.0 && cycle < 9.0) {
+                  let leanProgress;
+                  if (cycle < 5.5) leanProgress = ease((cycle - 4.0) / 1.5);
+                  else if (cycle < 7.5) leanProgress = 1.0;
+                  else leanProgress = ease((9.0 - cycle) / 1.5);
+                  if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) + 0.16 * leanProgress;
+                  if (a.armL) a.armL.rotation.x = a.baseArmLX - 0.15 * leanProgress;
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.15 * leanProgress;
+                } else if (cycle >= 12.0 && cycle < 16.0) {
+                  let leanBack;
+                  if (cycle < 13.5) leanBack = ease((cycle - 12.0) / 1.5);
+                  else if (cycle < 14.5) leanBack = 1.0;
+                  else leanBack = ease((16.0 - cycle) / 1.5);
+                  if (a.torso) {
+                    a.torso.rotation.x = (a.baseTorsoX || 0) - 0.12 * leanBack;
+                    a.torso.rotation.y = (a.baseTorsoY || 0) + 0.22 * leanBack;
+                  }
+                } else {
+                  if (a.torso) {
+                    a.torso.rotation.x = a.baseTorsoX || 0;
+                    a.torso.rotation.y = a.baseTorsoY || 0;
+                  }
+                  if (a.armL) a.armL.rotation.x = a.baseArmLX;
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                }
+              }
             } else if (a.mode === "shopper") {
-              const sway = Math.sin(now * 0.0014 + a.phase);
-              if (a.torso) a.torso.rotation.y = a.baseTorsoY + sway * 0.025;
-              if (a.armL) a.armL.rotation.x = a.baseArmLX + Math.sin(now * 0.0018 + a.phase) * 0.04;
+              const cycle = ((now * 0.001 + a.phase * 0.01) % 18.0);
+              const baselineSway = Math.sin(now * 0.0014 + a.phase) * 0.025;
+
+              if (cycle < 5.0) {
+                // Examine showcase window
+                const tProg = ease(Math.min(cycle / 1.5, (5.0 - cycle) / 1.5));
+                if (a.torso) {
+                  a.torso.rotation.y = a.baseTorsoY + 0.34 * tProg + baselineSway;
+                  a.torso.rotation.x = 0.08 * tProg;
+                }
+                if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.20 * tProg;
+              } else if (cycle >= 6.5 && cycle < 11.0) {
+                // Look out toward street
+                const tProg = ease(Math.min((cycle - 6.5) / 1.5, (11.0 - cycle) / 1.5));
+                if (a.torso) a.torso.rotation.y = a.baseTorsoY - 0.38 * tProg + baselineSway;
+                if (a.armL) a.armL.rotation.x = a.baseArmLX - 0.28 * tProg;
+              } else if (cycle >= 12.0 && cycle < 15.5) {
+                // Phone check
+                const tProg = ease(Math.min((cycle - 12.0) / 1.2, (15.5 - cycle) / 1.2));
+                if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.85 * tProg;
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18) - 0.65 * tProg;
+                if (a.torso) a.torso.rotation.x = 0.08 * tProg;
+              } else {
+                if (a.torso) { a.torso.rotation.y = a.baseTorsoY + baselineSway; a.torso.rotation.x = 0; }
+                if (a.armL) a.armL.rotation.x = a.baseArmLX;
+                if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX || -0.18;
+              }
             } else if (a.mode === "visitor") {
+              const cycle = ((now * 0.001 + a.phase * 0.01) % 16.0);
               const breathe = Math.sin(now * 0.002 + a.phase);
               if (a.ref) {
                 a.ref.position.y = a.baseY + Math.abs(breathe) * 0.003;
                 a.ref.rotation.y = a.baseYaw + Math.sin(now * 0.0012 + a.phase) * 0.025;
               }
-            } else if (a.mode === "seated") {
-              const breathe = Math.sin(now * 0.0018 + a.phase);
-              if (a.ref) {
-                a.ref.position.y = a.baseY + Math.abs(breathe) * 0.002;
-                a.ref.rotation.y = a.baseYaw + Math.sin(now * 0.001 + a.phase) * 0.02;
+
+              if (cycle < 4.5) {
+                // Examine entrance & menu
+                const tProg = ease(Math.min(cycle / 1.5, (4.5 - cycle) / 1.5));
+                if (a.torso) {
+                  a.torso.rotation.y = (a.baseTorsoY || 0) + 0.35 * tProg;
+                  a.torso.rotation.x = (a.baseTorsoX || 0) - 0.08 * tProg;
+                }
+                if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.40 * tProg;
+              } else if (cycle >= 6.5 && cycle < 10.5) {
+                // Turn to look at street
+                const tProg = ease(Math.min((cycle - 6.5) / 1.5, (10.5 - cycle) / 1.5));
+                if (a.torso) a.torso.rotation.y = (a.baseTorsoY || 0) - 0.32 * tProg;
+                if (a.armL) a.armL.rotation.x = a.baseArmLX - 0.25 * tProg;
+              } else if (cycle >= 11.5 && cycle < 14.5) {
+                // Check phone
+                const tProg = ease(Math.min((cycle - 11.5) / 1.0, (14.5 - cycle) / 1.0));
+                if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.75 * tProg;
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18) - 0.55 * tProg;
+              } else {
+                if (a.torso) {
+                  a.torso.rotation.y = a.baseTorsoY || 0;
+                  a.torso.rotation.x = a.baseTorsoX || 0;
+                }
+                if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                if (a.armL) a.armL.rotation.x = a.baseArmLX;
+                if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX || -0.18;
+              }
+            } else if (a.mode === "courier") {
+              const cycle = ((now * 0.001 + a.phase * 0.01) % 20.0);
+              const courierIdx = a.subType % 4;
+
+              if (courierIdx === 0) {
+                if (cycle >= 5.0 && cycle < 9.5) {
+                  const tProg = ease(Math.min((cycle - 5.0) / 1.5, (9.5 - cycle) / 1.5));
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.85 * tProg;
+                  if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) + 0.18 * tProg;
+                } else if (cycle >= 12.0 && cycle < 16.0) {
+                  const tProg = ease(Math.min((cycle - 12.0) / 1.2, (16.0 - cycle) / 1.2));
+                  if (a.torso) a.torso.rotation.y = (a.baseTorsoY || 0) + 0.36 * tProg;
+                } else {
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.torso) { a.torso.rotation.x = a.baseTorsoX || 0; a.torso.rotation.y = a.baseTorsoY || 0; }
+                }
+              } else if (courierIdx === 1) {
+                if (cycle >= 4.5 && cycle < 9.0) {
+                  const tProg = ease(Math.min((cycle - 4.5) / 1.5, (9.0 - cycle) / 1.5));
+                  if (a.ref) a.ref.rotation.z = (a.baseRoll || 0) + 0.08 * tProg;
+                  if (a.torso) a.torso.rotation.z = (a.baseTorsoZ || 0) - 0.06 * tProg;
+                } else if (cycle >= 11.0 && cycle < 15.5) {
+                  const tProg = ease(Math.min((cycle - 11.0) / 1.5, (15.5 - cycle) / 1.5));
+                  if (a.torso) a.torso.rotation.y = (a.baseTorsoY || 0) - 0.38 * tProg;
+                  if (a.ref) a.ref.rotation.z = a.baseRoll || 0;
+                } else {
+                  if (a.ref) a.ref.rotation.z = a.baseRoll || 0;
+                  if (a.torso) { a.torso.rotation.z = a.baseTorsoZ || 0; a.torso.rotation.y = a.baseTorsoY || 0; }
+                }
+              } else if (courierIdx === 2) {
+                if (cycle >= 6.0 && cycle < 10.5) {
+                  const tProg = ease(Math.min((cycle - 6.0) / 1.5, (10.5 - cycle) / 1.5));
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.35 * tProg;
+                  if (a.armL) a.armL.rotation.x = a.baseArmLX - 0.35 * tProg;
+                  if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) + 0.16 * tProg;
+                } else {
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.armL) a.armL.rotation.x = a.baseArmLX;
+                  if (a.torso) a.torso.rotation.x = a.baseTorsoX || 0;
+                }
+              } else {
+                if (cycle >= 5.5 && cycle < 10.0) {
+                  const tProg = ease(Math.min((cycle - 5.5) / 1.5, (10.0 - cycle) / 1.5));
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.75 * tProg;
+                  if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) + 0.10 * tProg;
+                } else {
+                  if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                  if (a.torso) a.torso.rotation.x = a.baseTorsoX || 0;
+                }
+              }
+            } else if (a.mode === "queue_hero") {
+              const cycle = ((now * 0.001 + a.phase * 0.01) % 15.0);
+
+              if (cycle >= 3.5 && cycle < 7.5) {
+                const tProg = ease(Math.min((cycle - 3.5) / 1.2, (7.5 - cycle) / 1.2));
+                if (a.torso) {
+                  a.torso.rotation.y = (a.baseTorsoY || 0) + 0.35 * tProg;
+                  a.torso.rotation.x = (a.baseTorsoX || 0) + 0.08 * tProg;
+                }
+              } else if (cycle >= 8.5 && cycle < 12.5) {
+                const tProg = ease(Math.min((cycle - 8.5) / 1.2, (12.5 - cycle) / 1.2));
+                if (a.armR) a.armR.rotation.x = a.baseArmRX - 0.95 * tProg;
+                if (a.forearmR) a.forearmR.rotation.x = (a.baseForearmRX || -0.18) - 0.70 * tProg;
+                if (a.torso) a.torso.rotation.x = (a.baseTorsoX || 0) + 0.10 * tProg;
+              } else {
+                if (a.torso) {
+                  a.torso.rotation.y = a.baseTorsoY || 0;
+                  a.torso.rotation.x = a.baseTorsoX || 0;
+                }
+                if (a.armR) a.armR.rotation.x = a.baseArmRX;
+                if (a.forearmR) a.forearmR.rotation.x = a.baseForearmRX || -0.18;
               }
             }
             break;

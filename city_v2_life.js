@@ -106,11 +106,15 @@ function makeLifePlace(id, variant) {
   }
   const visitor = makeFigure({ appearance: buildAppearanceProfile(id + ':visitor:' + variant) });
   visitor.position.set(-0.48, 0, 0.77); visitor.rotation.y = 0.35;
+  visitor.userData.lifeActor = true;
   packRigidModel(visitor); g.add(visitor); bindVenueActor(visitor, id, 0.30 + variant * 0.15);
   if (typeof registerCharacterIdle === "function") {
     registerCharacterIdle({
       mode: "visitor",
       ref: visitor,
+      torso: visitor.userData.torso,
+      armR: visitor.userData.armR,
+      armL: visitor.userData.armL,
       baseYaw: 0.35,
       baseY: 0,
       phase: hashCitizenKey(id + ":visitor:" + variant) % 1000
@@ -190,6 +194,21 @@ for (let i = 0; i < STATIONARY_COURIER_POSITIONS.length; i++) {
   sc.visible = false;
   root.add(sc);
   stationaryCourierPool.push({ obj: sc, pos: pos });
+  if (typeof registerCharacterIdle === "function") {
+    const rider = sc.userData ? sc.userData.rider : null;
+    registerCharacterIdle({
+      mode: "courier",
+      ref: sc,
+      rider: rider,
+      torso: rider && rider.userData ? rider.userData.torso : null,
+      armR: rider && rider.userData ? rider.userData.armR : null,
+      armL: rider && rider.userData ? rider.userData.armL : null,
+      baseYaw: pos.yaw,
+      baseY: Y_WALK,
+      phase: (i * 350 + 120),
+      subType: i
+    });
+  }
 }
 
 function applyCityLife(data) {

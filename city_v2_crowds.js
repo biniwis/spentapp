@@ -130,6 +130,70 @@ function placeCrowdWalker(record, route, phase) {
   record.obj.rotation.y = Math.atan2(q.x - p.x, q.z - p.z);
 }
 
+
+const heroQueuePool = [];
+const HERO_QUEUE_LIMIT = 6;
+function ensureHeroQueuePool() {
+  if (heroQueuePool.length) return;
+  for (let i = 0; i < HERO_QUEUE_LIMIT; i++) {
+    const figure = makeFigure({ appearance: buildAppearanceProfile('city:hero_queue:' + i) });
+    figure.visible = false;
+    figure.userData.lifeActor = true;
+    root.add(figure);
+    if (typeof registerCharacterIdle === "function") {
+      registerCharacterIdle({
+        mode: "queue_hero",
+        ref: figure,
+        phase: (i * 280 + 90),
+        subType: i
+      });
+    }
+    heroQueuePool.push({ obj: figure, active: false });
+  }
+}
+
+const instancedWaitingRecords = [];
+const waitingTransform = new THREE.Object3D();
+
+function stepWaitingQueues(now) {
+  const isReduced = (typeof ambientMotion !== "undefined" && ambientMotion.matches) ||
+                    (typeof companionMotionPreference !== "undefined" && companionMotionPreference.matches);
+  const isCritical = typeof energyMode !== "undefined" && energyMode === "critical";
+  if (isReduced || isCritical || !instancedWaitingRecords.length) return;
+
+  const dirtyBatches = new Set();
+  for (let i = 0; i < instancedWaitingRecords.length; i++) {
+    const w = instancedWaitingRecords[i];
+    const cycle = ((now * 0.0008 + w.seed * 0.01) % 12.0);
+    let yawOffset = 0, leanZ = 0, shiftFwd = 0;
+
+    if (cycle >= 4.0 && cycle < 6.5) {
+      const p = Math.sin((cycle - 4.0) / 2.5 * Math.PI);
+      yawOffset = 0.14 * p;
+      leanZ = 0.06 * p;
+    } else if (cycle >= 8.5 && cycle < 11.0) {
+      const p = Math.sin((cycle - 8.5) / 2.5 * Math.PI);
+      yawOffset = -0.12 * p;
+      shiftFwd = 0.04 * p;
+    }
+
+    const cosY = Math.cos(w.yaw), sinY = Math.sin(w.yaw);
+    waitingTransform.position.set(w.x + shiftFwd * sinY, Y_WALK, w.z + shiftFwd * cosY);
+    waitingTransform.rotation.set(0, w.yaw + yawOffset, leanZ);
+    waitingTransform.scale.setScalar(w.scale);
+    waitingTransform.updateMatrix();
+
+    crowdBatches[w.variant].forEach(function (batch) {
+      batch.setMatrixAt(w.batchIndex, waitingTransform.matrix);
+      dirtyBatches.add(batch);
+    });
+  }
+
+  dirtyBatches.forEach(function (batch) {
+    batch.instanceMatrix.needsUpdate = true;
+  });
+}
+
 function applyVenueCrowds() {
   crowdSnapshot = allocateCrowds(venueStates);
   // Preserve ongoing moments on identical native refreshes. Cancel before a borrowed
@@ -179,17 +243,44 @@ function applyVenueCrowds() {
       }
     }
   });
+  ensureHeroQueuePool();
+  heroQueuePool.forEach(function (h) { h.active = false; h.obj.visible = false; });
+  instancedWaitingRecords.length = 0;
+
   const waiting = [];
   crowdSnapshot.forEach(function (entry) {
-    for (let i = 0; i < entry.waiting; i++) waiting.push(waitingPose(CROWD_FRONTAGES[entry.id], i));
+    for (let i = 0; i < entry.waiting; i++) {
+      const pose = waitingPose(CROWD_FRONTAGES[entry.id], i);
+      if (i === 0) {
+        const hero = heroQueuePool.find(function (h) { return !h.active; });
+        if (hero) {
+          hero.obj.position.set(pose.x, Y_WALK, pose.z);
+          hero.obj.rotation.y = pose.yaw;
+          hero.obj.visible = true;
+          hero.active = true;
+          continue;
+        }
+      }
+      waiting.push({ pose: pose, index: i });
+    }
   });
   if (waiting.length) ensureCrowdBatches();
   const counts = new Array(8).fill(0), transform = new THREE.Object3D();
-  waiting.forEach(function (pose, index) {
+  waiting.forEach(function (item) {
+    const pose = item.pose;
     const variant = hashCitizenKey('waiting:' + pose.x + ':' + pose.z) % 8;
     transform.position.set(pose.x, Y_WALK, pose.z); transform.rotation.y = pose.yaw;
-    transform.scale.setScalar(0.96 + (index % 3) * 0.035); transform.updateMatrix();
+    transform.scale.setScalar(0.96 + (item.index % 3) * 0.035); transform.updateMatrix();
     crowdBatches[variant].forEach(function (batch) { batch.setMatrixAt(counts[variant], transform.matrix); });
+    instancedWaitingRecords.push({
+      variant: variant,
+      batchIndex: counts[variant],
+      x: pose.x,
+      z: pose.z,
+      yaw: pose.yaw,
+      scale: 0.96 + (item.index % 3) * 0.035,
+      seed: hashCitizenKey('waiting:' + pose.x + ':' + pose.z) % 1000
+    });
     counts[variant]++;
   });
   crowdBatches.forEach(function (parts, variant) {

@@ -19,6 +19,15 @@ public struct BudgetSheet: View {
     @State private var newIncomeAmount: String = ""
     @State private var showIncomeEditor = false
 
+    private enum BudgetField: Hashable {
+        case incomeName
+        case incomeAmount
+        case overall
+        case category(String)
+    }
+
+    @FocusState private var focusedField: BudgetField?
+
     private let sheetBg = MoneyCityTheme.appBackground
 
     public init() {}
@@ -76,6 +85,10 @@ public struct BudgetSheet: View {
         NavigationStack {
             ZStack {
                 sheetBg.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        focusedField = nil
+                    }
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
@@ -87,12 +100,20 @@ public struct BudgetSheet: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 16)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle(isHebrew ? "תקציב והכנסות" : "Budget & Income")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(isHebrew ? "סיום" : "Done") {
+                        focusedField = nil
+                    }
+                    .fontWeight(.semibold)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button(l10n.text(for: "close")) { commitDrafts(); dismiss() }
                         .foregroundColor(Color.primaryBlue)
@@ -292,6 +313,7 @@ public struct BudgetSheet: View {
                 HStack(spacing: 8) {
                     TextField(isHebrew ? "משכורת" : "Salary", text: $newIncomeName)
                         .font(.system(size: 14, design: .rounded))
+                        .focused($focusedField, equals: .incomeName)
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(sheetBg).clipShape(RoundedRectangle(cornerRadius: 10))
 
@@ -299,12 +321,14 @@ public struct BudgetSheet: View {
                     TextField("0", text: $newIncomeAmount)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .keyboardType(.decimalPad)
+                        .focused($focusedField, equals: .incomeAmount)
                         .frame(width: 90)
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(sheetBg).clipShape(RoundedRectangle(cornerRadius: 10))
                     #else
                     TextField("0", text: $newIncomeAmount)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .focused($focusedField, equals: .incomeAmount)
                         .frame(width: 90)
                         .padding(.horizontal, 10).padding(.vertical, 8)
                         .background(sheetBg).clipShape(RoundedRectangle(cornerRadius: 10))
@@ -339,6 +363,7 @@ public struct BudgetSheet: View {
         try? modelContext.save()
         newIncomeName = ""
         newIncomeAmount = ""
+        focusedField = nil
         showIncomeEditor = false
         Haptics.notify(.success)
     }
@@ -394,6 +419,7 @@ public struct BudgetSheet: View {
             TextField("—", text: $overallDraft)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
                 .keyboardType(.decimalPad)
+                .focused($focusedField, equals: .overall)
                 .multilineTextAlignment(.center)
                 .frame(width: 76)
                 .padding(.vertical, 6)
@@ -402,6 +428,7 @@ public struct BudgetSheet: View {
             #else
             TextField("—", text: $overallDraft)
                 .font(.system(size: 15, weight: .bold, design: .rounded))
+                .focused($focusedField, equals: .overall)
                 .multilineTextAlignment(.center)
                 .frame(width: 76)
                 .padding(.vertical, 6)
@@ -433,6 +460,7 @@ public struct BudgetSheet: View {
                 TextField("—", text: draftBinding(cat))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .category(cat.rawValue))
                     .multilineTextAlignment(.center)
                     .frame(width: 76)
                     .padding(.vertical, 6)
@@ -441,6 +469,7 @@ public struct BudgetSheet: View {
                 #else
                 TextField("—", text: draftBinding(cat))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .focused($focusedField, equals: .category(cat.rawValue))
                     .multilineTextAlignment(.center)
                     .frame(width: 76)
                     .padding(.vertical, 6)

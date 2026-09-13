@@ -184,6 +184,13 @@ struct RecurringExpenseEditor: View {
     @State private var category: SpendingCategory = .housing
     @State private var dayOfMonth: Int = 1
 
+    private enum Field: Hashable {
+        case merchant
+        case amount
+    }
+
+    @FocusState private var focusedField: Field?
+
     private var isHebrew: Bool { l10n.language == .hebrew }
 
     private var canSave: Bool {
@@ -195,6 +202,10 @@ struct RecurringExpenseEditor: View {
         NavigationStack {
             ZStack {
                 Color(red: 248/255, green: 250/255, blue: 252/255).ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        focusedField = nil
+                    }
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
@@ -202,6 +213,7 @@ struct RecurringExpenseEditor: View {
                         field(title: isHebrew ? "שם ההוצאה" : "Name") {
                             TextField(isHebrew ? "שכר דירה" : "Rent", text: $merchant)
                                 .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .focused($focusedField, equals: .merchant)
                         }
 
                         field(title: isHebrew ? "סכום חודשי" : "Monthly amount") {
@@ -213,9 +225,11 @@ struct RecurringExpenseEditor: View {
                                 TextField("0", text: $amountText)
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
                                     .keyboardType(.decimalPad)
+                                    .focused($focusedField, equals: .amount)
                                 #else
                                 TextField("0", text: $amountText)
                                     .font(.system(size: 17, weight: .bold, design: .rounded))
+                                    .focused($focusedField, equals: .amount)
                                 #endif
                             }
                         }
@@ -275,6 +289,7 @@ struct RecurringExpenseEditor: View {
                     }
                     .padding(20)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .navigationTitle(template == nil
                              ? (isHebrew ? "הוצאה קבועה חדשה" : "New fixed expense")
@@ -283,6 +298,13 @@ struct RecurringExpenseEditor: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(isHebrew ? "סיום" : "Done") {
+                        focusedField = nil
+                    }
+                    .fontWeight(.semibold)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button(l10n.text(for: "cancel")) { dismiss() }
                         .foregroundColor(Color.textSecondary)

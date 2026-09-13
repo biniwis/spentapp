@@ -17,11 +17,16 @@ public struct SettingsSheet: View {
     @State private var showPrivacySheet = false
     @State private var showAboutSheet = false
     @State private var showOnboardingTour = false
+    @FocusState private var isUserNameFocused: Bool
 
     public var body: some View {
         NavigationStack {
             ZStack {
                 Color.appBackground.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isUserNameFocused = false
+                    }
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
@@ -88,6 +93,7 @@ public struct SettingsSheet: View {
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .multilineTextAlignment(.trailing)
                                     .foregroundColor(Color.primaryBlue)
+                                    .focused($isUserNameFocused)
                             }
                             .padding(.vertical, 4)
 
@@ -266,6 +272,9 @@ public struct SettingsSheet: View {
                     }
                     .padding(.top, 16)
                 }
+                #if os(iOS)
+                .scrollDismissesKeyboard(.interactively)
+                #endif
             }
             .navigationTitle(l10n.language == .hebrew ? "הגדרות" : "Settings")
             #if os(iOS)
@@ -279,6 +288,16 @@ public struct SettingsSheet: View {
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(Color.primaryBlue)
                 }
+                #if os(iOS)
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(l10n.language == .hebrew ? "סיום" : "Done") {
+                        isUserNameFocused = false
+                    }
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.primaryBlue)
+                }
+                #endif
             }
             .sheet(isPresented: $showPrivacySheet) {
                 PrivacyPolicySheet()

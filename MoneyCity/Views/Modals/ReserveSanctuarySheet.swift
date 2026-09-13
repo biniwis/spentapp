@@ -18,6 +18,12 @@ public struct ReserveSanctuarySheet: View {
     private var allTransactions: [Transaction]
 
     // Goal creation state
+    private enum SanctuaryField: Hashable {
+        case goalName
+        case goalTarget
+    }
+    @FocusState private var focusedField: SanctuaryField?
+    @FocusState private var isDepositFocused: Bool
     @State private var showAddGoal = false
     @State private var newGoalName = ""
     @State private var newGoalTarget = ""
@@ -69,6 +75,10 @@ public struct ReserveSanctuarySheet: View {
         NavigationStack {
             ZStack {
                 sheetBg.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        focusedField = nil
+                    }
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 22) {
@@ -84,6 +94,9 @@ public struct ReserveSanctuarySheet: View {
                     .padding(.top, 14)
                     .padding(.bottom, 32)
                 }
+                #if os(iOS)
+                .scrollDismissesKeyboard(.interactively)
+                #endif
             }
             .navigationTitle(isHebrew ? "הפארק" : "The Park")
             #if os(iOS)
@@ -113,6 +126,16 @@ public struct ReserveSanctuarySheet: View {
                         .clipShape(Capsule())
                     }
                 }
+                #if os(iOS)
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(isHebrew ? "סיום" : "Done") {
+                        focusedField = nil
+                    }
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(reserveGreen)
+                }
+                #endif
             }
             .sheet(item: $depositingGoal) { goal in
                 depositSheet(goal)
@@ -362,6 +385,7 @@ public struct ReserveSanctuarySheet: View {
 
             TextField(isHebrew ? "שם היעד (למשל: קרן ביטחון, חופשה, רכב)" : "Goal name (e.g. Emergency Fund, Trip)", text: $newGoalName)
                 .font(.system(size: 14, weight: .medium, design: .rounded))
+                .focused($focusedField, equals: .goalName)
                 .padding(10)
                 .background(Color.appBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -370,6 +394,7 @@ public struct ReserveSanctuarySheet: View {
                 TextField(isHebrew ? "סכום יעד" : "Target amount", text: $newGoalTarget)
                     .keyboardType(.decimalPad)
                     .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .focused($focusedField, equals: .goalTarget)
                     .padding(10)
                     .background(Color.appBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -450,6 +475,7 @@ public struct ReserveSanctuarySheet: View {
                         .keyboardType(.decimalPad)
                         .font(.system(size: 40, weight: .black, design: .rounded))
                         .foregroundColor(Color.deepNavy)
+                        .focused($isDepositFocused)
                         .frame(maxWidth: 180)
                 }
                 .frame(maxWidth: .infinity)
@@ -474,13 +500,31 @@ public struct ReserveSanctuarySheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
             }
+            .background(
+                Color.white.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isDepositFocused = false
+                    }
+            )
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(isHebrew ? "ביטול" : "Cancel") {
+                        isDepositFocused = false
                         depositingGoal = nil
                         depositAmount = ""
                     }
                 }
+                #if os(iOS)
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(isHebrew ? "סיום" : "Done") {
+                        isDepositFocused = false
+                    }
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(reserveGreen)
+                }
+                #endif
             }
         }
         #if os(iOS)
@@ -489,6 +533,7 @@ public struct ReserveSanctuarySheet: View {
     }
 
     private func saveNewGoal() {
+        focusedField = nil
         let trimmed = newGoalName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, let target = Double(newGoalTarget), target > 0 else { return }
         let goal = SavingsGoal(
@@ -506,6 +551,7 @@ public struct ReserveSanctuarySheet: View {
     }
 
     private func applyDeposit(to goal: SavingsGoal) {
+        isDepositFocused = false
         guard let amt = Double(depositAmount), amt > 0 else { return }
         if !goal.baselineCaptured {
             goal.unlinkedBaseline = goal.savedAmount

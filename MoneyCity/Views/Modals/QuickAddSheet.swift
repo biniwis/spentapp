@@ -6,6 +6,8 @@ import AppIntents
 @MainActor
 public struct QuickAddSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var l10n: LocalizationManager
     public let initialCategory: SpendingCategory?
     public let onSave: (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
@@ -95,53 +97,7 @@ public struct QuickAddSheet: View {
         return 32
     }
 
-    private func handleKeypadPress(_ key: String) {
-        if isNoteFocused {
-            dismissKeyboard()
-        }
-        if key == "⌫" {
-            Haptics.impact(.medium)
-            if !amountText.isEmpty {
-                amountText.removeLast()
-            }
-        } else if key == "." {
-            Haptics.selection()
-            if !amountText.contains(".") {
-                if amountText.isEmpty {
-                    amountText = "0."
-                } else {
-                    amountText += "."
-                }
-            }
-        } else {
-            Haptics.impact(.light)
-            // Digits 0-9
-            if amountText == "0" {
-                amountText = key
-            } else {
-                // Prevent more than 2 decimal places
-                if let dotIndex = amountText.firstIndex(of: ".") {
-                    let decimals = amountText.distance(from: dotIndex, to: amountText.endIndex)
-                    if decimals <= 2 {
-                        amountText += key
-                    }
-                } else if amountText.count < 8 {
-                    amountText += key
-                }
-            }
-        }
 
-        // Tactile punch micro-interaction on hero amount display
-        withAnimation(.spring(response: 0.12, dampingFraction: 0.48)) {
-            amountPunchScale = 1.09
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
-                amountPunchScale = 1.0
-            }
-        }
-    }
-    
     public var body: some View {
         NavigationStack {
             ZStack {
@@ -317,9 +273,17 @@ public struct QuickAddSheet: View {
                     selectedCategory = .food
                 }
             }
-            .task {
+            .task(id: scenePhase == .active && !reduceMotion) {
+                guard scenePhase == .active, !reduceMotion else {
+                    cursorVisible = true
+                    return
+                }
                 while !Task.isCancelled {
-                    try? await Task.sleep(nanoseconds: 550_000_000)
+                    do {
+                        try await Task.sleep(nanoseconds: 550_000_000)
+                    } catch {
+                        return
+                    }
                     cursorVisible.toggle()
                 }
             }
@@ -329,45 +293,20 @@ public struct QuickAddSheet: View {
     // MARK: - Numeric Keypad View (Tactile Micro-Interactions)
     @ViewBuilder @MainActor
     private var numericKeypadView: some View {
-        let keys: [[String]] = [
-            ["1", "2", "3"],
-            ["4", "5", "6"],
-            ["7", "8", "9"],
-            [".", "0", "⌫"]
-        ]
-
-        VStack(spacing: 8) {
-            ForEach(keys, id: \.self) { row in
-                HStack(spacing: 8) {
-                    ForEach(row, id: \.self) { key in
-                        Button(action: {
-                            handleKeypadPress(key)
-                        }) {
-                            keypadCell(key: key)
-                        }
-                        .buttonStyle(KeypadInteractiveButtonStyle(isDelete: key == "⌫"))
-                    }
+        SpentAmountKeypad(amountText: $amountText) { _ in
+            if isNoteFocused {
+                dismissKeyboard()
+            }
+            // Tactile punch micro-interaction on hero amount display
+            withAnimation(.spring(response: 0.12, dampingFraction: 0.48)) {
+                amountPunchScale = 1.09
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
+                    amountPunchScale = 1.0
                 }
             }
         }
-    }
-
-    @ViewBuilder
-    private func keypadCell(key: String) -> some View {
-        ZStack {
-            if key == "⌫" {
-                MoneyIcon(.backspace, size: 22)
-            } else if key == "." {
-                Text("•")
-                    .font(.system(size: 24, weight: .black, design: .rounded))
-            } else {
-                Text(key)
-                    .font(.system(size: 23, weight: .bold, design: .rounded))
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 56)
-        .contentShape(Rectangle())
     }
 
     private func formattedDateString(_ date: Date) -> String {
@@ -1040,49 +979,6 @@ public struct QuickAddSheet: View {
     }
 }
 
-// MARK: - Keypad Button Style with Tactile Compression & Tint Pulse
-private struct KeypadInteractiveButtonStyle: ButtonStyle {
-    let isDelete: Bool
-
-    init(isDelete: Bool = false) {
-        self.isDelete = isDelete
-    }
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundColor(
-                configuration.isPressed
-                    ? (isDelete ? Color.deleteRed : Color.primaryBlue)
-                    : Color.deepNavy
-            )
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(
-                        configuration.isPressed
-                            ? (isDelete ? Color.deleteRed.opacity(0.18) : Color.primaryBlue.opacity(0.16))
-                            : Color.white
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(
-                                configuration.isPressed
-                                    ? (isDelete ? Color.deleteRed.opacity(0.85) : Color.primaryBlue.opacity(0.85))
-                                    : Color.borderSubtle.opacity(0.40),
-                                lineWidth: configuration.isPressed ? 2.0 : 1.0
-                            )
-                    )
-                    .shadow(
-                        color: configuration.isPressed
-                            ? (isDelete ? Color.deleteRed.opacity(0.25) : Color.primaryBlue.opacity(0.25))
-                            : Color.black.opacity(0.04),
-                        radius: configuration.isPressed ? 6 : 3.5,
-                        y: configuration.isPressed ? 0.5 : 1.5
-                    )
-            )
-            .scaleEffect(configuration.isPressed ? 0.86 : 1.0)
-            .animation(.spring(response: 0.14, dampingFraction: 0.58), value: configuration.isPressed)
-    }
-}
 
 // MARK: - Save Button Interactive Style
 private struct SaveButtonInteractiveStyle: ButtonStyle {

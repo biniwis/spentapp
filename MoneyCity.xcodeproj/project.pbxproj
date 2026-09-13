@@ -78,6 +78,7 @@
 		B1000009B2C3D4E5F6000009 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000009B2C3D4E5F6000009; };
 		B1000010B2C3D4E5F6000010 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000010B2C3D4E5F6000010; };
 		B1000011B2C3D4E5F6000011 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000011B2C3D4E5F6000011; };
+		B1000034B2C3D4E5F6000034 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000034B2C3D4E5F6000034; };
 		B1000012B2C3D4E5F6000012 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000012B2C3D4E5F6000012; };
 		B1000013B2C3D4E5F6000013 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000013B2C3D4E5F6000013; };
 		B1000014B2C3D4E5F6000014 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000014B2C3D4E5F6000014; };
@@ -256,6 +257,7 @@
 		A1000009B2C3D4E5F6000009 /* CityQuickActionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityQuickActionOverlay.swift"; path = "MoneyCity/Views/Components/CityQuickActionOverlay.swift"; sourceTree = "<group>"; };
 		A1000010B2C3D4E5F6000010 /* CitySpendingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CitySpendingCard.swift"; path = "MoneyCity/Views/Components/CitySpendingCard.swift"; sourceTree = "<group>"; };
 		A1000011B2C3D4E5F6000011 /* CityDerivedCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityDerivedCache.swift"; path = "MoneyCity/Views/Components/CityDerivedCache.swift"; sourceTree = "<group>"; };
+		A1000034B2C3D4E5F6000034 /* SpentAmountKeypad.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SpentAmountKeypad.swift"; path = "MoneyCity/Views/Components/SpentAmountKeypad.swift"; sourceTree = "<group>"; };
 		A1000012B2C3D4E5F6000012 /* CityTopBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CityTopBarView.swift"; path = "MoneyCity/Views/Components/CityTopBarView.swift"; sourceTree = "<group>"; };
 		A1000013B2C3D4E5F6000013 /* DistrictDataHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DistrictDataHelper.swift"; path = "MoneyCity/Views/Components/DistrictDataHelper.swift"; sourceTree = "<group>"; };
 		A1000014B2C3D4E5F6000014 /* MoneyIconShapes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyIconShapes.swift"; path = "MoneyCity/Views/Components/MoneyIconShapes.swift"; sourceTree = "<group>"; };
@@ -433,6 +435,7 @@
 				A1000009B2C3D4E5F6000009 /* CityQuickActionOverlay.swift */,
 				A1000010B2C3D4E5F6000010 /* CitySpendingCard.swift */,
 				A1000011B2C3D4E5F6000011 /* CityDerivedCache.swift */,
+				A1000034B2C3D4E5F6000034 /* SpentAmountKeypad.swift */,
 				A1000012B2C3D4E5F6000012 /* CityTopBarView.swift */,
 				A1000013B2C3D4E5F6000013 /* DistrictDataHelper.swift */,
 				A1000014B2C3D4E5F6000014 /* MoneyIconShapes.swift */,
@@ -728,6 +731,7 @@
 				B1000009B2C3D4E5F6000009 /* Sources */,
 				B1000010B2C3D4E5F6000010 /* Sources */,
 				B1000011B2C3D4E5F6000011 /* Sources */,
+				B1000034B2C3D4E5F6000034 /* Sources */,
 				B1000012B2C3D4E5F6000012 /* Sources */,
 				B1000013B2C3D4E5F6000013 /* Sources */,
 				B1000014B2C3D4E5F6000014 /* Sources */,

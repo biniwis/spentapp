@@ -46,4 +46,15 @@ final class CityDerivedCache {
         cachedReport = value
         return value
     }
+
+    private var splitKey: Int?
+    private var cachedSplit: (everyday: Double, committed: Double)?
+
+    func typicalSplit(key: Int, build: () -> (everyday: Double, committed: Double)) -> (everyday: Double, committed: Double) {
+        if splitKey == key, let cachedSplit { return cachedSplit }
+        let value = build()
+        splitKey = key
+        cachedSplit = value
+        return value
+    }
 }

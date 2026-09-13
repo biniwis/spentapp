@@ -20,6 +20,12 @@ public struct SavingsGoalsSheet: View {
     @State private var depositing: SavingsGoal? = nil
     @State private var depositAmount = ""
 
+    private enum AddGoalField: Hashable {
+        case name, target
+    }
+    @FocusState private var focusedAddField: AddGoalField?
+    @FocusState private var isDepositFocused: Bool
+
     private let sheetBg = Color(red: 248/255, green: 250/255, blue: 252/255)
     private let goalIconOptions: [(id: String, icon: MoneyIconName)] = [
         ("target", .target),
@@ -58,6 +64,10 @@ public struct SavingsGoalsSheet: View {
         NavigationStack {
             ZStack {
                 sheetBg.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        focusedAddField = nil
+                    }
 
                 if goals.isEmpty && !showAdd {
                     emptyState
@@ -78,6 +88,7 @@ public struct SavingsGoalsSheet: View {
                         .padding(.top, 12)
                         .padding(.bottom, 24)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
             .onAppear {
@@ -90,6 +101,13 @@ public struct SavingsGoalsSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(isHebrew ? "סיום" : "Done") {
+                        focusedAddField = nil
+                    }
+                    .fontWeight(.semibold)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button(isHebrew ? "סגור" : "Close") { dismiss() }
                         .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -122,10 +140,12 @@ public struct SavingsGoalsSheet: View {
                     TextField("0", text: $depositAmount)
                         .font(.system(size: 26, weight: .black, design: .rounded))
                         .keyboardType(.decimalPad)
+                        .focused($isDepositFocused)
                         .multilineTextAlignment(.center)
                     #else
                     TextField("0", text: $depositAmount)
                         .font(.system(size: 26, weight: .black, design: .rounded))
+                        .focused($isDepositFocused)
                         .multilineTextAlignment(.center)
                     #endif
                 }
@@ -149,12 +169,25 @@ public struct SavingsGoalsSheet: View {
                 Spacer()
             }
             .padding(16)
-            .background(sheetBg.ignoresSafeArea())
+            .background(
+                sheetBg.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isDepositFocused = false
+                    }
+            )
             .navigationTitle(isHebrew ? "הפקדה ליעד" : "Deposit")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(isHebrew ? "סיום" : "Done") {
+                        isDepositFocused = false
+                    }
+                    .fontWeight(.semibold)
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button(isHebrew ? "ביטול" : "Cancel") { depositing = nil }
                 }
@@ -259,6 +292,7 @@ public struct SavingsGoalsSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             TextField(isHebrew ? "טיול ליפן" : "Trip to Japan", text: $newName)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .focused($focusedAddField, equals: .name)
                 .padding(.horizontal, 12).padding(.vertical, 10)
                 .background(sheetBg).clipShape(RoundedRectangle(cornerRadius: 12))
 
@@ -270,9 +304,11 @@ public struct SavingsGoalsSheet: View {
                 TextField("0", text: $newTarget)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .keyboardType(.decimalPad)
+                    .focused($focusedAddField, equals: .target)
                 #else
                 TextField("0", text: $newTarget)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .focused($focusedAddField, equals: .target)
                 #endif
             }
             .padding(.horizontal, 12).padding(.vertical, 10)

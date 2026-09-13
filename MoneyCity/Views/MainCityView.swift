@@ -146,6 +146,23 @@ public struct MainCityView: View {
             .filter { supported.contains($0.key) && $0.value > 0 }
             .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }.first?.key
     }
+    /// Single source of truth for pausing the WebGL 3D living diorama.
+    /// Never burn GPU/CPU cycles when another tab, sheet, full-screen cover, or modal overlay hides the city.
+    private var shouldPauseDiorama: Bool {
+        activeTab != "city"
+            || companionScenePhase != .active
+            || showBrandSplash
+            || showQuickAdd
+            || showFeed
+            || showProgressSheet
+            || showSortingHubSheet
+            || showReserveSanctuarySheet
+            || showBudgetSheet
+            || showRecurringExpensesSheet
+            || resolvingPendingItem != nil
+            || activeNewMonthRecap != nil
+            || (isQuickActionActive && quickActionBuilding != nil)
+    }
 
     private var canPresentCityLesson: Bool {
         hasCompletedOnboarding && activeTab == "city" && !isChromeHidden
@@ -229,25 +246,27 @@ public struct MainCityView: View {
     private var typicalCommittedSpend: Double { typicalSplit.committed }
 
     private var typicalSplit: (everyday: Double, committed: Double) {
-        let cal = Calendar.current
-        let thisMonth = cal.dateComponents([.year, .month], from: Date())
-        var everydayByMonth: [DateComponents: Double] = [:]
-        var committedByMonth: [DateComponents: Double] = [:]
-        for tx in allTransactions where tx.category.canonical != .savings && tx.amount > 0 {
-            let c = cal.dateComponents([.year, .month], from: tx.timestamp)
-            if c.year == thisMonth.year && c.month == thisMonth.month { continue }
-            if CitySimulationEngine.isEverydaySpending(tx.category) {
-                everydayByMonth[c, default: 0] += tx.amount
-            } else {
-                committedByMonth[c, default: 0] += tx.amount
+        derived.typicalSplit(key: transactionsDigest) {
+            let cal = Calendar.current
+            let thisMonth = cal.dateComponents([.year, .month], from: Date())
+            var everydayByMonth: [DateComponents: Double] = [:]
+            var committedByMonth: [DateComponents: Double] = [:]
+            for tx in allTransactions where tx.category.canonical != .savings && tx.amount > 0 {
+                let c = cal.dateComponents([.year, .month], from: tx.timestamp)
+                if c.year == thisMonth.year && c.month == thisMonth.month { continue }
+                if CitySimulationEngine.isEverydaySpending(tx.category) {
+                    everydayByMonth[c, default: 0] += tx.amount
+                } else {
+                    committedByMonth[c, default: 0] += tx.amount
+                }
             }
+            func mean(_ d: [DateComponents: Double]) -> Double {
+                let vals = d.values.filter { $0 > 0 }
+                guard !vals.isEmpty else { return 0 }
+                return vals.reduce(0, +) / Double(vals.count)
+            }
+            return (mean(everydayByMonth), mean(committedByMonth))
         }
-        func mean(_ d: [DateComponents: Double]) -> Double {
-            let vals = d.values.filter { $0 > 0 }
-            guard !vals.isEmpty else { return 0 }
-            return vals.reduce(0, +) / Double(vals.count)
-        }
-        return (mean(everydayByMonth), mean(committedByMonth))
     }
 
     private var activeEnrichmentIds: [String] {
@@ -299,9 +318,7 @@ public struct MainCityView: View {
                     selectedBuildingId: inspectedBuilding?.id,
                     tutorialBuildingId: cityTutorialBuildingId,
                     language: l10n.language == .hebrew ? "he" : "en",
-                    isPaused: activeTab != "city" || companionScenePhase != .active
-                        || showQuickAdd || showFeed || showProgressSheet
-                        || showSortingHubSheet || showReserveSanctuarySheet,
+                    isPaused: shouldPauseDiorama,
                     onSelectDistrict: handleSelectDistrict,
                     onBuildingSelected: handleSelectBuilding,
                     onSlotTapped: nil,

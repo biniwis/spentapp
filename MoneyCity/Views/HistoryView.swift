@@ -41,6 +41,7 @@ public struct HistoryView: View {
     @State private var showCalendarPicker: Bool = false
     @State private var calendarPickerDate: Date = Date()
     @State private var selectedSpecificDate: Date? = nil
+    @FocusState private var isSearchFocused: Bool
 
     private var monthTransactions: [Transaction] {
         let cal = Calendar.current
@@ -167,6 +168,7 @@ public struct HistoryView: View {
                         }
                         .padding(.top, 8)
                     }
+                    .scrollDismissesKeyboard(.interactively)
                 }
             }
 
@@ -280,7 +282,12 @@ public struct HistoryView: View {
             Haptics.selection()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 isSearchExpanded.toggle()
-                if !isSearchExpanded { searchText = "" }
+                if !isSearchExpanded {
+                    searchText = ""
+                    isSearchFocused = false
+                } else {
+                    isSearchFocused = true
+                }
             }
         }) {
             MoneyIcon(.search, size: 20)
@@ -313,6 +320,7 @@ public struct HistoryView: View {
             TextField(l10n.language == .hebrew ? "חפש עסקה או קטגוריה..." : "Search transaction or category...", text: $searchText)
                 .font(.system(size: 14, weight: .medium, design: .default))
                 .foregroundColor(Color.deepNavy)
+                .focused($isSearchFocused)
             if !searchText.isEmpty {
                 Button(action: { searchText = "" }) {
                     MoneyIcon(.xmarkCircle, size: 16)

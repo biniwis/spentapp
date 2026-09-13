@@ -113,8 +113,13 @@ public struct MonthlyRecapSheet: View {
         .ignoresSafeArea()
         .statusBarHidden(true)
         .environment(\.layoutDirection, he ? .rightToLeft : .leftToRight)
-        .task(id: index) {
-            time = still ? shot.duration : 0
+        .task(id: "\(index)-\(scenePhase == .active)-\(still)") {
+            if still {
+                time = shot.duration
+                outgoing = nil
+                return
+            }
+            guard scenePhase == .active else { return }
             let clock = ContinuousClock()
             var previous = clock.now
             while time < shot.duration, !Task.isCancelled {
@@ -122,10 +127,12 @@ public struct MonthlyRecapSheet: View {
                 let now = clock.now
                 let delta = previous.duration(to: now)
                 previous = now
-                guard scenePhase == .active else { continue }
+                guard !Task.isCancelled else { return }
                 time = min(shot.duration, time + Double(delta.components.seconds) + Double(delta.components.attoseconds) / 1e18)
             }
-            outgoing = nil
+            if time >= shot.duration {
+                outgoing = nil
+            }
         }
         .onChange(of: still) { _, enabled in if enabled { time = shot.duration; outgoing = nil } }
         .accessibilityAction(named: Text(he ? "הבא" : "Next")) { navigate(1) }

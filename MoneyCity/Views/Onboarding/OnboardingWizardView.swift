@@ -112,6 +112,10 @@ public struct OnboardingWizardView: View {
         GeometryReader { geometry in
             ZStack {
                 activeOnboardingStep.posterBackground.ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        focusedField = nil
+                    }
 
                 VStack(spacing: 0) {
                     topNavigationRow
@@ -206,6 +210,15 @@ public struct OnboardingWizardView: View {
             let sanitized = sanitizedBudgetDigits(newValue)
             if sanitized != newValue {
                 budgetInputText = sanitized
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(isHebrew ? "סיום" : "Done") {
+                    focusedField = nil
+                }
+                .fontWeight(.semibold)
             }
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)

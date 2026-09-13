@@ -156,7 +156,8 @@ public final class CitySimulationEngine: Sendable {
             
             let m = t.merchant.lowercased()
             let isPositive = t.amount > 0
-            if bId == "food_wolt" || m.contains("wolt") || m.contains("וולט") || m.contains("10bis") || m.contains("תן ביס") {
+            let isDelivery = DeliveryHistoryHelper.isDelivery(buildingId: bId, merchant: t.merchant)
+            if isDelivery {
                 if isPositive {
                     woltCount += 1
                     // Track distinct calendar days using "yyyy-MM-dd" key

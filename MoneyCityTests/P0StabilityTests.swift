@@ -655,6 +655,43 @@ final class P0StabilityTests: XCTestCase {
         XCTAssertEqual(city.habits.woltDeliveryCount, 1, "Positive transaction is counted")
     }
 
+    func testUnifiedDeliveryClassificationCurrentMonthAndHistoricalBaseline() {
+        let cal = Calendar.current
+        let now = Date()
+        guard let oneMonthAgo = cal.date(byAdding: .month, value: -1, to: now) else {
+            XCTFail("Failed to compute calendar date")
+            return
+        }
+
+        let testData: [(merchant: String, amount: Double, buildingId: String)] = [
+            ("Tabit Online Order", 110.0, "food_bistro"),
+            ("משלוחי המבורגר", 85.0, "food_bistro"),
+            ("10bis Lunch", 60.0, "food_bistro"),
+            ("Wolt Sushi", 90.0, "food_bistro"),
+            ("Random Kitchen", 70.0, "food_wolt"),
+            ("Tabit - Partial Refund", -25.0, "food_bistro"),
+            ("Aroma Espresso Bar", 18.0, "food_coffee")
+        ]
+
+        // 1. Current-month verification in CitySimulationEngine
+        let currentMonthTxs = testData.map {
+            Transaction(amount: $0.amount, merchant: $0.merchant, category: .food, timestamp: now, buildingId: $0.buildingId)
+        }
+        let city = CitySimulationEngine.shared.generateCity(for: now, transactions: currentMonthTxs, now: now)
+
+        XCTAssertEqual(city.habits.woltDeliveryCount, 5, "Tabit, משלוח, 10bis, Wolt and food_wolt must all be recognized in current month")
+        XCTAssertEqual(city.habits.woltTotalSpend, 390.0, accuracy: 0.001, "Refunds must reduce net delivery spend in current month")
+
+        // 2. Historical baseline verification in DeliveryHistoryHelper
+        let pastMonthTxs = testData.map {
+            Transaction(amount: $0.amount, merchant: $0.merchant, category: .food, timestamp: oneMonthAgo, buildingId: $0.buildingId)
+        }
+        let history = DeliveryHistoryHelper.completedHistoricalWoltData(from: pastMonthTxs, relativeTo: now, calendar: cal)
+
+        XCTAssertEqual(history.counts, [5], "Historical baseline must produce identical order count (5) for Tabit/משלוח/Wolt")
+        XCTAssertEqual(history.spends, [390.0], "Historical baseline must produce identical net spend (390.0) accounting for refunds")
+    }
+
     func testRewardEngineEnforcesFourDayCooldown() {
         var engine = CityRewardEngine()
         engine.state = CityRewardState()

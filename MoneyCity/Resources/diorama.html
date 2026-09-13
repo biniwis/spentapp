@@ -1510,19 +1510,39 @@
       const ud = record.obj.userData;
       // Feet are at local y≈0 in fig space; scaling from origin keeps them on Y_WALK.
       record.obj.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
+      // Skin — head, nose, neck + both forearms + both hands (6 meshes total).
       const skinMat = CITIZEN_SKIN_MATS[appearance.skinTone];
       if (ud.skinMeshes)  ud.skinMeshes.forEach(function (m) { m.material = skinMat; });
+      // Shirt (body cylinder + upper arm cylinders).
       const topMat  = citizenMat(appearance.topColor, 0.76);
       if (ud.shirtMeshes) ud.shirtMeshes.forEach(function (m) { m.material = topMat; });
+      // Pants (thigh + shin cylinders on both legs).
       const btmMat  = citizenMat(appearance.bottomColor, 0.86);
       if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
+      // Hair.
       if (ud.hairGrp) {
         while (ud.hairGrp.children.length) ud.hairGrp.remove(ud.hairGrp.children[0]);
         addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
       }
+      // Accessory.
       if (ud.accGrp) {
         while (ud.accGrp.children.length) ud.accGrp.remove(ud.accGrp.children[0]);
         addAccessoryToGroup(ud.accGrp, appearance.accessory, appearance.topColor);
+      }
+      // Clothing silhouette — clear old detail, reset body scale, apply new topStyle.
+      if (ud.clothingGrp) {
+        while (ud.clothingGrp.children.length) ud.clothingGrp.remove(ud.clothingGrp.children[0]);
+      }
+      if (ud.bodyMesh) {
+        // Reset to default scale first, then re-apply longTop stretch if needed.
+        if (appearance.topStyle === 'longTop') {
+          ud.bodyMesh.scale.set(1, 1.12, 0.64);
+        } else {
+          ud.bodyMesh.scale.set(1, 1, 0.64);
+        }
+        if (ud.clothingGrp && appearance.topStyle !== 'basic' && appearance.topStyle !== 'longTop') {
+          addClothingDetail(ud.clothingGrp, appearance.topStyle, topMat);
+        }
       }
       record.motion        = appearance.motion;
       record.appearance    = appearance;
@@ -1583,10 +1603,15 @@
 
       // Accessory / bag group.
       const accGrp = new THREE.Group(); accGrp.name = 'accessory'; torso.add(accGrp);
+
+      // Clothing detail group — separate replaceable group so pool reuse can clear and
+      // re-apply topStyle without affecting any other torso children (joints, hair, etc.)
+      const clothingGrp = new THREE.Group(); clothingGrp.name = 'clothing'; torso.add(clothingGrp);
+
       if (appearance) {
         addAccessoryToGroup(accGrp, appearance.accessory, appearance.topColor);
         if (appearance.topStyle !== 'basic' && appearance.topStyle !== 'longTop') {
-          addClothingDetail(torso, appearance.topStyle, citizenMat(appearance.topColor, 0.76));
+          addClothingDetail(clothingGrp, appearance.topStyle, citizenMat(appearance.topColor, 0.76));
         }
       } else if (opts.bag) {
         const bagMat = mat(opts.bag, 0.8);
@@ -1596,15 +1621,17 @@
         });
       }
 
-      // Arms — track upper-arm meshes for material update on pool reuse.
-      const armUpperMeshes = [];
+      // Arms — track upper-arm AND forearm/hand skin meshes for pool reuse.
+      const armUpperMeshes = [], forearmSkinMeshes = [];
       function arm(side) {
         const a = new THREE.Group(); a.position.set(side * 0.132, 0.105, 0); torso.add(a);
         const upperMesh = mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.14, 7), shirt, 0, -0.065, 0, false, false);
         a.add(upperMesh); armUpperMeshes.push(upperMesh);
         const forearm = new THREE.Group(); forearm.position.y = -0.13; forearm.rotation.x = -0.18; a.add(forearm);
-        forearm.add(mesh(new THREE.CylinderGeometry(0.025, 0.021, 0.13, 7), skin, 0, -0.06, 0, false, false));
-        forearm.add(mesh(new THREE.SphereGeometry(0.027, 7, 6), skin, 0, -0.135, 0, false, false));
+        const forearmMesh = mesh(new THREE.CylinderGeometry(0.025, 0.021, 0.13, 7), skin, 0, -0.06, 0, false, false);
+        const handMesh   = mesh(new THREE.SphereGeometry(0.027, 7, 6), skin, 0, -0.135, 0, false, false);
+        forearm.add(forearmMesh); forearm.add(handMesh);
+        forearmSkinMeshes.push(forearmMesh, handMesh);
         if (opts.seated) { a.rotation.x = -0.62; forearm.rotation.x = -0.8; }
         return a;
       }
@@ -1635,8 +1662,10 @@
         legL: left.hip, legR: right.hip, kneeL: left.knee, kneeR: right.knee,
         armL: armL, armR: armR, torso: torso, body: bodyMesh,
         // Appearance refs for crowd pool reuse.
-        hairGrp: hairGrp, accGrp: accGrp,
-        skinMeshes:  [headMesh, noseMesh, neckMesh],
+        hairGrp: hairGrp, accGrp: accGrp, clothingGrp: clothingGrp,
+        bodyMesh: bodyMesh,
+        // skinMeshes: head + nose + neck + both forearms + both hands (6 total).
+        skinMeshes:  [headMesh, noseMesh, neckMesh].concat(forearmSkinMeshes),
         shirtMeshes: [bodyMesh].concat(armUpperMeshes),
         pantsMeshes: thighMeshes.concat(shinMeshes)
       };

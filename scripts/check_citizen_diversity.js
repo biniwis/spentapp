@@ -1,8 +1,18 @@
 #!/usr/bin/env node
 // check_citizen_diversity.js — Character Diversity v1 regression tests
-// Tests run in Node without a DOM or Three.js.
+// Tests run in Node without a DOM. Three.js is mocked minimally for applyAppearanceToFigure.
 
-// ─── Inline the pure functions from build_diorama.js ───────────────────────
+// ─── Minimal Three.js mock for structural tests ──────────────────────────────
+const THREE = {
+  Group: class {
+    constructor() { this.children = []; this.name = ''; }
+    add(child) { this.children.push(child); return this; }
+    remove(child) { const i = this.children.indexOf(child); if (i >= 0) this.children.splice(i, 1); }
+  },
+  Vector3: class { constructor(x, y, z) { this.x = x || 0; this.y = y || 0; this.z = z || 0; } },
+};
+
+// ─── Inline palette / PRNG code from build_diorama.js ────────────────────────
 
 function hashCitizenKey(str) {
   let h = 0x811c9dc5;
@@ -42,6 +52,20 @@ const CITIZEN_MOTION_PROFILES = [
   { id: 'brisk',   speedMult: 1.11, swing: 1.05, cadence: 1.10 },
   { id: 'stroll',  speedMult: 0.83, swing: 0.72, cadence: 0.82 }
 ];
+
+// Skin material stubs: indexed by skinTone
+const CITIZEN_SKIN_MATS = CITIZEN_SKIN_TONES.map(function (h, i) { return { _hex: h, _idx: i }; });
+
+function citizenMat(hex, roughness) { return { _hex: hex, _rough: roughness }; }
+function addHairToGroup(grp, style, colorHex) {
+  grp._style = style; grp._color = colorHex;
+}
+function addAccessoryToGroup(grp, accessory, topColorHex) {
+  grp._accessory = accessory; grp._topColor = topColorHex;
+}
+function addClothingDetail(grp, topStyle, topMat) {
+  grp._clothingStyle = topStyle; grp._clothingMat = topMat;
+}
 
 function buildAppearanceProfile(key, salt) {
   const fullKey = (salt !== undefined && salt > 0) ? key + ':' + salt : key;
@@ -90,15 +114,80 @@ function chooseAppearanceForSlot(key, recentProfiles) {
   return buildAppearanceProfile(key, 0);
 }
 
-// ─── Test harness ────────────────────────────────────────────────────────────
+// ─── Minimal mock of makeFigure (just the parts applyAppearanceToFigure touches) ─
+function makeFigureMock(appearance) {
+  // Six skin meshes: head, nose, neck, forearmL, handL, forearmR, handR — but 6 total
+  const skinMeshes  = [{material: null},{material:null},{material:null},{material:null},{material:null},{material:null}];
+  const shirtMeshes = [{material: null},{material:null},{material:null}]; // body + 2 upper arms
+  const pantsMeshes = [{material: null},{material:null},{material:null},{material:null}]; // 4 cylinders
+  const hairGrp     = new THREE.Group();
+  const accGrp      = new THREE.Group();
+  const clothingGrp = new THREE.Group();
+  const bodyMesh    = { scale: { x:1, y:1, z:0.64, set: function(x,y,z){ this.x=x; this.y=y; this.z=z; } } };
 
+  skinMeshes.forEach(function(m) { m.material = CITIZEN_SKIN_MATS[appearance.skinTone]; });
+  shirtMeshes.forEach(function(m) { m.material = citizenMat(appearance.topColor, 0.76); });
+  pantsMeshes.forEach(function(m) { m.material = citizenMat(appearance.bottomColor, 0.86); });
+  addHairToGroup(hairGrp, appearance.hairStyle, appearance.hairColor);
+  addAccessoryToGroup(accGrp, appearance.accessory, appearance.topColor);
+  if (appearance.topStyle === 'longTop') {
+    bodyMesh.scale.set(1, 1.12, 0.64);
+  } else if (appearance.topStyle !== 'basic') {
+    addClothingDetail(clothingGrp, appearance.topStyle, citizenMat(appearance.topColor, 0.76));
+  }
+
+  const fig = new THREE.Group();
+  const scale = { x: appearance.widthScale, y: appearance.heightScale, z: appearance.widthScale,
+    set: function(x,y,z){ this.x=x; this.y=y; this.z=z; } };
+  fig.userData = { skinMeshes, shirtMeshes, pantsMeshes, hairGrp, accGrp, clothingGrp, bodyMesh };
+  return { obj: { userData: fig.userData, scale: scale },
+    motion: appearance.motion, appearance: appearance, appearanceKey: appearance.key };
+}
+
+// Inline applyAppearanceToFigure (mirrors the production code)
+function applyAppearanceToFigure(record, appearance) {
+  const ud = record.obj.userData;
+  record.obj.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
+  const skinMat = CITIZEN_SKIN_MATS[appearance.skinTone];
+  if (ud.skinMeshes)  ud.skinMeshes.forEach(function (m) { m.material = skinMat; });
+  const topMat  = citizenMat(appearance.topColor, 0.76);
+  if (ud.shirtMeshes) ud.shirtMeshes.forEach(function (m) { m.material = topMat; });
+  const btmMat  = citizenMat(appearance.bottomColor, 0.86);
+  if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
+  if (ud.hairGrp) {
+    while (ud.hairGrp.children.length) ud.hairGrp.remove(ud.hairGrp.children[0]);
+    addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
+  }
+  if (ud.accGrp) {
+    while (ud.accGrp.children.length) ud.accGrp.remove(ud.accGrp.children[0]);
+    addAccessoryToGroup(ud.accGrp, appearance.accessory, appearance.topColor);
+  }
+  if (ud.clothingGrp) {
+    while (ud.clothingGrp.children.length) ud.clothingGrp.remove(ud.clothingGrp.children[0]);
+  }
+  if (ud.bodyMesh) {
+    if (appearance.topStyle === 'longTop') {
+      ud.bodyMesh.scale.set(1, 1.12, 0.64);
+    } else {
+      ud.bodyMesh.scale.set(1, 1, 0.64);
+    }
+    if (ud.clothingGrp && appearance.topStyle !== 'basic' && appearance.topStyle !== 'longTop') {
+      addClothingDetail(ud.clothingGrp, appearance.topStyle, topMat);
+    }
+  }
+  record.motion        = appearance.motion;
+  record.appearance    = appearance;
+  record.appearanceKey = appearance.key;
+}
+
+// ─── Test harness ─────────────────────────────────────────────────────────────
 let passed = 0, failed = 0;
 function ok(name, condition, detail) {
   if (condition) { console.log('  ✓', name); passed++; }
   else { console.error('  ✗', name, detail ? ('— ' + detail) : ''); failed++; }
 }
 
-// ─── 1. buildAppearanceProfile is pure ──────────────────────────────────────
+// ─── 1. buildAppearanceProfile is pure ────────────────────────────────────────
 console.log('\n1. buildAppearanceProfile is pure (same key → same profile)');
 for (let i = 0; i < 20; i++) {
   const key = 'test:citizen:' + i;
@@ -109,26 +198,23 @@ for (let i = 0; i < 20; i++) {
      a.motion.id === b.motion.id);
 }
 
-// ─── 2. Salt produces different output ──────────────────────────────────────
+// ─── 2. Salt produces different output ────────────────────────────────────────
 console.log('\n2. Salt produces distinct profiles for a given key');
 let saltDiffs = 0;
 for (let i = 0; i < 20; i++) {
   const key = 'test:salt:' + i;
-  const p0 = buildAppearanceProfile(key, 0);
-  const p1 = buildAppearanceProfile(key, 1);
-  if (appearanceSig(p0) !== appearanceSig(p1)) saltDiffs++;
+  if (appearanceSig(buildAppearanceProfile(key, 0)) !== appearanceSig(buildAppearanceProfile(key, 1))) saltDiffs++;
 }
 ok('at least 15/20 keys differ between salt 0 and salt 1', saltDiffs >= 15, 'only ' + saltDiffs + '/20 differed');
 
-// ─── 3. No "gender" field in any profile ────────────────────────────────────
+// ─── 3. No "gender" field in any profile ──────────────────────────────────────
 console.log('\n3. No gender field in profiles');
 for (let i = 0; i < 100; i++) {
-  const p = buildAppearanceProfile('nogender:' + i, 0);
-  ok('profile ' + i + ' has no gender field', !('gender' in p));
+  ok('profile ' + i, !('gender' in buildAppearanceProfile('nogender:' + i, 0)));
 }
 
-// ─── 4. Cap not assigned to long/bun/ponytail ────────────────────────────────
-console.log('\n4. Cap is never assigned to blocked hairstyles');
+// ─── 4. Cap not assigned to long/bun/ponytail ─────────────────────────────────
+console.log('\n4. Cap never assigned to blocked hairstyles');
 let capViolations = 0;
 for (let i = 0; i < 500; i++) {
   const p = buildAppearanceProfile('captest:' + i, 0);
@@ -136,85 +222,142 @@ for (let i = 0; i < 500; i++) {
 }
 ok('0 cap+blocked-hair violations in 500 profiles', capViolations === 0, capViolations + ' violations found');
 
-// ─── 5. motionProfile bounds ────────────────────────────────────────────────
+// ─── 5. Motion profile bounds ─────────────────────────────────────────────────
 console.log('\n5. Motion profile values are in expected ranges');
 for (let i = 0; i < 100; i++) {
-  const p = buildAppearanceProfile('motion:' + i, 0);
-  const m = p.motion;
+  const m = buildAppearanceProfile('motion:' + i, 0).motion;
   ok('motion bounds ' + i,
     m.speedMult >= 0.80 && m.speedMult <= 1.15 &&
     m.swing >= 0.70 && m.swing <= 1.10 &&
-    m.cadence >= 0.80 && m.cadence <= 1.15,
-    JSON.stringify(m));
+    m.cadence >= 0.80 && m.cadence <= 1.15, JSON.stringify(m));
 }
 
-// ─── 6. Height/width scale bounds ───────────────────────────────────────────
+// ─── 6. Height/width scale bounds ─────────────────────────────────────────────
 console.log('\n6. Height/width scale values are bounded (0.93–1.08)');
 let scaleViolations = 0;
 for (let i = 0; i < 500; i++) {
   const p = buildAppearanceProfile('scale:' + i, 0);
-  if (p.heightScale < 0.93 || p.heightScale > 1.08 ||
-      p.widthScale  < 0.93 || p.widthScale  > 1.08) scaleViolations++;
+  if (p.heightScale < 0.93 || p.heightScale > 1.08 || p.widthScale < 0.93 || p.widthScale > 1.08) scaleViolations++;
 }
 ok('0 out-of-range scale values in 500 profiles', scaleViolations === 0, scaleViolations + ' violations');
 
-// ─── 7. Diversity in 100-key sample ─────────────────────────────────────────
+// ─── 7. Diversity sample — no gender coupling ─────────────────────────────────
 console.log('\n7. Diversity sample — 100 keys, no gender coupling');
 const sample = [];
 for (let i = 0; i < 100; i++) sample.push(buildAppearanceProfile('diversity:' + i, 0));
-
-// Each hairstyle appears with ≥2 body styles and ≥2 skin tones
 const styleStats = {};
 sample.forEach(function (p) {
-  const k = p.hairStyle;
-  if (!styleStats[k]) styleStats[k] = { bodies: new Set(), skins: new Set() };
-  styleStats[k].bodies.add(p.bodyId);
-  styleStats[k].skins.add(p.skinTone);
+  if (!styleStats[p.hairStyle]) styleStats[p.hairStyle] = { bodies: new Set(), skins: new Set() };
+  styleStats[p.hairStyle].bodies.add(p.bodyId);
+  styleStats[p.hairStyle].skins.add(p.skinTone);
 });
 CITIZEN_HAIR_STYLES.forEach(function (style) {
-  const s = styleStats[style];
-  if (!s) return; // rare hairstyle may not appear in 100 keys — acceptable
+  const s = styleStats[style]; if (!s) return;
   ok(style + ': ≥2 body profiles', s.bodies.size >= 2, 'only ' + s.bodies.size);
   ok(style + ': ≥2 skin tones',    s.skins.size  >= 2, 'only ' + s.skins.size);
 });
-
-// Accessories appear but are minority (<50%)
 const accCount = sample.filter(function (p) { return p.accessory !== null; }).length;
 ok('accessories < 50% (expected ~22%)', accCount < 50, accCount + '/100 have accessories');
 
-// ─── 8. Pool reassignment identity regression ───────────────────────────────
-console.log('\n8. Pool reassignment identity regression');
-function sigFor(key) { return appearanceSig(buildAppearanceProfile(key, 0)); }
-
-const keyA = 'food_super:0';
-const keyB = 'food_coffee:3';
-const sigA1 = sigFor(keyA);
-const sigB1 = sigFor(keyB);
-
-// Simulate: slot A → assign, save sig; reassign to B; reassign back to A → should match sig1
-// (profile is pure, so re-keying always produces the same output for the same key)
-const sigA2 = sigFor(keyA);
-const sigB2 = sigFor(keyB);
-
-ok('key A: stable sig across multiple generations', sigA1 === sigA2);
-ok('key B: stable sig across multiple generations', sigB1 === sigB2);
-ok('key A and key B produce different sigs',        sigA1 !== sigB1);
-
-// ─── 9. chooseAppearanceForSlot avoids clones ───────────────────────────────
-console.log('\n9. chooseAppearanceForSlot avoids signature clones in recent window');
+// ─── 8. chooseAppearanceForSlot avoids clones ─────────────────────────────────
+console.log('\n8. chooseAppearanceForSlot avoids signature clones in recent window');
 let cloneViolations = 0;
-const recent = [];
+const recentBuf = [];
 for (let i = 0; i < 50; i++) {
-  const chosen = chooseAppearanceForSlot('venue:slot:' + i, recent);
-  // Check chosen sig is not in the last 6
-  const lastSix = recent.slice(-6);
-  if (lastSix.some(function (r) { return appearanceSig(r) === appearanceSig(chosen); })) cloneViolations++;
-  recent.push(chosen);
-  if (recent.length > 6) recent.shift();
+  const chosen = chooseAppearanceForSlot('venue:slot:' + i, recentBuf);
+  if (recentBuf.slice(-6).some(function (r) { return appearanceSig(r) === appearanceSig(chosen); })) cloneViolations++;
+  recentBuf.push(chosen);
+  if (recentBuf.length > 6) recentBuf.shift();
 }
 ok('0 clone collisions across 50 sequential slots', cloneViolations === 0, cloneViolations + ' found');
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
+// ─── 9. Pool reassignment regression — simulates real applyAppearanceToFigure ─
+console.log('\n9. Pool reassignment regression — full A→B→A simulation via applyAppearanceToFigure');
+
+const keyA = 'food_super:0';
+const keyB = 'food_coffee:3';
+const profA = buildAppearanceProfile(keyA, 0);
+const profB = buildAppearanceProfile(keyB, 0);
+
+// Ensure A and B have different enough profiles for a meaningful test.
+// (They just need to differ in at least one dimension.)
+ok('A and B produce different sigs', appearanceSig(profA) !== appearanceSig(profB));
+
+// --- Step 1: create record for key A ---
+const record = makeFigureMock(profA);
+
+function checkRecord(label, prof) {
+  const ud = record.obj.userData;
+  const sc = record.obj.scale;
+  const expectedSkin = CITIZEN_SKIN_MATS[prof.skinTone];
+  const expectedTopColor = citizenMat(prof.topColor, 0.76)._hex;
+  const expectedBtmColor = citizenMat(prof.bottomColor, 0.86)._hex;
+
+  // skinMeshes — all 6 must match the current skinTone
+  ok(label + ': all skin meshes match skinTone', ud.skinMeshes.every(function (m) {
+    return m.material && m.material._idx === prof.skinTone;
+  }), 'found: ' + ud.skinMeshes.map(function(m){ return m.material && m.material._idx; }).join(','));
+
+  // shirtMeshes
+  ok(label + ': all shirt meshes match topColor', ud.shirtMeshes.every(function (m) {
+    return m.material && m.material._hex === expectedTopColor;
+  }));
+
+  // pantsMeshes
+  ok(label + ': all pants meshes match bottomColor', ud.pantsMeshes.every(function (m) {
+    return m.material && m.material._hex === expectedBtmColor;
+  }));
+
+  // hair
+  ok(label + ': hairGrp style matches', ud.hairGrp._style === prof.hairStyle,
+     'got ' + ud.hairGrp._style + ' expected ' + prof.hairStyle);
+  ok(label + ': hairGrp color matches', ud.hairGrp._color === prof.hairColor);
+
+  // accessory
+  ok(label + ': accGrp accessory matches', ud.accGrp._accessory === prof.accessory,
+     'got ' + ud.accGrp._accessory + ' expected ' + prof.accessory);
+
+  // clothing silhouette
+  if (prof.topStyle === 'longTop') {
+    ok(label + ': bodyMesh y-scale is 1.12 for longTop', ud.bodyMesh.scale.y === 1.12, 'got ' + ud.bodyMesh.scale.y);
+    ok(label + ': clothingGrp is empty for longTop', ud.clothingGrp.children.length === 0, ud.clothingGrp.children.length + ' children');
+  } else if (prof.topStyle === 'basic') {
+    ok(label + ': bodyMesh y-scale is 1 for basic', ud.bodyMesh.scale.y === 1, 'got ' + ud.bodyMesh.scale.y);
+    ok(label + ': clothingGrp is empty for basic', ud.clothingGrp.children.length === 0, ud.clothingGrp.children.length + ' children');
+  } else {
+    ok(label + ': bodyMesh y-scale is 1 for ' + prof.topStyle, ud.bodyMesh.scale.y === 1, 'got ' + ud.bodyMesh.scale.y);
+    ok(label + ': clothingGrp style matches ' + prof.topStyle, ud.clothingGrp._clothingStyle === prof.topStyle,
+       'got ' + ud.clothingGrp._clothingStyle);
+  }
+
+  // scale
+  ok(label + ': widthScale matches', Math.abs(sc.x - prof.widthScale) < 0.0001);
+  ok(label + ': heightScale matches', Math.abs(sc.y - prof.heightScale) < 0.0001);
+
+  // record fields
+  ok(label + ': record.appearanceKey matches', record.appearanceKey === prof.key,
+     'got ' + record.appearanceKey + ' expected ' + prof.key);
+  ok(label + ': record.motion matches', record.motion.id === prof.motion.id);
+}
+
+// After initial creation with A:
+// (makeFigureMock already applies profA, check it directly)
+checkRecord('A (initial)', profA);
+
+// --- Step 2: reassign to B ---
+applyAppearanceToFigure(record, profB);
+checkRecord('B (after reuse)', profB);
+
+// --- Step 3: reassign back to A ---
+applyAppearanceToFigure(record, profA);
+checkRecord('A (after re-reuse)', profA);
+
+// No stale fields from B should remain — verify a few explicitly
+ok('No stale B hair after return to A',  record.obj.userData.hairGrp._style === profA.hairStyle);
+ok('No stale B skin after return to A',
+  record.obj.userData.skinMeshes.every(function(m){ return m.material._idx === profA.skinTone; }));
+
+// ─── Summary ──────────────────────────────────────────────────────────────────
 console.log('\n────────────────────────────────────');
 console.log('Results: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed > 0 ? 1 : 0);

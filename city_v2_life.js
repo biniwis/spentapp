@@ -117,7 +117,78 @@ function makeLifePlace(id, variant) {
   return { group: g, proxy: proxy };
 }
 
+// ── Delivery intensity globals (driven by Swift DeliveryIntensityEngine) ───────────────
+const validDeliveryTiers = { quiet: 1, normal: 1, active: 1, high: 1, extreme: 1 };
+let deliveryTier = "quiet";
+let deliveryFreqScore = 0;
+
+const DELIVERY_TIER_PARAMS = {
+  quiet:   { movingCouriers: 0, stationaryCouriers: 0 },
+  normal:  { movingCouriers: 1, stationaryCouriers: 1 },
+  active:  { movingCouriers: 3, stationaryCouriers: 2 },
+  high:    { movingCouriers: 5, stationaryCouriers: 3 },
+  extreme: { movingCouriers: 7, stationaryCouriers: 4 }
+};
+
+// ── Moving courier pool (7 actors) ───────────────────────────────────────────
+// Created once during scene init. Alternating cw / ccw paths and staggered progress
+// guarantee wide distribution across city streets without clustering or pops.
+const MOVING_COURIER_DEFS = [
+  { path: "cw",  progress: 0.13, speed: 0.020, color: 0x45ADBD },
+  { path: "ccw", progress: 0.42, speed: 0.019, color: 0x45ADBD },
+  { path: "cw",  progress: 0.71, speed: 0.021, color: 0x45ADBD },
+  { path: "ccw", progress: 0.28, speed: 0.018, color: 0x3AA8C1 },
+  { path: "cw",  progress: 0.56, speed: 0.022, color: 0x3AA8C1 },
+  { path: "ccw", progress: 0.85, speed: 0.020, color: 0x3AA8C1 },
+  { path: "cw",  progress: 0.07, speed: 0.019, color: 0x45ADBD }
+];
+const movingCourierPool = [];
+for (let i = 0; i < MOVING_COURIER_DEFS.length; i++) {
+  const def = MOVING_COURIER_DEFS[i];
+  const courier = makeCourier(def.color);
+  courier.position.y = Y_WALK;
+  courier.visible = false;
+  root.add(courier);
+  const entry = {
+    obj: courier,
+    path: def.path === "cw" ? roadClockwise : roadCounterClockwise,
+    progress: def.progress,
+    baseSpeed: def.speed,
+    speed: def.speed,
+    baseY: Y_WALK,
+    purpose: "delivery",
+    poolIndex: i
+  };
+  movingCourierPool.push(entry);
+  vehicleState.push(entry);
+}
+
+// ── Stationary / waiting courier pool (4 actors) ───────────────────────────────
+// Clustered near the food_wolt entrance on the pavement. Zero movement loop needed;
+// only visibility is toggled according to behavioral intensity.
+const STATIONARY_COURIER_POSITIONS = [
+  { x: 10.25, z: 3.85, yaw:  0.5 },  // near venue door left
+  { x: 10.65, z: 4.05, yaw: -0.3 },  // near venue door right
+  { x: 10.10, z: 3.40, yaw:  1.1 },  // pavement approach
+  { x: 10.45, z: 2.90, yaw:  0.0 }   // further back waiting
+];
+const stationaryCourierPool = [];
+for (let i = 0; i < STATIONARY_COURIER_POSITIONS.length; i++) {
+  const pos = STATIONARY_COURIER_POSITIONS[i];
+  const sc = makeCourier(0x45ADBD);
+  sc.position.set(pos.x, Y_WALK, pos.z);
+  sc.rotation.y = pos.yaw;
+  sc.visible = false;
+  root.add(sc);
+  stationaryCourierPool.push({ obj: sc, pos: pos });
+}
+
 function applyCityLife(data) {
+  // Sync delivery intensity directly from habits payload
+  deliveryTier = (data.habits && validDeliveryTiers[data.habits.deliveryTier]) ? data.habits.deliveryTier : "quiet";
+  deliveryFreqScore = (data.habits && typeof data.habits.deliveryFrequencyScore === "number" && isFinite(data.habits.deliveryFrequencyScore))
+    ? Math.max(0, Math.min(1, data.habits.deliveryFrequencyScore)) : 0;
+
   syncVenueStates(data.venues);
   // Old callers still render safely, but no visits or new businesses are invented from ₪.
   Object.keys(cityBuildings).forEach(function (id) {
@@ -151,20 +222,30 @@ function applyCityLife(data) {
 }
 
 function applyHabitTraffic() {
-  const transport = venueActivity("trans_station"), delivery = venueActivity("food_wolt");
+  const transport = venueActivity("trans_station");
   trafficSpeed = 0.85 + transport * 0.2;
-  vehicleState.forEach(function (v, index) {
-    const purpose = v.purpose || (index === 2 ? "delivery" : "transport");
-    const activity = purpose === "delivery" ? delivery : transport;
-    const threshold = v.threshold !== undefined ? v.threshold : (index === 1 || index === 3 ? 0 : 0.18);
-    v.obj.visible = threshold === 0 || activity >= threshold;
+
+  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
+  const speedMultiplier = 1.0 + deliveryFreqScore * 0.20;
+
+  // 1. Moving couriers visibility and speed tuning
+  for (let i = 0; i < movingCourierPool.length; i++) {
+    const courier = movingCourierPool[i];
+    courier.obj.visible = i < params.movingCouriers;
+    courier.speed = courier.baseSpeed * speedMultiplier;
+  }
+
+  // 2. Stationary couriers waiting near food_wolt
+  for (let i = 0; i < stationaryCourierPool.length; i++) {
+    stationaryCourierPool[i].obj.visible = i < params.stationaryCouriers;
+  }
+
+  // 3. Non-delivery vehicles (transports) — unchanged behaviour
+  vehicleState.forEach(function (v) {
+    if (v.purpose !== "delivery") {
+      const threshold = v.threshold !== undefined ? v.threshold : (v.poolIndex === 1 || v.poolIndex === 3 ? 0 : 0.18);
+      v.obj.visible = threshold === 0 || transport >= threshold;
+    }
   });
   transportUnits.forEach(function (u, i) { u.visible = i === 0 || transport >= i * 0.22; });
-}
-
-// Three extra couriers are a visible delivery rhythm, rather than a crowded dine-in patio.
-for (let i = 0; i < 3; i++) {
-  const courier = makeCourier(0x45ADBD); courier.position.y = Y_WALK; courier.visible = false; root.add(courier);
-  vehicleState.push({ obj: courier, path: i % 2 ? roadClockwise : roadCounterClockwise,
-    progress: 0.13 + i * 0.29, speed: 0.020, baseY: Y_WALK, purpose: "delivery", threshold: 0.30 + i * 0.22 });
 }

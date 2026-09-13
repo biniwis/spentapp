@@ -1644,15 +1644,6 @@
         for (let y = 0.14; y < 0.78; y += 0.14) {
           g.add(mesh(new THREE.BoxGeometry(w * 0.53, 0.03, 0.07), mat(0x155E75, 0.6), -w * 0.20, y, d / 2 + 0.06, false, false));
         }
-        // Two parked scooters
-        [[w * 0.28, 0.5], [w * 0.44, -0.4]].forEach(function (p, i) {
-          const s = makeCourier(0x00C2E8);
-          s.position.set(p[0], 0, d / 2 + 0.55 + i * 0.25);
-          s.rotation.y = p[1];
-          s.scale.setScalar(0.78);
-          g.add(s);
-          bindVenueActor(s, "food_wolt", 0.18 + i * 0.30);
-        });
       },
       shop_boutique: function (g, w, d) {
         // Luxury Window Showcases with elevated podiums and illuminated mannequins
@@ -3461,19 +3452,13 @@ function normalizedSlotPlacements(input) {
       const v = createCar(color, isBus, isTaxi);
       v.position.y = Y_WALK;
       root.add(v);
-      vehicleState.push({ obj: v, path: path, progress: initP, speed: spd, baseY: Y_WALK });
+      vehicleState.push({ obj: v, path: path, progress: initP, speed: spd, baseY: Y_WALK, purpose: "transport" });
     }
 
     // Active Two-Way Traffic (Calm, graceful cruising pace ~45-60s per lap):
     // Clockwise vehicles:
     addVehicleToPath(0xFACC15, false, true,  roadClockwise, 0.05, 0.022); // Yellow Taxi (~45s per lap)
     addVehicleToPath(0xEF4444, false, false, roadClockwise, 0.50, 0.019); // Red Compact Sedan (~52s per lap)
-    (function () {
-      const rider = makeCourier(0x00C2E8);
-      rider.position.y = Y_WALK;
-      root.add(rider);
-      vehicleState.push({ obj: rider, path: roadClockwise, progress: 0.80, speed: 0.024, baseY: Y_WALK }); // Cyan Scooter (~41s per lap)
-    })();
 
     // Counter-Clockwise vehicles (Opposite Lane!):
     addVehicleToPath(0x2563EB, true, false,  roadCounterClockwise, 0.20, 0.016); // Blue City Bus (~62s per lap)
@@ -3704,7 +3689,78 @@ function makeLifePlace(id, variant) {
   return { group: g, proxy: proxy };
 }
 
+// ── Delivery intensity globals (driven by Swift DeliveryIntensityEngine) ───────────────
+const validDeliveryTiers = { quiet: 1, normal: 1, active: 1, high: 1, extreme: 1 };
+let deliveryTier = "quiet";
+let deliveryFreqScore = 0;
+
+const DELIVERY_TIER_PARAMS = {
+  quiet:   { movingCouriers: 0, stationaryCouriers: 0 },
+  normal:  { movingCouriers: 1, stationaryCouriers: 1 },
+  active:  { movingCouriers: 3, stationaryCouriers: 2 },
+  high:    { movingCouriers: 5, stationaryCouriers: 3 },
+  extreme: { movingCouriers: 7, stationaryCouriers: 4 }
+};
+
+// ── Moving courier pool (7 actors) ───────────────────────────────────────────
+// Created once during scene init. Alternating cw / ccw paths and staggered progress
+// guarantee wide distribution across city streets without clustering or pops.
+const MOVING_COURIER_DEFS = [
+  { path: "cw",  progress: 0.13, speed: 0.020, color: 0x45ADBD },
+  { path: "ccw", progress: 0.42, speed: 0.019, color: 0x45ADBD },
+  { path: "cw",  progress: 0.71, speed: 0.021, color: 0x45ADBD },
+  { path: "ccw", progress: 0.28, speed: 0.018, color: 0x3AA8C1 },
+  { path: "cw",  progress: 0.56, speed: 0.022, color: 0x3AA8C1 },
+  { path: "ccw", progress: 0.85, speed: 0.020, color: 0x3AA8C1 },
+  { path: "cw",  progress: 0.07, speed: 0.019, color: 0x45ADBD }
+];
+const movingCourierPool = [];
+for (let i = 0; i < MOVING_COURIER_DEFS.length; i++) {
+  const def = MOVING_COURIER_DEFS[i];
+  const courier = makeCourier(def.color);
+  courier.position.y = Y_WALK;
+  courier.visible = false;
+  root.add(courier);
+  const entry = {
+    obj: courier,
+    path: def.path === "cw" ? roadClockwise : roadCounterClockwise,
+    progress: def.progress,
+    baseSpeed: def.speed,
+    speed: def.speed,
+    baseY: Y_WALK,
+    purpose: "delivery",
+    poolIndex: i
+  };
+  movingCourierPool.push(entry);
+  vehicleState.push(entry);
+}
+
+// ── Stationary / waiting courier pool (4 actors) ───────────────────────────────
+// Clustered near the food_wolt entrance on the pavement. Zero movement loop needed;
+// only visibility is toggled according to behavioral intensity.
+const STATIONARY_COURIER_POSITIONS = [
+  { x: 10.25, z: 3.85, yaw:  0.5 },  // near venue door left
+  { x: 10.65, z: 4.05, yaw: -0.3 },  // near venue door right
+  { x: 10.10, z: 3.40, yaw:  1.1 },  // pavement approach
+  { x: 10.45, z: 2.90, yaw:  0.0 }   // further back waiting
+];
+const stationaryCourierPool = [];
+for (let i = 0; i < STATIONARY_COURIER_POSITIONS.length; i++) {
+  const pos = STATIONARY_COURIER_POSITIONS[i];
+  const sc = makeCourier(0x45ADBD);
+  sc.position.set(pos.x, Y_WALK, pos.z);
+  sc.rotation.y = pos.yaw;
+  sc.visible = false;
+  root.add(sc);
+  stationaryCourierPool.push({ obj: sc, pos: pos });
+}
+
 function applyCityLife(data) {
+  // Sync delivery intensity directly from habits payload
+  deliveryTier = (data.habits && validDeliveryTiers[data.habits.deliveryTier]) ? data.habits.deliveryTier : "quiet";
+  deliveryFreqScore = (data.habits && typeof data.habits.deliveryFrequencyScore === "number" && isFinite(data.habits.deliveryFrequencyScore))
+    ? Math.max(0, Math.min(1, data.habits.deliveryFrequencyScore)) : 0;
+
   syncVenueStates(data.venues);
   // Old callers still render safely, but no visits or new businesses are invented from ₪.
   Object.keys(cityBuildings).forEach(function (id) {
@@ -3738,22 +3794,32 @@ function applyCityLife(data) {
 }
 
 function applyHabitTraffic() {
-  const transport = venueActivity("trans_station"), delivery = venueActivity("food_wolt");
+  const transport = venueActivity("trans_station");
   trafficSpeed = 0.85 + transport * 0.2;
-  vehicleState.forEach(function (v, index) {
-    const purpose = v.purpose || (index === 2 ? "delivery" : "transport");
-    const activity = purpose === "delivery" ? delivery : transport;
-    const threshold = v.threshold !== undefined ? v.threshold : (index === 1 || index === 3 ? 0 : 0.18);
-    v.obj.visible = threshold === 0 || activity >= threshold;
+
+  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
+  const speedMultiplier = 1.0 + deliveryFreqScore * 0.20;
+
+  // 1. Moving couriers visibility and speed tuning
+  for (let i = 0; i < movingCourierPool.length; i++) {
+    const courier = movingCourierPool[i];
+    courier.obj.visible = i < params.movingCouriers;
+    courier.speed = courier.baseSpeed * speedMultiplier;
+  }
+
+  // 2. Stationary couriers waiting near food_wolt
+  for (let i = 0; i < stationaryCourierPool.length; i++) {
+    stationaryCourierPool[i].obj.visible = i < params.stationaryCouriers;
+  }
+
+  // 3. Non-delivery vehicles (transports) — unchanged behaviour
+  vehicleState.forEach(function (v) {
+    if (v.purpose !== "delivery") {
+      const threshold = v.threshold !== undefined ? v.threshold : (v.poolIndex === 1 || v.poolIndex === 3 ? 0 : 0.18);
+      v.obj.visible = threshold === 0 || transport >= threshold;
+    }
   });
   transportUnits.forEach(function (u, i) { u.visible = i === 0 || transport >= i * 0.22; });
-}
-
-// Three extra couriers are a visible delivery rhythm, rather than a crowded dine-in patio.
-for (let i = 0; i < 3; i++) {
-  const courier = makeCourier(0x45ADBD); courier.position.y = Y_WALK; courier.visible = false; root.add(courier);
-  vehicleState.push({ obj: courier, path: i % 2 ? roadClockwise : roadCounterClockwise,
-    progress: 0.13 + i * 0.29, speed: 0.020, baseY: Y_WALK, purpose: "delivery", threshold: 0.30 + i * 0.22 });
 }
 
     // Local footfall is derived from visits, not money. Fixed territories and bounded pools
@@ -5455,6 +5521,8 @@ window.dioramaEnergyState = function () {
       }
       if (!data.habits || typeof data.habits.hasTravelOrFlight !== "boolean") fail("habits");
       ["woltCount","coffeeCount","onlinePackagesCount","activeSubscriptionsCount"].forEach(k => number(data.habits[k], "habits." + k));
+      if (data.habits.deliveryTier != null && typeof data.habits.deliveryTier !== "string") fail("habits.deliveryTier");
+      if (data.habits.deliveryFrequencyScore != null) number(data.habits.deliveryFrequencyScore, "habits.deliveryFrequencyScore");
       ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
       if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
       if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");
@@ -5559,8 +5627,10 @@ window.dioramaEnergyState = function () {
       const t = (typeof transport === "number" && isFinite(transport)) ? Math.max(0, transport) : 0;
       const level = Math.min(1, t / 900);          // ~900 a month reads as a busy city
       trafficSpeed = 0.85 + level * 0.25;
-      // All vehicles in the two-way loops remain active and circulating!
-      for (let i = 0; i < vehicleState.length; i++) vehicleState[i].obj.visible = true;
+      // All non-delivery vehicles in the two-way loops remain active and circulating!
+      for (let i = 0; i < vehicleState.length; i++) {
+        if (vehicleState[i].purpose !== "delivery") vehicleState[i].obj.visible = true;
+      }
       // The ride station fills up with the transport line rather than only the traffic.
       const units = Math.min(4, 1 + Math.round(level * 3));
       for (let i = 0; i < transportUnits.length; i++) transportUnits[i].visible = i < units;
@@ -5905,10 +5975,16 @@ window.dioramaEnergyState = function () {
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,
-        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, ambient: CityAmbientEventSystem, crowdBatches: crowdBatches },
+        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, ambient: CityAmbientEventSystem, crowdBatches: crowdBatches,
+        get deliveryTier() { return deliveryTier; }, get deliveryFrequencyScore() { return deliveryFreqScore; },
+        movingCouriers: movingCourierPool, stationaryCouriers: stationaryCourierPool },
       slots: slotItems,
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },
+      get deliveryTier() { return deliveryTier; },
+      get deliveryFrequencyScore() { return deliveryFreqScore; },
+      movingCouriers: movingCourierPool,
+      stationaryCouriers: stationaryCourierPool,
       camModes: CAM_MODES,
       state: function () {
         return {
@@ -5921,6 +5997,7 @@ window.dioramaEnergyState = function () {
         };
       }
     };
+    window.__moneyCity = window.__diorama;
 
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.dioramaReady) {
       try { window.webkit.messageHandlers.dioramaReady.postMessage({}); } catch(e) {}

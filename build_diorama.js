@@ -1652,15 +1652,6 @@ ${threeMinJs}
         for (let y = 0.14; y < 0.78; y += 0.14) {
           g.add(mesh(new THREE.BoxGeometry(w * 0.53, 0.03, 0.07), mat(0x155E75, 0.6), -w * 0.20, y, d / 2 + 0.06, false, false));
         }
-        // Two parked scooters
-        [[w * 0.28, 0.5], [w * 0.44, -0.4]].forEach(function (p, i) {
-          const s = makeCourier(0x00C2E8);
-          s.position.set(p[0], 0, d / 2 + 0.55 + i * 0.25);
-          s.rotation.y = p[1];
-          s.scale.setScalar(0.78);
-          g.add(s);
-          bindVenueActor(s, "food_wolt", 0.18 + i * 0.30);
-        });
       },
       shop_boutique: function (g, w, d) {
         // Luxury Window Showcases with elevated podiums and illuminated mannequins
@@ -3416,19 +3407,13 @@ ${threeMinJs}
       const v = createCar(color, isBus, isTaxi);
       v.position.y = Y_WALK;
       root.add(v);
-      vehicleState.push({ obj: v, path: path, progress: initP, speed: spd, baseY: Y_WALK });
+      vehicleState.push({ obj: v, path: path, progress: initP, speed: spd, baseY: Y_WALK, purpose: "transport" });
     }
 
     // Active Two-Way Traffic (Calm, graceful cruising pace ~45-60s per lap):
     // Clockwise vehicles:
     addVehicleToPath(0xFACC15, false, true,  roadClockwise, 0.05, 0.022); // Yellow Taxi (~45s per lap)
     addVehicleToPath(0xEF4444, false, false, roadClockwise, 0.50, 0.019); // Red Compact Sedan (~52s per lap)
-    (function () {
-      const rider = makeCourier(0x00C2E8);
-      rider.position.y = Y_WALK;
-      root.add(rider);
-      vehicleState.push({ obj: rider, path: roadClockwise, progress: 0.80, speed: 0.024, baseY: Y_WALK }); // Cyan Scooter (~41s per lap)
-    })();
 
     // Counter-Clockwise vehicles (Opposite Lane!):
     addVehicleToPath(0x2563EB, true, false,  roadCounterClockwise, 0.20, 0.016); // Blue City Bus (~62s per lap)
@@ -4314,6 +4299,8 @@ ${threeMinJs}
       }
       if (!data.habits || typeof data.habits.hasTravelOrFlight !== "boolean") fail("habits");
       ["woltCount","coffeeCount","onlinePackagesCount","activeSubscriptionsCount"].forEach(k => number(data.habits[k], "habits." + k));
+      if (data.habits.deliveryTier != null && typeof data.habits.deliveryTier !== "string") fail("habits.deliveryTier");
+      if (data.habits.deliveryFrequencyScore != null) number(data.habits.deliveryFrequencyScore, "habits.deliveryFrequencyScore");
       ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
       if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
       if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");
@@ -4418,8 +4405,10 @@ ${threeMinJs}
       const t = (typeof transport === "number" && isFinite(transport)) ? Math.max(0, transport) : 0;
       const level = Math.min(1, t / 900);          // ~900 a month reads as a busy city
       trafficSpeed = 0.85 + level * 0.25;
-      // All vehicles in the two-way loops remain active and circulating!
-      for (let i = 0; i < vehicleState.length; i++) vehicleState[i].obj.visible = true;
+      // All non-delivery vehicles in the two-way loops remain active and circulating!
+      for (let i = 0; i < vehicleState.length; i++) {
+        if (vehicleState[i].purpose !== "delivery") vehicleState[i].obj.visible = true;
+      }
       // The ride station fills up with the transport line rather than only the traffic.
       const units = Math.min(4, 1 + Math.round(level * 3));
       for (let i = 0; i < transportUnits.length; i++) transportUnits[i].visible = i < units;
@@ -4764,10 +4753,16 @@ ${threeMinJs}
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,
-        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, ambient: CityAmbientEventSystem, crowdBatches: crowdBatches },
+        crowds: function () { return crowdSnapshot; }, crowdWalkers: crowdWalkers, encounters: cityEncounters, ambient: CityAmbientEventSystem, crowdBatches: crowdBatches,
+        get deliveryTier() { return deliveryTier; }, get deliveryFrequencyScore() { return deliveryFreqScore; },
+        movingCouriers: movingCourierPool, stationaryCouriers: stationaryCourierPool },
       slots: slotItems,
       companions: companionInstances,
       enrichments: function () { return unlockedEnrichments; },
+      get deliveryTier() { return deliveryTier; },
+      get deliveryFrequencyScore() { return deliveryFreqScore; },
+      movingCouriers: movingCourierPool,
+      stationaryCouriers: stationaryCourierPool,
       camModes: CAM_MODES,
       state: function () {
         return {
@@ -4780,6 +4775,7 @@ ${threeMinJs}
         };
       }
     };
+    window.__moneyCity = window.__diorama;
 
     if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.dioramaReady) {
       try { window.webkit.messageHandlers.dioramaReady.postMessage({}); } catch(e) {}

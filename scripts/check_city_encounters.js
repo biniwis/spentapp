@@ -6,7 +6,6 @@ function setup() {
   const scope = vm.createContext({ THREE, Math: Object.assign(Object.create(Math), { random: () => 0.3 }),
     Date, root: new THREE.Group(), courtGroup: {position: new THREE.Vector3(-9.2, .14, 8.8)},
     M_WOOD: new THREE.MeshBasicMaterial(), mesh: (geometry,material)=>new THREE.Mesh(geometry,material), companionInstances: new Map(),
-    deliveryTier: 'quiet', DELIVERY_TIER_PARAMS: {quiet: {encounterChance: 0}},
     Y_WALK: 0.14, window: { matchMedia: () => ({ matches: false }) }, energyMode: 'normal', currentMode: 'city',
     walkingCitizens: [], vehicleState: [], cityBuildings: { shop_boutique: { tier: 2, shell: { visible: true } } },
     ambientBench: new THREE.Group(), parkedTaxi: new THREE.Group(), transportYard: new THREE.Group(),
@@ -94,3 +93,27 @@ console.log('PASS: basketball variants, return continuity, ball cleanup, recent 
   }
 }
 console.log('PASS: companion states, bounded travel, reduced motion.');
+// Ten simulated minutes with the scheduler active and deliberately no legacy globals.
+{
+  const s=setup();person(s,-9.5,9.6);person(s,-8.8,9.6);person(s,2,1);
+  for(let frame=0;frame<18000;frame++) {
+    s.stepCityEncounters(1/30);
+    for(const c of s.walkingCitizens) assert(Number.isFinite(c.obj.position.z));
+    assert(s.events.length<=2);
+  }
+  assert(s.system.clock>599);
+}
+// Retrieval position depends on scene time, not frame count, including return travel.
+for (const fps of [20,30,60]) {
+  const s=setup();person(s,-9.5,9.6);s.system.clock=100;s.system.nextHero=0;
+  vm.runInContext("CityAmbientEventSystem.bag=[CityLifeScenes.find(s=>s.id==='basketball')]",s);
+  s.chooseAmbientEvent();const e=s.events[0];s.system.nextAttempt=Infinity;
+  while(s.events.length) {
+    s.stepCityEncounters(1/fps);
+    if(e.age>=e.travel && e.age<=e.travel+e.scene.duration) {
+      const spot=e.routes[0].points.at(-1);
+      assert(Math.abs(e.people[0].c.obj.position.z-spot.z)<=0.300001);
+    }
+  }
+}
+console.log('PASS: ten simulated minutes without legacy globals; bounded retrieval at 20/30/60 FPS.');

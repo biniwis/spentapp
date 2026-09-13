@@ -7,15 +7,10 @@ const CityAmbientEventSystem = {
   bag: [], recent: [], lastAnchor: null, cooldowns: {}, variants: {},
   seed: Number(new Date().toISOString().slice(0, 10).replace(/-/g, "")),
   maxEvents: 2, maxActors: 4,
-  // Delivery encounter state — managed separately from the citizen encounter pool
-  nextDeliveryAttempt: 40 + Math.random() * 40,
-  deliveryRushActive: false, deliveryRushEnd: 0,
   anchors: {
     boutique:  { building: 'shop_boutique', district: 'shopping', lane: [-7.20, -3.30], door: [-7.88, -3.30], inside: [-8.40, -3.30] },
     bench:     { district: 'city', approach: [2.52, 1.0], seat: [3.0, 1.0], yaw: -Math.PI / 2 },
-    taxi:      { district: 'transport', lane: [10.12, 6.95], door: [10.12, 7.42], inside: [10.62, 7.42] },
-    // Delivery venue entrance — used by courier encounter choreography
-    delivery:  { venue: 'food_wolt', approach: [10.55, 3.60], door: [10.88, 3.85], inside: [11.20, 3.85] }
+    taxi:      { district: 'transport', lane: [10.12, 6.95], door: [10.12, 7.42], inside: [10.62, 7.42] }
   }
 };
 function ambientPoint(p) { return new THREE.Vector3(p[0], Y_WALK, p[1]); }
@@ -217,7 +212,7 @@ const CityLifeScenes = [
 ];
 function sceneCandidate(scene, available) {
   const system = CityAmbientEventSystem;
-  if (scene.hero && (deliveryHeroEvent || currentMode !== 'city' || energyMode !== 'normal' || system.clock < system.nextHero || cityEncounters.some(e => e.scene && e.scene.hero))) return null;
+  if (scene.hero && (currentMode !== 'city' || energyMode !== 'normal' || system.clock < system.nextHero || cityEncounters.some(e => e.scene && e.scene.hero))) return null;
   if (scene.id === 'taxi' && walkingCitizens.filter(c => c.obj.visible).length < 10) return null;
   let anchor = system.anchors[scene.anchor], people;
   if (scene.id === 'building') {
@@ -315,162 +310,21 @@ function stepLifeScene(e,dt) {
       const u=(phase-0.65)/0.15;e.ball.position.copy(e.shot).lerp(e.landing,u);e.ball.position.y+=Math.sin(u*Math.PI)*(e.variant==='shootaround'?0.35:0.1);
     } else {
       const u=(phase-0.8)/0.2;e.ball.position.copy(e.landing).lerp(e.release,u);
-      const c=e.people[pass?1:0].c;c.obj.position.z-=Math.sin(u*Math.PI)*0.3;ambientPose(c,t,true);
+      const index=pass?1:0, c=e.people[index].c;
+      // Retrieval is an offset from the authored spot, never a frame-integrated delta.
+      // Outside play time the return route owns the actor's position.
+      if(t>=0 && t<=duration) {
+        c.obj.position.z=e.routes[index].points[e.routes[index].points.length-1].z-Math.sin(u*Math.PI)*0.3;
+        ambientPose(c,t,true);
+      }
     }
   }
   return t>duration+e.travel;
 }
-// ── Delivery Encounter System ─────────────────────────────────────────────────
-// Uses stationaryCourierPool actors (real courier meshes near the venue),
-// not generic crowd walkers. This ensures the activity reads as delivery, not
-// generic pedestrian traffic, especially at High and Extreme tiers.
-
-// Track which stationary couriers are currently doing an encounter so we don't
-// double-assign them.
-const deliveryCourierInEncounter = new Set();
-
-// Choreography for a single courier approaching the delivery venue entrance
-// (arrival/hero pattern). Returns a plain state object — not a cityEncounters entry.
-let deliveryHeroEvent = null;
-
-function startDeliveryHero() {
-  if (deliveryHeroEvent) return;
-  if (typeof stationaryCourierPool === 'undefined' || stationaryCourierPool.length === 0) return;
-  // Pick a visible, idle stationary courier
-  const idle = stationaryCourierPool.filter(function (sc, i) {
-    return sc.obj.visible && !deliveryCourierInEncounter.has(i);
-  });
-  if (!idle.length) return;
-  const pick = idle[Math.floor(Math.random() * idle.length)];
-  const idx = stationaryCourierPool.indexOf(pick);
-  deliveryCourierInEncounter.add(idx);
-  const anchor = CityAmbientEventSystem.anchors.delivery;
-  const start = pick.obj.position.clone();
-  const door  = new THREE.Vector3(anchor.door[0], Y_WALK, anchor.door[1]);
-  deliveryHeroEvent = {
-    courier: pick, idx: idx,
-    phase: 'approach', elapsed: 0, age: 0,
-    startPos: start,
-    doorPos: door,
-    savedPos: start.clone(),
-    savedYaw: pick.obj.rotation.y
-  };
-}
-
-function stepDeliveryHero(dt) {
-  if (!deliveryHeroEvent) return;
-  const ev = deliveryHeroEvent;
-  ev.age += dt; ev.elapsed += dt;
-  const courier = ev.courier.obj;
-  if (ev.phase === 'approach') {
-    const t = Math.min(1, ev.elapsed * 0.28);
-    courier.position.lerpVectors(ev.startPos, ev.doorPos, t);
-    const yaw = Math.atan2(ev.doorPos.x - ev.startPos.x, ev.doorPos.z - ev.startPos.z);
-    ambientTurn(courier, yaw, dt);
-    if (t >= 1) { ev.phase = 'pause'; ev.elapsed = 0; }
-  } else if (ev.phase === 'pause') {
-    if (ev.elapsed > 3.0) { ev.phase = 'return'; ev.elapsed = 0; }
-  } else if (ev.phase === 'return') {
-    const t = Math.min(1, ev.elapsed * 0.28);
-    courier.position.lerpVectors(ev.doorPos, ev.savedPos, t);
-    ambientTurn(courier, ev.savedYaw, dt);
-    if (t >= 1) {
-      courier.position.copy(ev.savedPos);
-      courier.rotation.y = ev.savedYaw;
-      deliveryCourierInEncounter.delete(ev.idx);
-      deliveryHeroEvent = null;
-    }
-  }
-}
-
-// Delivery rush: briefly speed up the first few moving couriers for ~6s
-let deliveryRushElapsed = 0;
-const DELIVERY_RUSH_BASE_SPEEDS = [];
-let deliveryRushInitialised = false;
-
-function triggerDeliveryRush() {
-  if (CityAmbientEventSystem.deliveryRushActive) return;
-  if (typeof movingCourierPool === 'undefined') return;
-  if (!deliveryRushInitialised) {
-    for (let i = 0; i < movingCourierPool.length; i++) DELIVERY_RUSH_BASE_SPEEDS.push(movingCourierPool[i].speed);
-    deliveryRushInitialised = true;
-  }
-  CityAmbientEventSystem.deliveryRushActive = true;
-  deliveryRushElapsed = 0;
-  // Boost speed on active moving couriers only
-  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
-  for (let i = 0; i < Math.min(params.movingCouriers, movingCourierPool.length); i++) {
-    movingCourierPool[i].speed = DELIVERY_RUSH_BASE_SPEEDS[i] * 1.7;
-  }
-}
-
-function stepDeliveryRush(dt) {
-  if (!CityAmbientEventSystem.deliveryRushActive) return;
-  deliveryRushElapsed += dt;
-  if (deliveryRushElapsed >= 6.0) {
-    // Restore speeds
-    if (deliveryRushInitialised) {
-      for (let i = 0; i < movingCourierPool.length; i++) movingCourierPool[i].speed = DELIVERY_RUSH_BASE_SPEEDS[i];
-    }
-    CityAmbientEventSystem.deliveryRushActive = false;
-  }
-}
-
-function stepDeliveryEncounters(dt) {
-  const system = CityAmbientEventSystem;
-  if (ambientMotion.matches || energyMode === 'critical') {
-    // Cancel any active delivery events on reduce-motion / critical energy
-    if (deliveryHeroEvent) {
-      const ev = deliveryHeroEvent;
-      ev.courier.obj.position.copy(ev.savedPos);
-      ev.courier.obj.rotation.y = ev.savedYaw;
-      deliveryCourierInEncounter.delete(ev.idx);
-      deliveryHeroEvent = null;
-    }
-    if (system.deliveryRushActive) {
-      if (deliveryRushInitialised) {
-        for (let i = 0; i < movingCourierPool.length; i++) movingCourierPool[i].speed = DELIVERY_RUSH_BASE_SPEEDS[i];
-      }
-      system.deliveryRushActive = false;
-    }
-    return;
-  }
-
-  stepDeliveryHero(dt);
-  stepDeliveryRush(dt);
-
-  // Attempt new delivery events on cooldown
-  if (system.clock < system.nextDeliveryAttempt) return;
-
-  const params = DELIVERY_TIER_PARAMS[deliveryTier] || DELIVERY_TIER_PARAMS.quiet;
-  if (params.encounterChance === 0) {
-    system.nextDeliveryAttempt = system.clock + 30 + Math.random() * 30;
-    return;
-  }
-
-  // Rush event (rare, High+ only)
-  if (!system.deliveryRushActive && params.rushChance > 0 && Math.random() < params.rushChance) {
-    triggerDeliveryRush();
-    system.nextDeliveryAttempt = system.clock + 25 + Math.random() * 25;
-    return;
-  }
-
-  // Hero arrival event (Extreme only, very rare)
-  const heroAllowed = cityEncounters.length === 0 && deliveryTier === 'extreme' && !deliveryHeroEvent && Math.random() < 0.05 && system.clock >= system.nextHero;
-  if (heroAllowed) {
-    startDeliveryHero();
-    system.nextHero = system.clock + 120 + Math.random() * 120;
-    system.nextDeliveryAttempt = system.clock + 20 + Math.random() * 20;
-    return;
-  }
-
-  system.nextDeliveryAttempt = system.clock + 20 + Math.random() * 40;
-}
-
 function stepCityEncounters(dt) {
   const system = CityAmbientEventSystem;
   system.clock += dt;
-  if (ambientMotion.matches || energyMode === 'critical') { cancelCityEncounters(); stepDeliveryEncounters(dt); return; }
+  if (ambientMotion.matches || energyMode === 'critical') { cancelCityEncounters(); return; }
   for (let i = cityEncounters.length - 1; i >= 0; i--) {
     const event = cityEncounters[i]; event.age += dt; event.elapsed += dt;
     const invalid = event.people.some(function (s) { return !s.c.obj.visible; }) ||
@@ -485,6 +339,4 @@ function stepCityEncounters(dt) {
     system.nextAttempt = system.clock + 16 + cityLifeRandom() * 20;
     if (cityEncounters.length < system.maxEvents) chooseAmbientEvent();
   }
-  // Delivery encounters run on their own pool and cooldown, independently of citizen encounters.
-  stepDeliveryEncounters(dt);
 }

@@ -258,9 +258,6 @@
     "%lld active goals" : {
 
     },
-    "%lld txs" : {
-
-    },
     "%lld visits (%@ total) • View Details" : {
       "localizations" : {
         "en" : {
@@ -272,9 +269,6 @@
       }
     },
     "%lld יעדים מוגדרים" : {
-
-    },
-    "%lld עסקאות" : {
 
     },
     "%lld%%" : {
@@ -348,7 +342,13 @@
     "$" : {
 
     },
+    "₪" : {
+
+    },
     "₪480 Saved" : {
+
+    },
+    "₪650 over monthly plan" : {
 
     },
     "0" : {
@@ -390,13 +390,13 @@
     "About SPENT" : {
 
     },
+    "Actions are safely stored on-device and will sync once online." : {
+
+    },
     "Active Streak" : {
 
     },
     "Active Today! 🔥" : {
-
-    },
-    "Activity" : {
 
     },
     "Add" : {
@@ -516,6 +516,9 @@
           }
         }
       }
+    },
+    "Amount must be a positive number greater than 0" : {
+
     },
     "Analytics" : {
 
@@ -647,6 +650,9 @@
     "City additions" : {
 
     },
+    "City Archive" : {
+
+    },
     "City companions — weekly addition" : {
 
     },
@@ -666,6 +672,9 @@
 
     },
     "Connect Transaction Data" : {
+
+    },
+    "Could not extract receipt" : {
 
     },
     "Couldn't create the portrait" : {
@@ -697,7 +706,7 @@
         }
       }
     },
-    "Daily Average" : {
+    "Current spending exceeds planned income. City park growth slows down." : {
 
     },
     "Date and Time" : {
@@ -761,6 +770,9 @@
     "Deleted: %@" : {
 
     },
+    "Deleted: Zara — ₪199.90" : {
+
+    },
     "Deposit" : {
 
     },
@@ -817,10 +829,16 @@
     "Edit Transaction" : {
 
     },
+    "Empty States" : {
+
+    },
     "Engine — generateCandidates" : {
 
     },
     "Engine + Curator ↗" : {
+
+    },
+    "Ensure the receipt is flat, well-lit, and the total line is clearly visible." : {
 
     },
     "Enter ✎" : {
@@ -846,7 +864,13 @@
         }
       }
     },
+    "Enter Manually" : {
+
+    },
     "Enter Payment Amount" : {
+
+    },
+    "Error States" : {
 
     },
     "Every building has a story" : {
@@ -984,6 +1008,9 @@
         }
       }
     },
+    "Image is blurry or amount is unreadable" : {
+
+    },
     "Immediate push alert when a purchase is logged" : {
 
     },
@@ -1024,6 +1051,9 @@
 
     },
     "Live 3D City Density Lab" : {
+
+    },
+    "Live Archive" : {
 
     },
     "Live exchange rates (estimated)" : {
@@ -1171,13 +1201,10 @@
     "Open 3D ↗" : {
 
     },
-    "Open Reward Claimed State" : {
-
-    },
-    "Open Reward Selection" : {
-
-    },
     "Open Shortcuts" : {
+
+    },
+    "Operating in Offline Mode" : {
 
     },
     "Optional fallback if the numeric amount is empty" : {
@@ -1222,6 +1249,9 @@
 
     },
     "Please try sharing again." : {
+
+    },
+    "Postcards (Mock)" : {
 
     },
     "Preview weekly companion rewards, unlock flow, and animated join ceremonies:" : {
@@ -1360,10 +1390,10 @@
     "Reset All Transactions & Data" : {
 
     },
-    "Reset Filters" : {
+    "Reset Confirmation Banner" : {
 
     },
-    "Reset Reward Cooldowns" : {
+    "Reset Filters" : {
 
     },
     "Restore" : {
@@ -1409,6 +1439,9 @@
 
     },
     "Savings History" : {
+
+    },
+    "Scan Again" : {
 
     },
     "Scan Screenshot or Receipt in SPENT" : {
@@ -1501,6 +1534,12 @@
 
     },
     "Show Less" : {
+
+    },
+    "Show Recap Banner Again" : {
+
+    },
+    "Show Undo Toast" : {
 
     },
     "Simulates positive weekly progress (₪480 saved), interactive selection & join animation" : {
@@ -1643,9 +1682,6 @@
     "Top Categories" : {
 
     },
-    "Top Expense" : {
-
-    },
     "Total" : {
 
     },
@@ -1736,12 +1772,6 @@
 
     },
     "Transactions to Categorize" : {
-
-    },
-    "Trigger Surprise Reward" : {
-
-    },
-    "Trigger Weekly Reward" : {
 
     },
     "Trip to Japan" : {
@@ -1909,6 +1939,9 @@
     "איפוס" : {
 
     },
+    "איפוס והצגת באנר קליטה" : {
+
+    },
     "איפוס כל העסקאות והנתונים" : {
 
     },
@@ -1945,7 +1978,13 @@
     "אפשרויות נוספות" : {
 
     },
+    "ארכיון מקומי (SwiftData)" : {
+
+    },
     "ארכיון סיכומים" : {
+
+    },
+    "ארכיון עיר" : {
 
     },
     "אשר את הסיווג" : {
@@ -2004,6 +2043,9 @@
 
     },
     "גיבוי ושחזור" : {
+
+    },
+    "גלויות חודשיות (Mock)" : {
 
     },
     "גרסה, זכויות יוצרים ומידע" : {
@@ -2093,10 +2135,10 @@
     "הוצאות קבועות" : {
 
     },
-    "הוצאת שיא" : {
+    "הושלם" : {
 
     },
-    "הושלם" : {
+    "הזן ידנית" : {
 
     },
     "הזן סכום ✎" : {
@@ -2171,6 +2213,9 @@
     "הסיכום של %@ מוכן!" : {
 
     },
+    "הסכום חייב להיות מספר חיובי הגדול מ-0" : {
+
+    },
     "הסכום יירשם גם כהפקדה לחיסכון ויגדיל את הפארק בעיר." : {
 
     },
@@ -2222,6 +2267,12 @@
     "הצג את כל העסקאות" : {
 
     },
+    "הצג באנר ביטול מחיקה" : {
+
+    },
+    "הצג באנר סיכום שוב" : {
+
+    },
     "הצג הכל" : {
 
     },
@@ -2264,10 +2315,19 @@
     "התמונה לא נוצרה" : {
 
     },
+    "התמונה מטושטשת או שהסכום אינו קריא" : {
+
+    },
     "התפלגות הוצאות" : {
 
     },
     "התראות" : {
+
+    },
+    "התראות מערכת" : {
+
+    },
+    "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור." : {
 
     },
     "זוהה זיכוי / החזר מ-Apple Pay" : {
@@ -2304,6 +2364,9 @@
 
     },
     "חפש עסקה או קטגוריה..." : {
+
+    },
+    "חריגה של ₪650 מהתכנון החודשי" : {
 
     },
     "טיול ליפן" : {
@@ -2358,6 +2421,9 @@
 
     },
     "לא בשימוש — התקרות למטה גוברות" : {
+
+    },
+    "לא הצלחנו לפענח את החשבונית" : {
 
     },
     "לאיזו קטגוריה להעביר?" : {
@@ -2432,9 +2498,6 @@
     "מכירים את העיר" : {
 
     },
-    "ממוצע ליום" : {
-
-    },
     "ממוצע לעסקה" : {
 
     },
@@ -2466,6 +2529,12 @@
 
     },
     "מצב סיום: כל התוספות כבר בעיר" : {
+
+    },
+    "מצבי ריקון" : {
+
+    },
+    "מצבי שגיאה" : {
 
     },
     "מצטרפים לעיר — תוספת שבועית" : {
@@ -2518,6 +2587,9 @@
 
     },
     "נמחקה: %@" : {
+
+    },
+    "נמחקה: זארה — ₪199.90" : {
 
     },
     "סביבת בדיקות מבודדת" : {
@@ -2595,6 +2667,9 @@
     "עסקאות החודש" : {
 
     },
+    "עסקאות ופעולות נשמרות מקומית על המכשיר ויעודכנו כשהרשת תחזור." : {
+
+    },
     "עסקאות לא מסווגות" : {
 
     },
@@ -2628,13 +2703,13 @@
     "עריכת סכום" : {
 
     },
+    "פועל במצב לא מקוון (Offline)" : {
+
+    },
     "פירוט עבור %@:" : {
 
     },
     "פעיל היום! 🔥" : {
-
-    },
-    "פעילות" : {
 
     },
     "פרופיל" : {
@@ -2659,6 +2734,9 @@
 
     },
     "צור" : {
+
+    },
+    "צלם שוב" : {
 
     },
     "צפה" : {
@@ -2692,6 +2770,9 @@
 
     },
     "קלט הקיצור" : {
+
+    },
+    "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. הפארק בעיר מאט את צמיחתו עד לאיזון." : {
 
     },
     "קצב ההוצאות של החודש" : {

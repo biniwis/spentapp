@@ -19,24 +19,6 @@
     "(%lld%%)" : {
 
     },
-    "[Amount field]" : {
-
-    },
-    "[Merchant field]" : {
-
-    },
-    "[Shortcut Input]" : {
-
-    },
-    "[קלט הקיצור]" : {
-
-    },
-    "[שדה בית העסק]" : {
-
-    },
-    "[שדה הסכום]" : {
-
-    },
     "%@" : {
 
     },
@@ -323,19 +305,7 @@
     "• ↩️ זיכוי" : {
 
     },
-    "• Tap" : {
-
-    },
-    "• Tap 'Done' — and you are all set! 🎉" : {
-
-    },
     "• unverified" : {
-
-    },
-    "• לחץ" : {
-
-    },
-    "• לחץ 'סיום' (Done) — מעכשיו הכל יקלט אוטומטית! 🎉" : {
 
     },
     "• סיווג לא ודאי" : {
@@ -371,24 +341,6 @@
     "✦ סיכום חודשי" : {
 
     },
-    "➔ choose (Amount)" : {
-
-    },
-    "➔ choose (Merchant)" : {
-
-    },
-    "➔ select" : {
-
-    },
-    "➔ בחר" : {
-
-    },
-    "➔ סמן (בית העסק)" : {
-
-    },
-    "➔ סמן (כמות)" : {
-
-    },
     "$" : {
 
     },
@@ -405,9 +357,6 @@
 
     },
     "03" : {
-
-    },
-    "4" : {
 
     },
     "6 / 6" : {
@@ -582,9 +531,6 @@
     "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device." : {
 
     },
-    "Automatic Apple Pay Setup" : {
-
-    },
     "Automatic Currency Conversion" : {
 
     },
@@ -625,9 +571,6 @@
 
     },
     "Bug reports, questions & ideas" : {
-
-    },
-    "Built-in to iOS — just enable the 3-step automation:" : {
 
     },
     "Calendar & Jump to Date" : {
@@ -719,9 +662,6 @@
 
     },
     "Connect Transaction Data" : {
-
-    },
-    "Connect Transaction Data (💡)" : {
 
     },
     "Couldn't create the portrait" : {
@@ -860,9 +800,6 @@
           }
         }
       }
-    },
-    "Due to iOS privacy, a quick Shortcuts automation is required to stream tap-to-pay charges directly into your city." : {
-
     },
     "Edit" : {
 
@@ -1233,9 +1170,6 @@
     "Open Shortcuts" : {
 
     },
-    "Open Shortcuts App Now" : {
-
-    },
     "Optional fallback if the numeric amount is empty" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1535,6 +1469,9 @@
     "Set monthly budget" : {
 
     },
+    "Set up\nShortcuts." : {
+
+    },
     "Set Up New Savings Goal" : {
 
     },
@@ -1545,9 +1482,6 @@
 
     },
     "Shortcut Input" : {
-
-    },
-    "Shortcuts Guide" : {
 
     },
     "Show All Transactions" : {
@@ -1604,9 +1538,6 @@
         }
       }
     },
-    "SPENT actions are already installed!" : {
-
-    },
     "SPENT City" : {
 
     },
@@ -1632,9 +1563,6 @@
 
     },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
-
-    },
-    "Tap each blue field, select 'Shortcut Input' then the attribute:" : {
 
     },
     "Tap each field, select \"Shortcut Input\" then the attribute:" : {
@@ -1694,6 +1622,9 @@
 
     },
     "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
+
+    },
+    "Three steps in Shortcuts, then transactions can reach SPENT automatically." : {
 
     },
     "To have the park reflect your monthly pace, set your estimated monthly spending." : {
@@ -2010,9 +1941,6 @@
     "ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
 
     },
-    "בגלל ש-iOS שומרת על פרטיות, נדרש חיבור קצר באפליקציית 'קיצורים' (Shortcuts) כדי שכל תשלום ייקלט מיד בעיר שלך." : {
-
-    },
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
 
     },
@@ -2095,13 +2023,7 @@
     "הגדרות" : {
 
     },
-    "הגדרת אוטומציה" : {
-
-    },
     "הגדרת יעד חיסכון חדש" : {
-
-    },
-    "הגדרת קליטת Apple Pay אוטומטית" : {
 
     },
     "הגדרת תקציב" : {
@@ -2260,12 +2182,6 @@
     "הפארק משתנה לפי התקציב והחיסכון שלך." : {
 
     },
-    "הפעולה מובנית במערכת — נותר רק להפעיל אוטומציה:" : {
-
-    },
-    "הפעולות של SPENT כבר מותקנות באייפון!" : {
-
-    },
     "הפעל" : {
 
     },
@@ -2356,9 +2272,6 @@
     "חבר את נתוני העסקה" : {
 
     },
-    "חבר את נתוני העסקה (כמות ובית עסק 💡)" : {
-
-    },
     "חודש חדש בעיר" : {
 
     },
@@ -2443,9 +2356,6 @@
     "לוח שנה ומעבר לתאריך" : {
 
     },
-    "לחץ על כל שדה כחול, בחר 'קלט הקיצור' ואז את המאפיין:" : {
-
-    },
     "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : {
 
     },
@@ -2474,6 +2384,9 @@
 
     },
     "מושהה" : {
+
+    },
+    "מחברים\nאת הקיצורים" : {
 
     },
     "מחיקה" : {
@@ -2723,9 +2636,6 @@
     "פריסה לתשלומים" : {
 
     },
-    "פתח את אפליקציית 'קיצורים' עכשיו" : {
-
-    },
     "פתח את קיצורים" : {
 
     },
@@ -2818,6 +2728,9 @@
 
     },
     "שלום, %@" : {
+
+    },
+    "שלושה שלבים ב״קיצורים״, ואז העסקאות יכולות להגיע ל־SPENT אוטומטית." : {
 
     },
     "שם" : {

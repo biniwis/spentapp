@@ -4,6 +4,8 @@ const CROWD_LIMITS = { walkers: 24, waiting: 48 };
 const crowdWalkers = [];
 const crowdBatches = [];
 let crowdSnapshot = [];
+const recentCrowdProfiles = [];   // crowd-specific clone-prevention window
+const CROWD_RECENT_WINDOW = 6;
 
 // Each route is an authored, unobstructed frontage strip, separate from the door/table
 // zone. u runs along the pavement; v points towards its outer edge.
@@ -136,11 +138,19 @@ function applyVenueCrowds() {
   pending.forEach(function (request) {
     let record = crowdWalkers.find(function (c) { return !used.has(c); });
     if (!record) {
-      const palette = [0xBC8055, 0x527FA7, 0x6E9868, 0xBC6C87];
-      addCitizen(palette[crowdWalkers.length % palette.length], 0x45536A, null,
+      // Create a new crowd walker with a stable appearance key derived from request.key.
+      addCitizen(null, null, null,
         crowdRoute(CROWD_FRONTAGES[request.entry.id]), ["נעים להסתובב כאן"], ["A little moment in the neighbourhood"], false,
-        0.27 + (crowdWalkers.length % 4) * 0.025);
+        0.27 + (crowdWalkers.length % 4) * 0.025, request.key);
       record = walkingCitizens[walkingCitizens.length - 1]; crowdWalkers.push(record);
+    } else if (record.appearanceKey !== request.key) {
+      // Pool record is being reused for a different slot — update its visual identity.
+      const newProfile = chooseAppearanceForSlot(request.key, recentCrowdProfiles);
+      applyAppearanceToFigure(record, newProfile);
+      recentCrowdProfiles.push(newProfile);
+      if (recentCrowdProfiles.length > CROWD_RECENT_WINDOW) recentCrowdProfiles.shift();
+      // Recompute speed to combine base crowd speed with new motion profile.
+      record.speed = (0.27 + (crowdWalkers.indexOf(record) % 4) * 0.025) * newProfile.motion.speedMult;
     }
     record.crowdKey = request.key; record.crowdCount = null;
     used.add(record);

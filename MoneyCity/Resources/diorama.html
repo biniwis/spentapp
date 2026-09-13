@@ -1291,66 +1291,355 @@
 
     // ────────────────────────────────────────────────────────────────
     // 👥 3c. PEOPLE, COURIERS AND BUILDERS
-    // The v1 map was alive — walkers with dogs, Wolt riders, a busker, builders on the
-    // empty plots. Without them the island reads as an architectural model rather than
-    // a place where money is being spent.
     // ────────────────────────────────────────────────────────────────
-    const M_SKIN = mat(0xF6C88A, 0.82);
+    // Backward-compat skin materials (couriers, seated guests, companions).
+    const M_SKIN  = mat(0xF6C88A, 0.82);
     const M_SKIN2 = mat(0xC98C56, 0.82);
 
+    // ─────────────────────────────────────────────────────────────────
+    // CITIZEN APPEARANCE SYSTEM v1
+    // Additive layer over the existing rig. buildAppearanceProfile(key)
+    // is a pure function — same key always → same profile, no side effects.
+    // ─────────────────────────────────────────────────────────────────
+
+    // FNV-1a 32-bit hash → Mulberry32 PRNG
+    function hashCitizenKey(str) {
+      let h = 0x811c9dc5;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = (Math.imul(h, 0x01000193)) >>> 0;
+      }
+      return h;
+    }
+    function makePRNG(seed) {
+      let s = seed >>> 0;
+      return function () {
+        s = (s + 0x6D2B79F5) >>> 0;
+        let z = Math.imul(s ^ (s >>> 15), 1 | s);
+        z = (z + Math.imul(z ^ (z >>> 7), 61 | z)) >>> 0;
+        return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    // Palettes
+    const CITIZEN_SKIN_TONES  = [0xF1C7A3, 0xD9A176, 0xB97A52, 0x8D593E, 0x60402F];
+    const CITIZEN_HAIR_COLORS = [0x2B211D, 0x4A3025, 0x68452F, 0x8C5A36, 0xB57A45, 0xC9A26B];
+    const CITIZEN_TOPS        = [0x66879A, 0x6E8B73, 0xB97867, 0xC19A5B, 0x756C86, 0xA56F78, 0x596F88, 0x92745B];
+    const CITIZEN_BOTTOMS     = [0x39495A, 0x505760, 0x62564D, 0x405650, 0x484955, 0x746C64];
+    const CITIZEN_HAIR_STYLES = ['crop', 'short', 'bob', 'long', 'bun', 'ponytail', 'shaved'];
+    const CITIZEN_BODY_PROFILES = [
+      { id: 'compact',  h: 0.95, w: 1.02 },
+      { id: 'standard', h: 1.00, w: 1.00 },
+      { id: 'tall',     h: 1.05, w: 0.98 },
+      { id: 'broad',    h: 1.00, w: 1.05 }
+    ];
+    const CITIZEN_TOP_STYLES  = ['basic', 'jacket', 'longTop', 'looseBtm'];
+    const CITIZEN_ACCESSORIES = [null, 'backpack', 'crossbody', 'tote', 'cap', 'headphones'];
+    const CAP_BLOCKED_HAIR    = { long: true, bun: true, ponytail: true };
+    const CITIZEN_MOTION_PROFILES = [
+      { id: 'relaxed', speedMult: 0.90, swing: 0.85, cadence: 0.90 },
+      { id: 'normal',  speedMult: 1.00, swing: 1.00, cadence: 1.00 },
+      { id: 'brisk',   speedMult: 1.11, swing: 1.05, cadence: 1.10 },
+      { id: 'stroll',  speedMult: 0.83, swing: 0.72, cadence: 0.82 }
+    ];
+
+    // Material cache — shared, never mutated after creation.
+    // Companions use makeFigure without opts.appearance → get fresh mat() calls,
+    // so companionFigure's rewardOwned tagging never touches the cache.
+    const citizenMatCache = new Map();
+    function citizenMat(hex, roughness) {
+      const k = hex + '-' + (roughness || 0.82);
+      if (!citizenMatCache.has(k)) citizenMatCache.set(k, mat(hex, roughness || 0.82));
+      return citizenMatCache.get(k);
+    }
+    const CITIZEN_SKIN_MATS = CITIZEN_SKIN_TONES.map(function (h) { return citizenMat(h, 0.82); });
+
+    // Geometry cache — created once, shared across all citizens.
+    const CITIZEN_GEO = (function () {
+      const HR = 0.085;
+      return {
+        hairCrop:     new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.40),
+        hairShort:    new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        hairBobBase:  new THREE.SphereGeometry(HR * 1.03, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        hairBobChunk: new THREE.BoxGeometry(0.080, 0.056, 0.046),
+        hairLongBase: new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        hairLongExt:  new THREE.CylinderGeometry(0.032, 0.016, 0.12, 6),
+        hairBunBase:  new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        hairBunKnot:  new THREE.SphereGeometry(0.026, 6, 5),
+        hairPonyBase: new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+        hairPonyTail: new THREE.CylinderGeometry(0.016, 0.009, 0.088, 5),
+        hairShaved:   new THREE.SphereGeometry(HR * 0.93, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.32),
+        accBackpackBody: new THREE.BoxGeometry(0.16, 0.19, 0.085),
+        accBackpackStr:  new THREE.BoxGeometry(0.02, 0.23, 0.02),
+        accCrossbody:    new THREE.BoxGeometry(0.10, 0.12, 0.06),
+        accTote:         new THREE.BoxGeometry(0.13, 0.14, 0.05),
+        accCapDome:      new THREE.SphereGeometry(0.09, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        accCapBrim:      new THREE.BoxGeometry(0.14, 0.016, 0.08),
+        accHpBand:       new THREE.BoxGeometry(0.195, 0.010, 0.010),
+        accHpCup:        new THREE.CylinderGeometry(0.021, 0.021, 0.015, 7),
+        jacketShoulder:  new THREE.BoxGeometry(0.305, 0.044, 0.148),
+        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7)
+      };
+    })();
+
+    // Hair builder — adds meshes to a torso-child group using shared geometry.
+    function addHairToGroup(grp, style, colorHex) {
+      const hMat = citizenMat(colorHex, 0.90);
+      const HY = 0.291, HZ = -0.004; // torso-local coords matching existing hair position
+      switch (style) {
+        case 'crop':
+          grp.add(mesh(CITIZEN_GEO.hairCrop, hMat, 0, HY, HZ, false, false)); break;
+        case 'short':
+          grp.add(mesh(CITIZEN_GEO.hairShort, hMat, 0, HY, HZ, false, false)); break;
+        case 'bob': {
+          grp.add(mesh(CITIZEN_GEO.hairBobBase, hMat, 0, HY, HZ, false, false));
+          const chunk = mesh(CITIZEN_GEO.hairBobChunk, hMat, 0, HY - 0.034, HZ - 0.072, false, false);
+          chunk.rotation.x = 0.18; grp.add(chunk); break;
+        }
+        case 'long': {
+          grp.add(mesh(CITIZEN_GEO.hairLongBase, hMat, 0, HY, HZ, false, false));
+          const ext = mesh(CITIZEN_GEO.hairLongExt, hMat, 0, HY - 0.088, HZ - 0.076, false, false);
+          ext.rotation.x = 0.28; grp.add(ext); break;
+        }
+        case 'bun':
+          grp.add(mesh(CITIZEN_GEO.hairBunBase, hMat, 0, HY, HZ, false, false));
+          grp.add(mesh(CITIZEN_GEO.hairBunKnot, hMat, 0, HY + 0.056, HZ - 0.028, false, false)); break;
+        case 'ponytail': {
+          grp.add(mesh(CITIZEN_GEO.hairPonyBase, hMat, 0, HY, HZ, false, false));
+          const tail = mesh(CITIZEN_GEO.hairPonyTail, hMat, 0, HY - 0.018, HZ - 0.090, false, false);
+          tail.rotation.x = 0.52; grp.add(tail); break;
+        }
+        case 'shaved':
+          grp.add(mesh(CITIZEN_GEO.hairShaved, hMat, 0, HY, HZ, false, false)); break;
+      }
+    }
+
+    // Accessory builder — at most one accessory, all in torso-child group.
+    function addAccessoryToGroup(grp, accessory, topColorHex) {
+      if (!accessory) return;
+      const darkMat = citizenMat(0x2E2E33, 0.85);
+      const aMat    = citizenMat(topColorHex, 0.78);
+      switch (accessory) {
+        case 'backpack':
+          grp.add(mesh(CITIZEN_GEO.accBackpackBody, aMat, 0, 0.01, -0.12, false, false));
+          [-0.06, 0.06].forEach(function (x) {
+            grp.add(mesh(CITIZEN_GEO.accBackpackStr, aMat, x, 0.02, 0.072, false, false));
+          }); break;
+        case 'crossbody': {
+          const cb = mesh(CITIZEN_GEO.accCrossbody, aMat, -0.115, -0.02, -0.042, false, false);
+          cb.rotation.z = 0.14; grp.add(cb); break;
+        }
+        case 'tote':
+          grp.add(mesh(CITIZEN_GEO.accTote, aMat, 0.125, -0.018, -0.040, false, false)); break;
+        case 'cap':
+          grp.add(mesh(CITIZEN_GEO.accCapDome, darkMat, 0, 0.305, 0, false, false));
+          grp.add(mesh(CITIZEN_GEO.accCapBrim, darkMat, 0, 0.305, 0.085, false, false)); break;
+        case 'headphones': {
+          grp.add(mesh(CITIZEN_GEO.accHpBand, darkMat, 0, 0.352, 0, false, false));
+          const cupL = mesh(CITIZEN_GEO.accHpCup, darkMat, -0.092, 0.267, 0, false, false);
+          cupL.rotation.z = Math.PI / 2;
+          const cupR = mesh(CITIZEN_GEO.accHpCup, darkMat,  0.092, 0.267, 0, false, false);
+          cupR.rotation.z = Math.PI / 2;
+          grp.add(cupL, cupR); break;
+        }
+      }
+    }
+
+    // Clothing silhouette detail — additive mesh on torso. basic = no extra mesh.
+    function addClothingDetail(torso, topStyle, topMat) {
+      if (topStyle === 'jacket') {
+        torso.add(mesh(CITIZEN_GEO.jacketShoulder, citizenMat(0x252528, 0.82), 0, 0.108, 0, false, false));
+      } else if (topStyle === 'looseBtm') {
+        torso.add(mesh(CITIZEN_GEO.looseBtmFlare, topMat, 0, -0.172, 0, false, false));
+      }
+      // longTop handled by body cylinder y-scale tweak inside makeFigure; no extra mesh.
+    }
+
+    // Pure appearance profile builder — no side effects, no global reads.
+    function buildAppearanceProfile(key, salt) {
+      const fullKey = (salt !== undefined && salt > 0) ? key + ':' + salt : key;
+      const rand    = makePRNG(hashCitizenKey(fullKey));
+      const skinIdx     = Math.floor(rand() * CITIZEN_SKIN_TONES.length);
+      const hairIdx     = Math.floor(rand() * CITIZEN_HAIR_STYLES.length);
+      const hairColIdx  = Math.floor(rand() * CITIZEN_HAIR_COLORS.length);
+      const bodyIdx     = Math.floor(rand() * CITIZEN_BODY_PROFILES.length);
+      const topStyleIdx = Math.floor(rand() * CITIZEN_TOP_STYLES.length);
+      const topColIdx   = Math.floor(rand() * CITIZEN_TOPS.length);
+      const btmColIdx   = Math.floor(rand() * CITIZEN_BOTTOMS.length);
+      const motionIdx   = Math.floor(rand() * CITIZEN_MOTION_PROFILES.length);
+      const accRoll     = rand();
+      const hairStyle   = CITIZEN_HAIR_STYLES[hairIdx];
+      let accessory     = null;
+      if (accRoll < 0.22) {
+        let accIdx = 1 + Math.floor(rand() * (CITIZEN_ACCESSORIES.length - 1));
+        if (CITIZEN_ACCESSORIES[accIdx] === 'cap' && CAP_BLOCKED_HAIR[hairStyle]) accIdx = 1;
+        accessory = CITIZEN_ACCESSORIES[accIdx];
+      }
+      const body    = CITIZEN_BODY_PROFILES[bodyIdx];
+      const hJitter = 1 + (rand() - 0.5) * 0.018;
+      const wJitter = 1 + (rand() - 0.5) * 0.018;
+      return {
+        key: fullKey, skinTone: skinIdx,
+        hairStyle: hairStyle, hairColor: CITIZEN_HAIR_COLORS[hairColIdx],
+        bodyId: body.id, heightScale: body.h * hJitter, widthScale: body.w * wJitter,
+        topStyle: CITIZEN_TOP_STYLES[topStyleIdx],
+        topColor: CITIZEN_TOPS[topColIdx], bottomColor: CITIZEN_BOTTOMS[btmColIdx],
+        accessory: accessory, motion: CITIZEN_MOTION_PROFILES[motionIdx]
+      };
+    }
+
+    // Appearance signature for clone prevention.
+    function appearanceSig(p) {
+      return p.hairStyle + '|' + p.skinTone + '|' + p.topColor + '|' + p.bottomColor + '|' + p.bodyId;
+    }
+
+    // Slot chooser — pure profile generation + deterministic salt-based collision avoidance.
+    function chooseAppearanceForSlot(key, recentProfiles) {
+      const recent = recentProfiles || [];
+      for (let salt = 0; salt <= 5; salt++) {
+        const p = buildAppearanceProfile(key, salt);
+        if (recent.some(function (r) { return appearanceSig(r) === appearanceSig(p); })) continue;
+        if (recent.filter(function (r) { return r.hairStyle === p.hairStyle && r.topColor === p.topColor; }).length >= 2) continue;
+        return p;
+      }
+      return buildAppearanceProfile(key, 0);
+    }
+
+    // Update appearance on an existing figure record (crowd pool reuse).
+    function applyAppearanceToFigure(record, appearance) {
+      const ud = record.obj.userData;
+      // Feet are at local y≈0 in fig space; scaling from origin keeps them on Y_WALK.
+      record.obj.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
+      const skinMat = CITIZEN_SKIN_MATS[appearance.skinTone];
+      if (ud.skinMeshes)  ud.skinMeshes.forEach(function (m) { m.material = skinMat; });
+      const topMat  = citizenMat(appearance.topColor, 0.76);
+      if (ud.shirtMeshes) ud.shirtMeshes.forEach(function (m) { m.material = topMat; });
+      const btmMat  = citizenMat(appearance.bottomColor, 0.86);
+      if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
+      if (ud.hairGrp) {
+        while (ud.hairGrp.children.length) ud.hairGrp.remove(ud.hairGrp.children[0]);
+        addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
+      }
+      if (ud.accGrp) {
+        while (ud.accGrp.children.length) ud.accGrp.remove(ud.accGrp.children[0]);
+        addAccessoryToGroup(ud.accGrp, appearance.accessory, appearance.topColor);
+      }
+      record.motion        = appearance.motion;
+      record.appearance    = appearance;
+      record.appearanceKey = appearance.key;
+    }
+
+    // Rolling window for population-level clone prevention.
+    const recentPopulationProfiles = [];
+    const RECENT_PROFILE_WINDOW = 6;
+
+    // ─────────────────────────────────────────────────────────────────
+    // makeFigure — when opts.appearance is absent: behavior is identical
+    // to the original. When opts.appearance is provided, the diversity
+    // layer activates. All joint refs in userData remain unchanged.
+    // ─────────────────────────────────────────────────────────────────
     function makeFigure(opts) {
       opts = opts || {};
       const fig = new THREE.Group();
       fig.name = opts.seated ? "seated-cafe-guest" : "articulated-citizen";
-      const shirt = mat(opts.shirt || 0x3B82F6, 0.76);
-      const pants = mat(opts.pants || 0x1E293B, 0.86);
-      const skin = opts.dark ? M_SKIN2 : M_SKIN;
+      const appearance = opts.appearance || null;
+
+      const shirt = appearance ? citizenMat(appearance.topColor, 0.76)
+                               : mat(opts.shirt || 0x3B82F6, 0.76);
+      const pants = appearance ? citizenMat(appearance.bottomColor, 0.86)
+                               : mat(opts.pants || 0x1E293B, 0.86);
+      const skin  = appearance ? CITIZEN_SKIN_MATS[appearance.skinTone]
+                               : (opts.dark ? M_SKIN2 : M_SKIN);
+
       const hipY = opts.seated ? 0.29 : 0.43;
       // Joint origins, not the centres of box legs: feet stay below knees when walking.
       const torso = new THREE.Group(); torso.position.y = hipY + 0.14; fig.add(torso);
-      const body = mesh(new THREE.CylinderGeometry(0.115, 0.092, 0.28, 8), shirt, 0, 0, 0);
-      body.scale.z = 0.64; torso.add(body);
-      torso.add(mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.07, 8), skin, 0, 0.17, 0, false, false));
-      const head = mesh(new THREE.SphereGeometry(0.085, 10, 8), skin, 0, 0.255, 0.005);
-      head.scale.set(0.88, 1.13, 0.94); torso.add(head);
-      torso.add(mesh(new THREE.SphereGeometry(0.020, 6, 5), skin, 0, 0.245, 0.080, false, false));
-      if (opts.hair !== false) {
-        torso.add(mesh(new THREE.SphereGeometry(0.083, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      const bodyMesh = mesh(new THREE.CylinderGeometry(0.115, 0.092, 0.28, 8), shirt, 0, 0, 0);
+      if (appearance && appearance.topStyle === 'longTop') bodyMesh.scale.set(1, 1.12, 0.64);
+      else bodyMesh.scale.z = 0.64;
+      torso.add(bodyMesh);
+      const neckMesh = mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.07, 8), skin, 0, 0.17, 0, false, false);
+      torso.add(neckMesh);
+      const headMesh = mesh(new THREE.SphereGeometry(0.085, 10, 8), skin, 0, 0.255, 0.005);
+      headMesh.scale.set(0.88, 1.13, 0.94); torso.add(headMesh);
+      const noseMesh = mesh(new THREE.SphereGeometry(0.020, 6, 5), skin, 0, 0.245, 0.080, false, false);
+      torso.add(noseMesh);
+
+      // Hair group — always a named group so it can be swapped on crowd pool reuse.
+      const hairGrp = new THREE.Group(); hairGrp.name = 'hair'; torso.add(hairGrp);
+      if (appearance) {
+        addHairToGroup(hairGrp, appearance.hairStyle, appearance.hairColor);
+      } else if (opts.hair !== false) {
+        hairGrp.add(mesh(new THREE.SphereGeometry(0.083, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),
           mat(opts.hair || 0x3B2412, 0.9), 0, 0.291, -0.004, false, false));
       }
-      if (opts.cap) {
+
+      // Cap — legacy path only; appearance system uses the accessory group.
+      if (opts.cap && !appearance) {
         const capMat = mat(opts.cap, 0.7);
         torso.add(mesh(new THREE.SphereGeometry(0.09, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5), capMat, 0, 0.305, 0, false, false));
         torso.add(mesh(new THREE.BoxGeometry(0.14, 0.016, 0.08), capMat, 0, 0.305, 0.085, false, false));
       }
-      if (opts.bag) {
+
+      // Accessory / bag group.
+      const accGrp = new THREE.Group(); accGrp.name = 'accessory'; torso.add(accGrp);
+      if (appearance) {
+        addAccessoryToGroup(accGrp, appearance.accessory, appearance.topColor);
+        if (appearance.topStyle !== 'basic' && appearance.topStyle !== 'longTop') {
+          addClothingDetail(torso, appearance.topStyle, citizenMat(appearance.topColor, 0.76));
+        }
+      } else if (opts.bag) {
         const bagMat = mat(opts.bag, 0.8);
         torso.add(mesh(new THREE.BoxGeometry(0.16, 0.19, 0.085), bagMat, 0, 0.01, -0.12, false, false));
         [-0.06, 0.06].forEach(function (x) {
           torso.add(mesh(new THREE.BoxGeometry(0.02, 0.23, 0.02), bagMat, x, 0.02, 0.072, false, false));
         });
       }
+
+      // Arms — track upper-arm meshes for material update on pool reuse.
+      const armUpperMeshes = [];
       function arm(side) {
         const a = new THREE.Group(); a.position.set(side * 0.132, 0.105, 0); torso.add(a);
-        a.add(mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.14, 7), shirt, 0, -0.065, 0, false, false));
+        const upperMesh = mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.14, 7), shirt, 0, -0.065, 0, false, false);
+        a.add(upperMesh); armUpperMeshes.push(upperMesh);
         const forearm = new THREE.Group(); forearm.position.y = -0.13; forearm.rotation.x = -0.18; a.add(forearm);
         forearm.add(mesh(new THREE.CylinderGeometry(0.025, 0.021, 0.13, 7), skin, 0, -0.06, 0, false, false));
         forearm.add(mesh(new THREE.SphereGeometry(0.027, 7, 6), skin, 0, -0.135, 0, false, false));
         if (opts.seated) { a.rotation.x = -0.62; forearm.rotation.x = -0.8; }
         return a;
       }
+
+      // Legs — track thigh/shin meshes for material update on pool reuse.
+      const thighMeshes = [], shinMeshes = [];
       function leg(side) {
         const l = new THREE.Group(); l.position.set(side * 0.058, hipY, 0); fig.add(l);
-        l.add(mesh(new THREE.CylinderGeometry(0.043, 0.033, 0.20, 7), pants, 0, -0.10, 0, false, false));
+        const thighMesh = mesh(new THREE.CylinderGeometry(0.043, 0.033, 0.20, 7), pants, 0, -0.10, 0, false, false);
+        l.add(thighMesh); thighMeshes.push(thighMesh);
         const knee = new THREE.Group(); knee.position.y = -0.20; l.add(knee);
-        knee.add(mesh(new THREE.CylinderGeometry(0.034, 0.027, 0.19, 7), pants, 0, -0.095, 0, false, false));
+        const shinMesh = mesh(new THREE.CylinderGeometry(0.034, 0.027, 0.19, 7), pants, 0, -0.095, 0, false, false);
+        knee.add(shinMesh); shinMeshes.push(shinMesh);
         knee.add(mesh(new THREE.BoxGeometry(0.075, 0.052, 0.125), M_DARKFRAME, 0, -0.205, 0.028, false, false));
         if (opts.seated) { l.rotation.x = -Math.PI / 2; knee.rotation.x = Math.PI / 2; }
         return { hip: l, knee: knee };
       }
+
       const armL = arm(-1), armR = arm(1), left = leg(-1), right = leg(1);
-      fig.userData = { legL: left.hip, legR: right.hip, kneeL: left.knee, kneeR: right.knee,
-        armL: armL, armR: armR, torso: torso, body: body };
+
+      // Body scale for diversity — feet at local y≈0 → stays grounded on Y_WALK.
+      if (appearance) {
+        fig.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
+      }
+
+      fig.userData = {
+        // Existing joint refs — all animation/encounter code uses these unchanged.
+        legL: left.hip, legR: right.hip, kneeL: left.knee, kneeR: right.knee,
+        armL: armL, armR: armR, torso: torso, body: bodyMesh,
+        // Appearance refs for crowd pool reuse.
+        hairGrp: hairGrp, accGrp: accGrp,
+        skinMeshes:  [headMesh, noseMesh, neckMesh],
+        shirtMeshes: [bodyMesh].concat(armUpperMeshes),
+        pantsMeshes: thighMeshes.concat(shinMeshes)
+      };
       return fig;
     }
 
@@ -3484,9 +3773,19 @@ function normalizedSlotPlacements(input) {
       activeBubbles.push({ el: el, life: 0, maxLife: 2.6 });
     }
 
-    function addCitizen(color, pants, hatColor, walkPath, phrases, englishPhrases, withDog, customSpeed) {
-      const g = makeFigure({ shirt: color, pants: pants, cap: hatColor,
-        dark: walkingCitizens.length % 3 === 1, bag: withDog ? null : (walkingCitizens.length % 2 ? 0xA67F52 : null) });
+    function addCitizen(color, pants, hatColor, walkPath, phrases, englishPhrases, withDog, customSpeed, appearanceKey) {
+      // When appearanceKey is provided the diversity system activates; otherwise legacy behavior.
+      let appearance = null;
+      if (appearanceKey) {
+        appearance = chooseAppearanceForSlot(appearanceKey, recentPopulationProfiles);
+        recentPopulationProfiles.push(appearance);
+        if (recentPopulationProfiles.length > RECENT_PROFILE_WINDOW) recentPopulationProfiles.shift();
+      }
+      const g = appearance
+        ? makeFigure({ appearance: appearance })
+        : makeFigure({ shirt: color, pants: pants, cap: hatColor,
+            dark: walkingCitizens.length % 3 === 1,
+            bag: withDog ? null : (walkingCitizens.length % 2 ? 0xA67F52 : null) });
       const joints = g.userData, torso = joints.body;
       root.add(g);
       const he = phrases || ["איזה יום מקסים! ✨", "שומר על תקציב מעולה 📈"];
@@ -3500,6 +3799,8 @@ function normalizedSlotPlacements(input) {
       if (withDog) { dog = makeDog(0xD9A441); root.add(dog); }
       if (walkPath && walkPath.length > 1) {
         g.position.set(walkPath[0].x, Y_WALK, walkPath[0].z);
+        const baseSpeed = customSpeed || 1.15;
+        const motionMult = appearance ? appearance.motion.speedMult : 1.0;
         walkingCitizens.push({
           obj: g,
           legL: joints.legL,
@@ -3512,7 +3813,10 @@ function normalizedSlotPlacements(input) {
           path: walkPath,
           pIdx: 0,
           t: 0,
-          speed: customSpeed || 1.15,
+          speed: baseSpeed * motionMult,
+          motion: appearance ? appearance.motion : null,
+          appearance: appearance,
+          appearanceKey: appearanceKey || null,
           baseY: Y_WALK
         });
       }
@@ -3520,8 +3824,8 @@ function normalizedSlotPlacements(input) {
     }
 
     // Citizens walking lively around plazas, crosswalks, nature reserve and shops:
-    // 1. Central Plaza & Fountain stroller (circles around the fountain on the paved promenade, never through the basin or water)
-    addCitizen(0x3B82F6, 0x1E293B, 0xEF4444, [
+    // 1. Central Plaza & Fountain stroller
+    addCitizen(null, null, null, [
       {x: -1.9, z: 0.8},
       {x: -1.9, z: 1.7},
       {x: -1.4, z: 2.3},
@@ -3538,35 +3842,35 @@ function normalizedSlotPlacements(input) {
       {x: -1.2, z: 3.4},
       {x: -2.4, z: 2.5},
       {x: -2.4, z: 1.4}
-    ], ["איזה כיף להסתובב ליד המזרקה ⛲", "העיר הזו נראית מעולה! 🏙️"], ["Lovely stroll around the fountain ⛲", "This city looks amazing! 🏙️"], false, 0.35);
+    ], ["איזה כיף להסתובב ליד המזרקה ⛲", "העיר הזו נראית מעולה! 🏙️"], ["Lovely stroll around the fountain ⛲", "This city looks amazing! 🏙️"], false, 0.35, 'city:plaza:stroller');
 
     // 2. Crosswalk Pedestrian crossing the street
-    addCitizen(0x10B981, 0x334155, null, [
+    addCitizen(null, null, null, [
       {x: -ROAD_AT, z: -3.2}, {x: -ROAD_AT, z: -1.0}, {x: -ROAD_AT, z: 1.0}, {x: -ROAD_AT, z: -3.2}
-    ], ["חוצה בזהירות במעבר חצייה 🚶", "העיר תוססת היום! ✨"], ["Crossing at the zebra walk 🚶", "Lively city today! ✨"], false, 0.38);
+    ], ["חוצה בזהירות במעבר חצייה 🚶", "העיר תוססת היום! ✨"], ["Crossing at the zebra walk 🚶", "Lively city today! ✨"], false, 0.38, 'city:crosswalk:ped');
 
     // 3. Nature Reserve Bridge & Trail Walker
-    addCitizen(0x059669, 0x1E293B, 0x10B981, [
+    addCitizen(null, null, null, [
       {x: 8.6, z: -9.8}, {x: 9.3, z: -9.4}, {x: 10.0, z: -9.0}, {x: 9.3, z: -9.4}
-    ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30);
+    ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30, 'city:park:trail');
 
     // 4. Active Jogger doing laps with athletic stride
-    addCitizen(0xF97316, 0x1E293B, 0xEF4444, [
+    addCitizen(null, null, null, [
       {x: -3.6, z: -3.6}, {x: 3.6, z: -3.6}, {x: 3.6, z: 3.6}, {x: -3.6, z: 3.6}
-    ], ["ריצת בוקר מסביב למרכז 🏃‍♂️", "כושר גופני וכושר פיננסי 💪"], ["Morning 5k jog 🏃‍♂️", "Fit body, fit finances 💪"], false, 0.65);
+    ], ["ריצת בוקר מסביב למרכז 🏃‍♂️", "כושר גופני וכושר פיננסי 💪"], ["Morning 5k jog 🏃‍♂️", "Fit body, fit finances 💪"], false, 0.65, 'city:jogger');
 
     // 5. Dog Walker near park
-    addCitizen(0x7C3AED, 0x334155, 0x22C55E, [
+    addCitizen(null, null, null, [
       {x: -3.2, z: -7.4}, {x: 3.2, z: -7.4}, {x: 3.2, z: -11.0}, {x: -3.2, z: -11.0}
-    ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34);
+    ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34, 'city:dogwalk');
 
     // ────────────────────────────────────────────────────────────────
     // Two park neighbours use the same actor pool and authored court-side paths.
-    [0xBC8055, 0x527FA7].forEach(function (shirt, i) {
-      addCitizen(shirt, 0x45536A, null, [
+    ['city:park:nbr:0', 'city:park:nbr:1'].forEach(function (aKey, i) {
+      addCitizen(null, null, null, [
         {x:-10.0+i*0.7,z:9.6}, {x:-9.5+i*0.7,z:9.6},
         {x:-9.5+i*0.7,z:9.9}, {x:-10.0+i*0.7,z:9.9}
-      ], [], [], false, 0.24);
+      ], [], [], false, 0.24, aKey);
     });
 
     // Derived frontages are not rewards or a second financial ledger.
@@ -3828,6 +4132,8 @@ const CROWD_LIMITS = { walkers: 24, waiting: 48 };
 const crowdWalkers = [];
 const crowdBatches = [];
 let crowdSnapshot = [];
+const recentCrowdProfiles = [];   // crowd-specific clone-prevention window
+const CROWD_RECENT_WINDOW = 6;
 
 // Each route is an authored, unobstructed frontage strip, separate from the door/table
 // zone. u runs along the pavement; v points towards its outer edge.
@@ -3960,11 +4266,19 @@ function applyVenueCrowds() {
   pending.forEach(function (request) {
     let record = crowdWalkers.find(function (c) { return !used.has(c); });
     if (!record) {
-      const palette = [0xBC8055, 0x527FA7, 0x6E9868, 0xBC6C87];
-      addCitizen(palette[crowdWalkers.length % palette.length], 0x45536A, null,
+      // Create a new crowd walker with a stable appearance key derived from request.key.
+      addCitizen(null, null, null,
         crowdRoute(CROWD_FRONTAGES[request.entry.id]), ["נעים להסתובב כאן"], ["A little moment in the neighbourhood"], false,
-        0.27 + (crowdWalkers.length % 4) * 0.025);
+        0.27 + (crowdWalkers.length % 4) * 0.025, request.key);
       record = walkingCitizens[walkingCitizens.length - 1]; crowdWalkers.push(record);
+    } else if (record.appearanceKey !== request.key) {
+      // Pool record is being reused for a different slot — update its visual identity.
+      const newProfile = chooseAppearanceForSlot(request.key, recentCrowdProfiles);
+      applyAppearanceToFigure(record, newProfile);
+      recentCrowdProfiles.push(newProfile);
+      if (recentCrowdProfiles.length > CROWD_RECENT_WINDOW) recentCrowdProfiles.shift();
+      // Recompute speed to combine base crowd speed with new motion profile.
+      record.speed = (0.27 + (crowdWalkers.indexOf(record) % 4) * 0.025) * newProfile.motion.speedMult;
     }
     record.crowdKey = request.key; record.crowdCount = null;
     used.add(record);
@@ -5782,8 +6096,10 @@ window.dioramaEnergyState = function () {
           c.obj.position.z = p1.z + (p2.z - p1.z) * frac;
           c.obj.rotation.y = Math.atan2(p2.x - p1.x, p2.z - p1.z);
         }
-        const walkCycle = now * 0.0055 * Math.max(0.6, (c.speed || 0.35) / 0.35) + (c.phase || 0);
-        const legSwing = Math.sin(walkCycle) * 0.38;
+        const cadence   = c.motion ? c.motion.cadence : 1;
+        const swingAmt  = c.motion ? c.motion.swing   : 1;
+        const walkCycle = now * 0.0055 * Math.max(0.6, (c.speed || 0.35) / 0.35) * cadence + (c.phase || 0);
+        const legSwing  = Math.sin(walkCycle) * 0.38 * swingAmt;
         if (c.legL) c.legL.rotation.x = legSwing;
         if (c.legR) c.legR.rotation.x = -legSwing;
         if (c.armL) c.armL.rotation.x = -legSwing * 0.8;

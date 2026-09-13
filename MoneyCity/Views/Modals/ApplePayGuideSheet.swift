@@ -3,209 +3,217 @@ import SwiftUI
 public struct ApplePayGuideSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
-    
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var isHebrew: Bool { l10n.language == .hebrew }
-    
+
     public init() {}
-    
+
     public var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // Header
-                    VStack(spacing: 8) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.themeTurquoiseSoft)
-                                .frame(width: 60, height: 60)
-                            DistrictFinanceVectorIcon(color: Color.themeTurquoise)
-                                .scaleEffect(1.3)
-                        }
-                        
-                        Text(isHebrew ? "הגדרת קליטת Apple Pay אוטומטית" : "Automatic Apple Pay Setup")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                            .multilineTextAlignment(.center)
-                        
+                VStack(alignment: .leading, spacing: 0) {
+                    // Editorial Header matching Onboarding Step 4B
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(isHebrew ? "מחברים\nאת הקיצורים" : "Set up\nShortcuts.")
+                            .font(.system(size: 36, weight: .heavy, design: .rounded))
+                            .tracking(isHebrew ? -1 : -1.8)
+                            .foregroundStyle(Color.jetBlack)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityAddTraits(.isHeader)
+
                         Text(isHebrew
-                             ? "בגלל ש-iOS שומרת על פרטיות, נדרש חיבור קצר באפליקציית 'קיצורים' (Shortcuts) כדי שכל תשלום ייקלט מיד בעיר שלך."
-                             : "Due to iOS privacy, a quick Shortcuts automation is required to stream tap-to-pay charges directly into your city.")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 10)
+                            ? "שלושה שלבים ב״קיצורים״, ואז העסקאות יכולות להגיע ל־SPENT אוטומטית."
+                            : "Three steps in Shortcuts, then transactions can reach SPENT automatically.")
+                            .font(.system(.body, design: .rounded))
+                            .foregroundStyle(Color.jetBlack.opacity(0.75))
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .lineSpacing(3)
                     }
-                    .padding(.top, 10)
-                    
-                    // Auto-Installed Notification Card
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.15))
-                                    .frame(width: 44, height: 44)
-                                DistrictFinanceVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
-                                    .scaleEffect(1.1)
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(isHebrew ? "הפעולות של SPENT כבר מותקנות באייפון!" : "SPENT actions are already installed!")
-                                    .font(.system(size: 15, weight: .black, design: .rounded))
-                                    .foregroundColor(Color.deepNavy)
-                                Text(isHebrew ? "הפעולה מובנית במערכת — נותר רק להפעיל אוטומציה:" : "Built-in to iOS — just enable the 3-step automation:")
-                                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                                    .foregroundColor(Color.textMuted)
-                            }
-                        }
-                    }
-                    .padding(18)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                    .padding(.top, 16)
+                    .padding(.bottom, 28)
 
-                    // Simple Step-by-Step Instructions Card
+                    // 3-Step Direct-on-Canvas Guide (01 / 02 / 03)
                     VStack(alignment: .leading, spacing: 18) {
-                        stepRow(
-                            number: "1",
-                            title: isHebrew ? "פתח את אפליקציית 'קיצורים' (Shortcuts)" : "Open 'Shortcuts' App",
-                            desc: isHebrew ? "עבור ללשונית 'אוטומציה' בתחתית ולחץ על + ליצירת 'אוטומציה אישית'." : "Go to 'Automation' tab and tap + to create a Personal Automation."
-                        )
-                        
-                        stepRow(
-                            number: "2",
-                            title: isHebrew ? "בחר בטריגר 'עסקה' (Transaction)" : "Select 'Transaction' Trigger",
-                            desc: isHebrew ? "סמן 'כרטיס כלשהו', בחר 'הפעלה מיידית', וכבה את 'קבלת עדכון כאשר פועל'." : "Select 'Any Card', choose 'Run Immediately', and turn off 'Notify When Run'."
-                        )
-                        
-                        stepRow(
-                            number: "3",
-                            title: isHebrew ? "הוסף פעולה: 'הקלטת עסקת Apple Pay'" : "Add Action: 'Record Apple Pay Transaction'",
-                            desc: isHebrew ? "בחר 'אוטומציה ריקה חדשה' > 'הוסף פעולה' > חפש SPENT ובחר 'הקלטת עסקת Apple Pay'." : "Choose 'New Blank Automation' > 'Add Action' > search SPENT and pick 'Record Apple Pay Transaction'."
+                        // Step 01
+                        editorialNumberedStep(
+                            number: "01",
+                            title: isHebrew ? "צור אוטומציה מסוג ״עסקה״" : "Create Transaction Automation",
+                            instruction: isHebrew
+                                ? "בקיצורים: אוטומציה ← + ← עסקה ← סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
+                                : "In Shortcuts: Automation → + → Transaction → choose \"Run Immediately\" and turn off \"Notify When Run\"."
                         )
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack(alignment: .top, spacing: 12) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                        .frame(width: 24, height: 24)
-                                    Text("4")
-                                        .font(.system(size: 12, weight: .black, design: .rounded))
-                                        .foregroundColor(.white)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(isHebrew ? "חבר את נתוני העסקה (כמות ובית עסק 💡)" : "Connect Transaction Data (💡)")
-                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Divider().overlay(Color.borderSubtle.opacity(0.6))
+
+                        // Step 02
+                        editorialNumberedStep(
+                            number: "02",
+                            title: isHebrew ? "בחר את הפעולה של SPENT" : "Select SPENT Action",
+                            instruction: isHebrew
+                                ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״."
+                                : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\"."
+                        )
+
+                        Divider().overlay(Color.borderSubtle.opacity(0.6))
+
+                        // Step 03 with 2-field mapping
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                                Text("03")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(isHebrew ? "חבר את נתוני העסקה" : "Connect Transaction Data")
+                                        .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                         .foregroundColor(Color.deepNavy)
-                                    Text(isHebrew ? "לחץ על כל שדה כחול, בחר 'קלט הקיצור' ואז את המאפיין:" : "Tap each blue field, select 'Shortcut Input' then the attribute:")
-                                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                                        .foregroundColor(Color.textMuted)
+
+                                    Text(isHebrew ? "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : "Tap each field, select \"Shortcut Input\" then the attribute:")
+                                        .font(.system(.footnote, design: .rounded))
+                                        .foregroundColor(Color.textSecondary)
                                 }
                             }
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack(spacing: 4) {
-                                    Text(isHebrew ? "• לחץ" : "• Tap")
-                                        .font(.system(size: 11.5, weight: .medium))
-                                    Text(isHebrew ? "[שדה הסכום]" : "[Amount field]")
-                                        .font(.system(size: 11.5, weight: .bold))
-                                        .foregroundColor(Color.primaryBlue)
-                                    Text(isHebrew ? "➔ בחר" : "➔ select")
-                                        .font(.system(size: 11.5, weight: .medium))
-                                    Text(isHebrew ? "[קלט הקיצור]" : "[Shortcut Input]")
-                                        .font(.system(size: 11.5, weight: .bold))
-                                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                    Text(isHebrew ? "➔ סמן (כמות)" : "➔ choose (Amount)")
-                                        .font(.system(size: 11.5, weight: .semibold))
-                                }
-                                HStack(spacing: 4) {
-                                    Text(isHebrew ? "• לחץ" : "• Tap")
-                                        .font(.system(size: 11.5, weight: .medium))
-                                    Text(isHebrew ? "[שדה בית העסק]" : "[Merchant field]")
-                                        .font(.system(size: 11.5, weight: .bold))
-                                        .foregroundColor(Color.primaryBlue)
-                                    Text(isHebrew ? "➔ בחר" : "➔ select")
-                                        .font(.system(size: 11.5, weight: .medium))
-                                    Text(isHebrew ? "[קלט הקיצור]" : "[Shortcut Input]")
-                                        .font(.system(size: 11.5, weight: .bold))
-                                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                    Text(isHebrew ? "➔ סמן (בית העסק)" : "➔ choose (Merchant)")
-                                        .font(.system(size: 11.5, weight: .semibold))
-                                }
-                                Text(isHebrew ? "• לחץ 'סיום' (Done) — מעכשיו הכל יקלט אוטומטית! 🎉" : "• Tap 'Done' — and you are all set! 🎉")
-                                    .font(.system(size: 11.5, weight: .bold))
-                                    .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                                    .padding(.top, 2)
+
+                            // Compact inline mapping
+                            VStack(alignment: .leading, spacing: 6) {
+                                compactMappingRow(
+                                    source: isHebrew ? "שדה הסכום" : "Amount field",
+                                    dest: isHebrew ? "כמות" : "Amount"
+                                )
+                                compactMappingRow(
+                                    source: isHebrew ? "שדה בית העסק" : "Merchant field",
+                                    dest: isHebrew ? "בית העסק" : "Merchant"
+                                )
                             }
-                            .padding(.leading, 36)
+                            .padding(.leading, 32)
                         }
                     }
-                    .padding(20)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
-                    
-                    // Action Links
+                    .padding(.bottom, 36)
+
+                    // Bottom CTA: Open Shortcuts + Close
                     #if os(iOS)
-                    VStack(spacing: 10) {
+                    VStack(spacing: 12) {
                         if let url = URL(string: "shortcuts://") {
-                            Link(destination: url) {
-                                HStack(spacing: 8) {
-                                    MoneyIcon(.lightning, size: 18)
-                                    Text(isHebrew ? "פתח את אפליקציית 'קיצורים' עכשיו" : "Open Shortcuts App Now")
-                                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                            Button(action: {
+                                Haptics.impact(.medium)
+                                UIApplication.shared.open(url)
+                            }) {
+                                HStack(spacing: 6) {
+                                    MoneyIcon(.lightning, size: 18, color: .jetBlack)
+                                    Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
+                                        .font(.system(.body, design: .rounded, weight: .semibold))
                                 }
-                                .foregroundColor(.white)
+                                .foregroundColor(.jetBlack)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(Capsule().fill(Color(red: 16/255, green: 185/255, blue: 129/255)))
-                                .shadow(color: Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.3), radius: 8, y: 3)
+                                .padding(.vertical, 17)
+                                .frame(minHeight: 56)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Color.themeOrange)
+                                )
                             }
+                            .buttonStyle(.plain)
+                            .bouncyPress(scale: reduceMotion ? 1 : 0.97)
                         }
+
+                        Button(action: {
+                            dismiss()
+                        }) {
+                            Text(isHebrew ? "סגור" : "Close")
+                                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                                .foregroundColor(Color.textSecondary)
+                                .padding(.vertical, 6)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.top, 6)
+                    .padding(.bottom, 24)
                     #endif
-                    
-                    Spacer(minLength: 30)
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 26)
+                .frame(maxWidth: 560, alignment: .leading)
+                .frame(maxWidth: .infinity)
             }
             .background(Color.appBackground.ignoresSafeArea())
-            .navigationTitle(isHebrew ? "הגדרת אוטומציה" : "Shortcuts Guide")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
+            .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(l10n.text(for: "close")) { dismiss() }
-                        .foregroundColor(Color.primaryBlue)
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color.jetBlack.opacity(0.6))
+                            .frame(width: 32, height: 32)
+                            .background(Color.jetBlack.opacity(0.06))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isHebrew ? "סגור" : "Close")
                 }
             }
         }
     }
-    
-    private func stepRow(number: String, title: String, desc: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(Color.primaryBlue)
-                    .frame(width: 24, height: 24)
-                Text(number)
-                    .font(.system(size: 12, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-            }
-            
-            VStack(alignment: .leading, spacing: 2) {
+
+    private func editorialNumberedStep(number: String, title: String, instruction: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(number)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
                     .foregroundColor(Color.deepNavy)
-                Text(desc)
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.textMuted)
+
+                Text(instruction)
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+                    .lineSpacing(2)
             }
         }
     }
-    
+
+    private func compactMappingRow(source: String, dest: String) -> some View {
+        HStack(spacing: 5) {
+            Text(source)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.primaryBlue)
+
+            Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(Color.textMuted)
+
+            Text(isHebrew ? "קלט הקיצור" : "Shortcut Input")
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 1.5)
+                .background(Color.spentGreenSoft)
+                .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
+                .foregroundColor(Color.spentGreen)
+
+            Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundColor(Color.textMuted)
+
+            Text(dest)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+        }
+    }
 }
 
+#Preview("Apple Pay Guide Sheet • Hebrew") {
+    ApplePayGuideSheet()
+        .environmentObject(LocalizationManager.shared)
+}
 
+#Preview("Apple Pay Guide Sheet • English") {
+    ApplePayGuideSheet()
+        .environmentObject({
+            let m = LocalizationManager.shared
+            m.language = .english
+            return m
+        }())
+}

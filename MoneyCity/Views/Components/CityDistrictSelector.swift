@@ -14,43 +14,9 @@ public struct CityDistrictSelector: View {
     }
 
     public var body: some View {
-        HStack(spacing: 0) {
-            topDistrictPill(
-                id: nil,
-                title: l10n.language == .hebrew ? "כל העיר" : "All City"
-            ) { _ in
-                MoneyIcon(.citySkyline, size: 24)
-            }
-            topDistrictPill(
-                id: "food",
-                title: l10n.language == .hebrew ? "אוכל" : "Food"
-            ) { _ in
-                MoneyIcon(.cutlery, size: 24)
-            }
-            topDistrictPill(
-                id: "shopping",
-                title: l10n.language == .hebrew ? "קניות" : "Shopping"
-            ) { _ in
-                MoneyIcon(.shoppingBag, size: 24)
-            }
-            topDistrictPill(
-                id: "housing",
-                title: l10n.language == .hebrew ? "מגורים" : "Housing"
-            ) { _ in
-                MoneyIcon(.home, size: 24)
-            }
-            topDistrictPill(
-                id: "transport",
-                title: l10n.language == .hebrew ? "תחבורה" : "Transport"
-            ) { _ in
-                MoneyIcon(.car, size: 24)
-            }
-            topDistrictPill(
-                id: "savings",
-                title: l10n.language == .hebrew ? "הפארק" : "The Park"
-            ) { _ in
-                MoneyIcon(.leaf, size: 24)
-            }
+        ViewThatFits(in: .horizontal) {
+            standardDistrictBar
+            scrollableDistrictBar
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
@@ -60,9 +26,71 @@ public struct CityDistrictSelector: View {
         .padding(.horizontal, 16)
     }
 
+    private var standardDistrictBar: some View {
+        HStack(spacing: 0) {
+            districtPills(fixedWidth: nil)
+        }
+    }
+
+    private var scrollableDistrictBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                districtPills(fixedWidth: 52)
+            }
+            .padding(.horizontal, 2)
+        }
+    }
+
+    @ViewBuilder
+    private func districtPills(fixedWidth: CGFloat?) -> some View {
+        topDistrictPill(
+            id: nil,
+            title: l10n.language == .hebrew ? "כל העיר" : "All City",
+            fixedWidth: fixedWidth
+        ) { _ in
+            MoneyIcon(.citySkyline, size: 24)
+        }
+        topDistrictPill(
+            id: "food",
+            title: l10n.language == .hebrew ? "אוכל" : "Food",
+            fixedWidth: fixedWidth
+        ) { _ in
+            MoneyIcon(.cutlery, size: 24)
+        }
+        topDistrictPill(
+            id: "shopping",
+            title: l10n.language == .hebrew ? "קניות" : "Shopping",
+            fixedWidth: fixedWidth
+        ) { _ in
+            MoneyIcon(.shoppingBag, size: 24)
+        }
+        topDistrictPill(
+            id: "housing",
+            title: l10n.language == .hebrew ? "מגורים" : "Housing",
+            fixedWidth: fixedWidth
+        ) { _ in
+            MoneyIcon(.home, size: 24)
+        }
+        topDistrictPill(
+            id: "transport",
+            title: l10n.language == .hebrew ? "תחבורה" : "Transport",
+            fixedWidth: fixedWidth
+        ) { _ in
+            MoneyIcon(.car, size: 24)
+        }
+        topDistrictPill(
+            id: "savings",
+            title: l10n.language == .hebrew ? "הפארק" : "The Park",
+            fixedWidth: fixedWidth
+        ) { _ in
+            MoneyIcon(.leaf, size: 24)
+        }
+    }
+
     private func topDistrictPill<V: View>(
         id: String?,
         title: String,
+        fixedWidth: CGFloat? = nil,
         @ViewBuilder icon: (Bool) -> V
     ) -> some View {
         let isSelected = (id == nil && selectedDistrict == nil) || (id != nil && selectedDistrict == id)
@@ -87,6 +115,8 @@ public struct CityDistrictSelector: View {
                 Text(title)
                     .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .rounded))
                     .foregroundColor(isSelected ? MoneyCityTheme.textPrimary : MoneyCityTheme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
 
                 // Crisp Minimal Selection Indicator
                 if isSelected {
@@ -100,6 +130,7 @@ public struct CityDistrictSelector: View {
             .contentShape(Rectangle())
         }
         .bouncyPress(scale: 0.90)
-        .frame(maxWidth: .infinity)
+        .frame(width: fixedWidth)
+        .frame(maxWidth: fixedWidth == nil ? .infinity : nil)
     }
 }

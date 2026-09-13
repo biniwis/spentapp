@@ -112,6 +112,8 @@ public struct HistoryFilterBar: View {
                 .frame(width: 36, height: 36)
                 .background(showOnlyUnconfirmed ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -135,6 +137,8 @@ public struct HistoryFilterBar: View {
             .frame(height: 36)
             .background(showOnlyUnconfirmed ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
             .clipShape(Capsule())
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -156,6 +160,8 @@ public struct HistoryFilterBar: View {
                 .frame(height: 36)
                 .background(isSelected ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
                 .clipShape(Capsule())
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -176,6 +182,8 @@ public struct HistoryFilterBar: View {
                 .frame(height: 36)
                 .background(isSelected ? MoneyCityTheme.jetBlack : MoneyCityTheme.jetBlack.opacity(0.04))
                 .clipShape(Capsule())
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }

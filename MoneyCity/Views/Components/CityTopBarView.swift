@@ -41,7 +41,8 @@ public struct CityTopBarView: View {
             .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — תוספת שבועית" : "City companions — weekly addition")
 
             Button(action: {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                Haptics.selection()
+                withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) {
                     isZenMode.toggle()
                 }
             }) {
@@ -53,6 +54,8 @@ public struct CityTopBarView: View {
                     DioramaExpandVectorIcon(isExpanded: isZenMode, color: MoneyCityTheme.textPrimary)
                         .frame(width: 15, height: 15)
                 }
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -106,11 +109,15 @@ public struct CityNewMonthRecapBanner: View {
                     .padding(.vertical, 6)
                     .background(MoneyCityTheme.brandPrimary)
                     .clipShape(Capsule())
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             
             Button(action: onDismiss) {
                 MoneyIcon(.xmarkCircle, size: 16, color: MoneyCityTheme.textMuted)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }

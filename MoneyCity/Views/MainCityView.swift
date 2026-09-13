@@ -1115,7 +1115,7 @@ public struct MainCityView: View {
                         showProgressSheet = true
                     }
                 )
-                if let recap = pendingRecapForNewMonth {
+                if let recap = pendingRecapForNewMonth, visibleConfirmationBanner == nil {
                     CityNewMonthRecapBanner(
                         recap: recap,
                         onOpen: {

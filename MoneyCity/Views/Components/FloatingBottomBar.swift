@@ -89,12 +89,12 @@ public struct FloatingBottomBar: View {
                 MoneyIcon(.user, size: 24)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(Color.white)
         .clipShape(Capsule())
         .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 4)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 16)
     }
 
     private func navButton<IconContent: View>(
@@ -124,6 +124,8 @@ public struct FloatingBottomBar: View {
                 Text(label)
                     .font(.system(size: 10, weight: isSelected ? .black : .semibold, design: .rounded))
                     .foregroundColor(tintColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
                     .animation(.spring(response: 0.32, dampingFraction: 0.75), value: isSelected)
 
                 // Clean minimal indicator dot

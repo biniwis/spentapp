@@ -137,12 +137,26 @@ public struct BudgetSheet: View {
 
     private var summaryCard: some View {
         VStack(spacing: 12) {
-            HStack {
-                figure(isHebrew ? "הכנסה חודשית" : "Monthly income", income, Color.themeMint)
-                Divider().frame(height: 34)
-                figure(isHebrew ? "תקציב הוצאות" : "Spending plan", plannedSpending, Color.primaryBlue)
-                Divider().frame(height: 34)
-                figure(isHebrew ? "הוצאת עד כה" : "Spent so far", spentThisMonth, paceColor)
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    figure(isHebrew ? "הכנסה חודשית" : "Monthly income", income, Color.themeMint)
+                    Divider().frame(height: 34)
+                    figure(isHebrew ? "תקציב הוצאות" : "Spending plan", plannedSpending, Color.primaryBlue)
+                    Divider().frame(height: 34)
+                    figure(isHebrew ? "הוצאת עד כה" : "Spent so far", spentThisMonth, paceColor)
+                }
+
+                VStack(spacing: 8) {
+                    HStack {
+                        figure(isHebrew ? "הכנסה חודשית" : "Monthly income", income, Color.themeMint)
+                        Divider().frame(height: 34)
+                        figure(isHebrew ? "תקציב הוצאות" : "Spending plan", plannedSpending, Color.primaryBlue)
+                    }
+                    HStack {
+                        figure(isHebrew ? "הוצאת עד כה" : "Spent so far", spentThisMonth, paceColor)
+                        Spacer()
+                    }
+                }
             }
 
             // Where the plan came from. Without this the page looked like it controlled
@@ -248,6 +262,8 @@ public struct BudgetSheet: View {
             Text(label)
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundColor(Color.textMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             Text("\(l10n.format(amount: value.rounded()))")
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .minimumScaleFactor(0.6)
@@ -273,6 +289,8 @@ public struct BudgetSheet: View {
                             .frame(width: 26, height: 26)
                         MoneyIcon(showIncomeEditor ? .minusCircle : .plusCircle, size: 14)
                     }
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

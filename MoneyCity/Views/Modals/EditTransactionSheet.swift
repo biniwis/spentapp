@@ -453,6 +453,8 @@ public struct EditTransactionSheet: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
             }
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
             .scaleEffect(isSelected ? 1.06 : 1.0)
             .animation(.spring(response: 0.25), value: isSelected)
         }

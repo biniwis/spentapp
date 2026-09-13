@@ -341,6 +341,8 @@ public struct AnalyticsView: View {
                 .background(Color.white)
                 .clipShape(Circle())
                 .shadow(color: Color.black.opacity(0.03), radius: 3, y: 1)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
 
             Text(monthYearString)
@@ -365,6 +367,8 @@ public struct AnalyticsView: View {
                 .background(Color.white)
                 .clipShape(Circle())
                 .shadow(color: Color.black.opacity(0.03), radius: 3, y: 1)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
             }
             .disabled(selectedMonthOffset >= 0)
 
@@ -439,6 +443,8 @@ public struct AnalyticsView: View {
                             MoneyIcon(showAllCategories ? .chevronUp : (l10n.isHebrew ? .chevronLeft : .chevronRight), size: 9)
                         }
                         .foregroundColor(Color.textSecondary)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                 }
             }
@@ -551,57 +557,48 @@ public struct AnalyticsView: View {
         let topTx = topTransactionThisMonth
         let maxTxText = topTx.map { l10n.format(amount: $0.amount.rounded()) } ?? l10n.format(amount: 0)
 
-        return HStack(alignment: .top, spacing: 0) {
-            // 1. Daily Average
-            VStack(alignment: .leading, spacing: 2) {
-                Text(isHe ? "ממוצע ליום" : "Daily Average")
-                    .font(.system(size: 11, weight: .medium, design: .default))
-                    .foregroundColor(Color.textMuted)
-
-                Text(l10n.format(amount: dailyAvg.rounded()))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
+        return ViewThatFits(in: .horizontal) {
+            // 3-Column primary layout
+            HStack(alignment: .top, spacing: 0) {
+                pulseMetricItem(title: isHe ? "ממוצע ליום" : "Daily Average", value: l10n.format(amount: dailyAvg.rounded()))
+                Rectangle().fill(Color.borderSubtle.opacity(0.6)).frame(width: 1, height: 26).padding(.horizontal, 10)
+                pulseMetricItem(title: isHe ? "פעילות" : "Activity", value: isHe ? "\(txCount) עסקאות" : "\(txCount) txs")
+                Rectangle().fill(Color.borderSubtle.opacity(0.6)).frame(width: 1, height: 26).padding(.horizontal, 10)
+                pulseMetricItem(title: isHe ? "הוצאת שיא" : "Top Expense", value: maxTxText)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Subtle hairline separator
-            Rectangle()
-                .fill(Color.borderSubtle.opacity(0.6))
-                .frame(width: 1, height: 26)
-                .padding(.horizontal, 10)
-
-            // 2. Activity / Transaction Count
-            VStack(alignment: .leading, spacing: 2) {
-                Text(isHe ? "פעילות" : "Activity")
-                    .font(.system(size: 11, weight: .medium, design: .default))
-                    .foregroundColor(Color.textMuted)
-
-                Text(isHe ? "\(txCount) עסקאות" : "\(txCount) txs")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
+            // 2-Row compact fallback for narrow screens (320pt) / large dynamic type
+            VStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 0) {
+                    pulseMetricItem(title: isHe ? "ממוצע ליום" : "Daily Average", value: l10n.format(amount: dailyAvg.rounded()))
+                    Rectangle().fill(Color.borderSubtle.opacity(0.6)).frame(width: 1, height: 26).padding(.horizontal, 10)
+                    pulseMetricItem(title: isHe ? "הוצאת שיא" : "Top Expense", value: maxTxText)
+                }
+                HStack {
+                    pulseMetricItem(title: isHe ? "פעילות" : "Activity", value: isHe ? "\(txCount) עסקאות" : "\(txCount) txs")
+                    Spacer()
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Subtle hairline separator
-            Rectangle()
-                .fill(Color.borderSubtle.opacity(0.6))
-                .frame(width: 1, height: 26)
-                .padding(.horizontal, 10)
-
-            // 3. Top Expense
-            VStack(alignment: .leading, spacing: 2) {
-                Text(isHe ? "הוצאת שיא" : "Top Expense")
-                    .font(.system(size: 11, weight: .medium, design: .default))
-                    .foregroundColor(Color.textMuted)
-
-                Text(maxTxText)
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 6)
+    }
+
+    private func pulseMetricItem(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 11, weight: .medium, design: .default))
+                .foregroundColor(Color.textMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            Text(value)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Integral Housing Line Item (Borderless)

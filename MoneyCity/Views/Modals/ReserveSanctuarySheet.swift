@@ -199,12 +199,16 @@ public struct ReserveSanctuarySheet: View {
                 Text(isHebrew ? "נחסך החודש" : "Saved This Month")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
+                    .lineLimit(1)
                 Text(l10n.format(amount: savedThisMonth.rounded()))
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundColor(reserveGreen)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Text(isHebrew ? "הפקדות והשקעות" : "Deposits & funds")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textSecondary)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -217,12 +221,16 @@ public struct ReserveSanctuarySheet: View {
                 Text(isHebrew ? "סך הכל ביעדים" : "In All Goals")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(Color.textMuted)
+                    .lineLimit(1)
                 Text(l10n.format(amount: totalInAllGoals.rounded()))
                     .font(.system(size: 22, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
                 Text(isHebrew ? "\(goals.count) יעדים מוגדרים" : "\(goals.count) active goals")
                     .font(.system(size: 10, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textSecondary)
+                    .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -230,44 +238,59 @@ public struct ReserveSanctuarySheet: View {
 
     // ── Quick Action Pills (No Card Borders) ──
     private var quickActionsBar: some View {
-        HStack(spacing: 12) {
-            Button {
-                if let first = goals.first {
-                    depositingGoal = first
-                } else {
-                    withAnimation { showAddGoal = true }
-                }
-            } label: {
-                HStack(spacing: 6) {
-                    MoneyIcon(.plusCircle, size: 16)
-                    Text(isHebrew ? "הפקדה ליעד" : "Deposit to Goal")
-                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(reserveGreen)
-                .clipShape(Capsule())
-                .shadow(color: reserveGreen.opacity(0.25), radius: 6, y: 2)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                depositToGoalActionPill
+                savingsHistoryActionPill
             }
-            .buttonStyle(.plain)
-
-            Button {
-                showSavingsFeed = true
-            } label: {
-                HStack(spacing: 6) {
-                    MoneyIcon(.clock, size: 16)
-                    Text(isHebrew ? "היסטוריית חיסכון" : "Savings History")
-                        .font(.system(size: 12.5, weight: .bold, design: .rounded))
-                }
-                .foregroundColor(Color.deepNavy)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(Color.appBackground)
-                .clipShape(Capsule())
+            VStack(spacing: 10) {
+                depositToGoalActionPill
+                savingsHistoryActionPill
             }
-            .buttonStyle(.plain)
         }
+    }
+
+    private var depositToGoalActionPill: some View {
+        Button {
+            if let first = goals.first {
+                depositingGoal = first
+            } else {
+                withAnimation { showAddGoal = true }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                MoneyIcon(.plusCircle, size: 16)
+                Text(isHebrew ? "הפקדה ליעד" : "Deposit to Goal")
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .background(reserveGreen)
+            .clipShape(Capsule())
+            .shadow(color: reserveGreen.opacity(0.25), radius: 6, y: 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var savingsHistoryActionPill: some View {
+        Button {
+            showSavingsFeed = true
+        } label: {
+            HStack(spacing: 6) {
+                MoneyIcon(.clock, size: 16)
+                Text(isHebrew ? "היסטוריית חיסכון" : "Savings History")
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(Color.deepNavy)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 44)
+            .background(Color.appBackground)
+            .clipShape(Capsule())
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // ── Savings Goals Section ──
@@ -456,49 +479,50 @@ public struct ReserveSanctuarySheet: View {
     // ── Deposit Sheet ──
     private func depositSheet(_ goal: SavingsGoal) -> some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                VStack(spacing: 6) {
-                    Text(isHebrew ? "הפקדה ליעד:" : "Deposit into:")
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(Color.textMuted)
-                    Text(goal.name)
-                        .font(.system(size: 20, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                }
-                .padding(.top, 24)
+            ScrollView {
+                VStack(spacing: 20) {
+                    VStack(spacing: 6) {
+                        Text(isHebrew ? "הפקדה ליעד:" : "Deposit into:")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.textMuted)
+                        Text(goal.name)
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    }
+                    .padding(.top, 24)
 
-                HStack(spacing: 4) {
-                    Text(symbol)
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(reserveGreen)
-                    TextField("0", text: $depositAmount)
-                        .keyboardType(.decimalPad)
-                        .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .focused($isDepositFocused)
-                        .frame(maxWidth: 180)
-                }
-                .frame(maxWidth: .infinity)
+                    HStack(spacing: 4) {
+                        Text(symbol)
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(reserveGreen)
+                        TextField("0", text: $depositAmount)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 40, weight: .black, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .focused($isDepositFocused)
+                            .frame(maxWidth: 180)
+                    }
+                    .frame(maxWidth: .infinity)
 
-                Spacer()
-
-                Button {
-                    applyDeposit(to: goal)
-                } label: {
-                    Text(isHebrew ? "בצע הפקדה לחיסכון" : "Confirm Deposit")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(reserveGreen)
-                        .clipShape(Capsule())
-                        .shadow(color: reserveGreen.opacity(0.25), radius: 8, y: 3)
+                    Button {
+                        applyDeposit(to: goal)
+                    } label: {
+                        Text(isHebrew ? "בצע הפקדה לחיסכון" : "Confirm Deposit")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(reserveGreen)
+                            .clipShape(Capsule())
+                            .shadow(color: reserveGreen.opacity(0.25), radius: 8, y: 3)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled((Double(depositAmount) ?? 0) <= 0)
+                    .opacity((Double(depositAmount) ?? 0) <= 0 ? 0.4 : 1.0)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 24)
                 }
-                .buttonStyle(.plain)
-                .disabled((Double(depositAmount) ?? 0) <= 0)
-                .opacity((Double(depositAmount) ?? 0) <= 0 ? 0.4 : 1.0)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
             }
             .background(
                 Color.white.ignoresSafeArea()
@@ -528,7 +552,7 @@ public struct ReserveSanctuarySheet: View {
             }
         }
         #if os(iOS)
-        .presentationDetents([.fraction(0.45)])
+        .presentationDetents([.fraction(0.52), .large])
         #endif
     }
 

@@ -178,6 +178,8 @@ public struct MonthlyRecapSheet: View {
                         .font(.system(size: 15, weight: .bold))
                         .frame(width: 36, height: 36)
                         .background(Color.deepNavy.opacity(0.08), in: Circle())
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }.accessibilityLabel(he ? "סגירה" : "Close")
             }
         }

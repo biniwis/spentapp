@@ -32,21 +32,39 @@ public struct SettingsSheet: View {
                     VStack(spacing: 18) {
                         // 1. General (Language, Currency, Mayor & Targets)
                         settingsGroup(title: l10n.language == .hebrew ? "כללי" : "General") {
-                            HStack {
-                                Text(l10n.language == .hebrew ? "שפת ממשק" : "Interface Language")
-                                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color.deepNavy)
-                                Spacer()
-                                Picker("", selection: Binding(
-                                    get: { l10n.language },
-                                    set: { l10n.currentLanguageRaw = $0.rawValue }
-                                )) {
-                                    ForEach(AppLanguage.allCases) { lang in
-                                        Text(lang.displayName).tag(lang)
+                            ViewThatFits(in: .horizontal) {
+                                HStack {
+                                    Text(l10n.language == .hebrew ? "שפת ממשק" : "Interface Language")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                    Spacer()
+                                    Picker("", selection: Binding(
+                                        get: { l10n.language },
+                                        set: { l10n.currentLanguageRaw = $0.rawValue }
+                                    )) {
+                                        ForEach(AppLanguage.allCases) { lang in
+                                            Text(lang.displayName).tag(lang)
+                                        }
                                     }
+                                    .pickerStyle(.segmented)
+                                    .frame(width: 170)
                                 }
-                                .pickerStyle(.segmented)
-                                .frame(width: 170)
+
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(l10n.language == .hebrew ? "שפת ממשק" : "Interface Language")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                    Picker("", selection: Binding(
+                                        get: { l10n.language },
+                                        set: { l10n.currentLanguageRaw = $0.rawValue }
+                                    )) {
+                                        ForEach(AppLanguage.allCases) { lang in
+                                            Text(lang.displayName).tag(lang)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .frame(maxWidth: .infinity)
+                                }
                             }
                             .padding(.vertical, 4)
 

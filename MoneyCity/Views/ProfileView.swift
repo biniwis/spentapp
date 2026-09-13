@@ -183,6 +183,8 @@ public struct ProfileView: View {
                                 SettingsGearVectorIcon(color: Color.deepNavy)
                                     .frame(width: 18, height: 18)
                             }
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -455,7 +457,7 @@ public struct ProfileView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 108)
+            .frame(minHeight: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
@@ -509,7 +511,7 @@ public struct ProfileView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 108)
+            .frame(minHeight: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
@@ -562,7 +564,7 @@ public struct ProfileView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 108)
+            .frame(minHeight: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
@@ -643,7 +645,7 @@ public struct ProfileView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 108)
+            .frame(minHeight: 108)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)

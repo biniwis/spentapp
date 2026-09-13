@@ -241,6 +241,8 @@ public struct HistoryView: View {
                     color: Color.deepNavy
                 )
                 .frame(width: 20, height: 20)
+                .frame(minWidth: 36, minHeight: 36)
+                .contentShape(Rectangle())
             }
 
             Button(action: {
@@ -251,6 +253,8 @@ public struct HistoryView: View {
                 Text(shortMonth(currentDate))
                     .font(.system(size: 13.5, weight: .semibold, design: .default))
                     .foregroundColor(Color.deepNavy)
+                    .frame(minHeight: 36)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -266,6 +270,8 @@ public struct HistoryView: View {
                     color: isCurrentMonth ? Color.borderSubtle : Color.deepNavy
                 )
                 .frame(width: 20, height: 20)
+                .frame(minWidth: 36, minHeight: 36)
+                .contentShape(Rectangle())
             }
             .disabled(isCurrentMonth)
         }
@@ -295,6 +301,8 @@ public struct HistoryView: View {
                 .background(Color.white)
                 .clipShape(Circle())
                 .shadow(color: Color.black.opacity(0.04), radius: 6, y: 2)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -310,6 +318,8 @@ public struct HistoryView: View {
                 .background(Color.white)
                 .clipShape(Circle())
                 .shadow(color: Color.black.opacity(0.04), radius: 6, y: 2)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -426,12 +436,17 @@ public struct HistoryView: View {
                     Text("+\(l10n.format(amount: abs(tx.amount), showDecimals: true))")
                         .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 } else {
                     Text(l10n.format(amount: tx.amount, showDecimals: true))
                         .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
             }
+            .layoutPriority(1)
         }
         .padding(.vertical, 7)
         .contentShape(Rectangle())

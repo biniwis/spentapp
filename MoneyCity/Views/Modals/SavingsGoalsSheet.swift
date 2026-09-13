@@ -315,22 +315,30 @@ public struct SavingsGoalsSheet: View {
             .background(sheetBg).clipShape(RoundedRectangle(cornerRadius: 12))
 
             HStack(spacing: 8) {
-                ForEach(goalIconOptions, id: \.id) { item in
-                    Button { newIcon = item.id } label: {
-                        MoneyIcon(item.icon, size: 20)
-                            .frame(width: 36, height: 36)
-                            .background(
-                                Circle().fill(newIcon == item.id ? Color.primaryBlue.opacity(0.14) : Color.clear)
-                            )
-                            .overlay(Circle().stroke(newIcon == item.id ? Color.primaryBlue : Color.clear, lineWidth: 1.5))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(goalIconOptions, id: \.id) { item in
+                            Button { newIcon = item.id } label: {
+                                MoneyIcon(item.icon, size: 20)
+                                    .frame(width: 36, height: 36)
+                                    .background(
+                                        Circle().fill(newIcon == item.id ? Color.primaryBlue.opacity(0.14) : Color.clear)
+                                    )
+                                    .overlay(Circle().stroke(newIcon == item.id ? Color.primaryBlue : Color.clear, lineWidth: 1.5))
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
                 Spacer()
                 Button(isHebrew ? "צור" : "Create") { createGoal() }
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(canCreate ? Color.primaryBlue : Color.borderSubtle)
                     .disabled(!canCreate)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
             }
         }
         .padding(16)
@@ -380,6 +388,8 @@ public struct SavingsGoalsSheet: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 12).padding(.vertical, 6)
                             .background(Capsule().fill(Color(red: 17/255, green: 24/255, blue: 39/255)))
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }

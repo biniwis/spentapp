@@ -19,7 +19,7 @@ public struct CityDistrictSelector: View {
             scrollableDistrictBar
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: Color.black.opacity(0.045), radius: 14, x: 0, y: 3)
@@ -80,7 +80,7 @@ public struct CityDistrictSelector: View {
         }
         topDistrictPill(
             id: "savings",
-            title: l10n.language == .hebrew ? "הפארק" : "The Park",
+            title: l10n.natureReserveName,
             fixedWidth: fixedWidth
         ) { _ in
             MoneyIcon(.leaf, size: 24)

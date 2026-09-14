@@ -160,18 +160,34 @@ public enum WalletIngestCoordinator {
                 log.outcome = transaction.isConfirmed ? "נשמר בהצלחה" : "נשמר — ממתין לאישור"
                 DatabaseService.shared.incrementMerchantRuleHitCount(for: transaction.merchant)
                 #if canImport(UserNotifications)
-                NotificationService.sendExpenseLoggedNotification(amount: abs(transaction.amount),
-                    currency: transaction.currency, categoryName: transaction.category.shortName(for: AppLanguage.current),
-                    merchant: transaction.merchant, isRefund: refund)
+                NotificationService.sendExpenseLoggedNotification(
+                    amount: abs(transaction.amount),
+                    currency: transaction.currency,
+                    categoryName: transaction.category.shortName(for: AppLanguage.current),
+                    merchant: transaction.merchant,
+                    buildingId: transaction.buildingId,
+                    transactionId: transaction.id,
+                    isRefund: refund
+                )
                 CityNarrativeEngine.shared.onApplePayTransactionIngested(transactionDate: transaction.timestamp,
                     category: transaction.category, amount: abs(transaction.amount), currency: transaction.currency)
                 #endif
                 if pendingID != nil {
-                    ExpenseConfirmationCoordinator.shared.queuePendingConfirmation(amount: abs(transaction.amount),
-                        merchant: transaction.merchant, isRefund: refund)
+                    ExpenseConfirmationCoordinator.shared.queuePendingConfirmation(
+                        amount: abs(transaction.amount),
+                        merchant: transaction.merchant,
+                        buildingId: transaction.buildingId,
+                        transactionId: transaction.id,
+                        isRefund: refund
+                    )
                 } else {
-                    ExpenseConfirmationCoordinator.shared.triggerConfirmation(amount: abs(transaction.amount),
-                        merchant: transaction.merchant, isRefund: refund)
+                    ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                        amount: abs(transaction.amount),
+                        merchant: transaction.merchant,
+                        buildingId: transaction.buildingId,
+                        transactionId: transaction.id,
+                        isRefund: refund
+                    )
                 }
                 let formatted = String(format: "%.2f", abs(transaction.amount))
                 let review = transaction.isConfirmed ? "" : AppLanguage.localized(" ממתין לבדיקתך בהיסטוריה.", " Ready for review in History.")

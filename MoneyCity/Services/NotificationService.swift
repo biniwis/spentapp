@@ -129,6 +129,8 @@ public enum NotificationService {
         currency: String = "₪",
         categoryName: String,
         merchant: String,
+        buildingId: String? = nil,
+        transactionId: UUID? = nil,
         isRefund: Bool = false
     ) {
         guard isEnabled && isCaptureNotificationEnabled else { return }
@@ -137,11 +139,11 @@ public enum NotificationService {
             if settings.authorizationStatus == .notDetermined {
                 center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
                     if granted {
-                        dispatchNotification(amount: amount, currency: currency, categoryName: categoryName, merchant: merchant, isRefund: isRefund)
+                        dispatchNotification(amount: amount, currency: currency, categoryName: categoryName, merchant: merchant, buildingId: buildingId, transactionId: transactionId, isRefund: isRefund)
                     }
                 }
             } else if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
-                dispatchNotification(amount: amount, currency: currency, categoryName: categoryName, merchant: merchant, isRefund: isRefund)
+                dispatchNotification(amount: amount, currency: currency, categoryName: categoryName, merchant: merchant, buildingId: buildingId, transactionId: transactionId, isRefund: isRefund)
             }
         }
     }
@@ -151,6 +153,8 @@ public enum NotificationService {
         currency: String,
         categoryName: String,
         merchant: String,
+        buildingId: String?,
+        transactionId: UUID?,
         isRefund: Bool
     ) {
         let center = UNUserNotificationCenter.current()
@@ -175,7 +179,7 @@ public enum NotificationService {
             content: content,
             trigger: nil // Delivers immediately
         )
-        content.userInfo = [
+        var userInfo: [String: Any] = [
             "type": "expense_logged",
             "amount": amount,
             "currency": currency,
@@ -183,6 +187,13 @@ public enum NotificationService {
             "categoryName": categoryName,
             "isRefund": isRefund
         ]
+        if let buildingId = buildingId {
+            userInfo["buildingId"] = buildingId
+        }
+        if let transactionId = transactionId {
+            userInfo["transactionId"] = transactionId.uuidString
+        }
+        content.userInfo = userInfo
         center.add(request, withCompletionHandler: nil)
     }
 
@@ -234,6 +245,8 @@ public struct PendingExpenseConfirmation: Identifiable, Equatable, Sendable, Cod
     public let id: String
     public let amount: Double
     public let merchant: String
+    public let buildingId: String?
+    public let transactionId: UUID?
     public let timestamp: Date
     public let isRefund: Bool
 
@@ -241,14 +254,35 @@ public struct PendingExpenseConfirmation: Identifiable, Equatable, Sendable, Cod
         id: String = UUID().uuidString,
         amount: Double,
         merchant: String,
+        buildingId: String? = nil,
+        transactionId: UUID? = nil,
         timestamp: Date = Date(),
         isRefund: Bool = false
     ) {
         self.id = id
         self.amount = amount
         self.merchant = merchant
+        self.buildingId = buildingId
+        self.transactionId = transactionId
         self.timestamp = timestamp
         self.isRefund = isRefund
+    }
+}
+
+@MainActor
+public final class ExpenseFocusCoordinator: ObservableObject {
+    public static let shared = ExpenseFocusCoordinator()
+
+    @Published public var pendingFocusRequest: CityBuildingFocusRequest? = nil
+
+    private init() {}
+
+    public func requestFocus(_ request: CityBuildingFocusRequest) {
+        self.pendingFocusRequest = request
+    }
+
+    public func clearPendingFocus() {
+        self.pendingFocusRequest = nil
     }
 }
 
@@ -270,19 +304,39 @@ public final class ExpenseConfirmationCoordinator: ObservableObject {
         }
     }
 
-    public func triggerConfirmation(amount: Double, merchant: String, isRefund: Bool = false) {
-        queuePendingConfirmation(amount: amount, merchant: merchant, isRefund: isRefund)
+    public func triggerConfirmation(
+        amount: Double,
+        merchant: String,
+        buildingId: String? = nil,
+        transactionId: UUID? = nil,
+        isRefund: Bool = false
+    ) {
+        queuePendingConfirmation(
+            amount: amount,
+            merchant: merchant,
+            buildingId: buildingId,
+            transactionId: transactionId,
+            isRefund: isRefund
+        )
     }
 
-    public func queuePendingConfirmation(amount: Double, merchant: String, isRefund: Bool = false) {
+    public func queuePendingConfirmation(
+        amount: Double,
+        merchant: String,
+        buildingId: String? = nil,
+        transactionId: UUID? = nil,
+        isRefund: Bool = false
+    ) {
         guard amount > 0 else { return }
-        let signature = "\(amount)_\(merchant)_\(Int(Date().timeIntervalSince1970 / 8))"
+        let signature = "\(amount)_\(merchant)_\(buildingId ?? "")_\(Int(Date().timeIntervalSince1970 / 8))"
         guard signature != lastConfirmedSignature else { return }
         lastConfirmedSignature = signature
 
         let item = PendingExpenseConfirmation(
             amount: amount,
             merchant: merchant,
+            buildingId: buildingId,
+            transactionId: transactionId,
             timestamp: Date(),
             isRefund: isRefund
         )
@@ -387,12 +441,43 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @u
         if let amount = userInfo["amount"] as? Double {
             let merchant = userInfo["merchant"] as? String ?? ""
             let isRefund = userInfo["isRefund"] as? Bool ?? false
+            let currency = userInfo["currency"] as? String ?? "₪"
+            let categoryName = userInfo["categoryName"] as? String
+            let rawBuildingId = userInfo["buildingId"] as? String
+            let transactionIdStr = userInfo["transactionId"] as? String
+            let transactionId = transactionIdStr.flatMap { UUID(uuidString: $0) }
+
+            let resolvedBuildingId: String = {
+                if let raw = rawBuildingId, !raw.isEmpty {
+                    return raw
+                }
+                return CategorizationEngine.shared.classify(merchant: merchant, amount: amount).buildingId
+            }()
+
+            let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
+                ? String(format: "%.0f", amount)
+                : String(format: "%.2f", amount)
+            let formattedAmount = "\(currency)\(numStr)"
+
+            let focusRequest = CityBuildingFocusRequest(
+                token: UUID(),
+                buildingId: resolvedBuildingId,
+                amount: amount,
+                formattedAmount: formattedAmount,
+                isRefund: isRefund,
+                transactionId: transactionId,
+                source: .notificationTap
+            )
+
             Task { @MainActor in
                 ExpenseConfirmationCoordinator.shared.queuePendingConfirmation(
                     amount: amount,
                     merchant: merchant,
+                    buildingId: resolvedBuildingId,
+                    transactionId: transactionId,
                     isRefund: isRefund
                 )
+                ExpenseFocusCoordinator.shared.requestFocus(focusRequest)
             }
         }
 

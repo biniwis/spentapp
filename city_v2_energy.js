@@ -27,6 +27,7 @@ function syncRenderPause() {
     if (rafId !== null) cancelAnimationFrame(rafId);
     rafId = null; lastEnergyFrame = null;
     pointers.clear(); gesture = null; spinVel = 0; tiltVel = 0; isDragging = false;
+    if (typeof cancelExpenseFocus === "function") cancelExpenseFocus();
   } else startLoop();
 }
 window.pauseDioramaRendering = function (on) { nativeRenderPaused = !!on; syncRenderPause(); };

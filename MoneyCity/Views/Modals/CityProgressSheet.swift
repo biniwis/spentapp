@@ -54,6 +54,22 @@ public struct CityProgressSheet: View {
         return context.trigger == .weeklyPresence ? "Another week in the city." : "The city has been quieter than usual over the last three days."
     }
 
+    private var heroHeadingFont: Font {
+        .system(.largeTitle, design: .rounded, weight: .bold)
+    }
+
+    private var cardTitleFont: Font {
+        .system(.title2, design: .rounded, weight: .bold)
+    }
+
+    private var cardEyebrowFont: Font {
+        .system(.subheadline, design: .rounded, weight: .medium)
+    }
+
+    private var actionButtonFont: Font {
+        .system(.headline, design: .rounded, weight: .bold)
+    }
+
     public var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -72,7 +88,7 @@ public struct CityProgressSheet: View {
                     VStack(spacing: 24) {
                         hero(friend, size: 120).padding(.vertical, 20)
                         Text(he ? "\(title(friend)) \(friend.id == "resident_artist" ? "נוספה" : "נוסף") לעיר" : "\(title(friend)) added to the city")
-                            .font(.largeTitle.bold()).multilineTextAlignment(.center)
+                            .font(heroHeadingFont).multilineTextAlignment(.center)
                         Text(description(friend)).font(.body).foregroundStyle(Color.textSecondary)
                             .multilineTextAlignment(.center)
                         action(he ? "לראות בעיר" : "View in city") { dismiss() }
@@ -80,8 +96,8 @@ public struct CityProgressSheet: View {
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.94)))
                 } else if !options.isEmpty {
                     VStack(spacing: 10) {
-                        Text(he ? "משהו חדש בעיר" : "Something new in the city").font(.subheadline.weight(.medium))
-                        Text(he ? "מה נוסף לעיר?" : "What's added to the city?").font(.largeTitle.bold())
+                        Text(he ? "משהו חדש בעיר" : "Something new in the city").font(cardEyebrowFont)
+                        Text(he ? "מה נוסף לעיר?" : "What's added to the city?").font(heroHeadingFont)
                         Text(reason).font(.subheadline).foregroundStyle(Color.textSecondary)
                     }.multilineTextAlignment(.center)
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -106,13 +122,13 @@ public struct CityProgressSheet: View {
                         .disabled(isClaiming)
                     }
                 } else {
-                    Text(he ? "תוספות לעיר" : "City additions").font(.largeTitle.bold())
+                    Text(he ? "תוספות לעיר" : "City additions").font(heroHeadingFont)
                     Text(he ? "מדי פעם תופיע כאן תוספת חדשה." : "From time to time, someone new will arrive here.")
                         .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
                     ForEach(renderedOwnedOptions) { option in
                         HStack(spacing: 16) {
                             hero(option, size: 52)
-                            Text(title(option)).font(.headline)
+                            Text(title(option)).font(.system(.headline, design: .rounded, weight: .bold))
                             Spacer()
                         }.padding(.vertical, 8)
                     }
@@ -160,7 +176,7 @@ public struct CityProgressSheet: View {
         } label: {
             VStack(spacing: 18) {
                 hero(option, size: 100).padding(.vertical, 14)
-                Text(title(option)).font(.title2.bold())
+                Text(title(option)).font(cardTitleFont)
                 Text(description(option)).font(.body).foregroundStyle(Color.textSecondary)
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title2).accessibilityHidden(true)
@@ -181,7 +197,7 @@ public struct CityProgressSheet: View {
 
     private func action(_ title: String, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
-            Text(title).font(.headline).multilineTextAlignment(.center)
+            Text(title).font(actionButtonFont).multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, minHeight: 44).padding(12)
                 .foregroundStyle(MoneyCityTheme.jetBlack)
                 .background(MoneyCityTheme.neonLime, in: RoundedRectangle(cornerRadius: 18))

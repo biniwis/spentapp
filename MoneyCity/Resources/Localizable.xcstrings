@@ -179,6 +179,46 @@
         }
       }
     },
+    "%@, hide spending breakdown, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, hide spending breakdown, %2$@"
+          }
+        }
+      }
+    },
+    "%@, show spending breakdown, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, show spending breakdown, %2$@"
+          }
+        }
+      }
+    },
+    "%@, הצג פירוט הוצאות, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, הצג פירוט הוצאות, %2$@"
+          }
+        }
+      }
+    },
+    "%@, סגור פירוט הוצאות, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, סגור פירוט הוצאות, %2$@"
+          }
+        }
+      }
+    },
     "%@. %@" : {
       "localizations" : {
         "en" : {
@@ -354,13 +394,16 @@
     "0" : {
 
     },
+    "00:00" : {
+
+    },
     "1 → 5" : {
 
     },
     "1x" : {
 
     },
-    "03" : {
+    "04" : {
 
     },
     "6 / 6" : {
@@ -373,6 +416,9 @@
 
     },
     "12-Month Overview" : {
+
+    },
+    "24:00" : {
 
     },
     "A goal gives you a reason to open the app on a day you bought nothing." : {
@@ -535,7 +581,10 @@
     "Assign to 3D Building" : {
 
     },
-    "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device." : {
+    "At SPENT, your expenses, budgets, and city data are processed and stored locally on your device." : {
+
+    },
+    "Automatic\nCapture" : {
 
     },
     "Automatic Currency Conversion" : {
@@ -671,9 +720,6 @@
     "Confirming will deduct this amount from your monthly spending" : {
 
     },
-    "Connect Transaction Data" : {
-
-    },
     "Could not extract receipt" : {
 
     },
@@ -706,7 +752,7 @@
         }
       }
     },
-    "Current spending exceeds planned income. City park growth slows down." : {
+    "Current spending exceeds planned income. Nature Reserve growth slows down." : {
 
     },
     "Date and Time" : {
@@ -1123,6 +1169,9 @@
     "Merge" : {
 
     },
+    "Monthly amount" : {
+
+    },
     "Monthly budget" : {
 
     },
@@ -1144,7 +1193,10 @@
     "Name" : {
 
     },
-    "Nature Sanctuary" : {
+    "Nature Reserve" : {
+
+    },
+    "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\". Set the amount and merchant:" : {
 
     },
     "New fixed expense" : {
@@ -1201,7 +1253,7 @@
     "Open 3D ↗" : {
 
     },
-    "Open Shortcuts" : {
+    "Open Apple Shortcuts" : {
 
     },
     "Operating in Offline Mode" : {
@@ -1254,6 +1306,9 @@
     "Postcards (Mock)" : {
 
     },
+    "Preview" : {
+
+    },
     "Preview weekly companion rewards, unlock flow, and animated join ceremonies:" : {
 
     },
@@ -1287,6 +1342,9 @@
 
     },
     "Reading the amount and merchant from your receipt…" : {
+
+    },
+    "Real Time" : {
 
     },
     "Recaps Archive" : {
@@ -1500,10 +1558,13 @@
     "Select Category" : {
 
     },
+    "Select SPENT" : {
+
+    },
     "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
 
     },
-    "Set a goal for emergencies, vacation, or investments — and watch the park grow." : {
+    "Set a goal for emergencies, vacation, or investments — and watch the Nature Reserve grow." : {
 
     },
     "Set Goal" : {
@@ -1512,13 +1573,13 @@
     "Set monthly budget" : {
 
     },
-    "Set up\nShortcuts." : {
-
-    },
     "Set Up New Savings Goal" : {
 
     },
     "Settings" : {
+
+    },
+    "Setup is done in Apple's Shortcuts app, already on your iPhone. Once configured, expenses are captured automatically." : {
 
     },
     "Share" : {
@@ -1590,16 +1651,16 @@
     "SPENT City" : {
 
     },
+    "SPENT doesn’t get access to your card or bank account." : {
+
+    },
     "SPENT looks at your activity and changes in spending patterns to occasionally bring new life to the city." : {
 
     },
     "SPENT Month" : {
 
     },
-    "SPENT never connects to your bank or reads Wallet directly." : {
-
-    },
-    "‏SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות." : {
+    "SPENT לא מקבלת גישה לכרטיס או לחשבון הבנק שלך." : {
 
     },
     "SPENT מסתכלת על השימוש שלך ועל שינויים בדפוס ההוצאות כדי להוסיף מדי פעם חיים חדשים לעיר." : {
@@ -1614,9 +1675,6 @@
     "Tap any preset to view the full story & editorial animations with mock data:" : {
 
     },
-    "Tap each field, select \"Shortcut Input\" then the attribute:" : {
-
-    },
     "Tap for Quick Add +" : {
 
     },
@@ -1627,6 +1685,12 @@
 
     },
     "Tap to continue" : {
+
+    },
+    "Tap to hide district breakdown" : {
+
+    },
+    "Tap to view district breakdown" : {
 
     },
     "Tap to view your monthly recap" : {
@@ -1655,13 +1719,10 @@
     "The current state is snapshotted first, so this can be undone." : {
 
     },
-    "The Park" : {
+    "The Nature Reserve changes with your budget and savings." : {
 
     },
-    "The park changes with your budget and savings." : {
-
-    },
-    "This is also recorded as a savings transfer and grows the city's park." : {
+    "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
 
     },
     "This month: %@" : {
@@ -1673,10 +1734,10 @@
     "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
 
     },
-    "Three steps in Shortcuts, then transactions can reach SPENT automatically." : {
+    "Time of Day" : {
 
     },
-    "To have the park reflect your monthly pace, set your estimated monthly spending." : {
+    "To have the Nature Reserve reflect your monthly pace, set your estimated monthly spending." : {
 
     },
     "Top Categories" : {
@@ -1912,6 +1973,9 @@
     "אודות SPENT" : {
 
     },
+    "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״. הגדר את הסכום ואת בית העסק:" : {
+
+    },
     "אולי אחר כך" : {
 
     },
@@ -1990,7 +2054,7 @@
     "אשר את הסיווג" : {
 
     },
-    "ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
+    "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
 
     },
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
@@ -2003,6 +2067,9 @@
 
     },
     "בוא לראות איך החודש קיבל צורה בעיר" : {
+
+    },
+    "בחר את SPENT" : {
 
     },
     "בחר קטגוריה" : {
@@ -2072,7 +2139,7 @@
     "הגדר יעד" : {
 
     },
-    "הגדר יעד לקרן חירום, חופשה או השקעה — והפארק יצמח יחד איתו." : {
+    "הגדר יעד לקרן חירום, חופשה או השקעה — ושמורת הטבע תצמח יחד איתו." : {
 
     },
     "הגדרות" : {
@@ -2084,6 +2151,9 @@
     "הגדרת תקציב" : {
 
     },
+    "הדמיה" : {
+
+    },
     "הדמיית הדיורמה התלת-ממדית עם שליטה מיידית בצפיפות, מבנים, פארק ותנועה" : {
 
     },
@@ -2091,6 +2161,9 @@
 
     },
     "הדרכת פתיחה והיכרות" : {
+
+    },
+    "ההגדרה נעשית באפליקציית ״קיצורים״ של Apple שכבר נמצאת באייפון שלך. אחרי ההגדרה, הוצאות נכנסות לבד." : {
 
     },
     "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
@@ -2216,7 +2289,7 @@
     "הסכום חייב להיות מספר חיובי הגדול מ-0" : {
 
     },
-    "הסכום יירשם גם כהפקדה לחיסכון ויגדיל את הפארק בעיר." : {
+    "הסכום יירשם גם כהפקדה לחיסכון ויצמיח את שמורת הטבע בעיר." : {
 
     },
     "הסתר אפשרויות" : {
@@ -2232,12 +2305,6 @@
 
     },
     "הערה: הדינמי בקצה ה־Flow מוגבל ל־3, וגם ל־2 בכרטיסי אינדקס – החישוב כאן הוא התקרה התיאורטית." : {
-
-    },
-    "הפארק" : {
-
-    },
-    "הפארק משתנה לפי התקציב והחיסכון שלך." : {
 
     },
     "הפעל" : {
@@ -2283,6 +2350,12 @@
 
     },
     "הקודם" : {
+
+    },
+    "הקש להצגת פירוט הרובעים" : {
+
+    },
+    "הקש לסגירת פירוט הרובעים" : {
 
     },
     "הקש לצפייה בסיכום החודשי שלך" : {
@@ -2339,10 +2412,10 @@
     "זמין לזמן מוגבל" : {
 
     },
-    "זרימה מלאה מקונספט העיר ועד פתיחת הדלתות, כולל מעברים ואנימציות" : {
+    "זמן אמת" : {
 
     },
-    "חבר את נתוני העסקה" : {
+    "זרימה מלאה מקונספט העיר ועד פתיחת הדלתות, כולל מעברים ואנימציות" : {
 
     },
     "חודש חדש בעיר" : {
@@ -2402,7 +2475,7 @@
     "יש לך הוצאות קבועות?" : {
 
     },
-    "כדי שהפארק ישקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
+    "כדי ששמורת הטבע תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
 
     },
     "כל %lld בחודש" : {
@@ -2435,9 +2508,6 @@
     "לוח שנה ומעבר לתאריך" : {
 
     },
-    "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : {
-
-    },
     "לכל בניין יש סיפור" : {
 
     },
@@ -2463,9 +2533,6 @@
 
     },
     "מושהה" : {
-
-    },
-    "מחברים\nאת הקיצורים" : {
 
     },
     "מחיקה" : {
@@ -2643,6 +2710,9 @@
     "סכום" : {
 
     },
+    "סכום חודשי" : {
+
+    },
     "סכום יעד" : {
 
     },
@@ -2727,7 +2797,7 @@
     "פריסה לתשלומים" : {
 
     },
-    "פתח את קיצורים" : {
+    "פתח את אפליקציית ״קיצורים״" : {
 
     },
     "פתח תלת-ממד ↗" : {
@@ -2772,7 +2842,10 @@
     "קלט הקיצור" : {
 
     },
-    "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. הפארק בעיר מאט את צמיחתו עד לאיזון." : {
+    "קליטה\nאוטומטית" : {
+
+    },
+    "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. שמורת הטבע בעיר מאטה את צמיחתה עד לאיזון." : {
 
     },
     "קצב ההוצאות של החודש" : {
@@ -2827,9 +2900,6 @@
     "שלום, %@" : {
 
     },
-    "שלושה שלבים ב״קיצורים״, ואז העסקאות יכולות להגיע ל־SPENT אוטומטית." : {
-
-    },
     "שם" : {
 
     },
@@ -2860,7 +2930,13 @@
     "שמורת הטבע" : {
 
     },
+    "שמורת הטבע משתנה לפי התקציב והחיסכון שלך." : {
+
+    },
     "שערי יציג עדכניים (הערכה)" : {
+
+    },
+    "שעת היממה" : {
 
     },
     "שפת ממשק" : {

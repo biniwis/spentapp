@@ -194,8 +194,8 @@ public struct SavingsGoalsSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Text(isHebrew
-                     ? "הסכום יירשם גם כהפקדה לחיסכון ויגדיל את הפארק בעיר."
-                     : "This is also recorded as a savings transfer and grows the city's park.")
+                     ? "הסכום יירשם גם כהפקדה לחיסכון ויצמיח את שמורת הטבע בעיר."
+                     : "This is also recorded as a savings transfer and grows the city's Nature Reserve.")
             }
         }
     }

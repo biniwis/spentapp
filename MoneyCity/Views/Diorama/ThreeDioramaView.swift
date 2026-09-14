@@ -63,14 +63,26 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
     public let selectedBuildingId: String?
+    public let buildingFocusRequest: CityBuildingFocusRequest?
     /// A building highlighted during the contextual first-use lesson.
     public let tutorialBuildingId: String?
     public let language: String
     public let isPaused: Bool
+    public let timeOfDayOverride: Double?
     public let onSelectDistrict: (String?) -> Void
     public let onBuildingSelected: (DistrictBuildingInfo) -> Void
     public let onSlotTapped: ((String, String?) -> Void)?
     public let onCameraOffsetChanged: ((Bool) -> Void)?
+    
+    /// Current device local time represented as a floating hour (e.g. 14.5 for 14:30)
+    public static var currentDeviceLocalHour: Double {
+        let cal = Calendar.current
+        let comp = cal.dateComponents([.hour, .minute, .second], from: Date())
+        let h = Double(comp.hour ?? 12)
+        let m = Double(comp.minute ?? 0)
+        let s = Double(comp.second ?? 0)
+        return h + (m / 60.0) + (s / 3600.0)
+    }
     
     public init(
         totalSpent: Double,
@@ -89,9 +101,11 @@ public struct ThreeDioramaView: ViewRepresentable {
         slotPlacements: [String: String] = [:],
         selectedDistrict: String?,
         selectedBuildingId: String? = nil,
+        buildingFocusRequest: CityBuildingFocusRequest? = nil,
         tutorialBuildingId: String? = nil,
         language: String = "he",
         isPaused: Bool = false,
+        timeOfDayOverride: Double? = nil,
         onSelectDistrict: @escaping (String?) -> Void,
         onBuildingSelected: @escaping (DistrictBuildingInfo) -> Void,
         onSlotTapped: ((String, String?) -> Void)? = nil,
@@ -113,9 +127,11 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
         self.selectedBuildingId = selectedBuildingId
+        self.buildingFocusRequest = buildingFocusRequest
         self.tutorialBuildingId = tutorialBuildingId
         self.language = language
         self.isPaused = isPaused
+        self.timeOfDayOverride = timeOfDayOverride
         self.onSelectDistrict = onSelectDistrict
         self.onBuildingSelected = onBuildingSelected
         self.onSlotTapped = onSlotTapped
@@ -319,8 +335,9 @@ public struct ThreeDioramaView: ViewRepresentable {
         config.userContentController.add(context.coordinator, name: "cameraOffsetChanged")
         
         // Inject current city data payload at document start
+        let currentHour = timeOfDayOverride ?? Self.currentDeviceLocalHour
         let initScript = WKUserScript(
-            source: "window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = '\(context.coordinator.powerMode)';",
+            source: "window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = '\(context.coordinator.powerMode)'; window._initialTimeOfDay = \(currentHour);",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )
@@ -361,17 +378,28 @@ public struct ThreeDioramaView: ViewRepresentable {
     private func updateData(in webView: WKWebView, coordinator: Coordinator) {
         guard !coordinator.isDisposed else { return }
         let paused = isPaused || !coordinator.appIsActive
+        let currentHour = timeOfDayOverride ?? Self.currentDeviceLocalHour
+        let isOverride = timeOfDayOverride != nil
+        let animateTime = !isOverride && !coordinator.isInitialDelivery
+        coordinator.isInitialDelivery = false
+        let roundedHour = (currentHour * 100).rounded() / 100.0
+
+        let timeControl = "if(window.setTimeOfDay){window.setTimeOfDay(\(roundedHour), \(animateTime ? "true" : "false"));}"
+
         let controls = """
         window._initialRenderPaused = \(paused ? "true" : "false");
         window._initialPowerMode = '\(coordinator.powerMode)';
         if(window.pauseDioramaRendering){window.pauseDioramaRendering(window._initialRenderPaused);}
         if(window.setDioramaPowerMode){window.setDioramaPowerMode(window._initialPowerMode);}
+        \(timeControl)
         """
         // Do not even serialize the city while hidden. The latest model is sent on resume.
         let js: String
         if paused {
+            coordinator.stopTimeTimer()
             js = controls
         } else {
+            coordinator.startTimeTimer()
             let payload = dataPayloadJSON
             var script = controls + """
             if(window.updateDioramaData){window.updateDioramaData(\(payload));}
@@ -384,6 +412,12 @@ public struct ThreeDioramaView: ViewRepresentable {
                 script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding('\(bId)');}"
             } else {
                 script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding(null);}"
+            }
+            if let focus = buildingFocusRequest, focus.id != coordinator.lastHandledFocusToken {
+                coordinator.lastHandledFocusToken = focus.id
+                let rawAmtText = focus.formattedAmount ?? "\(focus.amount)"
+                let formattedAmtEscaped = rawAmtText.replacingOccurrences(of: "'", with: "\\'")
+                script += "\nif(window.focusDioramaBuilding){window.focusDioramaBuilding('\(focus.buildingId)', \(focus.amount), '\(focus.id.uuidString)', '\(formattedAmtEscaped)', \(focus.isRefund ? "true" : "false"));}"
             }
             js = script
         }
@@ -401,6 +435,9 @@ public struct ThreeDioramaView: ViewRepresentable {
         var parent: ThreeDioramaView
         /// Last JS payload actually delivered to the scene, used to skip redundant updates.
         var lastSentPayload: String?
+        var isInitialDelivery = true
+        var lastHandledFocusToken: UUID?
+        private var timeTimer: Timer?
         private weak var observedWebView: WKWebView?
         private(set) var isDisposed = false
         private(set) var appIsActive: Bool = {
@@ -416,6 +453,23 @@ public struct ThreeDioramaView: ViewRepresentable {
             return process.isLowPowerModeEnabled || process.thermalState == .serious ? "economy" : "normal"
         }
 
+        func startTimeTimer() {
+            stopTimeTimer()
+            guard !isDisposed, appIsActive, !parent.isPaused else { return }
+            timeTimer = Timer.scheduledTimer(withTimeInterval: 300.0, repeats: true) { [weak self] _ in
+                guard let self = self, !self.isDisposed, self.appIsActive, !self.parent.isPaused else { return }
+                guard self.parent.timeOfDayOverride == nil else { return }
+                guard let webView = self.observedWebView else { return }
+                let hour = (ThreeDioramaView.currentDeviceLocalHour * 100).rounded() / 100.0
+                webView.evaluateJavaScript("if(window.setTimeOfDay){window.setTimeOfDay(\(hour), true);}", completionHandler: nil)
+            }
+        }
+
+        func stopTimeTimer() {
+            timeTimer?.invalidate()
+            timeTimer = nil
+        }
+
         func observeLifecycle(of webView: WKWebView) {
             observedWebView = webView
             let center = NotificationCenter.default
@@ -429,14 +483,17 @@ public struct ThreeDioramaView: ViewRepresentable {
             center.addObserver(self, selector: #selector(appWillResignActive), name: NSApplication.willResignActiveNotification, object: nil)
             center.addObserver(self, selector: #selector(appDidBecomeActive), name: NSApplication.didBecomeActiveNotification, object: nil)
             #endif
+            startTimeTimer()
         }
         @objc private func appWillResignActive() {
             appIsActive = false
+            stopTimeTimer()
             refreshLifecycle()
         }
         @objc private func appDidBecomeActive() {
             appIsActive = true
             refreshLifecycle()
+            startTimeTimer()
         }
         @objc private func powerChanged() {
             // ProcessInfo notifications need not arrive on the UI thread.
@@ -448,6 +505,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         }
         func tearDown(_ webView: WKWebView) {
             isDisposed = true
+            stopTimeTimer()
             NotificationCenter.default.removeObserver(self)
             webView.evaluateJavaScript("if(window.disposeDioramaRendering){window.disposeDioramaRendering();}", completionHandler: nil)
             webView.stopLoading()
@@ -456,7 +514,10 @@ public struct ThreeDioramaView: ViewRepresentable {
             webView.configuration.userContentController.removeAllUserScripts()
             observedWebView = nil
         }
-        deinit { NotificationCenter.default.removeObserver(self) }
+        deinit {
+            stopTimeTimer()
+            NotificationCenter.default.removeObserver(self)
+        }
 
         init(_ parent: ThreeDioramaView) {
             self.parent = parent

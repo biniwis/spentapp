@@ -47,7 +47,7 @@ public struct ReserveModalView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isHebrew ? "שמורת הטבע" : "Nature Sanctuary")
+                    Text(isHebrew ? "שמורת הטבע" : "Nature Reserve")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
                     Text(isHebrew ? "קצב ההוצאות של החודש" : "Monthly spending pace")
@@ -177,8 +177,8 @@ public struct ReserveModalView: View {
     private var noBudgetContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(isHebrew
-                 ? "כדי שהפארק ישקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש."
-                 : "To have the park reflect your monthly pace, set your estimated monthly spending.")
+                 ? "כדי ששמורת הטבע תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש."
+                 : "To have the Nature Reserve reflect your monthly pace, set your estimated monthly spending.")
                 .font(.system(size: 13, weight: .medium, design: .default))
                 .foregroundColor(Color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

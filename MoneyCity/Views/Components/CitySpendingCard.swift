@@ -64,7 +64,7 @@ public struct CitySpendingCard: View {
                         amt)
             case "savings":
                 return (Color(red: 234/255, green: 248/255, blue: 240/255),
-                        l10n.language == .hebrew ? "שמורת הטבע" : "Savings Sanctuary",
+                        l10n.natureReserveName,
                         l10n.language == .hebrew ? "יעדי חיסכון והשקעות" : "Savings & Investments",
                         currentCity.totalSavings)
             default:
@@ -133,6 +133,18 @@ public struct CitySpendingCard: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                isDetailsExpanded
+                    ? (l10n.language == .hebrew ? "\(title), סגור פירוט הוצאות, \(l10n.format(amount: amount))" : "\(title), hide spending breakdown, \(l10n.format(amount: amount))")
+                    : (l10n.language == .hebrew ? "\(title), הצג פירוט הוצאות, \(l10n.format(amount: amount))" : "\(title), show spending breakdown, \(l10n.format(amount: amount))")
+            )
+            .accessibilityHint(
+                isDetailsExpanded
+                    ? (l10n.language == .hebrew ? "הקש לסגירת פירוט הרובעים" : "Tap to hide district breakdown")
+                    : (l10n.language == .hebrew ? "הקש להצגת פירוט הרובעים" : "Tap to view district breakdown")
+            )
+            .accessibilityAddTraits(.isButton)
 
             // Contextual Month Milestone
             if displayTransactions.isEmpty {

@@ -27,8 +27,8 @@ public enum ReservePaceState: String, Sendable, CaseIterable {
         switch self {
         case .noBudget:
             return isHebrew
-                ? "כדי שהפארק ישקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש."
-                : "To have the park reflect your monthly pace, set a monthly spending target."
+                ? "כדי ששמורת הטבע תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש."
+                : "To have the Nature Reserve reflect your monthly pace, set a monthly spending target."
         case .calm:
             return isHebrew
                 ? "קצב ההוצאות נמוך מהתכנון ביחס לימים שחלפו בחודש."

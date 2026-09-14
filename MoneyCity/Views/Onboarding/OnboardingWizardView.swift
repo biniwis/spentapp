@@ -451,27 +451,27 @@ public struct OnboardingWizardView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    // MARK: Step 4A — the hero scene carries the payment → Shortcuts → city relationship
+    // MARK: Step 4A — quiet reassurance
     private var step4AIntroContent: some View {
         Text(isHebrew
-            ? "\u{200F}SPENT לא מתחבר לבנק ולא קורא את Wallet ישירות."
-            : "SPENT never connects to your bank or reads Wallet directly.")
+            ? "SPENT לא מקבלת גישה לכרטיס או לחשבון הבנק שלך."
+            : "SPENT doesn’t get access to your card or bank account.")
             .font(.system(.footnote, design: .rounded))
             .foregroundStyle(Color.jetBlack.opacity(0.7))
             .multilineTextAlignment(.leading)
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: Step 4B - Shortcuts Setup Guide (Direct-on-canvas editorial numbered flow: 01 / 02 / 03)
+    // MARK: Step 4B - Shortcuts Setup Guide (Direct-on-canvas editorial numbered flow: 01 / 02 / 03 / 04)
     private var step4BGuideContent: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Step 01
             editorialNumberedStep(
                 number: "01",
-                title: isHebrew ? "צור אוטומציה מסוג ״עסקה״" : "Create Transaction Automation",
+                title: isHebrew ? "פתח את ״קיצורים״" : "Open Shortcuts",
                 instruction: isHebrew
-                    ? "בקיצורים: אוטומציה ← + ← עסקה ← סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
-                    : "In Shortcuts: Automation → + → Transaction → choose \"Run Immediately\" and turn off \"Notify When Run\"."
+                    ? "זו אפליקציה של Apple שכבר נמצאת באייפון שלך."
+                    : "This is an Apple app already on your iPhone."
             )
 
             Divider().overlay(Color.borderSubtle.opacity(0.6))
@@ -479,27 +479,40 @@ public struct OnboardingWizardView: View {
             // Step 02
             editorialNumberedStep(
                 number: "02",
-                title: isHebrew ? "בחר את הפעולה של SPENT" : "Select SPENT Action",
+                title: isHebrew ? "צור אוטומציה חדשה" : "Create New Automation",
                 instruction: isHebrew
-                    ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״."
-                    : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\"."
+                    ? "באפליקציה: לשונית אוטומציה ← + ← בחר ״עסקה״. סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
+                    : "In Shortcuts: Automation tab → + → select \"Transaction\". Choose \"Run Immediately\" and turn off \"Notify When Run\"."
             )
 
             Divider().overlay(Color.borderSubtle.opacity(0.6))
 
-            // Step 03 with explicit 2-step field mapping
+            // Step 03
+            editorialNumberedStep(
+                number: "03",
+                title: isHebrew ? "בחר כרטיס" : "Choose Card",
+                instruction: isHebrew
+                    ? "הכרטיס נבחר כאן רק כדי שהאייפון ידע אילו תשלומים להעביר ל-SPENT. פרטי הכרטיס לא עוברים ל-SPENT."
+                    : "The card is chosen here only so your iPhone knows which payments to pass to SPENT. Card details are never sent to SPENT."
+            )
+
+            Divider().overlay(Color.borderSubtle.opacity(0.6))
+
+            // Step 04 with explicit 2-field mapping
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("03")
+                    Text("04")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(isHebrew ? "חבר את נתוני העסקה" : "Connect Transaction Data")
+                        Text(isHebrew ? "בחר את SPENT" : "Select SPENT")
                             .font(.system(.subheadline, design: .rounded, weight: .semibold))
                             .foregroundColor(Color.deepNavy)
 
-                        Text(isHebrew ? "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : "Tap each field, select \"Shortcut Input\" then the attribute:")
+                        Text(isHebrew
+                            ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״. הגדר את הסכום ואת בית העסק:"
+                            : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\". Set the amount and merchant:")
                             .font(.system(.footnote, design: .rounded))
                             .foregroundColor(Color.textSecondary)
                     }
@@ -616,7 +629,7 @@ public struct OnboardingWizardView: View {
         case 3:
             let isBudgetValid = (parsedBudget ?? 0) > 0
             primaryActionButton(
-                title: isHebrew ? "המשך לאוטומציה" : "Continue to Automation",
+                title: isHebrew ? "המשך לקליטה אוטומטית" : "Continue to Automatic Capture",
                 isEnabled: isBudgetValid
             ) {
                 guard isBudgetValid else { return }
@@ -640,7 +653,7 @@ public struct OnboardingWizardView: View {
     // Step 4A Actions
     private var step4AActionButtons: some View {
         VStack(spacing: 8) {
-            primaryActionButton(title: isHebrew ? "יאללה, בוא נגדיר" : "Let's Set It Up") {
+            primaryActionButton(title: isHebrew ? "הגדר קליטה אוטומטית" : "Set Up Automatic Capture") {
                 slideDirection = 1
                 withAnimation(pageAnimation) {
                     shortcutPhase = "guide"
@@ -675,7 +688,7 @@ public struct OnboardingWizardView: View {
                 }) {
                     HStack(spacing: 6) {
                         MoneyIcon(.lightning, size: 18, color: .jetBlack)
-                        Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
+                        Text(isHebrew ? "פתח את אפליקציית ״קיצורים״" : "Open Apple Shortcuts")
                             .font(.system(.body, design: .rounded, weight: .semibold))
                     }
                     .foregroundColor(.jetBlack)
@@ -780,9 +793,9 @@ public struct OnboardingWizardView: View {
             return isHebrew ? "מסגרת\nלחודש שלך" : "Your month.\nYour target."
         case 4:
             if shortcutPhase == "guide" {
-                return isHebrew ? "מחברים\nאת הקיצורים" : "Set up\nShortcuts."
+                return isHebrew ? "הגדרת\nקליטה אוטומטית" : "Set Up\nAutomatic Capture"
             } else {
-                return isHebrew ? "ההוצאות שלך\nמקבלות צורה בעיר." : "Your spending\ntakes shape in the city."
+                return isHebrew ? "ההוצאות יכולות\nלהיכנס לבד" : "Expenses can\nshow up automatically"
             }
         default:
             return isHebrew ? "העיר שלך\nמוכנה" : "Your city\nis ready."
@@ -806,12 +819,12 @@ public struct OnboardingWizardView: View {
         case 4:
             if shortcutPhase == "guide" {
                 return isHebrew
-                    ? "שלושה שלבים ב״קיצורים״, ואז העסקאות יכולות להגיע ל־SPENT אוטומטית."
-                    : "Three steps in Shortcuts, then transactions can reach SPENT automatically."
+                    ? "ההגדרה נעשית באפליקציית ״קיצורים״ של Apple שכבר נמצאת באייפון שלך."
+                    : "Setup is done in Apple's Shortcuts app, already on your iPhone."
             } else {
                 return isHebrew
-                    ? "אפשר להגדיר אוטומציה ב״קיצורים״ שמופעלת אחרי תשלום ומעבירה ל־SPENT את פרטי העסקה שהאייפון מספק."
-                    : "You can set up a Shortcuts automation that runs after payment and passes the transaction details iOS provides to SPENT."
+                    ? "אחרי תשלום, האייפון יכול להעביר ל-SPENT כמה שילמת ואיפה — וההוצאה נכנסת לבד."
+                    : "After a payment, your iPhone can pass SPENT the amount and merchant so the expense can be added automatically."
             }
         default:
             return isHebrew

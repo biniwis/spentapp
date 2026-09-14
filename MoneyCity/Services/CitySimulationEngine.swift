@@ -199,7 +199,6 @@ public final class CitySimulationEngine: Sendable {
         // Spending less than planned is still rewarded — by the garden, which is the right
         // medium for a soft signal. Numbers stay literal.
         let accruedFraction = CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
-        let hasActivity = !spendingTransactions.isEmpty || directSavings > 0
         let baseline = estimatedMonthlyBudget > 0 ? estimatedMonthlyBudget : typicalMonthlySpend
         let totalSavings = directSavings
 

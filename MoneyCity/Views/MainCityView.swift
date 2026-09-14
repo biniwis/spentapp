@@ -105,6 +105,9 @@ public struct MainCityView: View {
 
     // ── Live Expense Confirmation & Rolling Amount ──
     @ObservedObject private var confirmationCoordinator = ExpenseConfirmationCoordinator.shared
+    @ObservedObject private var focusCoordinator = ExpenseFocusCoordinator.shared
+    @State private var buildingFocusRequest: CityBuildingFocusRequest? = nil
+    @State private var isDioramaReady: Bool = false
     @State private var animatedSpentValue: Double? = nil
     @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
     @State private var showBrandSplash: Bool
@@ -316,6 +319,7 @@ public struct MainCityView: View {
                     slotPlacements: currentSlotPlacements,
                     selectedDistrict: selectedDistrict,
                     selectedBuildingId: inspectedBuilding?.id,
+                    buildingFocusRequest: buildingFocusRequest,
                     tutorialBuildingId: cityTutorialBuildingId,
                     language: l10n.language == .hebrew ? "he" : "en",
                     isPaused: shouldPauseDiorama,
@@ -546,6 +550,7 @@ public struct MainCityView: View {
                     }
                     if activeTab == "city" && !isQuickActionActive {
                         cityActiveCardView
+                            .padding(.bottom, (isDetailsExpanded && selectedDistrict == nil && inspectedBuilding == nil) ? 20 : 0)
                     }
 
                     // Quick Action: 3 Dynamic Subcategory Buildings floating above the plus button
@@ -656,6 +661,21 @@ public struct MainCityView: View {
                 consumeQueuedConfirmationsIfNeeded()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .dioramaReady)) { _ in
+            isDioramaReady = true
+            if let pending = focusCoordinator.pendingFocusRequest {
+                buildingFocusRequest = pending
+                focusCoordinator.clearPendingFocus()
+            }
+        }
+        .onReceive(focusCoordinator.$pendingFocusRequest) { req in
+            guard let req = req else { return }
+            activeTab = "city"
+            if isDioramaReady {
+                buildingFocusRequest = req
+                focusCoordinator.clearPendingFocus()
+            }
+        }
         .onOpenURL { url in
             let scheme = url.scheme?.lowercased() ?? ""
             let host = url.host?.lowercased() ?? ""
@@ -699,7 +719,24 @@ public struct MainCityView: View {
                 ExpenseConfirmationCoordinator.shared.triggerConfirmation(
                     amount: amount,
                     merchant: merchantTitle,
+                    buildingId: finalBuildingId,
+                    transactionId: tx.id,
                     isRefund: false
+                )
+
+                let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
+                    ? String(format: "%.0f", amount)
+                    : String(format: "%.2f", amount)
+                let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
+
+                buildingFocusRequest = CityBuildingFocusRequest(
+                    token: UUID(),
+                    buildingId: finalBuildingId,
+                    amount: amount,
+                    formattedAmount: formattedAmount,
+                    isRefund: false,
+                    transactionId: tx.id,
+                    source: .manualExpense
                 )
             }
             .environmentObject(l10n)
@@ -1104,7 +1141,7 @@ public struct MainCityView: View {
     @ViewBuilder
     private var topControlsHeader: some View {
         if !isChromeHidden {
-            VStack(spacing: 10) {
+            VStack(spacing: 6) {
                 CityTopBarView(
                     hasWeeklyReward: !weeklyRewardOptions.isEmpty,
                     isZenMode: $isZenMode,
@@ -1183,9 +1220,26 @@ public struct MainCityView: View {
             ExpenseConfirmationCoordinator.shared.triggerConfirmation(
                 amount: amt,
                 merchant: building.displayName(for: l10n.language),
+                buildingId: building.id,
+                transactionId: tx.id,
                 isRefund: false
             )
             Haptics.notify(.success)
+
+            let numStr = (amt.truncatingRemainder(dividingBy: 1) == 0)
+                ? String(format: "%.0f", amt)
+                : String(format: "%.2f", amt)
+            let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
+
+            buildingFocusRequest = CityBuildingFocusRequest(
+                token: UUID(),
+                buildingId: building.id,
+                amount: amt,
+                formattedAmount: formattedAmount,
+                isRefund: false,
+                transactionId: tx.id,
+                source: .manualExpense
+            )
 
             withAnimation(.spring(response: 0.28, dampingFraction: 0.76)) {
                 isQuickActionActive = false

@@ -15,7 +15,7 @@ public struct ApplePayGuideSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     // Editorial Header matching Onboarding Step 4B
                     VStack(alignment: .leading, spacing: 10) {
-                        Text(isHebrew ? "מחברים\nאת הקיצורים" : "Set up\nShortcuts.")
+                        Text(isHebrew ? "קליטה\nאוטומטית" : "Automatic\nCapture")
                             .font(.system(size: 36, weight: .heavy, design: .rounded))
                             .tracking(isHebrew ? -1 : -1.8)
                             .foregroundStyle(Color.jetBlack)
@@ -25,8 +25,8 @@ public struct ApplePayGuideSheet: View {
                             .accessibilityAddTraits(.isHeader)
 
                         Text(isHebrew
-                            ? "שלושה שלבים ב״קיצורים״, ואז העסקאות יכולות להגיע ל־SPENT אוטומטית."
-                            : "Three steps in Shortcuts, then transactions can reach SPENT automatically.")
+                            ? "ההגדרה נעשית באפליקציית ״קיצורים״ של Apple שכבר נמצאת באייפון שלך. אחרי ההגדרה, הוצאות נכנסות לבד."
+                            : "Setup is done in Apple's Shortcuts app, already on your iPhone. Once configured, expenses are captured automatically.")
                             .font(.system(.body, design: .rounded))
                             .foregroundStyle(Color.jetBlack.opacity(0.75))
                             .multilineTextAlignment(.leading)
@@ -36,15 +36,15 @@ public struct ApplePayGuideSheet: View {
                     .padding(.top, 16)
                     .padding(.bottom, 28)
 
-                    // 3-Step Direct-on-Canvas Guide (01 / 02 / 03)
+                    // 4-Step Direct-on-Canvas Guide (01 / 02 / 03 / 04)
                     VStack(alignment: .leading, spacing: 18) {
                         // Step 01
                         editorialNumberedStep(
                             number: "01",
-                            title: isHebrew ? "צור אוטומציה מסוג ״עסקה״" : "Create Transaction Automation",
+                            title: isHebrew ? "פתח את ״קיצורים״" : "Open Shortcuts",
                             instruction: isHebrew
-                                ? "בקיצורים: אוטומציה ← + ← עסקה ← סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
-                                : "In Shortcuts: Automation → + → Transaction → choose \"Run Immediately\" and turn off \"Notify When Run\"."
+                                ? "זו אפליקציה של Apple שכבר נמצאת באייפון שלך."
+                                : "This is an Apple app already on your iPhone."
                         )
 
                         Divider().overlay(Color.borderSubtle.opacity(0.6))
@@ -52,27 +52,40 @@ public struct ApplePayGuideSheet: View {
                         // Step 02
                         editorialNumberedStep(
                             number: "02",
-                            title: isHebrew ? "בחר את הפעולה של SPENT" : "Select SPENT Action",
+                            title: isHebrew ? "צור אוטומציה חדשה" : "Create New Automation",
                             instruction: isHebrew
-                                ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״."
-                                : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\"."
+                                ? "באפליקציה: לשונית אוטומציה ← + ← בחר ״עסקה״. סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
+                                : "In Shortcuts: Automation tab → + → select \"Transaction\". Choose \"Run Immediately\" and turn off \"Notify When Run\"."
                         )
 
                         Divider().overlay(Color.borderSubtle.opacity(0.6))
 
-                        // Step 03 with 2-field mapping
+                        // Step 03
+                        editorialNumberedStep(
+                            number: "03",
+                            title: isHebrew ? "בחר כרטיס" : "Choose Card",
+                            instruction: isHebrew
+                                ? "הכרטיס נבחר כאן רק כדי שהאייפון ידע אילו תשלומים להעביר ל-SPENT. פרטי הכרטיס לא עוברים ל-SPENT."
+                                : "The card is chosen here only so your iPhone knows which payments to pass to SPENT. Card details are never sent to SPENT."
+                        )
+
+                        Divider().overlay(Color.borderSubtle.opacity(0.6))
+
+                        // Step 04 with 2-field mapping
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                                Text("03")
+                                Text("04")
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
 
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text(isHebrew ? "חבר את נתוני העסקה" : "Connect Transaction Data")
+                                    Text(isHebrew ? "בחר את SPENT" : "Select SPENT")
                                         .font(.system(.subheadline, design: .rounded, weight: .semibold))
                                         .foregroundColor(Color.deepNavy)
 
-                                    Text(isHebrew ? "לחץ על כל שדה, בחר ״קלט הקיצור״ ואז את המאפיין:" : "Tap each field, select \"Shortcut Input\" then the attribute:")
+                                    Text(isHebrew
+                                        ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״. הגדר את הסכום ואת בית העסק:"
+                                        : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\". Set the amount and merchant:")
                                         .font(.system(.footnote, design: .rounded))
                                         .foregroundColor(Color.textSecondary)
                                 }
@@ -104,7 +117,7 @@ public struct ApplePayGuideSheet: View {
                             }) {
                                 HStack(spacing: 6) {
                                     MoneyIcon(.lightning, size: 18, color: .jetBlack)
-                                    Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
+                                    Text(isHebrew ? "פתח את אפליקציית ״קיצורים״" : "Open Apple Shortcuts")
                                         .font(.system(.body, design: .rounded, weight: .semibold))
                                 }
                                 .foregroundColor(.jetBlack)

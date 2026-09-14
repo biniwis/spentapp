@@ -100,7 +100,7 @@ public final class CityProgressEngine: Sendable {
         ),
         ProgressRewardOption(
             id: "repair_bench",
-            title: "חידוש ספסל הפארק",
+            title: "חידוש ספסל בשמורת הטבע",
             subtitle: "ספסל עץ מחודש ומלוטש ליד האגם",
             icon: "chair.lounge.fill",
             type: .repair,
@@ -195,7 +195,7 @@ public final class CityProgressEngine: Sendable {
         ProgressRewardOption(
             id: "park_bridge",
             title: "גשר עץ מעוצב מעל האגם",
-            subtitle: "גשר יפני מסורתי המחבר את שבילי הפארק",
+            subtitle: "גשר יפני מסורתי המחבר את שבילי שמורת הטבע",
             icon: "building.2.fill",
             type: .landmark,
             tier: "large",

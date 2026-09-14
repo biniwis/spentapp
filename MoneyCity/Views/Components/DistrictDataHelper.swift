@@ -39,7 +39,7 @@ public enum DistrictDataHelper {
         case "shopping": return isHebrew ? "שדרת הקניות והאופנה" : "Shopping & Fashion Avenue"
         case "housing": return isHebrew ? "מתחם המגורים והחשבונות" : "Housing & Bills Quarter"
         case "transport": return isHebrew ? "מרכז התחבורה והרכב" : "Mobility & Transport Hub"
-        case "savings": return isHebrew ? "הפארק" : "The Park"
+        case "savings": return isHebrew ? "שמורת הטבע" : "Nature Reserve"
         case "civic": return isHebrew ? "רובע השירותים והעירייה" : "Civic & Services Hub"
         default: return isHebrew ? "רובע בעיר" : "City District"
         }
@@ -131,7 +131,7 @@ public enum DistrictDataHelper {
             let sav = currentCity.totalSavings
             let savVisits = transactions.filter { $0.category == .savings }.count
             return [
-                BuildingPillItem(id: "savings_sanctuary", title: isHe ? "הפארק" : "The Park", amount: sav, info: DistrictBuildingInfo(id: "savings_sanctuary", districtId: "savings", name: isHe ? "הפארק" : "The Park", amount: sav, visitCount: savVisits, trendText: sav > 0 ? (isHe ? "צמיחה ירוקה החודש" : "Growing green this month") : (isHe ? "התחל לחסוך כדי להצמיח את הפארק" : "Start saving to grow the park")))
+                BuildingPillItem(id: "savings_sanctuary", title: isHe ? "שמורת הטבע" : "Nature Reserve", amount: sav, info: DistrictBuildingInfo(id: "savings_sanctuary", districtId: "savings", name: isHe ? "שמורת הטבע" : "Nature Reserve", amount: sav, visitCount: savVisits, trendText: sav > 0 ? (isHe ? "צמיחה ירוקה החודש" : "Growing green this month") : (isHe ? "התחל לחסוך כדי להצמיח את שמורת הטבע" : "Start saving to grow the Nature Reserve")))
             ]
         case "transport":
             let tr = currentCity.categoryTotals[.transport] ?? 0
@@ -157,7 +157,7 @@ public enum DistrictDataHelper {
 
     /// Builds the structured expense breakdown rows for the "All City" card.
     ///
-    /// - Strictly excludes Savings / The Park (savings is not an expense).
+    /// - Strictly excludes Savings / Nature Reserve (savings is not an expense).
     /// - Includes all non-savings spending: Food, Shopping, Housing, Transport, and Civic
     ///   (Health, Finance, Misc, Other).
     /// - Filters out zero-spending rows to show where money actually went.

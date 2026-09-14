@@ -98,7 +98,7 @@ public struct ReserveSanctuarySheet: View {
                 .scrollDismissesKeyboard(.interactively)
                 #endif
             }
-            .navigationTitle(isHebrew ? "הפארק" : "The Park")
+            .navigationTitle(l10n.natureReserveName)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -177,13 +177,13 @@ public struct ReserveSanctuarySheet: View {
                     Spacer()
                 }
 
-                Text(isHebrew ? "הפארק" : "The Park")
+                Text(l10n.natureReserveName)
                     .font(.system(size: 17, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 
                 Text(isHebrew
-                     ? "הפארק משתנה לפי התקציב והחיסכון שלך."
-                     : "The park changes with your budget and savings.")
+                     ? "שמורת הטבע משתנה לפי התקציב והחיסכון שלך."
+                     : "The Nature Reserve changes with your budget and savings.")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(Color.textMuted)
                     .lineSpacing(2)
@@ -451,8 +451,8 @@ public struct ReserveSanctuarySheet: View {
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundColor(Color.deepNavy)
             Text(isHebrew
-                 ? "הגדר יעד לקרן חירום, חופשה או השקעה — והפארק יצמח יחד איתו."
-                 : "Set a goal for emergencies, vacation, or investments — and watch the park grow.")
+                 ? "הגדר יעד לקרן חירום, חופשה או השקעה — ושמורת הטבע תצמח יחד איתו."
+                 : "Set a goal for emergencies, vacation, or investments — and watch the Nature Reserve grow.")
                 .font(.system(size: 11.5, weight: .medium, design: .rounded))
                 .foregroundColor(Color.textMuted)
                 .multilineTextAlignment(.center)

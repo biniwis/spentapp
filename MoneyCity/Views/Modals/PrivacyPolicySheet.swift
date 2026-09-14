@@ -26,8 +26,8 @@ public struct PrivacyPolicySheet: View {
                             .foregroundColor(Color.deepNavy)
                             .multilineTextAlignment(.center)
 
-                        Text(isHebrew ? "ב-SPENT, פרטי העסקאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד."
-                                      : "At SPENT, your financial records, budgets, and city data are processed and stored locally on your device.")
+                        Text(isHebrew ? "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד."
+                                      : "At SPENT, your expenses, budgets, and city data are processed and stored locally on your device.")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(Color.textMuted)
                             .multilineTextAlignment(.center)
@@ -43,22 +43,22 @@ public struct PrivacyPolicySheet: View {
                     policyCard(
                         icon: .lock,
                         title: isHebrew ? "עיבוד ושמירה מקומיים" : "Local Storage & Processing",
-                        body: isHebrew ? "פרטי העסקאות, התקציבים ונתוני העיר נשמרים מקומית במכשיר באמצעות SwiftData. SPENT אינה מפעילה חשבון משתמש או בסיס נתונים בענן עבור המידע הפיננסי שלך."
-                                       : "Your transaction history, budgets, and city data are stored locally on your device using SwiftData. SPENT does not operate user accounts or cloud databases for your financial data."
+                        body: isHebrew ? "ההוצאות, התקציבים ונתוני העיר נשמרים מקומית במכשיר באמצעות SwiftData. SPENT אינה מפעילה חשבון משתמש או בסיס נתונים בענן עבור המידע הפיננסי שלך."
+                                       : "Your expenses, budgets, and city data are stored locally on your device using SwiftData. SPENT does not operate user accounts or cloud databases for your financial data."
                     )
 
                     policyCard(
                         icon: .checkCircle,
                         title: isHebrew ? "ללא מעקב וללא פרסום" : "No Tracking & No Advertising",
-                        body: isHebrew ? "SPENT אינה משתמשת במידע הפיננסי שלך לצורכי מעקב, פרסום או פרופיל משתמש, ואינה שולחת את פרטי העסקאות לשירותי אנליטיקה של צד שלישי."
-                                       : "SPENT does not use your financial data for tracking, advertising, or user profiling, and does not send transaction details to third-party analytics services."
+                        body: isHebrew ? "SPENT אינה משתמשת במידע הפיננסי שלך לצורכי מעקב, פרסום או פרופיל משתמש, ואינה שולחת מידע על הוצאות לשירותי אנליטיקה של צד שלישי."
+                                       : "SPENT does not use your financial data for tracking, advertising, or user profiling, and does not send expense information to third-party analytics services."
                     )
 
                     policyCard(
-                        icon: .creditCard,
-                        title: isHebrew ? "קליטת עסקאות באמצעות Shortcuts" : "Transaction Ingest via Shortcuts",
-                        body: isHebrew ? "SPENT אינה ניגשת ל-Apple Pay או ל-Wallet ישירות. אם בחרת להגדיר אוטומציה אישית ב-Shortcuts, iOS מעביר ל-SPENT את פרטי העסקה שהוגדרו באוטומציה. SPENT אינה שולחת את פרטי העסקה לשרת שלה או לשירות צד שלישי."
-                                       : "SPENT does not directly access Apple Pay or Apple Wallet. If you choose to set up a personal automation in Shortcuts, iOS passes the transaction details configured in the automation to SPENT. SPENT does not send transaction details to its own server or any third-party service."
+                        icon: .lightning,
+                        title: isHebrew ? "קליטה אוטומטית" : "Automatic Capture",
+                        body: isHebrew ? "SPENT אינה מקבלת גישה לכרטיסי האשראי או לחשבון הבנק שלך. כאשר קליטה אוטומטית מופעלת, האייפון יכול להעביר ל-SPENT את הסכום ושם בית העסק.\n\nSPENT אינה מקבלת מספר כרטיס, CVV, תוקף, יתרה, מסגרת אשראי או פרטי חשבון בנק. המידע אינו נשלח לשרת של SPENT או לשירות צד שלישי."
+                                       : "SPENT does not get access to your credit cards or bank account. When automatic capture is enabled, your iPhone can pass SPENT the amount and merchant name.\n\nSPENT does not receive card numbers, CVV, expiration dates, balances, credit limits, or bank account details. Information is not sent to any SPENT server or third-party service."
                     )
 
                     policyCard(

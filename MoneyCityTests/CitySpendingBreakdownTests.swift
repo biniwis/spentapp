@@ -187,8 +187,8 @@ final class CitySpendingBreakdownTests: XCTestCase {
 
         let parkNameHe = DistrictDataHelper.districtName(for: "savings", language: .hebrew)
         let parkNameEn = DistrictDataHelper.districtName(for: "savings", language: .english)
-        XCTAssertEqual(parkNameHe, "הפארק")
-        XCTAssertEqual(parkNameEn, "The Park")
+        XCTAssertEqual(parkNameHe, "שמורת הטבע")
+        XCTAssertEqual(parkNameEn, "Nature Reserve")
 
         let parkTotal = DistrictDataHelper.districtTotal(for: "savings", currentCity: city)
         XCTAssertEqual(parkTotal, 650)
@@ -197,5 +197,54 @@ final class CitySpendingBreakdownTests: XCTestCase {
         XCTAssertEqual(parkPills.count, 1)
         XCTAssertEqual(parkPills.first?.id, "savings_sanctuary")
         XCTAssertEqual(parkPills.first?.amount, 650)
+    }
+
+    // 11. Feedback 3 specific verification: Food 80, Housing 3500, Transport 120, Shopping 0.
+    func testFeedback3TransportVerification() {
+        let txs = [
+            makeTx(category: .food, amount: 80),
+            makeTx(category: .housing, amount: 3500),
+            makeTx(category: .transport, amount: 120)
+            // Shopping is 0 (no transaction)
+        ]
+        let city = makeCity(transactions: txs)
+        let breakdown = DistrictDataHelper.expenseBreakdown(for: city, language: .hebrew)
+
+        // 1. Total spent equals sum of expenses
+        XCTAssertEqual(city.totalSpent, 3700)
+
+        // 2. Transport is present in breakdown
+        let transportItem = breakdown.first { $0.id == "transport" }
+        XCTAssertNotNil(transportItem, "Transport must appear in the expanded breakdown")
+
+        // 3. Transport displays correct amount
+        XCTAssertEqual(transportItem?.amount, 120)
+
+        // 4. Transport displays correct percentage (120 / 3700 = 3%)
+        XCTAssertEqual(transportItem?.percentage, 3)
+
+        // 5. Tapping Transport row targets correct district ID
+        XCTAssertEqual(transportItem?.districtId, "transport")
+
+        // 6. Selected Transport district displays correct amount
+        let transportTotal = DistrictDataHelper.districtTotal(for: "transport", currentCity: city)
+        XCTAssertEqual(transportTotal, 120)
+
+        // 7. Transport building pills and visit count
+        let pills = DistrictDataHelper.districtBuildingPills(for: "transport", currentCity: city, transactions: txs, language: .hebrew)
+        XCTAssertEqual(pills.count, 1)
+        XCTAssertEqual(pills.first?.amount, 120)
+        XCTAssertEqual(pills.first?.info.visitCount, 1)
+
+        // 8. Shopping with ₪0 is filtered out
+        XCTAssertFalse(breakdown.contains { $0.id == "shopping" })
+
+        // 9. Totals sum to totalSpent
+        let sumAmounts = breakdown.reduce(0.0) { $0 + $1.amount }
+        XCTAssertEqual(sumAmounts, city.totalSpent)
+
+        // 10. Percentages sum to 100%
+        let sumPcts = breakdown.reduce(0) { $0 + $1.percentage }
+        XCTAssertEqual(sumPcts, 100)
     }
 }

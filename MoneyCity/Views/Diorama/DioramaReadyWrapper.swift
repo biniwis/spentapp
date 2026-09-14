@@ -22,10 +22,12 @@ public struct DioramaReadyWrapper: View {
     public let slotPlacements: [String: String]
     public let selectedDistrict: String?
     public let selectedBuildingId: String?
+    public let buildingFocusRequest: CityBuildingFocusRequest?
     /// Optional first-use focus rendered on top of the real 3D building.
     public let tutorialBuildingId: String?
     public let language: String
     public let isPaused: Bool
+    public let timeOfDayOverride: Double?
     public let onSelectDistrict: (String?) -> Void
     public let onBuildingSelected: (DistrictBuildingInfo) -> Void
     public let onSlotTapped: ((String, String?) -> Void)?
@@ -51,9 +53,11 @@ public struct DioramaReadyWrapper: View {
         slotPlacements: [String: String],
         selectedDistrict: String?,
         selectedBuildingId: String? = nil,
+        buildingFocusRequest: CityBuildingFocusRequest? = nil,
         tutorialBuildingId: String? = nil,
         language: String = "he",
         isPaused: Bool,
+        timeOfDayOverride: Double? = nil,
         onSelectDistrict: @escaping (String?) -> Void,
         onBuildingSelected: @escaping (DistrictBuildingInfo) -> Void,
         onSlotTapped: ((String, String?) -> Void)? = nil,
@@ -75,9 +79,11 @@ public struct DioramaReadyWrapper: View {
         self.slotPlacements = slotPlacements
         self.selectedDistrict = selectedDistrict
         self.selectedBuildingId = selectedBuildingId
+        self.buildingFocusRequest = buildingFocusRequest
         self.tutorialBuildingId = tutorialBuildingId
         self.language = language
         self.isPaused = isPaused
+        self.timeOfDayOverride = timeOfDayOverride
         self.onSelectDistrict = onSelectDistrict
         self.onBuildingSelected = onBuildingSelected
         self.onSlotTapped = onSlotTapped
@@ -106,9 +112,11 @@ public struct DioramaReadyWrapper: View {
                 slotPlacements: slotPlacements,
                 selectedDistrict: selectedDistrict,
                 selectedBuildingId: selectedBuildingId,
+                buildingFocusRequest: buildingFocusRequest,
                 tutorialBuildingId: tutorialBuildingId,
                 language: language,
                 isPaused: isPaused,
+                timeOfDayOverride: timeOfDayOverride,
                 onSelectDistrict: onSelectDistrict,
                 onBuildingSelected: onBuildingSelected,
                 onSlotTapped: onSlotTapped,

@@ -214,8 +214,8 @@ public struct BudgetSheet: View {
         switch planBasis {
         case .ceilings:
             return isHebrew
-                ? "התוכנית היא סכום התקרות שהגדרת לקטגוריות. זה המספר שהעיר והפארק נמדדים מולו."
-                : "The plan is the sum of the ceilings you set below. This is the number the city and the park are measured against."
+                ? "התוכנית היא סכום התקרות שהגדרת לקטגוריות. זה המספר שהעיר ושמורת הטבע נמדדות מולו."
+                : "The plan is the sum of the ceilings you set below. This is the number the city and the Nature Reserve are measured against."
         case .overall:
             return isHebrew
                 ? "התוכנית היא הסכום החודשי הכולל שהגדרת. תקרה לקטגוריה תחליף אותו."

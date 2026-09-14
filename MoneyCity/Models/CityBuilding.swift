@@ -307,3 +307,40 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         return nil
     }
 }
+
+// MARK: - Spatial Focus Request
+
+public enum CityBuildingFocusSource: Sendable, Equatable {
+    case manualExpense
+    case notificationTap
+}
+
+/// One-shot spatial camera focus event targeting a specific building after transaction creation.
+public struct CityBuildingFocusRequest: Equatable, Identifiable, Sendable {
+    public let id: UUID
+    public let buildingId: String
+    public let amount: Double
+    public let formattedAmount: String?
+    public let isRefund: Bool
+    public let transactionId: UUID?
+    public let source: CityBuildingFocusSource
+
+    public init(
+        token: UUID = UUID(),
+        buildingId: String,
+        amount: Double,
+        formattedAmount: String? = nil,
+        isRefund: Bool = false,
+        transactionId: UUID? = nil,
+        source: CityBuildingFocusSource = .manualExpense
+    ) {
+        self.id = token
+        self.buildingId = buildingId
+        self.amount = amount
+        self.formattedAmount = formattedAmount
+        self.isRefund = isRefund
+        self.transactionId = transactionId
+        self.source = source
+    }
+}
+

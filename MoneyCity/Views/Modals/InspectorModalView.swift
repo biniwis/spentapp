@@ -35,7 +35,7 @@ public struct InspectorModalView: View {
         case "house_tower": return isHe ? "שכירות ודיור" : "Rent & Housing"
         case "house_util": return isHe ? "חשבונות הבית" : "Utilities & Bills"
         case "house_subs": return isHe ? "מנויים" : "Subscriptions"
-        case "savings_sanctuary": return isHe ? "הפארק" : "The Park"
+        case "savings_sanctuary": return l10n.natureReserveName
         case "trans_station": return isHe ? "תחבורה וחניה" : "Transit & Parking"
         case "health_pharmacy": return isHe ? "פארם ובריאות" : "Health & Pharmacy"
         case "finance_bank": return isHe ? "בנקאות ועמלות" : "Banking & Finance"

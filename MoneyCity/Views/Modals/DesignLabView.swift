@@ -543,21 +543,21 @@ public struct DesignLabView: View {
         OnboardingPreviewConfig(
             step: 4,
             phase: "intro",
-            titleHe: "4א. מבוא לאוטומציה",
-            titleEn: "4A. Automation Intro",
-            subtitleHe: "קליטת Apple Pay מהירה ואיור כרטיס אשראי",
-            subtitleEn: "Apple Pay Shortcuts automation introduction",
-            badgeText: "Shortcuts A",
-            icon: .creditCard
+            titleHe: "4א. קליטה אוטומטית",
+            titleEn: "4A. Automatic Capture Intro",
+            subtitleHe: "הסבר פשוט: אחרי תשלום, כמה שילמת ואיפה",
+            subtitleEn: "Simple intro: after payment, amount and merchant",
+            badgeText: "Capture A",
+            icon: .lightning
         ),
         OnboardingPreviewConfig(
             step: 4,
             phase: "guide",
-            titleHe: "4ב. מדריך 3 השלבים",
-            titleEn: "4B. Shortcuts 3-Step Guide",
-            subtitleHe: "הוראות חיבור מדויקות באפליקציית קיצורים",
+            titleHe: "4ב. מדריך 4 השלבים",
+            titleEn: "4B. 4-Step Guide",
+            subtitleHe: "הוראות פשוטות באפליקציית ״קיצורים״ של Apple",
             subtitleEn: "Step-by-step setup in Apple Shortcuts app",
-            badgeText: "Shortcuts B",
+            badgeText: "Capture B",
             icon: .sliders
         ),
         OnboardingPreviewConfig(
@@ -1373,6 +1373,8 @@ public struct CityDensityLabSheet: View {
 
     @State private var selectedPresetIndex: Int = 2 // Start at Thriving City
     @State private var viewResetToken: Int = 0
+    @State private var isTimeOverrideActive: Bool = false
+    @State private var previewHour: Double = 12.0
 
     private var isHe: Bool { l10n.language == .hebrew }
 
@@ -1659,6 +1661,7 @@ public struct CityDensityLabSheet: View {
                 tutorialBuildingId: nil,
                 language: isHe ? "he" : "en",
                 isPaused: false,
+                timeOfDayOverride: isTimeOverrideActive ? previewHour : nil,
                 onSelectDistrict: { _ in },
                 onBuildingSelected: { _ in },
                 onSlotTapped: nil,
@@ -1724,6 +1727,90 @@ public struct CityDensityLabSheet: View {
                         metricTag(label: isHe ? "בריאות פארק:" : "Park:", value: "\(Int(currentPreset.parkHealth * 100))%")
                     }
 
+                    // Time of Day Preview & Live Control
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            HStack(spacing: 5) {
+                                Image(systemName: isTimeOverrideActive ? "sun.max.fill" : "clock.fill")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(isTimeOverrideActive ? Color(red: 245/255, green: 158/255, blue: 11/255) : Color.deepNavy)
+                                Text(isHe ? "שעת היממה" : "Time of Day")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                            }
+
+                            Spacer()
+
+                            Button {
+                                Haptics.selection()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    isTimeOverrideActive.toggle()
+                                    if isTimeOverrideActive {
+                                        previewHour = ThreeDioramaView.currentDeviceLocalHour
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Circle()
+                                        .fill(isTimeOverrideActive ? Color(red: 245/255, green: 158/255, blue: 11/255) : Color(red: 16/255, green: 185/255, blue: 129/255))
+                                        .frame(width: 6, height: 6)
+                                    Text(isTimeOverrideActive ? (isHe ? "הדמיה" : "Preview") : (isHe ? "זמן אמת" : "Real Time"))
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                }
+                                .foregroundColor(Color.deepNavy)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.9))
+                                .clipShape(Capsule())
+                                .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
+                            }
+                            .buttonStyle(.plain)
+
+                            if isTimeOverrideActive {
+                                Text(formatHour(previewHour))
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .foregroundColor(Color.deepNavy)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .shadow(color: Color.black.opacity(0.05), radius: 2, y: 1)
+                            }
+                        }
+
+                        if isTimeOverrideActive {
+                            VStack(spacing: 6) {
+                                HStack(spacing: 8) {
+                                    Text("00:00")
+                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(Color.textSecondary)
+
+                                    Slider(value: $previewHour, in: 0.0...24.0, step: 0.25)
+                                        .tint(Color.deepNavy)
+
+                                    Text("24:00")
+                                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                                        .foregroundColor(Color.textSecondary)
+                                }
+
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 5) {
+                                        quickTimeButton(title: isHe ? "לילה 02:00" : "Night 02:00", hour: 2.0)
+                                        quickTimeButton(title: isHe ? "שחר 06:00" : "Dawn 06:00", hour: 6.0)
+                                        quickTimeButton(title: isHe ? "בוקר 09:00" : "Morning 09:00", hour: 9.0)
+                                        quickTimeButton(title: isHe ? "יום 12:00" : "Day 12:00", hour: 12.0)
+                                        quickTimeButton(title: isHe ? "זהב 17:30" : "Golden 17:30", hour: 17.5)
+                                        quickTimeButton(title: isHe ? "ערביים 20:00" : "Dusk 20:00", hour: 20.0)
+                                        quickTimeButton(title: isHe ? "לילה 23:00" : "Night 23:00", hour: 23.0)
+                                    }
+                                }
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 2)
+
                     // Preset Switcher Carousel
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -1763,6 +1850,33 @@ public struct CityDensityLabSheet: View {
             }
         }
         .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
+    }
+
+    private func formatHour(_ hour: Double) -> String {
+        let norm = ((hour.truncatingRemainder(dividingBy: 24.0)) + 24.0).truncatingRemainder(dividingBy: 24.0)
+        let totalMinutes = Int((norm * 60).rounded())
+        let h = (totalMinutes / 60) % 24
+        let m = totalMinutes % 60
+        return String(format: "%02d:%02d", h, m)
+    }
+
+    private func quickTimeButton(title: String, hour: Double) -> some View {
+        Button {
+            Haptics.selection()
+            withAnimation(.easeOut(duration: 0.2)) {
+                previewHour = hour
+            }
+        } label: {
+            Text(title)
+                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                .foregroundColor(abs(previewHour - hour) < 0.2 ? .white : Color.deepNavy)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(abs(previewHour - hour) < 0.2 ? Color.deepNavy : Color.white.opacity(0.85))
+                .clipShape(Capsule())
+                .shadow(color: Color.black.opacity(0.04), radius: 2, y: 1)
+        }
+        .buttonStyle(.plain)
     }
 
     private func metricTag(label: String, value: String) -> some View {
@@ -2636,8 +2750,8 @@ public struct ErrorStatesLabSheet: View {
                                         .foregroundColor(Color.red)
 
                                     Text(isHe
-                                        ? "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. הפארק בעיר מאט את צמיחתו עד לאיזון."
-                                        : "Current spending exceeds planned income. City park growth slows down.")
+                                        ? "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. שמורת הטבע בעיר מאטה את צמיחתה עד לאיזון."
+                                        : "Current spending exceeds planned income. Nature Reserve growth slows down.")
                                         .font(.system(size: 12, weight: .medium, design: .default))
                                         .foregroundColor(Color.textSecondary)
                                 }

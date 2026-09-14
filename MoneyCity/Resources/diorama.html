@@ -73,6 +73,61 @@
       opacity: 0;
     }
 
+    /* 💸 Expense Spatial Amount Bubble */
+    .diorama-expense-bubble {
+      position: absolute;
+      top: 0; left: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 13px;
+      background: #FFFFFF;
+      color: #0F172A;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Rubik", "Heebo", system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.10), 0 1px 3px rgba(15, 23, 42, 0.05);
+      transform: translate3d(-50%, -100%, 0) scale(0.92);
+      opacity: 0;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-select: none;
+      white-space: nowrap;
+      z-index: 30;
+      direction: ltr;
+      transition: opacity 0.22s ease, transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .diorama-expense-bubble.active {
+      opacity: 1;
+      transform: translate3d(-50%, -100%, 0) scale(1.0);
+    }
+    .diorama-expense-bubble.closing {
+      opacity: 0;
+      transform: translate3d(-50%, -135%, 0) scale(0.94);
+      transition: opacity 0.40s ease, transform 0.40s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    .diorama-expense-bubble .sign-pos {
+      color: #16A34A;
+      margin-inline-end: 2px;
+    }
+    .diorama-expense-bubble .sign-neg {
+      color: #DC2626;
+      margin-inline-end: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .diorama-expense-bubble {
+        transform: translate3d(-50%, -100%, 0) scale(1.0) !important;
+        transition: opacity 0.15s ease !important;
+      }
+      .diorama-expense-bubble.closing {
+        transform: translate3d(-50%, -100%, 0) scale(1.0) !important;
+        transition: opacity 0.20s ease !important;
+      }
+    }
+
     /* First-use coach mark. Its position is projected from the actual Three.js building,
        so it remains attached while the user rotates the city or the camera eases. */
     .diorama-tutorial-target {
@@ -3536,6 +3591,20 @@ function normalizedSlotPlacements(input) {
     const M_PARK_LEAF_LIGHT = mat(0x78BF58, 0.88);
     const M_PARK_BLOOM = mat(0xFACC15, 0.90);
 
+    const parkPlantings = [];
+    function registerReservePlanting(obj, rank, kind, structural) {
+      parkPlantings.push({ obj: obj, rank: rank, kind: kind, structural: structural,
+        isReserve: true, baseScale: obj.scale.clone() });
+    }
+    // Resolve ownership using the meadow footprint in reserve-local coordinates.
+    function belongsToReserve(px, pz, group) {
+      if (!group || group === reserveGroup) return true;
+      const point = new THREE.Vector3(px, Y_GRASS, pz);
+      group.localToWorld(point); reserveGroup.worldToLocal(point);
+      return Math.pow((point.x + 0.15) / (4.35 * 0.95), 2) +
+        Math.pow((point.z - 0.1) / (4.35 * 0.90), 2) <= 1;
+    }
+
     // Wildflowers scattered around the lake shore and footbridge
     const parkBloomGroup = new THREE.Group();
     reserveGroup.add(parkBloomGroup);
@@ -3546,39 +3615,42 @@ function normalizedSlotPlacements(input) {
       [-0.11, -0.15],
       [0.13, 0.14]
     ];
-    [[-1.8, 1.1], [-1.2, 1.8], [0.8, 1.8], [1.9, 1.2], [-0.9, -1.8], [0.5, -2.1], [1.8, -1.2], [-2.3, -0.8]].forEach(function (bp) {
+    [[-1.8, 1.1], [-1.2, 1.8], [0.8, 1.8], [1.9, 1.2], [-0.9, -1.8], [0.5, -2.1], [1.8, -1.2], [-2.3, -0.8]].forEach(function (bp, patchIndex) {
+      const patch = new THREE.Group(); patch.position.set(bp[0], Y_GRASS + 0.04, bp[1]); parkBloomGroup.add(patch);
+      registerReservePlanting(patch, patchIndex / 8, "flowers", patchIndex < 2);
       for (let k = 0; k < 4; k++) {
         const ox = FLOWER_OFFSETS[k][0], oz = FLOWER_OFFSETS[k][1];
-        const fl = mesh(bloomGeo, M_PARK_BLOOM, bp[0] + ox, Y_GRASS + 0.04, bp[1] + oz);
-        parkBloomGroup.add(fl);
+        const fl = mesh(bloomGeo, M_PARK_BLOOM, ox, 0, oz);
+        patch.add(fl);
       }
     });
 
     // Shore planting uses the same seasonal materials as the reserve canopy.
     const shoreDetails = new THREE.Group(); reserveGroup.add(shoreDetails);
-    [[-2.35, -0.65], [1.95, 0.68], [0.95, -1.55], [-1.55, 1.37]].forEach(function (p) {
+    [[-2.35, -0.65], [1.95, 0.68], [0.95, -1.55], [-1.55, 1.37]].forEach(function (p, patchIndex) {
+      const patch = new THREE.Group(); patch.position.set(p[0], Y_GRASS, p[1]); shoreDetails.add(patch);
+      registerReservePlanting(patch, patchIndex / 4, "low", patchIndex < 2);
       for (let j = 0; j < 5; j++) {
-        const x = p[0] + Math.sin(j * 2.4) * 0.15;
-        const z = p[1] + Math.cos(j * 2.4) * 0.12;
+        const x = Math.sin(j * 2.4) * 0.15;
+        const z = Math.cos(j * 2.4) * 0.12;
         const h = 0.24 + (j % 3) * 0.09;
-        shoreDetails.add(mesh(new THREE.CylinderGeometry(0.012, 0.019, h, 5), M_PARK_LEAF, x, Y_GRASS + h / 2, z, false, false));
-        shoreDetails.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.10, 6), M_WOOD, x, Y_GRASS + h, z, false, false));
+        patch.add(mesh(new THREE.CylinderGeometry(0.012, 0.019, h, 5), M_PARK_LEAF, x, h / 2, z, false, false));
+        patch.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.10, 6), M_WOOD, x, h, z, false, false));
       }
+      packRigidModel(patch);
     });
     [[-1.5, -0.65], [1.15, 0.40], [0.85, -0.85]].forEach(function (p) {
       const pad = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.014, 10), M_PARK_LEAF, p[0], Y_GRASS + 0.058, p[1], false, false);
       pad.scale.z = 0.8; shoreDetails.add(pad);
       shoreDetails.add(mesh(bloomGeo, M_PARK_BLOOM, p[0] + 0.035, Y_GRASS + 0.095, p[1], false, false));
     });
-    packRigidModel(shoreDetails);
-
-    const parkPlantings = [];
+    // Keep shore clusters separate so secondary planting can gently recede.
 
     function addPine(px, pz, h, group, rank) {
       const g = new THREE.Group(); g.position.set(px, Y_GRASS, pz);
       g.name = "layered-pine";
       g.add(mesh(new THREE.CylinderGeometry(0.035, 0.075, 1.05 * h, 7), M_WOOD, 0, 0.53 * h, 0));
-      const isReserve = (!group || group === reserveGroup);
+      const isReserve = belongsToReserve(px, pz, group);
       const pineMat = isReserve ? M_PARK_PINE : M_PINE;
       g.crowns = [];
       [[0.56, 0.78, 0.75], [0.43, 0.76, 1.15], [0.28, 0.71, 1.53]].forEach(function (p, i) {
@@ -3587,7 +3659,10 @@ function normalizedSlotPlacements(input) {
       });
       if (!isReserve) packRigidModel(g);
       (group || reserveGroup).add(g);
-      if (rank !== undefined) parkPlantings.push({ obj: g, rank: rank, isReserve: isReserve });
+      if (isReserve) {
+        g.crowns.forEach(function (c) { c.userData.parkBaseScale = c.scale.clone(); });
+        registerReservePlanting(g, rank === undefined ? 0 : rank, "tree", rank === undefined || rank <= 0.18);
+      }
       return g;
     }
     function addDecid(px, pz, s, group, rank) {
@@ -3598,7 +3673,7 @@ function normalizedSlotPlacements(input) {
         const branch = mesh(new THREE.CylinderGeometry(0.022 * s, 0.039 * s, 0.52 * s, 6), M_WOOD, side * 0.13 * s, 0.83 * s, 0);
         branch.rotation.z = -side * 0.65; g.add(branch);
       });
-      const isReserve = (!group || group === reserveGroup);
+      const isReserve = belongsToReserve(px, pz, group);
       const leafMat = isReserve ? M_PARK_LEAF : M_LEAF;
       const leafLightMat = isReserve ? M_PARK_LEAF_LIGHT : M_LEAF_LIGHT;
       g.crowns = [];
@@ -3609,11 +3684,14 @@ function normalizedSlotPlacements(input) {
       });
       if (!isReserve) packRigidModel(g);
       (group || reserveGroup).add(g);
-      if (rank !== undefined) parkPlantings.push({ obj: g, rank: rank, isReserve: isReserve });
+      if (isReserve) {
+        g.crowns.forEach(function (c) { c.userData.parkBaseScale = c.scale.clone(); });
+        registerReservePlanting(g, rank === undefined ? 0 : rank, "tree", rank === undefined || rank <= 0.18);
+      }
       return g;
     }
     // The reserve's own stand is the identity of the place, so it holds the lowest ranks and
-    // survives even a bad month. The city never looks abandoned.
+    // remains in every seasonal state.
     addPine(-2.8, -2.4, 1.2, null, 0.00);
     addPine( 2.6, -2.4, 1.1, null, 0.00);
     addPine( 2.8,  2.2, 1.0, null, 0.10);
@@ -3977,21 +4055,19 @@ function normalizedSlotPlacements(input) {
       if (typeof h !== "number" || !isFinite(h)) return;
       parkHealthValue = Math.max(0, Math.min(1, h));
 
-      // 4 Distinct Visual States based on monthly spending pace:
-      // Calm:     h >= 0.90 (rich deep forest emerald meadow, pure white & soft lilac blossoms, 1.12x full canopy)
-      // Balanced: 0.65 <= h < 0.90 (vibrant natural meadow green, sunny yellow & white wildflowers, 1.0x canopy)
-      // Active:   0.38 <= h < 0.65 (warm summer sunlit yellow-green, marigold/orange flower patches, 0.94x canopy)
-      // Busy:     h < 0.38 (warm golden-ochre autumn prairie, rustic amber oak tones, 0.88x canopy)
+      // Four coordinated ecological states; the financial mapping stays in ReserveStateService.
       let targetMeadow, targetPine, targetLeaf, targetLeafLight, targetBloom, crownScale;
+      let density, flowerDensity, lowScale;
 
       if (parkHealthValue >= 0.90) {
         // Calm (קצב רגוע)
-        targetMeadow    = C(0x4A9E48);
+        targetMeadow    = C(0x39894D);
         targetPine      = C(0x1B5E34);
         targetLeaf      = C(0x349946);
         targetLeafLight = C(0x58B648);
         targetBloom     = C(0xF8FAFC);
-        crownScale      = 1.12;
+        crownScale      = 1.16;
+        density = 1; flowerDensity = 1; lowScale = 1.12;
       } else if (parkHealthValue >= 0.65) {
         // Balanced (קצב מאוזן)
         targetMeadow    = C(0x66B63E);
@@ -4000,22 +4076,25 @@ function normalizedSlotPlacements(input) {
         targetLeafLight = C(0x78BF58);
         targetBloom     = C(0xFACC15);
         crownScale      = 1.00;
+        density = 0.95; flowerDensity = 0.90; lowScale = 1;
       } else if (parkHealthValue >= 0.38) {
         // Active (קצב מעט גבוה)
-        targetMeadow    = C(0x88BF36);
+        targetMeadow    = C(0x91B653);
         targetPine      = C(0x3E8E42);
         targetLeaf      = C(0x6EAF3C);
         targetLeafLight = C(0x94CA4E);
         targetBloom     = C(0xF59E0B);
-        crownScale      = 0.94;
+        crownScale      = 0.92;
+        density = 0.82; flowerDensity = 0.65; lowScale = 0.92;
       } else {
         // Busy (קצב מהיר)
-        targetMeadow    = C(0xA2AF42);
+        targetMeadow    = C(0xB3AF67);
         targetPine      = C(0x5A7A3E);
         targetLeaf      = C(0xB28628);
         targetLeafLight = C(0xC69A36);
         targetBloom     = C(0xD97706);
-        crownScale      = 0.88;
+        crownScale      = 0.82;
+        density = 0.68; flowerDensity = 0.40; lowScale = 0.82;
       }
 
       M_PARK_MEADOW.color.copy(targetMeadow);
@@ -4026,11 +4105,12 @@ function normalizedSlotPlacements(input) {
 
       for (let i = 0; i < parkPlantings.length; i++) {
         const p = parkPlantings[i];
-        p.wanted = true;
-        p.obj.visible = true;
+        p.wanted = p.structural || p.rank < (p.kind === "flowers" ? flowerDensity : density);
+        p.environmentScale = p.kind === "low" ? lowScale : 1;
+        if (p.wanted) p.obj.visible = true;
         if (p.isReserve && p.obj.crowns) {
           for (let j = 0; j < p.obj.crowns.length; j++) {
-            p.obj.crowns[j].scale.setScalar(crownScale);
+            p.obj.crowns[j].scale.copy(p.obj.crowns[j].userData.parkBaseScale).multiplyScalar(crownScale);
           }
         }
       }
@@ -4041,25 +4121,24 @@ function normalizedSlotPlacements(input) {
       for (let i = 0; i < parkPlantings.length; i++) {
         const p = parkPlantings[i];
         if (!p.obj.visible) continue;
-        const target = p.wanted ? 1 : 0;
-        const cur = p.obj.scale.y;
+        const target = p.wanted ? p.environmentScale : 0;
+        const cur = p.obj.scale.y / p.baseScale.y;
         if (p.wanted && Math.abs(cur - target) < 0.001) {
-          if (cur !== target) p.obj.scale.setScalar(target);
+          if (cur !== target) p.obj.scale.copy(p.baseScale).multiplyScalar(target);
           continue;
         }
         const next = cur + (target - cur) * Math.min(1, dt * 4.5);
         if (!p.wanted && next < 0.02) { p.obj.visible = false; p.obj.scale.setScalar(0.01); continue; }
-        p.obj.scale.setScalar(Math.max(0.01, next));
+        p.obj.scale.copy(p.baseScale).multiplyScalar(Math.max(0.01, next));
       }
     }
 
-    // Re-space the ranks evenly once every planting exists, keeping the intended order.
-    // Without this the authored ranks bunch up and "30% planted" only shows 20% of the trees.
-    parkPlantings.sort(function (a, b) { return a.rank - b.rank; });
-    parkPlantings.forEach(function (p, i) { p.rank = i / Math.max(1, parkPlantings.length - 1); });
-
+    // Preserve authored ranks and structural ownership; street trees never enter this list.
     applyParkHealth(HEALTHY_PARK);
-    parkPlantings.forEach(function (p) { p.wanted = true; p.obj.scale.setScalar(1); p.obj.visible = true; });
+    parkPlantings.forEach(function (p) {
+      p.obj.visible = p.wanted;
+      p.obj.scale.copy(p.baseScale).multiplyScalar(p.wanted ? p.environmentScale : 0.01);
+    });
 
     // ────────────────────────────────────────────────────────────────
     // 🚗 11. ROAD VEHICLES (Two-Way Traffic with Rounded Corners)
@@ -5826,6 +5905,13 @@ function animateCompanions(now, dt) {
     }
 
     stage.addEventListener("pointerdown", function (e) {
+      if (activeExpenseFocus && !activeExpenseFocus.cameraCancelled) {
+        activeExpenseFocus.cameraCancelled = true;
+        targetCam.lookX = currentCam.lookX;
+        targetCam.lookY = currentCam.lookY;
+        targetCam.lookZ = currentCam.lookZ;
+        targetCam.zoom = currentCam.zoom;
+      }
       onDown(e.pointerId, e.clientX, e.clientY);
       try { stage.setPointerCapture(e.pointerId); } catch (err) {}
     });
@@ -5836,6 +5922,9 @@ function animateCompanions(now, dt) {
     });
     stage.addEventListener("pointercancel", function (e) { pointers.delete(e.pointerId); gesture = null; isDragging = true; spinVel = 0; tiltVel = 0; });
     stage.addEventListener("wheel", function (e) {
+      if (activeExpenseFocus && !activeExpenseFocus.cameraCancelled) {
+        activeExpenseFocus.cameraCancelled = true;
+      }
       noteEnergyInteraction();
       targetCam.zoom = clamp((targetCam.zoom || 1.0) - e.deltaY * 0.0015, ZOOM_MIN, ZOOM_MAX);
       userAdjustedZoom = true;
@@ -5948,6 +6037,7 @@ function syncRenderPause() {
     if (rafId !== null) cancelAnimationFrame(rafId);
     rafId = null; lastEnergyFrame = null;
     pointers.clear(); gesture = null; spinVel = 0; tiltVel = 0; isDragging = false;
+    if (typeof cancelExpenseFocus === "function") cancelExpenseFocus();
   } else startLoop();
 }
 window.pauseDioramaRendering = function (on) { nativeRenderPaused = !!on; syncRenderPause(); };
@@ -6086,6 +6176,15 @@ window.dioramaEnergyState = function () {
     selectionRing.visible = false;
     root.add(selectionRing);
 
+    // Subtle focus pulse ring for newly added transactions
+    const expensePulseRing = new THREE.Mesh(
+      new THREE.RingGeometry(1.20, 1.48, 36),
+      new THREE.MeshBasicMaterial({ color: C(0xCBD5E1), transparent: true, opacity: 0.0, depthWrite: false })
+    );
+    expensePulseRing.rotation.x = -Math.PI / 2;
+    expensePulseRing.visible = false;
+    root.add(expensePulseRing);
+
     function setSelectedBuilding(obj) {
       selectedBuilding = obj || null;
       if (!selectedBuilding) {
@@ -6137,6 +6236,138 @@ window.dioramaEnergyState = function () {
       }
       return false;
     };
+
+    // ────────────────────────────────────────────────────────────────
+    // 💸 EXPENSE BUILDING FOCUS (Creation-Only Spatial Interaction)
+    // Connecting a transaction directly to its physical impact on the city skyline.
+    // ────────────────────────────────────────────────────────────────
+    let activeExpenseFocus = null;
+    let lastHandledExpenseToken = null;
+    let pendingExpenseFocusRequest = null;
+
+    function cancelExpenseFocus() {
+      if (!activeExpenseFocus) return;
+      const f = activeExpenseFocus;
+      if (f.bubbleEl && f.bubbleEl.parentNode) {
+        f.bubbleEl.parentNode.removeChild(f.bubbleEl);
+      }
+      expensePulseRing.visible = false;
+      if (f.shellObj) f.shellObj.scale.set(1, 1, 1);
+      activeExpenseFocus = null;
+    }
+
+    function focusDioramaBuilding(buildingId, amount, token, formattedAmount, isRefund) {
+      if (!buildingId || !token) return false;
+      if (token === lastHandledExpenseToken) return true;
+      lastHandledExpenseToken = token;
+
+      // If diorama data is not yet applied or interactiveBuildings is empty, queue it
+      if (!interactiveBuildings || interactiveBuildings.length === 0) {
+        pendingExpenseFocusRequest = {
+          buildingId: buildingId,
+          amount: amount,
+          token: token,
+          formattedAmount: formattedAmount,
+          isRefund: !!isRefund
+        };
+        return true;
+      }
+
+      const body = bodyOf(buildingId);
+      const rootObj = buildingRoots[buildingId] || body;
+      if (!body && !rootObj) {
+        console.warn("[ExpenseFocus] Building not found in scene:", buildingId);
+        return false;
+      }
+
+      // If an existing focus is running, cleanly cancel it (Latest explicit user action wins)
+      cancelExpenseFocus();
+
+      const targetObj = body || rootObj;
+      const w = new THREE.Vector3();
+      targetObj.getWorldPosition(w);
+
+      // Find top of building for spatial bubble anchoring
+      let topY = w.y + 1.2;
+      if (rootObj) {
+        const box = new THREE.Box3().setFromObject(rootObj);
+        if (isFinite(box.max.y) && box.max.y > w.y) {
+          topY = box.max.y;
+        }
+      }
+      const bubbleWorldAnchor = new THREE.Vector3(w.x, topY + 0.35, w.z);
+
+      const isReducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+      // Camera target: smooth glide to building from current camera angle with subtle ~12% zoom
+      const az = currentCam.az;
+      const fx = Math.cos(az);
+      const fz = Math.sin(az);
+      const groundOffset = 1.6;
+      const targetLookX = clamp(w.x + groundOffset * fx, -PAN_LIMIT, PAN_LIMIT);
+      const targetLookY = Math.max(0.2, (w.y || 0) + 0.35);
+      const targetLookZ = clamp(w.z + groundOffset * fz, -PAN_LIMIT, PAN_LIMIT);
+      const targetZoom = clamp((currentCam.zoom || 1.0) * 1.12, ZOOM_MIN, ZOOM_MAX);
+
+      if (isReducedMotion) {
+        targetCam.lookX = targetLookX;
+        targetCam.lookY = targetLookY;
+        targetCam.lookZ = targetLookZ;
+        targetCam.zoom = targetZoom;
+        currentCam.lookX = targetLookX;
+        currentCam.lookY = targetLookY;
+        currentCam.lookZ = targetLookZ;
+        currentCam.zoom = targetZoom;
+      } else {
+        targetCam.lookX = targetLookX;
+        targetCam.lookY = targetLookY;
+        targetCam.lookZ = targetLookZ;
+        targetCam.zoom = targetZoom;
+      }
+      checkCameraOffset();
+
+      // Create amount bubble DOM element in overlays container
+      const bubbleEl = document.createElement("div");
+      bubbleEl.className = "diorama-expense-bubble";
+      const isNeg = !!isRefund || amount < 0;
+      const sign = isNeg ? "−" : "+";
+      const signClass = isNeg ? "sign-neg" : "sign-pos";
+      let amountText = formattedAmount;
+      if (!amountText || amountText === "null" || amountText === "undefined") {
+        const absAmt = Math.abs(amount);
+        const formattedNum = (absAmt % 1 === 0) ? absAmt.toFixed(0) : absAmt.toFixed(2);
+        amountText = "₪" + formattedNum;
+      }
+      if (amountText.startsWith("+") || amountText.startsWith("-") || amountText.startsWith("−")) {
+        amountText = amountText.substring(1).trim();
+      }
+      bubbleEl.innerHTML = '<span class="' + signClass + '">' + sign + '</span><span>' + amountText + '</span>';
+      (overlaysContainer || stage || document.body).appendChild(bubbleEl);
+
+      activeExpenseFocus = {
+        token: token,
+        buildingId: buildingId,
+        targetObj: targetObj,
+        shellObj: (targetObj.userData && targetObj.userData.shell)
+          ? targetObj.userData.shell
+          : ((rootObj && rootObj.userData && rootObj.userData.shell) ? rootObj.userData.shell : rootObj),
+        worldAnchor: bubbleWorldAnchor,
+        bubbleEl: bubbleEl,
+        t: 0,
+        pulseDelay: isReducedMotion ? 0.0 : 0.35,
+        pulseDuration: 0.75,
+        pulseStarted: false,
+        bubbleDelay: isReducedMotion ? 0.05 : 0.38,
+        bubbleShown: false,
+        bubbleClosing: false,
+        totalDuration: isReducedMotion ? 2.8 : 3.8,
+        isReducedMotion: isReducedMotion,
+        cameraCancelled: false,
+        centerPos: w
+      };
+      return true;
+    }
+    window.focusDioramaBuilding = focusDioramaBuilding;
 
     // A newly unlocked upgrade gets one celebratory bounce instead of appearing silently.
     const celebrations = [];
@@ -6404,7 +6635,7 @@ window.dioramaEnergyState = function () {
         syncBuilding("savings_sanctuary", data.savings || 0);
         applyBuildingActivity();
 
-        // Reserve health drives the planting, the foliage colour and the water.
+        // Reserve health drives only planting and foliage; water remains independent.
         applyParkHealth(data.parkHealth !== undefined ? data.parkHealth : HEALTHY_PARK);
 
         // Lake in the nature reserve stays naturally full and serene
@@ -6423,6 +6654,11 @@ window.dioramaEnergyState = function () {
         applyCityLife(data);
 
         if (data.newlyUnlockedId) window.celebrateNewEnrichment(data.newlyUnlockedId);
+        if (pendingExpenseFocusRequest) {
+          const req = pendingExpenseFocusRequest;
+          pendingExpenseFocusRequest = null;
+          focusDioramaBuilding(req.buildingId, req.amount, req.token, req.formattedAmount, req.isRefund);
+        }
       } catch (err) {
         return reportDioramaError(err);
       }
@@ -6541,6 +6777,79 @@ window.dioramaEnergyState = function () {
         const k = Math.min(1, c.t / 0.9);
         c.obj.position.y = Y_WALK + Math.sin(k * Math.PI * 3) * (1 - k) * 0.5;
         if (k >= 1) { c.obj.position.y = Y_WALK; celebrations.splice(i, 1); }
+      }
+
+      // Step expense spatial building focus
+      if (activeExpenseFocus) {
+        const f = activeExpenseFocus;
+        f.t += dt;
+
+        // 1. User gesture cancellation: stop driving camera
+        if (!f.cameraCancelled && isDragging) {
+          f.cameraCancelled = true;
+          targetCam.lookX = currentCam.lookX;
+          targetCam.lookY = currentCam.lookY;
+          targetCam.lookZ = currentCam.lookZ;
+          targetCam.zoom = currentCam.zoom;
+        }
+
+        // 2. Pulse step: subtle ground ring + gentle shell scale
+        if (!f.pulseStarted && f.t >= f.pulseDelay) {
+          f.pulseStarted = true;
+          expensePulseRing.position.set(f.centerPos.x, Y_WALK + 0.06, f.centerPos.z);
+          expensePulseRing.visible = true;
+          expensePulseRing.material.opacity = 0.0;
+          expensePulseRing.scale.setScalar(1.0);
+        }
+        if (f.pulseStarted) {
+          const pt = f.t - f.pulseDelay;
+          const pk = Math.min(1, pt / f.pulseDuration);
+          if (pk < 1) {
+            const op = Math.sin(pk * Math.PI) * 0.45;
+            expensePulseRing.material.opacity = op;
+            expensePulseRing.scale.setScalar(1.0 + pk * 0.30);
+            if (!f.isReducedMotion && f.shellObj) {
+              const squash = Math.sin(pk * Math.PI) * 0.04;
+              f.shellObj.scale.y = 1.0 + squash;
+              f.shellObj.scale.x = 1.0 - squash * 0.25;
+              f.shellObj.scale.z = 1.0 - squash * 0.25;
+            }
+          } else {
+            expensePulseRing.visible = false;
+            if (f.shellObj) f.shellObj.scale.set(1, 1, 1);
+          }
+        }
+
+        // 3. Amount bubble step: fade in, hold, drift and fade out
+        if (!f.bubbleShown && f.t >= f.bubbleDelay) {
+          f.bubbleShown = true;
+          f.bubbleEl.classList.add("active");
+        }
+        if (f.bubbleShown) {
+          if (!f.bubbleClosing && f.t >= (f.totalDuration - 0.45)) {
+            f.bubbleClosing = true;
+            f.bubbleEl.classList.remove("active");
+            f.bubbleEl.classList.add("closing");
+          }
+
+          // Project 3D anchor above building to 2D screen coordinates
+          const proj = new THREE.Vector3().copy(f.worldAnchor).project(camera);
+          const inFront = proj.z >= -1 && proj.z <= 1;
+          if (inFront) {
+            f.bubbleEl.style.display = "inline-flex";
+            const sx = (proj.x * 0.5 + 0.5) * viewportWidth;
+            const sy = (-proj.y * 0.5 + 0.5) * viewportHeight;
+            f.bubbleEl.style.left = sx + "px";
+            f.bubbleEl.style.top = sy + "px";
+          } else {
+            f.bubbleEl.style.display = "none";
+          }
+        }
+
+        // 4. Lifecycle cleanup
+        if (f.t >= f.totalDuration) {
+          cancelExpenseFocus();
+        }
       }
 
       stepPlantings(dt);
@@ -7108,6 +7417,9 @@ window.dioramaEnergyState = function () {
       buildingRoots: buildingRoots, interactiveBuildings: interactiveBuildings,
       materials: { water: M_WATER, grass: M_GRASS_LIME, pine: M_PINE, leaf: M_LEAF },
       plantings: parkPlantings,
+      park: { setHealth: applyParkHealth, step: stepPlantings, owns: belongsToReserve,
+        reserve: reserveGroup, lake: lakeMesh, meadow: M_PARK_MEADOW,
+        previewValues: [1, 0.8, 0.6, 0.4, 0.2] },
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,

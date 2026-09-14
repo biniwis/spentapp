@@ -186,10 +186,11 @@ struct RecurringExpenseEditor: View {
 
     private enum Field: Hashable {
         case merchant
-        case amount
     }
 
     @FocusState private var focusedField: Field?
+    @State private var isEditingAmount: Bool = false
+    @State private var cursorVisible: Bool = true
 
     private var isHebrew: Bool { l10n.language == .hebrew }
 
@@ -200,97 +201,198 @@ struct RecurringExpenseEditor: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color(red: 248/255, green: 250/255, blue: 252/255).ignoresSafeArea()
+            VStack(spacing: 0) {
+                ScrollViewReader { scrollProxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 18) {
+
+                            field(title: isHebrew ? "שם ההוצאה" : "Name") {
+                                TextField(isHebrew ? "שכר דירה" : "Rent", text: $merchant)
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                                    .focused($focusedField, equals: .merchant)
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(isHebrew ? "סכום חודשי" : "Monthly amount")
+                                    .font(.system(size: 12, weight: .black, design: .rounded))
+                                    .foregroundColor(Color.textMuted)
+
+                                Button(action: {
+                                    focusedField = nil
+                                    #if canImport(UIKit)
+                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                    #endif
+                                    withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                                        isEditingAmount = true
+                                        scrollProxy.scrollTo("amountRow", anchor: .top)
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                                            scrollProxy.scrollTo("amountRow", anchor: .top)
+                                        }
+                                    }
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Text(l10n.baseCurrency.symbol)
+                                            .font(.system(size: 18, weight: .black, design: .rounded))
+                                            .foregroundColor(Color.deepNavy)
+
+                                        Text(amountText.isEmpty ? "0" : amountText)
+                                            .font(.system(size: 20, weight: .black, design: .rounded))
+                                            .foregroundColor(amountText.isEmpty ? Color.textMuted : Color.deepNavy)
+
+                                        if isEditingAmount {
+                                            RoundedRectangle(cornerRadius: 1)
+                                                .fill(Color.primaryBlue)
+                                                .frame(width: 2, height: 22)
+                                                .opacity(cursorVisible ? 1.0 : 0.0)
+                                        }
+
+                                        Spacer()
+                                    }
+                                    .environment(\.layoutDirection, .leftToRight)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 12)
+                                    .background(Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(
+                                                isEditingAmount ? Color.primaryBlue.opacity(0.8) : Color.clear,
+                                                lineWidth: isEditingAmount ? 1.5 : 0
+                                            )
+                                    )
+                                    .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .id("amountRow")
+
+                            field(title: isHebrew ? "יום החיוב בחודש" : "Charged on day") {
+                                Picker("", selection: $dayOfMonth) {
+                                    ForEach(1...31, id: \.self) { day in
+                                        Text("\(day)").tag(day)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(Color.primaryBlue)
+                            }
+
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(isHebrew ? "קטגוריה" : "Category")
+                                    .font(.system(size: 12, weight: .black, design: .rounded))
+                                    .foregroundColor(Color.textMuted)
+
+                                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                                    ForEach(SpendingCategory.primaryCategories) { cat in
+                                        Button {
+                                            category = cat
+                                        } label: {
+                                            HStack(spacing: 8) {
+                                                CategoryVectorIcon(category: cat, size: 16)
+                                                Text(cat.localizedShortName(for: l10n.language))
+                                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                    .foregroundColor(Color.deepNavy)
+                                                Spacer(minLength: 0)
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 10)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 14)
+                                                    .fill(category == cat ? cat.themeColor.opacity(0.14) : Color.white)
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 14)
+                                                            .stroke(category == cat ? cat.themeColor : Color.clear, lineWidth: category == cat ? 1.6 : 0)
+                                                    )
+                                                    .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
+                                            )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+
+                            Text(isHebrew
+                                 ? "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים."
+                                 : "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated.")
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(Color.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            Spacer(minLength: isEditingAmount ? 260 : 20)
+                        }
+                        .padding(20)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
                     .contentShape(Rectangle())
                     .onTapGesture {
                         focusedField = nil
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                            isEditingAmount = false
+                        }
+                        #if canImport(UIKit)
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                        #endif
                     }
-
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-
-                        field(title: isHebrew ? "שם ההוצאה" : "Name") {
-                            TextField(isHebrew ? "שכר דירה" : "Rent", text: $merchant)
-                                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                .focused($focusedField, equals: .merchant)
-                        }
-
-                        field(title: isHebrew ? "סכום חודשי" : "Monthly amount") {
-                            HStack(spacing: 6) {
-                                Text(l10n.baseCurrency.symbol)
-                                    .font(.system(size: 17, weight: .black, design: .rounded))
-                                    .foregroundColor(Color.primaryBlue)
-                                #if os(iOS)
-                                TextField("0", text: $amountText)
-                                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .keyboardType(.decimalPad)
-                                    .focused($focusedField, equals: .amount)
-                                #else
-                                TextField("0", text: $amountText)
-                                    .font(.system(size: 17, weight: .bold, design: .rounded))
-                                    .focused($focusedField, equals: .amount)
-                                #endif
-                            }
-                        }
-
-                        field(title: isHebrew ? "יום החיוב בחודש" : "Charged on day") {
-                            Picker("", selection: $dayOfMonth) {
-                                ForEach(1...31, id: \.self) { day in
-                                    Text("\(day)").tag(day)
+                    .onChange(of: isEditingAmount) { _, isEditing in
+                        if isEditing {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
+                                    scrollProxy.scrollTo("amountRow", anchor: .top)
                                 }
                             }
-                            .pickerStyle(.menu)
-                            .tint(Color.primaryBlue)
                         }
+                    }
+                }
 
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(isHebrew ? "קטגוריה" : "Category")
-                                .font(.system(size: 12, weight: .black, design: .rounded))
+                // Bottom-docked Numeric Keypad
+                if isEditingAmount {
+                    VStack(spacing: 0) {
+                        // Keyboard accessory bar
+                        HStack {
+                            Text(isHebrew ? "עריכת סכום" : "Edit Amount")
+                                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                                 .foregroundColor(Color.textMuted)
 
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                                ForEach(SpendingCategory.primaryCategories) { cat in
-                                    Button {
-                                        category = cat
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            CategoryVectorIcon(category: cat, size: 16)
-                                            Text(cat.localizedShortName(for: l10n.language))
-                                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                                .foregroundColor(Color.deepNavy)
-                                            Spacer(minLength: 0)
-                                        }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 10)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 14)
-                                                .fill(category == cat ? cat.themeColor.opacity(0.14) : Color.white)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: 14)
-                                                        .stroke(category == cat ? cat.themeColor : Color.clear, lineWidth: category == cat ? 1.6 : 0)
-                                                )
-                                                .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
+                            Spacer()
+
+                            Button(action: {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+                                    isEditingAmount = false
                                 }
+                            }) {
+                                Text(isHebrew ? "סיום" : "Done")
+                                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.primaryBlue)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(Color.primaryBlue.opacity(0.10))
+                                    .clipShape(Capsule())
                             }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color(red: 243/255, green: 245/255, blue: 248/255))
 
-                        Text(isHebrew
-                             ? "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים."
-                             : "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated.")
-                            .font(.system(size: 11, design: .rounded))
-                            .foregroundColor(Color.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Divider()
 
-                        Spacer(minLength: 20)
+                        SpentAmountKeypad(amountText: $amountText)
+                            .environment(\.layoutDirection, .leftToRight)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .padding(.bottom, 14)
+                            .background(Color(red: 248/255, green: 250/255, blue: 252/255))
                     }
-                    .padding(20)
+                    .background(
+                        Color(red: 248/255, green: 250/255, blue: 252/255)
+                            .shadow(color: Color.black.opacity(0.06), radius: 8, y: -2)
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-                .scrollDismissesKeyboard(.interactively)
             }
+            .animation(.spring(response: 0.32, dampingFraction: 0.85), value: isEditingAmount)
+            .background(Color(red: 248/255, green: 250/255, blue: 252/255).ignoresSafeArea())
             .navigationTitle(template == nil
                              ? (isHebrew ? "הוצאה קבועה חדשה" : "New fixed expense")
                              : (isHebrew ? "עריכת הוצאה קבועה" : "Edit fixed expense"))
@@ -315,6 +417,21 @@ struct RecurringExpenseEditor: View {
                         .disabled(!canSave)
                 }
             }
+            .onChange(of: focusedField) { _, field in
+                if field == .merchant {
+                    withAnimation(.spring(response: 0.25)) {
+                        isEditingAmount = false
+                    }
+                }
+            }
+            .task(id: isEditingAmount) {
+                guard isEditingAmount else { return }
+                cursorVisible = true
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: 550_000_000)
+                    cursorVisible.toggle()
+                }
+            }
             .onAppear(perform: load)
         }
     }
@@ -333,10 +450,15 @@ struct RecurringExpenseEditor: View {
         }
     }
 
+    private func formatAmount(_ v: Double) -> String {
+        if v == v.rounded() { return "\(MoneyAmount.displayInt(v))" }
+        return String(format: "%.2f", v)
+    }
+
     private func load() {
         guard let template else { return }
         merchant = template.merchant
-        amountText = String(format: "%.2f", template.amount)
+        amountText = formatAmount(template.amount)
         category = template.category
         dayOfMonth = template.dayOfMonth
     }

@@ -805,11 +805,11 @@ public struct ProfileView: View {
             Divider().background(Color.borderSubtle).padding(.leading, 68)
 
             menuRow(
-                title: l10n.language == .hebrew ? "הגדרת קליטת Apple Pay באייפון" : "Apple Pay Shortcuts Setup",
-                subtitle: l10n.language == .hebrew ? "מדריך פשוט צעד-אחר-צעד לחיבור אוטומטי" : "Step-by-step automation guide",
+                title: l10n.language == .hebrew ? "קליטה אוטומטית" : "Automatic Capture",
+                subtitle: l10n.language == .hebrew ? "הוצאות נכנסות לבד אחרי תשלום" : "Expenses show up automatically after payment",
                 iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
             ) {
-                MoneyIcon(.creditCard, size: 24)
+                MoneyIcon(.lightning, size: 24)
             } action: {
                 showApplePayGuideSheet = true
             }

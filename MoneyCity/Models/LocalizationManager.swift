@@ -139,6 +139,15 @@ public final class LocalizationManager: ObservableObject {
         language == .hebrew
     }
 
+    /// Canonical user-facing name for the Nature Reserve / שמורת הטבע product concept.
+    public static var natureReserveName: String {
+        AppLanguage.localized("שמורת הטבע", "Nature Reserve")
+    }
+
+    public var natureReserveName: String {
+        isHebrew ? "שמורת הטבע" : "Nature Reserve"
+    }
+
     public init() {}
 
     // MARK: - Currency Formatting
@@ -232,17 +241,17 @@ public final class LocalizationManager: ObservableObject {
         case "language_pref": return isHebrew ? "שפת הממשק:" : "App Language:"
         case "fx_auto_convert": return isHebrew ? "המרת מטבע אוטומטית" : "Automatic Currency Conversion"
         case "fx_explanation": return isHebrew ? "עסקאות במטבע זר ($, €, £) יומרו אוטומטית לפי שער יציג." : "Foreign purchases ($, €, £) are automatically converted using current exchange rates."
-        case "sync_and_automation": return isHebrew ? "סנכרון ואוטומציות" : "Sync & Automations"
-        case "apple_pay_sync": return isHebrew ? "קיצור דרך Apple Pay" : "Apple Pay Shortcut"
+        case "sync_and_automation": return isHebrew ? "סנכרון וקליטה אוטומטית" : "Sync & Automatic Capture"
+        case "apple_pay_sync": return isHebrew ? "קליטה אוטומטית" : "Automatic Capture"
         case "active": return isHebrew ? "פעיל" : "Active"
         case "not_configured": return isHebrew ? "לא הוגדר" : "Not set up"
-        case "apple_pay_setup_hint": return isHebrew ? "עדיין לא נקלטה עסקה אוטומטית. הגדר את האוטומציה ב-Shortcuts." : "No automatic transaction captured yet. Set up the Shortcuts automation."
-        case "apple_pay_info": return isHebrew ? "תשלום בחנות (הצמדת הטלפון) נקלט אוטומטית, משויך לקטגוריה ומעדכן את האזור המתאים בעיר. רכישות אונליין יש להזין ידנית — iOS לא מאפשר לקלוט אותן." : "In-store tap payments are logged automatically, categorized, and update their district. Online purchases must be added manually — iOS does not expose them."
+        case "apple_pay_setup_hint": return isHebrew ? "עדיין לא נקלטה הוצאה אוטומטית. הגדר את הקליטה באפליקציית ״קיצורים״ של Apple." : "No automatic expense captured yet. Set it up in Apple's Shortcuts app."
+        case "apple_pay_info": return isHebrew ? "אחרי תשלום, האייפון יכול להעביר ל-SPENT את הסכום ושם בית העסק. SPENT לא מקבלת גישה לכרטיס או לחשבון הבנק שלך." : "After a payment, your iPhone can pass SPENT the amount and merchant. SPENT doesn’t get access to your card or bank account."
         case "notifications": return isHebrew ? "התראות ותזכורות שבועיות" : "Weekly Notifications & Status"
         case "haptics": return isHebrew ? "משוב במגע" : "Haptic Feedback"
         case "data_management": return isHebrew ? "ניהול נתונים וייצוא" : "Data Management & Export"
         case "ingest_log": return isHebrew ? "יומן קליטה (אבחון)" : "Ingest Log (diagnostics)"
-        case "ingest_log_hint": return isHebrew ? "מה בדיוק Wallet העביר בכל הפעלה של האוטומציה." : "Exactly what Wallet passed on each automation run."
+        case "ingest_log_hint": return isHebrew ? "מה בדיוק האייפון העביר בכל תשלום." : "Exactly what your iPhone passed on each payment."
         case "savings_goals": return isHebrew ? "יעדי חיסכון" : "Savings Goals"
         case "savings_goals_hint": return isHebrew ? "יעד עם התקדמות — וכשהוא מושלם, מונומנט חדש בעיר." : "A goal with progress — and a new landmark in the city when you reach it."
         case "budget_and_income": return isHebrew ? "תקציב והכנסות" : "Budget & Income"
@@ -252,6 +261,7 @@ public final class LocalizationManager: ObservableObject {
         case "export_csv": return isHebrew ? "ייצוא עסקאות לקובץ CSV / Excel" : "Export Transactions to CSV / Excel"
         case "reset_city": return isHebrew ? "איפוס כל נתוני העיר וההוצאות" : "Reset All City & Expense Data"
         case "privacy_note": return isHebrew ? "כל הנתונים הכספיים נשמרים מקומית על המכשיר שלך בלבד ומאובטחים לחלוטין." : "All financial data is strictly stored locally on your device with SwiftData and is 100% private."
+        case "nature_reserve": return natureReserveName
 
         default:
             return key

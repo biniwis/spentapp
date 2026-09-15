@@ -122,6 +122,16 @@
         }
       }
     },
+    "%@ → %@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@ → %3$@"
+          }
+        }
+      }
+    },
     "%@ added to the city" : {
 
     },
@@ -311,6 +321,16 @@
     "%lld יעדים מוגדרים" : {
 
     },
+    "%lld. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld. %2$@"
+          }
+        }
+      }
+    },
     "%lld%%" : {
 
     },
@@ -361,6 +381,12 @@
     "+ הוסף את היעד הראשון" : {
 
     },
+    "+, choose Automation, choose Wallet" : {
+
+    },
+    "+, בחר פעולה אוטומטית, בחר ארנק" : {
+
+    },
     "+%@" : {
 
     },
@@ -401,9 +427,6 @@
 
     },
     "1x" : {
-
-    },
-    "04" : {
 
     },
     "6 / 6" : {
@@ -514,6 +537,9 @@
         }
       }
     },
+    "After tapping +, choose \"Automation\", and then choose \"Wallet\"." : {
+
+    },
     "All" : {
 
     },
@@ -584,10 +610,13 @@
     "At SPENT, your expenses, budgets, and city data are processed and stored locally on your device." : {
 
     },
-    "Automatic\nCapture" : {
+    "Automatic Capture Guide Previews:" : {
 
     },
     "Automatic Currency Conversion" : {
+
+    },
+    "Automations, +, Automation, Wallet" : {
 
     },
     "Avg per transaction" : {
@@ -630,6 +659,9 @@
 
     },
     "Calendar & Jump to Date" : {
+
+    },
+    "Can't find how to add SPENT?" : {
 
     },
     "Cancel" : {
@@ -688,6 +720,9 @@
 
     },
     "Check state when all 6 additions have already joined the city" : {
+
+    },
+    "Choose \"New Shortcut\" or \"New Blank Automation\", tap Add Action, search for SPENT and pick \"Record Apple Pay Transaction\"." : {
 
     },
     "Choose a Category" : {
@@ -976,6 +1011,9 @@
     "Have fixed expenses?" : {
 
     },
+    "Help" : {
+
+    },
     "Help & Feedback" : {
 
     },
@@ -1014,6 +1052,15 @@
     "How much to deposit?" : {
 
     },
+    "How to connect the amount?" : {
+
+    },
+    "How to connect the merchant?" : {
+
+    },
+    "How to create the automation?" : {
+
+    },
     "I'll do this later" : {
 
     },
@@ -1036,6 +1083,9 @@
           }
         }
       }
+    },
+    "If you don't see an obvious button — search at the bottom of the screen and tap it." : {
+
     },
     "Image file to scan" : {
       "extractionState" : "manual",
@@ -1061,6 +1111,15 @@
 
     },
     "In All Goals" : {
+
+    },
+    "In Shortcuts there isn't always an obvious Add button. Simply use the search bar at the bottom, search for \"Record Apple Pay Transaction\" and tap the result. It will be added to the screen." : {
+
+    },
+    "In Shortcuts: go to the Automation tab, tap + and choose \"Transaction\" (under Wallet)." : {
+
+    },
+    "In the automation setup screen, choose the cards you pay with. You may need to scroll down slightly to see \"Run Immediately\"." : {
 
     },
     "Included" : {
@@ -1166,6 +1225,9 @@
         }
       }
     },
+    "Merchant, Shortcut Input, Merchant" : {
+
+    },
     "Merge" : {
 
     },
@@ -1194,9 +1256,6 @@
 
     },
     "Nature Reserve" : {
-
-    },
-    "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\". Set the amount and merchant:" : {
 
     },
     "New fixed expense" : {
@@ -1253,7 +1312,7 @@
     "Open 3D ↗" : {
 
     },
-    "Open Apple Shortcuts" : {
+    "Open Shortcuts" : {
 
     },
     "Operating in Offline Mode" : {
@@ -1319,6 +1378,9 @@
 
     },
     "Profile" : {
+
+    },
+    "Progress setting up automatic capture, about %lld%%" : {
 
     },
     "Quick Expense" : {
@@ -1546,6 +1608,9 @@
         }
       }
     },
+    "Search at bottom, SPENT, Record Apple Pay Transaction" : {
+
+    },
     "Search transaction or category..." : {
 
     },
@@ -1556,9 +1621,6 @@
 
     },
     "Select Category" : {
-
-    },
-    "Select SPENT" : {
 
     },
     "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
@@ -1579,13 +1641,7 @@
     "Settings" : {
 
     },
-    "Setup is done in Apple's Shortcuts app, already on your iPhone. Once configured, expenses are captured automatically." : {
-
-    },
     "Share" : {
-
-    },
-    "Shortcut Input" : {
 
     },
     "Show All Transactions" : {
@@ -1672,10 +1728,19 @@
     "Step %lld of 5" : {
 
     },
+    "Stuck?" : {
+
+    },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
 
     },
     "Tap for Quick Add +" : {
+
+    },
+    "Tap the \"Merchant\" field inside the SPENT action → choose \"Shortcut Input\" → tap the added value → choose \"Merchant\" from the transaction details." : {
+
+    },
+    "Tap the \"Transaction Amount\" field inside the SPENT action → choose \"Shortcut Input\" → tap the added value → choose \"Amount\" from the transaction details." : {
 
     },
     "Tap the marked building to discover the expenses behind it." : {
@@ -1791,6 +1856,9 @@
           }
         }
       }
+    },
+    "Transaction Amount, Shortcut Input, Amount" : {
+
     },
     "Transaction Details" : {
       "extractionState" : "manual",
@@ -1911,6 +1979,9 @@
         }
       }
     },
+    "Where is \"Run Immediately\"?" : {
+
+    },
     "Where you paid (for example: groceries, coffee, gas)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1973,10 +2044,19 @@
     "אודות SPENT" : {
 
     },
-    "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״. הגדר את הסכום ואת בית העסק:" : {
+    "אולי אחר כך" : {
 
     },
-    "אולי אחר כך" : {
+    "אחרי לחיצה על +, בחר ׳פעולה אוטומטית׳, ולאחר מכן בחר ׳ארנק׳." : {
+
+    },
+    "איך יוצרים את הפעולה האוטומטית?" : {
+
+    },
+    "איך לחבר את בית העסק?" : {
+
+    },
+    "איך לחבר את הסכום?" : {
 
     },
     "איך קוראים לך?" : {
@@ -1998,6 +2078,9 @@
 
     },
     "אין שמירה ב־SwiftData, אין שינוי בהוצאות אמיתיות, בתקציב, בהתקדמות העיר או בדגל השלמת ה־Onboarding." : {
+
+    },
+    "איפה נמצא ׳הפעלה מיידית׳?" : {
 
     },
     "איפוס" : {
@@ -2022,6 +2105,9 @@
 
     },
     "אישור עסקה זו יקזז את הסכום מסך ההוצאות החודשי שלך" : {
+
+    },
+    "אם אתה לא רואה כפתור ברור — חפש למטה את מה שאתה רוצה ולחץ עליו." : {
 
     },
     "אנא הזן סכום תקין" : {
@@ -2057,6 +2143,12 @@
     "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
 
     },
+    "ב׳קיצורים׳ לא תמיד יש כפתור ברור של הוספה. פשוט השתמש בשדה החיפוש שמופיע למטה, חפש ׳הקלטת עסקת Apple Pay׳ ולחץ על התוצאה. היא תתווסף למסך." : {
+
+    },
+    "באפליקציה ׳קיצורים׳: עבור ללשונית פעולה אוטומטית, לחץ על + ובחר ׳עסקה׳ (תחת ארנק)." : {
+
+    },
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
 
     },
@@ -2069,7 +2161,7 @@
     "בוא לראות איך החודש קיבל צורה בעיר" : {
 
     },
-    "בחר את SPENT" : {
+    "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
 
     },
     "בחר קטגוריה" : {
@@ -2091,6 +2183,9 @@
         }
       }
     },
+    "בית העסק, קלט הקיצור, בית העסק" : {
+
+    },
     "בית עסק / תיאור" : {
 
     },
@@ -2098,6 +2193,9 @@
 
     },
     "בלי הכנסה, כל חישוב החיסכון נשען על מספר שהאפליקציה המציאה." : {
+
+    },
+    "במסך הגדרת הפעולה האוטומטית, בחר את הכרטיסים שבהם אתה משלם. ייתכן שתצטרך לגלול מעט למטה כדי לראות את האפשרות ׳הפעלה מיידית׳." : {
 
     },
     "במסך התקציב" : {
@@ -2161,9 +2259,6 @@
 
     },
     "הדרכת פתיחה והיכרות" : {
-
-    },
-    "ההגדרה נעשית באפליקציית ״קיצורים״ של Apple שכבר נמצאת באייפון שלך. אחרי ההגדרה, הוצאות נכנסות לבד." : {
 
     },
     "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
@@ -2394,6 +2489,9 @@
     "התפלגות הוצאות" : {
 
     },
+    "התקדמות בהגדרת קליטה אוטומטית, כ-%lld%%" : {
+
+    },
     "התראות" : {
 
     },
@@ -2434,6 +2532,9 @@
 
     },
     "חיסכון ₪480" : {
+
+    },
+    "חיפוש למטה, SPENT, הקלטת עסקת Apple Pay" : {
 
     },
     "חפש עסקה או קטגוריה..." : {
@@ -2499,6 +2600,9 @@
     "לא הצלחנו לפענח את החשבונית" : {
 
     },
+    "לא מוצא איך להוסיף את SPENT?" : {
+
+    },
     "לאיזו קטגוריה להעביר?" : {
 
     },
@@ -2506,6 +2610,12 @@
 
     },
     "לוח שנה ומעבר לתאריך" : {
+
+    },
+    "לחץ על שדה ׳בית העסק׳ בתוך הפעולה של SPENT ← בחר ׳קלט הקיצור׳ ← לחץ על הערך שנוסף ← בחר ׳בית העסק׳ מתוך פרטי העסקה." : {
+
+    },
+    "לחץ על שדה ׳סכום עסקה׳ בתוך הפעולה של SPENT ← בחר ׳קלט הקיצור׳ ← לחץ על הערך שנוסף ← בחר ׳כמות׳ מתוך פרטי העסקה." : {
 
     },
     "לכל בניין יש סיפור" : {
@@ -2524,6 +2634,9 @@
 
     },
     "מדיניות פרטיות" : {
+
+    },
+    "מדריך קליטה אוטומטית (Automatic Capture Guide):" : {
 
     },
     "מה נוסף לעיר?" : {
@@ -2659,6 +2772,9 @@
     "נמחקה: זארה — ₪199.90" : {
 
     },
+    "נתקעת?" : {
+
+    },
     "סביבת בדיקות מבודדת" : {
 
     },
@@ -2719,7 +2835,13 @@
     "סכום כולל" : {
 
     },
+    "סכום עסקה, קלט הקיצור, כמות" : {
+
+    },
     "סקירת 12 חודשים" : {
+
+    },
+    "עזרה" : {
 
     },
     "עזרה ומשוב" : {
@@ -2779,6 +2901,9 @@
     "פירוט עבור %@:" : {
 
     },
+    "פעולות אוטומטיות, +, פעולה אוטומטית, ארנק" : {
+
+    },
     "פעיל היום! 🔥" : {
 
     },
@@ -2797,7 +2922,7 @@
     "פריסה לתשלומים" : {
 
     },
-    "פתח את אפליקציית ״קיצורים״" : {
+    "פתח את ״קיצורים״" : {
 
     },
     "פתח תלת-ממד ↗" : {
@@ -2837,12 +2962,6 @@
 
     },
     "קטגוריות מובילות" : {
-
-    },
-    "קלט הקיצור" : {
-
-    },
-    "קליטה\nאוטומטית" : {
 
     },
     "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. שמורת הטבע בעיר מאטה את צמיחתה עד לאיזון." : {

@@ -33,6 +33,7 @@ public struct OnboardingWizardView: View {
     @State private var userNameInput: String = ""
     @State private var budgetInputText: String = ""
     @State private var hasOpenedShortcuts: Bool = false
+    @State private var showCaptureGuide: Bool = false
 
     private let initialStepOverride: Int?
     private let initialPhaseOverride: String?
@@ -221,6 +222,21 @@ public struct OnboardingWizardView: View {
                 .fontWeight(.semibold)
             }
         }
+        .fullScreenCover(isPresented: $showCaptureGuide) {
+            AutomaticCaptureSetupGuide(
+                skipIntro: true,       // 4A already served as the intro
+                showCloseButton: true,
+                onFinished: {
+                    showCaptureGuide = false
+                    // Advance to the city reveal (step 5)
+                    slideDirection = 1
+                    withAnimation(pageAnimation) {
+                        currentStep = 5
+                    }
+                }
+            )
+            .environmentObject(l10n)
+        }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
 
@@ -242,7 +258,7 @@ public struct OnboardingWizardView: View {
     private var topNavigationRow: some View {
         HStack(spacing: 18) {
             Button(action: handleBackNavigation) {
-                Image(systemName: isHebrew ? "arrow.right" : "arrow.left")
+                Image(systemName: "arrow.left")
                     .font(.system(size: 19, weight: .medium))
                     .foregroundStyle(posterInk)
                     .frame(width: 44, height: 44)
@@ -329,11 +345,9 @@ public struct OnboardingWizardView: View {
         case 3:
             step3BudgetConfig
         case 4:
-            if shortcutPhase == "guide" {
-                step4BGuideContent
-            } else {
-                step4AIntroContent
-            }
+            // Guide (step4B) is now a fullScreenCover (AutomaticCaptureSetupGuide).
+            // Step 4 always shows the intro reassurance.
+            step4AIntroContent
         default:
             step5LaunchSummary
         }
@@ -462,126 +476,6 @@ public struct OnboardingWizardView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: Step 4B - Shortcuts Setup Guide (Direct-on-canvas editorial numbered flow: 01 / 02 / 03 / 04)
-    private var step4BGuideContent: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            // Step 01
-            editorialNumberedStep(
-                number: "01",
-                title: isHebrew ? "פתח את ״קיצורים״" : "Open Shortcuts",
-                instruction: isHebrew
-                    ? "זו אפליקציה של Apple שכבר נמצאת באייפון שלך."
-                    : "This is an Apple app already on your iPhone."
-            )
-
-            Divider().overlay(Color.borderSubtle.opacity(0.6))
-
-            // Step 02
-            editorialNumberedStep(
-                number: "02",
-                title: isHebrew ? "צור אוטומציה חדשה" : "Create New Automation",
-                instruction: isHebrew
-                    ? "באפליקציה: לשונית אוטומציה ← + ← בחר ״עסקה״. סמן ״הפעלה מיידית״ וכבה את ״קבלת עדכון כאשר פועל״."
-                    : "In Shortcuts: Automation tab → + → select \"Transaction\". Choose \"Run Immediately\" and turn off \"Notify When Run\"."
-            )
-
-            Divider().overlay(Color.borderSubtle.opacity(0.6))
-
-            // Step 03
-            editorialNumberedStep(
-                number: "03",
-                title: isHebrew ? "בחר כרטיס" : "Choose Card",
-                instruction: isHebrew
-                    ? "הכרטיס נבחר כאן רק כדי שהאייפון ידע אילו תשלומים להעביר ל-SPENT. פרטי הכרטיס לא עוברים ל-SPENT."
-                    : "The card is chosen here only so your iPhone knows which payments to pass to SPENT. Card details are never sent to SPENT."
-            )
-
-            Divider().overlay(Color.borderSubtle.opacity(0.6))
-
-            // Step 04 with explicit 2-field mapping
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("04")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(isHebrew ? "בחר את SPENT" : "Select SPENT")
-                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                            .foregroundColor(Color.deepNavy)
-
-                        Text(isHebrew
-                            ? "אוטומציה ריקה חדשה ← הוסף פעולה ← חפש SPENT ובחר ״הקלטת עסקת Apple Pay״. הגדר את הסכום ואת בית העסק:"
-                            : "New Blank Automation → Add Action → search SPENT and pick \"Record Apple Pay Transaction\". Set the amount and merchant:")
-                            .font(.system(.footnote, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
-                    }
-                }
-
-                // Compact inline mapping
-                VStack(alignment: .leading, spacing: 5) {
-                    compactMappingRow(
-                        source: isHebrew ? "שדה הסכום" : "Amount field",
-                        dest: isHebrew ? "כמות" : "Amount"
-                    )
-                    compactMappingRow(
-                        source: isHebrew ? "שדה בית העסק" : "Merchant field",
-                        dest: isHebrew ? "בית העסק" : "Merchant"
-                    )
-                }
-                .padding(.leading, 32)
-            }
-        }
-        .padding(.top, 4)
-        .padding(.horizontal, 4)
-    }
-
-    private func editorialNumberedStep(number: String, title: String, instruction: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(number)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
-                    .foregroundColor(Color.deepNavy)
-
-                Text(instruction)
-                    .font(.system(.footnote, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
-                    .lineSpacing(2)
-            }
-        }
-    }
-
-    private func compactMappingRow(source: String, dest: String) -> some View {
-        HStack(spacing: 5) {
-            Text(source)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .foregroundColor(Color.primaryBlue)
-
-            Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundColor(Color.textMuted)
-
-            Text(isHebrew ? "קלט הקיצור" : "Shortcut Input")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1.5)
-                .background(Color.spentGreenSoft)
-                .clipShape(RoundedRectangle(cornerRadius: 3.5, style: .continuous))
-                .foregroundColor(Color.spentGreen)
-
-            Image(systemName: isHebrew ? "arrow.left" : "arrow.right")
-                .font(.system(size: 8, weight: .bold))
-                .foregroundColor(Color.textMuted)
-
-            Text(dest)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
-        }
-    }
 
     // MARK: Step 5 - Final City Reveal (Cinematic city payoff, minimal copy)
     private var step5LaunchSummary: some View {
@@ -637,11 +531,7 @@ public struct OnboardingWizardView: View {
                 nextStep()
             }
         case 4:
-            if shortcutPhase == "guide" {
-                step4BActionButtons
-            } else {
-                step4AActionButtons
-            }
+            step4AActionButtons
         default:
             primaryActionButton(title: isHebrew ? "כניסה לעיר" : "Enter City") {
                 Haptics.notify(.success)
@@ -654,10 +544,8 @@ public struct OnboardingWizardView: View {
     private var step4AActionButtons: some View {
         VStack(spacing: 8) {
             primaryActionButton(title: isHebrew ? "הגדר קליטה אוטומטית" : "Set Up Automatic Capture") {
-                slideDirection = 1
-                withAnimation(pageAnimation) {
-                    shortcutPhase = "guide"
-                }
+                Haptics.impact(.medium)
+                showCaptureGuide = true
             }
 
             Button(action: {
@@ -673,45 +561,6 @@ public struct OnboardingWizardView: View {
                     .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
-        }
-    }
-
-    // Step 4B Actions: Open Shortcuts link + Continue
-    private var step4BActionButtons: some View {
-        VStack(spacing: 8) {
-            #if os(iOS)
-            if let url = URL(string: "shortcuts://") {
-                Button(action: {
-                    hasOpenedShortcuts = true
-                    Haptics.impact(.medium)
-                    UIApplication.shared.open(url)
-                }) {
-                    HStack(spacing: 6) {
-                        MoneyIcon(.lightning, size: 18, color: .jetBlack)
-                        Text(isHebrew ? "פתח את אפליקציית ״קיצורים״" : "Open Apple Shortcuts")
-                            .font(.system(.body, design: .rounded, weight: .semibold))
-                    }
-                    .foregroundColor(.jetBlack)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 17)
-                    .frame(minHeight: 56)
-                    .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.themeOrange)
-                    )
-                }
-                .buttonStyle(.plain)
-                .bouncyPress(scale: reduceMotion ? 1 : 0.97)
-            }
-            #endif
-
-            primaryActionButton(
-                title: hasOpenedShortcuts
-                    ? (isHebrew ? "סיימתי, המשך" : "Done, Continue")
-                    : (isHebrew ? "אמשיך בלי לפתוח כרגע" : "Continue without opening")
-            ) {
-                nextStep()
-            }
         }
     }
 

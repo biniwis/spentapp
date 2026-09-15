@@ -242,7 +242,7 @@ public struct ProfileView: View {
             SavingsGoalsSheet()
                 .environmentObject(l10n)
         }
-        .sheet(isPresented: $showApplePayGuideSheet) {
+        .fullScreenCover(isPresented: $showApplePayGuideSheet) {
             ApplePayGuideSheet()
                 .environmentObject(l10n)
         }
@@ -806,7 +806,7 @@ public struct ProfileView: View {
 
             menuRow(
                 title: l10n.language == .hebrew ? "קליטה אוטומטית" : "Automatic Capture",
-                subtitle: l10n.language == .hebrew ? "הוצאות נכנסות לבד אחרי תשלום" : "Expenses show up automatically after payment",
+                subtitle: l10n.language == .hebrew ? "הוצאות יכולות להיכנס לבד אחרי תשלום" : "Expenses can show up automatically after payment",
                 iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
             ) {
                 MoneyIcon(.lightning, size: 24)

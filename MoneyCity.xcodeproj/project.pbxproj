@@ -87,6 +87,7 @@
 		B1000017B2C3D4E5F6000017 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000017B2C3D4E5F6000017; };
 		B1000018B2C3D4E5F6000018 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000018B2C3D4E5F6000018; };
 		B1000019B2C3D4E5F6000019 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000019B2C3D4E5F6000019; };
+		B1000099B2C3D4E5F6000099 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000099B2C3D4E5F6000099; };
 		B1000020B2C3D4E5F6000020 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000020B2C3D4E5F6000020; };
 		B1000021B2C3D4E5F6000021 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000021B2C3D4E5F6000021; };
 		B1000022B2C3D4E5F6000022 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = A1000022B2C3D4E5F6000022; };
@@ -267,6 +268,7 @@
 		A1000033B2C3D4E5F6000033 /* DesignLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DesignLabView.swift"; path = "MoneyCity/Views/Modals/DesignLabView.swift"; sourceTree = "<group>"; };
 		A1000018B2C3D4E5F6000018 /* ProfileVectorIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ProfileVectorIcons.swift"; path = "MoneyCity/Views/Components/ProfileVectorIcons.swift"; sourceTree = "<group>"; };
 		A1000019B2C3D4E5F6000019 /* ApplePayGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ApplePayGuideSheet.swift"; path = "MoneyCity/Views/Modals/ApplePayGuideSheet.swift"; sourceTree = "<group>"; };
+		A1000099B2C3D4E5F6000099 /* AutomaticCaptureSetupGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AutomaticCaptureSetupGuide.swift"; path = "MoneyCity/Views/Modals/AutomaticCaptureSetupGuide.swift"; sourceTree = "<group>"; };
 		A1000020B2C3D4E5F6000020 /* PrivacyPolicySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PrivacyPolicySheet.swift"; path = "MoneyCity/Views/Modals/PrivacyPolicySheet.swift"; sourceTree = "<group>"; };
 		A1000021B2C3D4E5F6000021 /* AboutSpentSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AboutSpentSheet.swift"; path = "MoneyCity/Views/Modals/AboutSpentSheet.swift"; sourceTree = "<group>"; };
 		A1000022B2C3D4E5F6000022 /* DonutArcShape.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "DonutArcShape.swift"; path = "MoneyCity/Views/Components/DonutArcShape.swift"; sourceTree = "<group>"; };
@@ -445,6 +447,7 @@
 				A1000033B2C3D4E5F6000033 /* DesignLabView.swift */,
 				A1000018B2C3D4E5F6000018 /* ProfileVectorIcons.swift */,
 				A1000019B2C3D4E5F6000019 /* ApplePayGuideSheet.swift */,
+				A1000099B2C3D4E5F6000099 /* AutomaticCaptureSetupGuide.swift */,
 				A1000020B2C3D4E5F6000020 /* PrivacyPolicySheet.swift */,
 				A1000021B2C3D4E5F6000021 /* AboutSpentSheet.swift */,
 				A1000022B2C3D4E5F6000022 /* DonutArcShape.swift */,
@@ -740,6 +743,7 @@
 				B1000017B2C3D4E5F6000017 /* Sources */,
 				B1000018B2C3D4E5F6000018 /* Sources */,
 				B1000019B2C3D4E5F6000019 /* Sources */,
+				B1000099B2C3D4E5F6000099 /* Sources */,
 				B1000020B2C3D4E5F6000020 /* Sources */,
 				B1000021B2C3D4E5F6000021 /* Sources */,
 				B1000022B2C3D4E5F6000022 /* Sources */,
@@ -848,7 +852,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = MoneyCity/MoneyCity.entitlements;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_DEBUG_DYLIB = YES;
@@ -884,7 +888,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = MoneyCity/MoneyCity.entitlements;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = NO;
 				ENABLE_DEBUG_DYLIB = NO;
@@ -919,7 +923,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = "spent fast/spent fastExtension.entitlements";
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_DEBUG_DYLIB = YES;
@@ -950,7 +954,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = "spent fast/spent fastExtension.entitlements";
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = NO;
 				ENABLE_DEBUG_DYLIB = NO;

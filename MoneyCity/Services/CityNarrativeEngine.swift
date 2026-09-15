@@ -202,8 +202,8 @@ public final class CityNarrativeEngine: @unchecked Sendable {
             ? "לא ראיתי עסקאות Apple Pay כבר זמן מה"
             : "No Apple Pay transactions detected in a while"
         content.body = isHebrew
-            ? "אם כן קנית לאחרונה, אולי כדאי לבדוק שהאוטומציה עדיין פעילה."
-            : "If you made recent purchases, check that your Shortcut automation is still active."
+            ? "אם כן קנית לאחרונה, אולי כדאי לבדוק שהפעולה האוטומטית עדיין פעילה."
+            : "If you made recent purchases, check that your Shortcut is still active."
         content.sound = .default
         content.userInfo = ["type": "health_watchdog"]
 

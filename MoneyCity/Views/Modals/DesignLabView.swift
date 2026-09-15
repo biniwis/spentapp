@@ -495,6 +495,7 @@ public struct DesignLabView: View {
     @EnvironmentObject private var l10n: LocalizationManager
 
     @State private var activeOnboardingConfig: OnboardingPreviewConfig? = nil
+    @State private var previewCaptureVariant: AutomaticCaptureGuideVariant? = nil
     @State private var activeRecap: MonthlyRecap? = nil
     @State private var showWeeklyRewardSheet = false
     @State private var debugRewardTrigger: CityRewardTrigger = .weeklyPresence
@@ -711,6 +712,17 @@ public struct DesignLabView: View {
                     activeOnboardingConfig = nil
                 },
                 onTriggerSampleTransaction: {}
+            )
+            .environmentObject(l10n)
+        }
+        .fullScreenCover(item: $previewCaptureVariant) { variant in
+            AutomaticCaptureSetupGuide(
+                variant: variant,
+                skipIntro: false,
+                showCloseButton: true,
+                onFinished: {
+                    previewCaptureVariant = nil
+                }
             )
             .environmentObject(l10n)
         }
@@ -934,7 +946,103 @@ public struct DesignLabView: View {
                     .bouncyPress(scale: 0.98)
                 }
             }
+
+            // Automatic Capture Setup Guide Variants
+            Text(isHe ? "מדריך קליטה אוטומטית (Automatic Capture Guide):" : "Automatic Capture Guide Previews:")
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .padding(.top, 8)
+
+            VStack(spacing: 8) {
+                captureVariantRow(
+                    variant: .automatic,
+                    titleHe: "Current Device / Automatic",
+                    titleEn: "Current Device / Automatic",
+                    subtitleHe: "זיהוי דינמי לפי גרסת המכשיר בפועל",
+                    subtitleEn: "Runtime OS detection",
+                    badge: "AUTO",
+                    icon: .sliders
+                )
+
+                captureVariantRow(
+                    variant: .ios27,
+                    titleHe: "iOS 27 Flow",
+                    titleEn: "iOS 27 Flow",
+                    subtitleHe: "חיפוש למטה, בחירה ישירה ב־ארנק",
+                    subtitleEn: "Bottom search, direct Wallet pick",
+                    badge: "iOS 27",
+                    icon: .creditCard
+                )
+
+                captureVariantRow(
+                    variant: .legacy,
+                    titleHe: "Legacy Flow (iOS 26 and earlier)",
+                    titleEn: "Legacy Flow (iOS 26 and earlier)",
+                    subtitleHe: "יצירת קיצור חדש וחיפוש פעולה",
+                    subtitleEn: "New shortcut flow & action search",
+                    badge: "iOS ≤ 26",
+                    icon: .clock
+                )
+            }
         }
+    }
+
+    private func captureVariantRow(
+        variant: AutomaticCaptureGuideVariant,
+        titleHe: String,
+        titleEn: String,
+        subtitleHe: String,
+        subtitleEn: String,
+        badge: String,
+        icon: MoneyIconName
+    ) -> some View {
+        Button {
+            Haptics.impact(.light)
+            previewCaptureVariant = variant
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                        .frame(width: 36, height: 36)
+                    MoneyIcon(icon, size: 18, color: MoneyCityTheme.brandPrimary)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(isHe ? titleHe : titleEn)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    Text(isHe ? subtitleHe : subtitleEn)
+                        .font(.system(size: 11, weight: .regular, design: .default))
+                        .foregroundColor(Color.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text(badge)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                    .clipShape(Capsule())
+
+                MoneyIcon(
+                    isHe ? .chevronLeft : .chevronRight,
+                    size: 10,
+                    color: Color.textMuted
+                )
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.98)
     }
 
     // MARK: - Section 2: Monthly Recap Presets

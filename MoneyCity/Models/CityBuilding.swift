@@ -285,6 +285,12 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         guard let id = id, !id.isEmpty else {
             return defaultBuildingId(for: category)
         }
+        if category == .other {
+            return "city_sorting_hub"
+        }
+        if id == "city_sorting_hub" && category != .other {
+            return defaultBuildingId(for: category)
+        }
         if id == "shop_boutique" {
             if category == .health { return "health_pharmacy" }
             if category == .finance { return "finance_bank" }
@@ -313,6 +319,7 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
 public enum CityBuildingFocusSource: Sendable, Equatable {
     case manualExpense
     case notificationTap
+    case applePay
 }
 
 /// One-shot spatial camera focus event targeting a specific building after transaction creation.

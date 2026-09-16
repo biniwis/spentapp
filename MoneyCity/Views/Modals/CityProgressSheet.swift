@@ -142,7 +142,7 @@ public struct CityProgressSheet: View {
         .alert(he ? "על החיים בעיר" : "About city life", isPresented: $showInfo) {
             Button(he ? "הבנתי" : "Got it", role: .cancel) {}
         } message: {
-            Text(he ? "SPENT מסתכלת על השימוש שלך ועל שינויים בדפוס ההוצאות כדי להוסיף מדי פעם חיים חדשים לעיר." : "SPENT looks at your activity and changes in spending patterns to occasionally bring new life to the city.")
+            Text(he ? "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים." : "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life.")
         }
         .alert(he ? "החבר עדיין לא נוסף" : "Your companion wasn’t added", isPresented: $saveFailed) {
             Button(he ? "אישור" : "OK", role: .cancel) {}

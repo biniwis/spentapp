@@ -75,8 +75,23 @@ public enum DistrictDataHelper {
         }
     }
 
+    public static func sortingHubTransactions(from transactions: [Transaction]) -> [Transaction] {
+        transactions.filter(\.needsCategorization)
+    }
+
+    public static func sortingHubCount(from transactions: [Transaction]) -> Int {
+        sortingHubTransactions(from: transactions).count
+    }
+
+    public static func sortingHubAmount(from transactions: [Transaction]) -> Double {
+        sortingHubTransactions(from: transactions).reduce(0.0) { $0 + $1.amount }
+    }
+
     public static func buildingVisitCount(for bId: String, transactions: [Transaction]) -> Int {
-        transactions.filter { $0.buildingId == bId }.count
+        if bId == "city_sorting_hub" {
+            return sortingHubCount(from: transactions)
+        }
+        return transactions.filter { $0.buildingId == bId }.count
     }
 
     public static func buildingTrendText(for bId: String, transactions: [Transaction], language: AppLanguage) -> String {
@@ -143,12 +158,14 @@ public enum DistrictDataHelper {
             let health = currentCity.buildingTotals["health_pharmacy"] ?? (currentCity.categoryTotals[.health] ?? 0)
             let fin = currentCity.buildingTotals["finance_bank"] ?? (currentCity.categoryTotals[.finance] ?? 0)
             let misc = currentCity.buildingTotals["museum_curiosities"] ?? ((currentCity.categoryTotals[.miscellaneous] ?? 0) + (currentCity.categoryTotals[.misc] ?? 0))
-            let other = currentCity.buildingTotals["city_sorting_hub"] ?? (currentCity.categoryTotals[.other] ?? 0)
+            let hubTxs = sortingHubTransactions(from: transactions)
+            let otherAmount = hubTxs.reduce(0.0) { $0 + $1.amount }
+            let otherCount = hubTxs.count
             return [
                 BuildingPillItem(id: "health_pharmacy", title: isHe ? "פארם ובריאות" : "Pharmacy", amount: health, info: DistrictBuildingInfo(id: "health_pharmacy", districtId: "civic", name: isHe ? "פארם ובריאות" : "Health & Pharmacy", amount: health, visitCount: buildingVisitCount(for: "health_pharmacy", transactions: transactions), trendText: buildingTrendText(for: "health_pharmacy", transactions: transactions, language: language))),
                 BuildingPillItem(id: "finance_bank", title: isHe ? "עמלות ובנקים" : "Banking", amount: fin, info: DistrictBuildingInfo(id: "finance_bank", districtId: "civic", name: isHe ? "עמלות ובנקים" : "Banking & Fees", amount: fin, visitCount: buildingVisitCount(for: "finance_bank", transactions: transactions), trendText: buildingTrendText(for: "finance_bank", transactions: transactions, language: language))),
                 BuildingPillItem(id: "museum_curiosities", title: isHe ? "שונות" : "Miscellaneous", amount: misc, info: DistrictBuildingInfo(id: "museum_curiosities", districtId: "civic", name: isHe ? "שונות" : "Miscellaneous", amount: misc, visitCount: buildingVisitCount(for: "museum_curiosities", transactions: transactions), trendText: buildingTrendText(for: "museum_curiosities", transactions: transactions, language: language))),
-                BuildingPillItem(id: "city_sorting_hub", title: isHe ? "לא מסווג" : "Uncategorized", amount: other, info: DistrictBuildingInfo(id: "city_sorting_hub", districtId: "civic", name: isHe ? "לא מסווג" : "Uncategorized", amount: other, visitCount: buildingVisitCount(for: "city_sorting_hub", transactions: transactions), trendText: buildingTrendText(for: "city_sorting_hub", transactions: transactions, language: language)))
+                BuildingPillItem(id: "city_sorting_hub", title: isHe ? "לא מסווג" : "Uncategorized", amount: otherAmount, info: DistrictBuildingInfo(id: "city_sorting_hub", districtId: "civic", name: isHe ? "לא מסווג" : "Uncategorized", amount: otherAmount, visitCount: otherCount, trendText: buildingTrendText(for: "city_sorting_hub", transactions: transactions, language: language)))
             ]
         default:
             return []

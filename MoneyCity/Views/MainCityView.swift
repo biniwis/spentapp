@@ -447,60 +447,6 @@ public struct MainCityView: View {
                             Spacer()
                         }
                     }
-
-                    // In-app fallback banner for Apple Pay transactions missing an amount
-                    if let pending = pendingWalletItems.first, !isZenMode {
-                        HStack(spacing: 9) {
-                            MoneyIcon(.creditCard, size: 16)
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(l10n.language == .hebrew ? "תשלום ב-\(pending.merchant)" : "Payment at \(pending.merchant)")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(MoneyCityTheme.textPrimary)
-                                    .lineLimit(1)
-                                Text(l10n.language == .hebrew ? "הזן סכום לעדכון העיר" : "Enter amount to update city")
-                                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer(minLength: 4)
-
-                            Button(action: {
-                                resolvingPendingItem = pending
-                            }) {
-                                Text(l10n.language == .hebrew ? "הזן סכום ✎" : "Enter ✎")
-                                    .font(.system(size: 11, weight: .black, design: .rounded))
-                                    .foregroundColor(MoneyCityTheme.jetBlack)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(MoneyCityTheme.brandPrimary)
-                                    .clipShape(Capsule())
-                            }
-                            .buttonStyle(.plain)
-
-                            Button(action: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                    PendingWalletStore.shared.remove(id: pending.id)
-                                    pendingWalletItems.removeAll(where: { $0.id == pending.id })
-                                }
-                            }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(.secondary)
-                                    .padding(4)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.96))
-                                .shadow(color: Color.black.opacity(0.12), radius: 8, y: 3)
-                        )
-                        .padding(.horizontal, 16)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
                 }
                 .padding(.top, 56)
                 .frame(maxHeight: .infinity, alignment: .top)
@@ -825,12 +771,15 @@ public struct MainCityView: View {
         }
         .sheet(isPresented: $showSortingHubSheet) {
             CitySortingHubSheet(
-                transactions: currentMonthTransactions.filter { $0.category == .other },
+                transactions: DistrictDataHelper.sortingHubTransactions(from: displayTransactions),
                 onUpdateCategory: { tx, newCat in
                     tx.category = newCat
                     tx.buildingIdRaw = CategorizationEngine.shared.mapToBuildingId(category: newCat, merchant: tx.merchant)
                     tx.isConfirmed = true
                     try? modelContext.save()
+                    if let current = inspectedBuilding, current.id == "city_sorting_hub" {
+                        inspectedBuilding = liveBuildingInfo(for: current)
+                    }
                 }
             )
             .environmentObject(l10n)
@@ -852,34 +801,96 @@ public struct MainCityView: View {
             .environmentObject(l10n)
         }
         .sheet(item: $resolvingPendingItem) { pending in
-            ResolvePendingAmountSheet(
-                pending: pending,
-                onCommit: { amount in
-                    Task {
-                        _ = await WalletIngestCoordinator.run(
-                            amount: amount,
-                            amountText: nil,
-                            merchant: pending.merchant,
-                            currency: pending.currency,
-                            transactionDate: pending.timestamp,
-                            intentName: "InAppPendingResolution",
-                            pendingID: pending.id
-                        )
-                        await MainActor.run {
-                            if !PendingWalletStore.shared.getAll().contains(where: { $0.id == pending.id }) {
-                                pendingWalletItems.removeAll(where: { $0.id == pending.id })
-                                resolvingPendingItem = nil
-                            }
-                        }
-                    }
-                },
-                onDismiss: {
-                    resolvingPendingItem = nil
-                }
-            )
-            .environmentObject(l10n)
-            .presentationDetents([.fraction(0.42), .medium])
+            resolvingPendingSheet(for: pending)
         }
+    }
+
+    @ViewBuilder
+    private func resolvingPendingSheet(for pending: PendingWalletIngest) -> some View {
+        let initialCat = SpendingCategory(rawValue: pending.categoryRawValue)
+        let curr = CurrencyType.allCases.first(where: { $0.symbol == pending.currency }) ?? l10n.baseCurrency
+        let isDefaultName = pending.merchant.isEmpty || pending.merchant == "תשלום Apple Pay" || pending.merchant == "Apple Pay payment"
+        QuickAddSheet(
+            initialCategory: initialCat,
+            initialCurrency: curr,
+            initialMerchant: isDefaultName ? "" : pending.merchant,
+            initialBuildingId: pending.buildingId,
+            titleOverride: l10n.language == .hebrew ? "עריכת עסקת Apple Pay" : "Edit Apple Pay Transaction"
+        ) { amount, cat, merchant, origAmount, origCurrency, exchangeRate, buildingId in
+            saveResolvedPending(
+                pending: pending,
+                amount: amount,
+                cat: cat,
+                merchant: merchant,
+                origAmount: origAmount,
+                origCurrency: origCurrency,
+                exchangeRate: exchangeRate,
+                buildingId: buildingId
+            )
+        }
+        .environmentObject(l10n)
+    }
+
+    private func saveResolvedPending(
+        pending: PendingWalletIngest,
+        amount: Double,
+        cat: SpendingCategory,
+        merchant: String,
+        origAmount: Double?,
+        origCurrency: String?,
+        exchangeRate: Double?,
+        buildingId: String?
+    ) {
+        let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: merchant)
+        let tx = Transaction(
+            amount: amount,
+            currency: l10n.baseCurrency.symbol,
+            merchant: merchant,
+            category: cat,
+            timestamp: pending.timestamp,
+            confidenceScore: 1.0,
+            isManual: false,
+            isConfirmed: true,
+            note: nil,
+            buildingId: finalBuildingId,
+            originalAmount: origAmount,
+            originalCurrency: origCurrency,
+            exchangeRate: exchangeRate
+        )
+        modelContext.insert(tx)
+        guard DatabaseService.safeSave(modelContext) else {
+            Haptics.notify(.error)
+            return
+        }
+
+        PendingWalletStore.shared.remove(id: pending.id)
+        pendingWalletItems.removeAll(where: { $0.id == pending.id })
+        resolvingPendingItem = nil
+
+        let trimmed = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
+        ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+            amount: amount,
+            merchant: merchantTitle,
+            buildingId: finalBuildingId,
+            transactionId: tx.id,
+            isRefund: false
+        )
+
+        let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
+            ? String(format: "%.0f", amount)
+            : String(format: "%.2f", amount)
+        let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
+
+        buildingFocusRequest = CityBuildingFocusRequest(
+            token: UUID(),
+            buildingId: finalBuildingId,
+            amount: amount,
+            formattedAmount: formattedAmount,
+            isRefund: false,
+            transactionId: tx.id,
+            source: .applePay
+        )
     }
     
     private func refreshPendingWalletItems() {
@@ -1006,19 +1017,40 @@ public struct MainCityView: View {
         )
     }
 
+    private func liveBuildingInfo(for building: DistrictBuildingInfo) -> DistrictBuildingInfo {
+        if building.id == "city_sorting_hub" {
+            let hubTxs = DistrictDataHelper.sortingHubTransactions(from: displayTransactions)
+            let realAmount = hubTxs.reduce(0.0) { $0 + $1.amount }
+            let realVisitCount = hubTxs.count
+            let realTrendText = realVisitCount == 0
+                ? (l10n.language == .hebrew ? "הכול מסווג ומסודר" : "All categorized")
+                : (l10n.language == .hebrew ? "\(realVisitCount) עסקאות לסיווג" : "\(realVisitCount) to categorize")
+            return DistrictBuildingInfo(
+                id: building.id,
+                districtId: building.districtId,
+                name: building.name,
+                amount: realAmount,
+                visitCount: realVisitCount,
+                trendText: realTrendText
+            )
+        } else {
+            return DistrictBuildingInfo(
+                id: building.id,
+                districtId: building.districtId,
+                name: building.name,
+                amount: currentCity.buildingTotals[building.id] ?? 0,
+                visitCount: DistrictDataHelper.buildingVisitCount(for: building.id, transactions: displayTransactions),
+                trendText: DistrictDataHelper.buildingTrendText(for: building.id, transactions: displayTransactions, language: l10n.language)
+            )
+        }
+    }
+
     private func handleSelectBuilding(_ building: DistrictBuildingInfo) {
         // The 3D scene carries a `visits` count and a trend string baked into each mesh — they
         // were authored as design placeholders and nothing ever updates them, so tapping the
         // coffee shop always claimed "12 עסקאות • ‎+20%" whatever the user actually spent.
         // Everything shown here is recomputed from the user's own transactions.
-        let real = DistrictBuildingInfo(
-            id: building.id,
-            districtId: building.districtId,
-            name: building.name,
-            amount: currentCity.buildingTotals[building.id] ?? 0,
-            visitCount: DistrictDataHelper.buildingVisitCount(for: building.id, transactions: displayTransactions),
-            trendText: DistrictDataHelper.buildingTrendText(for: building.id, transactions: displayTransactions, language: l10n.language)
-        )
+        let real = liveBuildingInfo(for: building)
         // Selecting a different building only changed the numbers inside a card that was
         // already on screen, so SwiftUI reused the same view: no transition ran, nothing moved,
         // and the tap felt like it had missed. The `.id` on the card below makes a swap a real
@@ -1164,10 +1196,94 @@ public struct MainCityView: View {
                 }
                 CityHeroKpiRow(spentValue: animatedSpentValue ?? currentCity.totalSpent)
                 confirmationBannerView
+                if let pending = pendingWalletItems.first {
+                    pendingApplePayBanner(pending: pending)
+                }
                 districtSelectorRow
             }
             .frame(maxWidth: .infinity)
         }
+    }
+
+    @ViewBuilder
+    private func pendingApplePayBanner(pending: PendingWalletIngest) -> some View {
+        let isHebrew = l10n.language == .hebrew
+        let trimmedMerchant = pending.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isDefaultName = trimmedMerchant.isEmpty || trimmedMerchant == "תשלום Apple Pay" || trimmedMerchant == "Apple Pay payment"
+
+        HStack(spacing: 10) {
+            // Apple Pay Badge Icon
+            ZStack {
+                Circle()
+                    .fill(MoneyCityTheme.jetBlack)
+                    .frame(width: 34, height: 34)
+                Image(systemName: "applelogo")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                    .offset(y: -0.8)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isHebrew ? "זוהתה עסקת Apple Pay" : "Apple Pay Detected")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(MoneyCityTheme.textPrimary)
+                    .lineLimit(1)
+
+                Text(isDefaultName
+                     ? (isHebrew ? "נקלטה עסקה • יש לערוך ולהזין סכום" : "Transaction captured • Tap to edit amount")
+                     : (isHebrew ? "\(trimmedMerchant) • נדרשת עריכת סכום" : "\(trimmedMerchant) • Enter amount to update"))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundColor(MoneyCityTheme.textSecondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 4)
+
+            Button(action: {
+                resolvingPendingItem = pending
+            }) {
+                Text(isHebrew ? "ערוך ✎" : "Edit ✎")
+                    .font(.system(size: 11.5, weight: .black, design: .rounded))
+                    .foregroundColor(MoneyCityTheme.jetBlack)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 6)
+                    .background(MoneyCityTheme.brandPrimary)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+
+            Button(action: {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    PendingWalletStore.shared.remove(id: pending.id)
+                    pendingWalletItems.removeAll(where: { $0.id == pending.id })
+                }
+            }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(MoneyCityTheme.textMuted)
+                    .padding(6)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isHebrew ? "מחק התראה" : "Dismiss alert")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.borderSubtle, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.045), radius: 10, x: 0, y: 3)
+        .padding(.horizontal, 16)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            resolvingPendingItem = pending
+        }
+        .transition(.asymmetric(
+            insertion: .move(edge: .top).combined(with: .opacity),
+            removal: .scale(scale: 0.96).combined(with: .opacity)
+        ))
     }
 
     // MARK: - Dynamic Top Buildings (Subcategories) for Fast Action
@@ -1301,7 +1417,7 @@ public struct MainCityView: View {
                 removal: .opacity
             ))
         } else if let b = inspectedBuilding {
-            InspectorModalView(info: b, onClose: {
+            InspectorModalView(info: liveBuildingInfo(for: b), onClose: {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     inspectedBuilding = nil
                     if selectedDistrict == "civic" {
@@ -1499,7 +1615,7 @@ public struct MainCityView: View {
                 case "trans_station":
                     return tx.category == .transport
                 case "city_sorting_hub":
-                    return tx.category == .other || tx.buildingId == "city_sorting_hub"
+                    return tx.needsCategorization
                 default:
                     return tx.buildingId == building.id
                 }
@@ -1513,7 +1629,7 @@ public struct MainCityView: View {
                 case "savings": return tx.category == .savings
                 case "transport": return tx.category == .transport
                 case "civic":
-                    return tx.category == .health || tx.category == .finance || tx.category == .miscellaneous || tx.category == .misc || tx.category == .other || tx.buildingId == "health_pharmacy" || tx.buildingId == "finance_bank" || tx.buildingId == "museum_curiosities" || tx.buildingId == "city_sorting_hub"
+                    return tx.category == .health || tx.category == .finance || tx.category == .miscellaneous || tx.category == .misc || tx.needsCategorization || tx.buildingId == "health_pharmacy" || tx.buildingId == "finance_bank" || tx.buildingId == "museum_curiosities" || tx.buildingId == "city_sorting_hub"
                 default: return true
                 }
             }

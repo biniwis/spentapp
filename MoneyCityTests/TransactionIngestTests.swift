@@ -416,4 +416,71 @@ final class TransactionIngestTests: XCTestCase {
         XCTAssertNil(AmountParser.parse("   "))
         XCTAssertNil(AmountParser.parse("abc"))
     }
+
+    // MARK: - Single-Input Wallet Capture Experiment Tests
+
+    func testSingleInputWalletCaptureRequirements() {
+        func parseSingle(_ input: String?) -> TransactionIngest.Salvaged {
+            TransactionIngest.salvage(amount: nil, amountText: input, merchant: input)
+        }
+
+        // 1. Hebrew merchant + ILS
+        let hebrew = parseSingle("קפה נחת ₪18.00")
+        XCTAssertEqual(hebrew.amount, 18.00)
+        XCTAssertEqual(hebrew.merchant, "קפה נחת")
+        XCTAssertFalse(hebrew.isRefund)
+
+        // 2. English merchant + ILS
+        let english = parseSingle("AM:PM ₪42.90")
+        XCTAssertEqual(english.amount, 42.90)
+        XCTAssertEqual(english.merchant, "AM:PM")
+        XCTAssertFalse(english.isRefund)
+
+        // 3. Whole-number amount
+        let whole = parseSingle("Zara ₪120")
+        XCTAssertEqual(whole.amount, 120.00)
+        XCTAssertEqual(whole.merchant, "Zara")
+
+        // 4. Decimal amount
+        let decimal = parseSingle("Super-Pharm ₪85.70")
+        XCTAssertEqual(decimal.amount, 85.70)
+        XCTAssertEqual(decimal.merchant, "Super-Pharm")
+
+        // 5. Currency before amount
+        let currBefore = parseSingle("₪42.90 AM:PM")
+        XCTAssertEqual(currBefore.amount, 42.90)
+        XCTAssertEqual(currBefore.merchant, "AM:PM")
+
+        // 6. Currency after amount
+        let currAfter = parseSingle("AM:PM 42.90 ₪")
+        XCTAssertEqual(currAfter.amount, 42.90)
+        XCTAssertEqual(currAfter.merchant, "AM:PM")
+
+        // 7. Multiline representation
+        let multiline = parseSingle("Isracard\nAM:PM\n42.90 ILS")
+        XCTAssertEqual(multiline.amount, 42.90)
+        XCTAssertEqual(multiline.merchant, "AM:PM")
+
+        // 8. Merchant containing digits
+        let withDigits = parseSingle("Kokpit 67 ₪50.00")
+        XCTAssertEqual(withDigits.amount, 50.00)
+        XCTAssertEqual(withDigits.merchant, "Kokpit")
+
+        // 9. Missing merchant (amount only)
+        let missingMerchant = parseSingle("₪42.90")
+        XCTAssertEqual(missingMerchant.amount, 42.90)
+        XCTAssertNil(missingMerchant.merchant)
+
+        // 10. Missing amount (merchant only)
+        let missingAmount = parseSingle("AM:PM")
+        XCTAssertNil(missingAmount.amount)
+        XCTAssertEqual(missingAmount.merchant, "AM:PM")
+
+        // 11. Refund / credit
+        let refund = parseSingle("זיכוי AM:PM ₪42.90")
+        XCTAssertEqual(refund.amount, 42.90)
+        XCTAssertEqual(refund.merchant, "זיכוי AM:PM")
+        XCTAssertTrue(refund.isRefund)
+    }
 }
+

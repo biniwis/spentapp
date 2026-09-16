@@ -83,6 +83,7 @@ public struct AutomaticCaptureSetupGuide: View {
     @State private var hasOpenedShortcuts: Bool = false
     @State private var showTrouble: Bool = false
     @State private var troubleContext: TroubleContext = .shortcuts
+    @State private var showConnectionTestDisclosure: Bool = false
 
     private var isHebrew: Bool { l10n.language == .hebrew }
 
@@ -666,6 +667,71 @@ public struct AutomaticCaptureSetupGuide: View {
                 ? "לא צריך לפתוח את SPENT אחרי כל תשלום."
                 : "No need to open SPENT after each payment.")
                 .padding(.top, 12)
+
+            // Optional connection test disclosure
+            VStack(alignment: .leading, spacing: 0) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                        showConnectionTestDisclosure.toggle()
+                    }
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: showConnectionTestDisclosure ? "chevron.down" : (isHebrew ? "chevron.left" : "chevron.right"))
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color.themeOrange)
+
+                        Text(isHebrew ? "רוצה לבדוק שהחיבור עובד?" : "Want to test if the connection works?")
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundColor(Color.deepNavy)
+
+                        Spacer()
+                    }
+                    .padding(.vertical, 10)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if showConnectionTestDisclosure {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(isHebrew
+                            ? "פתח את מסך הקיצור עצמו ב׳קיצורים׳. בתחתית המסך, מתחת לאזור החיפוש, יש כפתור ▶︎. לחץ עליו כדי להריץ את הקיצור לבדיקה."
+                            : "Open the shortcut screen in Shortcuts. At the bottom of the screen, below the search area, there is a ▶︎ button. Tap it to test-run the shortcut.")
+                            .font(.system(.footnote, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineSpacing(3)
+
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.spentGreen)
+                                .padding(.top, 1)
+
+                            Text(isHebrew
+                                ? "אם קיבלת התראה מ־SPENT — הקיצור מחובר לאפליקציה."
+                                : "If you received a notification from SPENT — the shortcut is connected to the app.")
+                                .font(.system(.footnote, design: .rounded, weight: .semibold))
+                                .foregroundColor(Color.deepNavy)
+                                .lineSpacing(2)
+                        }
+
+                        Text(isHebrew
+                            ? "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים — זה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע ל־SPENT."
+                            : "In this test, transaction details may be empty or unclear — that's okay. The purpose is only to verify that the shortcut reaches SPENT.")
+                            .font(.system(.caption, design: .rounded))
+                            .foregroundColor(Color.textMuted)
+                            .lineSpacing(2)
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.jetBlack.opacity(0.035))
+                    )
+                    .padding(.top, 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .padding(.top, 24)
         }
     }
 

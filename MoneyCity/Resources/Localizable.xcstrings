@@ -122,6 +122,12 @@
         }
       }
     },
+    "%@ • Enter amount to update" : {
+
+    },
+    "%@ • נדרשת עריכת סכום" : {
+
+    },
     "%@ → %@ → %@" : {
       "localizations" : {
         "en" : {
@@ -595,6 +601,9 @@
     "Analytics" : {
 
     },
+    "Apple Pay Detected" : {
+
+    },
     "Apple Pay Refund Detected" : {
 
     },
@@ -875,6 +884,9 @@
     "DEVELOPMENT & DESIGN" : {
 
     },
+    "Dismiss alert" : {
+
+    },
     "Done" : {
 
     },
@@ -901,6 +913,9 @@
     "Edit" : {
 
     },
+    "Edit ✎" : {
+
+    },
     "Edit Amount" : {
 
     },
@@ -920,12 +935,6 @@
 
     },
     "Ensure the receipt is flat, well-lit, and the total line is clearly visible." : {
-
-    },
-    "Enter ✎" : {
-
-    },
-    "Enter amount to update city" : {
 
     },
     "Enter an expense in an on-screen prompt without opening the app." : {
@@ -1087,6 +1096,9 @@
     "If you don't see an obvious button — search at the bottom of the screen and tap it." : {
 
     },
+    "If you received a notification from SPENT — the shortcut is connected to the app." : {
+
+    },
     "Image file to scan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1120,6 +1132,9 @@
 
     },
     "In the automation setup screen, choose the cards you pay with. You may need to scroll down slightly to see \"Run Immediately\"." : {
+
+    },
+    "In this test, transaction details may be empty or unclear — that's okay. The purpose is only to verify that the shortcut reaches SPENT." : {
 
     },
     "Included" : {
@@ -1315,6 +1330,9 @@
     "Open Shortcuts" : {
 
     },
+    "Open the shortcut screen in Shortcuts. At the bottom of the screen, below the search area, there is a ▶︎ button. Tap it to test-run the shortcut." : {
+
+    },
     "Operating in Offline Mode" : {
 
     },
@@ -1351,9 +1369,6 @@
 
     },
     "PAYMENT" : {
-
-    },
-    "Payment at %@" : {
 
     },
     "Please enter a valid amount" : {
@@ -1710,7 +1725,7 @@
     "SPENT doesn’t get access to your card or bank account." : {
 
     },
-    "SPENT looks at your activity and changes in spending patterns to occasionally bring new life to the city." : {
+    "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life." : {
 
     },
     "SPENT Month" : {
@@ -1719,7 +1734,7 @@
     "SPENT לא מקבלת גישה לכרטיס או לחשבון הבנק שלך." : {
 
     },
-    "SPENT מסתכלת על השימוש שלך ועל שינויים בדפוס ההוצאות כדי להוסיף מדי פעם חיים חדשים לעיר." : {
+    "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים." : {
 
     },
     "Status:" : {
@@ -1823,6 +1838,23 @@
     "Track Today! ✨" : {
 
     },
+    "Transaction" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transaction"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עסקה"
+          }
+        }
+      }
+    },
     "Transaction Amount" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1858,6 +1890,9 @@
       }
     },
     "Transaction Amount, Shortcut Input, Amount" : {
+
+    },
+    "Transaction captured • Tap to edit amount" : {
 
     },
     "Transaction Details" : {
@@ -1925,6 +1960,9 @@
 
     },
     "View Story" : {
+
+    },
+    "Want to test if the connection works?" : {
 
     },
     "Weekly Addition Ceremony" : {
@@ -2110,6 +2148,9 @@
     "אם אתה לא רואה כפתור ברור — חפש למטה את מה שאתה רוצה ולחץ עליו." : {
 
     },
+    "אם קיבלת התראה מ־SPENT — הקיצור מחובר לאפליקציה." : {
+
+    },
     "אנא הזן סכום תקין" : {
 
     },
@@ -2147,6 +2188,9 @@
 
     },
     "באפליקציה ׳קיצורים׳: עבור ללשונית פעולה אוטומטית, לחץ על + ובחר ׳עסקה׳ (תחת ארנק)." : {
+
+    },
+    "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים — זה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע ל־SPENT." : {
 
     },
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
@@ -2307,12 +2351,6 @@
 
     },
     "הזן ידנית" : {
-
-    },
-    "הזן סכום ✎" : {
-
-    },
-    "הזן סכום לעדכון העיר" : {
 
     },
     "הזנת סכום לתשלום" : {
@@ -2504,6 +2542,9 @@
     "זוהה זיכוי / החזר מ-Apple Pay" : {
 
     },
+    "זוהתה עסקת Apple Pay" : {
+
+    },
     "זכור קטגוריה זו תמיד" : {
 
     },
@@ -2663,6 +2704,9 @@
     "מחק הכל ואפס" : {
 
     },
+    "מחק התראה" : {
+
+    },
     "מחק יעד" : {
 
     },
@@ -2770,6 +2814,9 @@
 
     },
     "נמחקה: זארה — ₪199.90" : {
+
+    },
+    "נקלטה עסקה • יש לערוך ולהזין סכום" : {
 
     },
     "נתקעת?" : {
@@ -2880,6 +2927,9 @@
     "עקוב היום! ✨" : {
 
     },
+    "ערוך ✎" : {
+
+    },
     "ערוך עסקה" : {
 
     },
@@ -2923,6 +2973,9 @@
 
     },
     "פתח את ״קיצורים״" : {
+
+    },
+    "פתח את מסך הקיצור עצמו ב׳קיצורים׳. בתחתית המסך, מתחת לאזור החיפוש, יש כפתור ▶︎. לחץ עליו כדי להריץ את הקיצור לבדיקה." : {
 
     },
     "פתח תלת-ממד ↗" : {
@@ -2971,6 +3024,9 @@
 
     },
     "רובע סיפור + רגע משמעותי" : {
+
+    },
+    "רוצה לבדוק שהחיבור עובד?" : {
 
     },
     "רצף ימים פעיל" : {
@@ -3080,9 +3136,6 @@
 
     },
     "תשלום 1" : {
-
-    },
-    "תשלום ב-%@" : {
 
     }
   },

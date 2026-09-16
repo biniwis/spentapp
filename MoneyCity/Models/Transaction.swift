@@ -90,6 +90,11 @@ public final class Transaction: Identifiable {
 }
 
 extension Transaction {
+    /// Canonical test for whether this transaction requires categorization / triage in the City Sorting Hub.
+    public var needsCategorization: Bool {
+        category == .other || buildingId == "city_sorting_hub"
+    }
+
     /// Formatted localized currency string
     public var formattedAmount: String {
         return "\(currency)\(String(format: "%.2f", amount))"

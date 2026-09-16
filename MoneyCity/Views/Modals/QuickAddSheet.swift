@@ -10,16 +10,31 @@ public struct QuickAddSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var l10n: LocalizationManager
     public let initialCategory: SpendingCategory?
+    public let initialMerchant: String?
+    public let initialBuildingId: String?
+    public let titleOverride: String?
     public let onSave: (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     
     public init(
         initialCategory: SpendingCategory? = nil,
         initialCurrency: CurrencyType? = nil,
+        initialMerchant: String? = nil,
+        initialBuildingId: String? = nil,
+        titleOverride: String? = nil,
         onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
         self.initialCategory = initialCategory
+        self.initialMerchant = initialMerchant
+        self.initialBuildingId = initialBuildingId
+        self.titleOverride = titleOverride
         self.onSave = onSave
         _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        if let initialMerchant, !initialMerchant.isEmpty {
+            _note = State(initialValue: initialMerchant)
+        }
+        if let initialBuildingId {
+            _selectedBuildingId = State(initialValue: initialBuildingId)
+        }
     }
     
     @State private var amountText: String = ""
@@ -247,7 +262,7 @@ public struct QuickAddSheet: View {
                         .zIndex(100)
                 }
             }
-            .navigationTitle(l10n.language == .hebrew ? "הוספת הוצאה" : "Add Expense")
+            .navigationTitle(titleOverride ?? (l10n.language == .hebrew ? "הוספת הוצאה" : "Add Expense"))
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
@@ -271,6 +286,12 @@ public struct QuickAddSheet: View {
                     selectedCategory = initial
                 } else if selectedCategory == nil {
                     selectedCategory = .food
+                }
+                if let initialMerchant, note.isEmpty {
+                    note = initialMerchant
+                }
+                if let initialBuildingId, selectedBuildingId == nil {
+                    selectedBuildingId = initialBuildingId
                 }
             }
             .task(id: scenePhase == .active && !reduceMotion) {

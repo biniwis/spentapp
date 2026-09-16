@@ -43,6 +43,7 @@
 		9DF961DBDB7342DAB17C5F8F /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 1D46877A99A14827954F192F; };
 		C8FF6CC766114DC8B61FA723 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 6458498D42064D28BD0A1C8D; };
 		25C7E5537AAF48C681C9E1DB /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 54D7EB7C1B5D42B1A994A227; };
+		
 		8DEAC55F44104D01A13E0A13 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = E31A56D4F6924CB4AC7EED9F; };
 		CACA5E575A4D45B8B3F8B3B7 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 8B95DAADB9E045D6955DF520; };
 		D6253F07EF7247E1A7BEBBFE /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 3225D5DDF8E5432FAD54EDBF; };
@@ -225,6 +226,7 @@
 		1D46877A99A14827954F192F /* MoneyCityShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "MoneyCityShortcuts.swift"; path = "MoneyCity/Intents/MoneyCityShortcuts.swift"; sourceTree = "<group>"; };
 		6458498D42064D28BD0A1C8D /* QuickExpensePromptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "QuickExpensePromptIntent.swift"; path = "MoneyCity/Intents/QuickExpensePromptIntent.swift"; sourceTree = "<group>"; };
 		54D7EB7C1B5D42B1A994A227 /* RecordTransactionIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecordTransactionIntent.swift"; path = "MoneyCity/Intents/RecordTransactionIntent.swift"; sourceTree = "<group>"; };
+		
 		E31A56D4F6924CB4AC7EED9F /* ScanReceiptIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ScanReceiptIntent.swift"; path = "MoneyCity/Intents/ScanReceiptIntent.swift"; sourceTree = "<group>"; };
 		8B95DAADB9E045D6955DF520 /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AnalyticsView.swift"; path = "MoneyCity/Views/AnalyticsView.swift"; sourceTree = "<group>"; };
 		F1E2E3E4E5FC010100000001 /* TrackingActivityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TrackingActivityService.swift"; path = "MoneyCity/Services/TrackingActivityService.swift"; sourceTree = "<group>"; };

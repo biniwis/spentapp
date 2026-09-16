@@ -23,7 +23,7 @@ public struct CitySortingHubSheet: View {
     private var isHebrew: Bool { l10n.language == .hebrew }
     
     private var pendingTransactions: [Transaction] {
-        transactions.filter { !sortedTxIds.contains($0.id) && $0.category == .other }
+        transactions.filter { !sortedTxIds.contains($0.id) && $0.needsCategorization }
     }
     
     public var body: some View {
@@ -150,7 +150,7 @@ public struct CitySortingHubSheet: View {
                 
                 Spacer()
                 
-                Text(l10n.baseCurrency.symbol + String(format: "%.0f", tx.amount))
+                Text(l10n.baseCurrency.symbol + String(format: "%.0f", abs(tx.amount)))
                     .font(.system(size: 17, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
             }

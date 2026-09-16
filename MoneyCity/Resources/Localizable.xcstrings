@@ -643,10 +643,10 @@
     "At SPENT, your expenses, budgets, and city data are processed and stored locally on your device." : {
 
     },
-    "Automatic Capture Guide Previews:" : {
+    "Automatic Capture" : {
 
     },
-    "Automatic capture is ready" : {
+    "Automatic Capture Guide Previews:" : {
 
     },
     "Automatic Currency Conversion" : {
@@ -795,6 +795,9 @@
 
     },
     "Confirming will deduct this amount from your monthly spending" : {
+
+    },
+    "Consistent tracking unlocks small gifts that bring more life to your city." : {
 
     },
     "Could not extract receipt" : {
@@ -1026,9 +1029,6 @@
     "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling." : {
 
     },
-    "From now on, whenever you pay with Apple Pay, SPENT will automatically capture the transaction in the background." : {
-
-    },
     "Full journey from city concept to reveal, with all transitions" : {
 
     },
@@ -1126,10 +1126,10 @@
         }
       }
     },
-    "If you don't see an obvious button — search at the bottom of the screen and tap it." : {
+    "If you don't see an obvious button, search at the bottom of the screen and tap it." : {
 
     },
-    "If you received a notification from SPENT — the shortcut is connected to the app." : {
+    "If you received a notification from SPENT, the shortcut is connected to the app." : {
 
     },
     "Image file to scan" : {
@@ -1167,7 +1167,7 @@
     "In the automation setup screen, choose the cards you pay with. You may need to scroll down slightly to see \"Run Immediately\"." : {
 
     },
-    "In this test, transaction details may be empty or unclear — that's okay. The purpose is only to verify that the shortcut reaches SPENT." : {
+    "In this test, transaction details may be empty or unclear, and that's okay. The purpose is only to verify that the shortcut reaches SPENT." : {
 
     },
     "In Your City" : {
@@ -1488,9 +1488,6 @@
     "Reading the amount and merchant from your receipt…" : {
 
     },
-    "Ready for your next Apple Pay purchase" : {
-
-    },
     "Real Time" : {
 
     },
@@ -1735,6 +1732,12 @@
     "Settings" : {
 
     },
+    "Setup complete" : {
+
+    },
+    "Setup guide" : {
+
+    },
     "Share" : {
 
     },
@@ -1804,10 +1807,16 @@
     "SPENT doesn’t get access to your card or bank account." : {
 
     },
+    "SPENT is waiting for the first automatic capture. After your next payment, we'll know everything is connected." : {
+
+    },
     "SPENT Month" : {
 
     },
     "SPENT לא מקבלת גישה לכרטיס או לחשבון הבנק שלך." : {
+
+    },
+    "SPENT מחכה לקליטה הראשונה מהפעולה האוטומטית. אחרי התשלום הבא נדע שהכול מחובר." : {
 
     },
     "Status:" : {
@@ -1870,9 +1879,6 @@
       }
     },
     "The current state is snapshotted first, so this can be undone." : {
-
-    },
-    "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life." : {
 
     },
     "The Nature Reserve changes with your budget and savings." : {
@@ -2039,6 +2045,9 @@
 
     },
     "View Story" : {
+
+    },
+    "Waiting for the first capture" : {
 
     },
     "Want to test if the connection works?" : {
@@ -2233,10 +2242,10 @@
     "אישור עסקה זו יקזז את הסכום מסך ההוצאות החודשי שלך" : {
 
     },
-    "אם אתה לא רואה כפתור ברור — חפש למטה את מה שאתה רוצה ולחץ עליו." : {
+    "אם אתה לא רואה כפתור ברור, חפש למטה את מה שאתה רוצה ולחץ עליו." : {
 
     },
-    "אם קיבלת התראה מ־SPENT — הקיצור מחובר לאפליקציה." : {
+    "אם קיבלת התראה של SPENT, הקיצור מחובר לאפליקציה." : {
 
     },
     "אנא הזן סכום תקין" : {
@@ -2278,7 +2287,7 @@
     "באפליקציה ׳קיצורים׳: עבור ללשונית פעולה אוטומטית, לחץ על + ובחר ׳עסקה׳ (תחת ארנק)." : {
 
     },
-    "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים — זה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע ל־SPENT." : {
+    "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים, וזה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע אל SPENT." : {
 
     },
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
@@ -2391,6 +2400,9 @@
 
     },
     "הדרכת פתיחה והיכרות" : {
+
+    },
+    "ההגדרה הסתיימה" : {
 
     },
     "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
@@ -2576,9 +2588,6 @@
     "הקודם" : {
 
     },
-    "הקליטה האוטומטית מוכנה" : {
-
-    },
     "הקש להצגת פירוט הרובעים" : {
 
     },
@@ -2739,9 +2748,6 @@
     "כדי ששמורת הטבע תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
 
     },
-    "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים." : {
-
-    },
     "כל %lld בחודש" : {
 
     },
@@ -2802,13 +2808,13 @@
     "מדיניות פרטיות" : {
 
     },
+    "מדריך ההגדרה" : {
+
+    },
     "מדריך קליטה אוטומטית (Automatic Capture Guide):" : {
 
     },
     "מה נוסף לעיר?" : {
-
-    },
-    "מוכן לפעולה הבאה ב-Apple Pay" : {
 
     },
     "מוסתר" : {
@@ -2818,6 +2824,9 @@
 
     },
     "מחיקה" : {
+
+    },
+    "מחכה לקליטה הראשונה" : {
 
     },
     "מחק" : {
@@ -2868,10 +2877,7 @@
     "מעבדת תלת-ממד אינטראקטיבית" : {
 
     },
-    "מעכשיו, בכל פעם שתשלם עם Apple Pay, SPENT תקלוט את העסקה ברקע באופן אוטומטי." : {
-
-    },
-    "מעל היעד ב־%@" : {
+    "מעל היעד: %@" : {
 
     },
     "מעקב הוצאות שמקבל צורה בעיר" : {
@@ -3040,6 +3046,9 @@
     "עיר לדוגמה, שני עולמות. סיבוב, זום ובחינת מבנים בתלת־ממד." : {
 
     },
+    "עם המשך התיעוד נפתחת מדי פעם מתנה קטנה שמוסיפה חיים לעיר." : {
+
+    },
     "עסקאות" : {
 
     },
@@ -3121,6 +3130,9 @@
     "פתח את מסך הקיצור עצמו ב׳קיצורים׳. בתחתית המסך, מתחת לאזור החיפוש, יש כפתור ▶︎. לחץ עליו כדי להריץ את הקיצור לבדיקה." : {
 
     },
+    "פתח את קיצורים" : {
+
+    },
     "פתח תלת-ממד ↗" : {
 
     },
@@ -3158,6 +3170,9 @@
 
     },
     "קטגוריות מובילות" : {
+
+    },
+    "קליטה אוטומטית" : {
 
     },
     "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. שמורת הטבע בעיר מאטה את צמיחתה עד לאיזון." : {

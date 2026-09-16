@@ -24,6 +24,7 @@ public struct ProfileView: View {
     @State private var showRecurringSheet = false
     @State private var showGoalsSheet = false
     @State private var showApplePayGuideSheet = false
+    @State private var showAutomaticCaptureStatus = false
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
     @State private var selectedMonth: String? = nil
@@ -35,6 +36,11 @@ public struct ProfileView: View {
     #if DEBUG
     @State private var showDesignLab = false
     #endif
+
+    @AppStorage(AutomaticCaptureStateStore.Key.lastDetectedAt) private var lastDetectedTimestamp: Double = 0
+    @AppStorage(AutomaticCaptureStateStore.Key.setupCompletedAt) private var setupCompletedTimestamp: Double = 0
+    @AppStorage(AutomaticCaptureStateStore.Key.guideUpdatedAt) private var guideUpdatedTimestamp: Double = 0
+    @AppStorage(AutomaticCaptureStateStore.Key.guideLegacyUpdatedAt) private var legacyGuideUpdatedTimestamp: Double = 0
 
     private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus)? {
         let status = MonthlyRecapService.checkRecapWindow()
@@ -246,6 +252,10 @@ public struct ProfileView: View {
             ApplePayGuideSheet()
                 .environmentObject(l10n)
         }
+        .sheet(isPresented: $showAutomaticCaptureStatus) {
+            AutomaticCaptureStatusView()
+                .environmentObject(l10n)
+        }
         .sheet(isPresented: $showRecapArchive) {
             MonthlyRecapArchiveView(onNavigateToCity: onNavigateToCity)
                 .environmentObject(l10n)
@@ -253,6 +263,9 @@ public struct ProfileView: View {
         .sheet(isPresented: $showBackupSheet) {
             BackupSheet()
                 .environmentObject(l10n)
+        }
+        .onAppear {
+            bootstrapAutomaticCaptureIfNeeded()
         }
     }
 
@@ -609,7 +622,7 @@ public struct ProfileView: View {
                             .foregroundColor(Color.deepNavy)
                     } else if showDetailedBudget {
                         let overAmount = totalThisMonth - limit
-                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "מעל היעד ב־\(l10n.format(amount: overAmount, showDecimals: false))" : "Over target by \(l10n.format(amount: overAmount, showDecimals: false))") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.format(amount: remaining, showDecimals: false))")
+                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "מעל היעד: \(l10n.format(amount: overAmount, showDecimals: false))" : "Over target by \(l10n.format(amount: overAmount, showDecimals: false))") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.format(amount: remaining, showDecimals: false))")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
@@ -806,12 +819,17 @@ public struct ProfileView: View {
 
             menuRow(
                 title: l10n.language == .hebrew ? "קליטה אוטומטית" : "Automatic Capture",
-                subtitle: l10n.language == .hebrew ? "הוצאות יכולות להיכנס לבד אחרי תשלום" : "Expenses can show up automatically after payment",
+                subtitle: automaticCaptureSubtitle,
                 iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
             ) {
                 MoneyIcon(.lightning, size: 24)
             } action: {
-                showApplePayGuideSheet = true
+                switch automaticCaptureState {
+                case .notConfigured, .setupInProgress:
+                    showApplePayGuideSheet = true
+                case .configuredAwaitingFirstCapture, .captureDetected:
+                    showAutomaticCaptureStatus = true
+                }
             }
 
             Divider().background(Color.borderSubtle).padding(.leading, 68)
@@ -916,6 +934,45 @@ public struct ProfileView: View {
         .padding(.horizontal, 16)
     }
     #endif
+
+    // MARK: - Automatic Capture Lifecycle
+    private var automaticCaptureState: AutomaticCaptureState {
+        AutomaticCaptureStateStore.state()
+    }
+
+    private var automaticCaptureSubtitle: String {
+        let isHe = l10n.language == .hebrew
+        switch automaticCaptureState {
+        case .notConfigured:
+            return isHe ? "הגדרה קצרה באייפון" : "Set up on this iPhone"
+        case .setupInProgress:
+            return isHe ? "המשך הגדרה" : "Continue setup"
+        case .configuredAwaitingFirstCapture:
+            return isHe ? "מחכה לקליטה הראשונה" : "Waiting for first capture"
+        case .captureDetected(let date):
+            return AutomaticCaptureStateStore.formatLastDetected(date: date, isHebrew: isHe)
+        }
+    }
+
+    private func bootstrapAutomaticCaptureIfNeeded() {
+        guard !AutomaticCaptureStateStore.isBootstrapped else { return }
+        guard !AutomaticCaptureStateStore.hasLastDetectedCapture else {
+            AutomaticCaptureStateStore.markBootstrapped()
+            return
+        }
+
+        var descriptor = FetchDescriptor<IngestLogEntry>(
+            predicate: #Predicate<IngestLogEntry> { entry in
+                entry.intentName == "RecordTransactionIntent" || entry.intentName == "LogWalletPaymentIntent"
+            },
+            sortBy: [SortDescriptor(\.receivedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        if let entries = try? modelContext.fetch(descriptor), let latest = entries.first {
+            AutomaticCaptureStateStore.markAutomaticCaptureDetected(at: latest.receivedAt)
+        }
+        AutomaticCaptureStateStore.markBootstrapped()
+    }
 }
 
 

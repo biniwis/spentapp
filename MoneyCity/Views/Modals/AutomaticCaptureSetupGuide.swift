@@ -189,11 +189,15 @@ public struct AutomaticCaptureSetupGuide: View {
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
         .onAppear {
-            let saved = storedScreen
-            if activeScreens.contains(saved) {
-                currentScreen = saved
+            if let fresh = AutomaticCaptureStateStore.getFreshIOS27Progress() {
+                if activeScreens.contains(fresh) {
+                    currentScreen = fresh
+                } else {
+                    currentScreen = activeScreens.first ?? firstScreen
+                }
             } else {
                 currentScreen = activeScreens.first ?? firstScreen
+                storedScreen = currentScreen
             }
         }
         .sheet(isPresented: $showTrouble) {
@@ -289,6 +293,7 @@ public struct AutomaticCaptureSetupGuide: View {
                 currentScreen = activeScreens.last ?? 6
             }
             storedScreen = currentScreen
+            AutomaticCaptureStateStore.saveIOS27Progress(screen: currentScreen)
         }
     }
 
@@ -302,6 +307,7 @@ public struct AutomaticCaptureSetupGuide: View {
                 currentScreen = activeScreens.first ?? firstScreen
             }
             storedScreen = currentScreen
+            AutomaticCaptureStateStore.saveIOS27Progress(screen: currentScreen)
         }
     }
 
@@ -363,7 +369,7 @@ public struct AutomaticCaptureSetupGuide: View {
                 screenHeadline(isHebrew ? "יוצרים פעולה אוטומטית" : "Creating an automation")
 
                 bodyText(isHebrew
-                    ? "פתח את ״קיצורים״ ועבור ל־״פעולות אוטומטיות״.\nלחץ על +, בחר ״פעולה אוטומטית״, ומתוך הרשימה בחר ״ארנק״."
+                    ? "פתח את ״קיצורים״ ועבור אל ״פעולות אוטומטיות״.\nלחץ על +, בחר ״פעולה אוטומטית״, ומתוך הרשימה בחר ״ארנק״."
                     : "Open Shortcuts and go to \"Automations\".\nTap +, choose \"Automation\", and select \"Wallet\" from the list.")
                     .padding(.top, 16)
 
@@ -512,8 +518,8 @@ public struct AutomaticCaptureSetupGuide: View {
     private var screen3SPENT: some View {
         VStack(alignment: .leading, spacing: 0) {
             microLabel(isHebrew
-                ? "SPENT כבר בפנים — נשאר לחבר שני פרטים"
-                : "SPENT is in — just two details left to connect")
+                ? "SPENT כבר בפנים. נשאר לחבר שני פרטים"
+                : "SPENT is in. Just two details left to connect")
                 .padding(.bottom, 10)
 
             screenHeadline(isHebrew ? "עכשיו מוסיפים את SPENT" : "Now add SPENT")
@@ -565,8 +571,8 @@ public struct AutomaticCaptureSetupGuide: View {
             screenHeadline(isHebrew ? "רק נחבר את הסכום" : "Connect the amount")
 
             bodyText(isHebrew
-                ? "זה החלק שקצת פחות ברור ב״קיצורים״ — פשוט לחץ לפי הסדר הזה:"
-                : "This part isn't obvious in Shortcuts — just tap in this order:")
+                ? "זה החלק שקצת פחות ברור ב״קיצורים״. פשוט לחץ לפי הסדר הזה:"
+                : "This part isn't obvious in Shortcuts. Just tap in this order:")
                 .padding(.top, 16)
 
             CaptureMappingDiagram(
@@ -586,7 +592,7 @@ public struct AutomaticCaptureSetupGuide: View {
 
             quickCheckNote(
                 isHebrew
-                    ? "בדיקה קטנה: בכרטיס של ׳קלט הקיצור׳, השדה ׳סוג׳ צריך להיות מוגדר ל־׳עסקה׳."
+                    ? "בדיקה קטנה: בכרטיס של ׳קלט הקיצור׳, השדה ׳סוג׳ צריך להיות מוגדר כ׳עסקה׳."
                     : "Quick check: In the \"Shortcut Input\" card, the \"Type\" field should be set to \"Transaction\"."
             )
             .padding(.top, 14)
@@ -633,7 +639,7 @@ public struct AutomaticCaptureSetupGuide: View {
 
             quickCheckNote(
                 isHebrew
-                    ? "בדיקה קטנה: בכרטיס של ׳קלט הקיצור׳, השדה ׳סוג׳ צריך להיות מוגדר ל־׳עסקה׳."
+                    ? "בדיקה קטנה: בכרטיס של ׳קלט הקיצור׳, השדה ׳סוג׳ צריך להיות מוגדר כ׳עסקה׳."
                     : "Quick check: In the \"Shortcut Input\" card, the \"Type\" field should be set to \"Transaction\"."
             )
             .padding(.top, 14)
@@ -667,17 +673,17 @@ public struct AutomaticCaptureSetupGuide: View {
             .accessibilityHidden(true)
 
             screenHeadline(isHebrew
-                ? "זהו. מעכשיו זה קורה לבד."
-                : "That's it. It runs on its own now.")
+                ? "ההגדרה הסתיימה"
+                : "Setup complete")
 
             bodyText(isHebrew
-                ? "בפעם הבאה שתשלם ב-Apple Pay, האייפון יעביר ל-SPENT את סכום העסקה ואת בית העסק."
-                : "The next time you pay with Apple Pay, your iPhone will send SPENT the amount and merchant.")
+                ? "SPENT מחכה לקליטה הראשונה מהפעולה האוטומטית. אחרי התשלום הבא נדע שהכול מחובר."
+                : "SPENT is waiting for the first automatic capture. After your next payment, we'll know everything is connected.")
                 .padding(.top, 20)
 
             reassuranceLine(isHebrew
-                ? "לא צריך לפתוח את SPENT אחרי כל תשלום."
-                : "No need to open SPENT after each payment.")
+                ? "מחכה לקליטה הראשונה"
+                : "Waiting for the first capture")
                 .padding(.top, 12)
 
             // Optional connection test disclosure
@@ -719,16 +725,16 @@ public struct AutomaticCaptureSetupGuide: View {
                                 .padding(.top, 1)
 
                             Text(isHebrew
-                                ? "אם קיבלת התראה מ־SPENT — הקיצור מחובר לאפליקציה."
-                                : "If you received a notification from SPENT — the shortcut is connected to the app.")
+                                ? "אם קיבלת התראה של SPENT, הקיצור מחובר לאפליקציה."
+                                : "If you received a notification from SPENT, the shortcut is connected to the app.")
                                 .font(.system(.footnote, design: .rounded, weight: .semibold))
                                 .foregroundColor(Color.deepNavy)
                                 .lineSpacing(2)
                         }
 
                         Text(isHebrew
-                            ? "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים — זה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע ל־SPENT."
-                            : "In this test, transaction details may be empty or unclear — that's okay. The purpose is only to verify that the shortcut reaches SPENT.")
+                            ? "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים, וזה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע אל SPENT."
+                            : "In this test, transaction details may be empty or unclear, and that's okay. The purpose is only to verify that the shortcut reaches SPENT.")
                             .font(.system(.caption, design: .rounded))
                             .foregroundColor(Color.textMuted)
                             .lineSpacing(2)
@@ -749,8 +755,7 @@ public struct AutomaticCaptureSetupGuide: View {
 
     private var bottomBar6: some View {
         primaryCTA(isHebrew ? "חזרה ל-SPENT" : "Back to SPENT") {
-            // Clear stored progress so next time starts fresh
-            storedScreen = firstScreen
+            AutomaticCaptureStateStore.markSetupCompleted(at: Date())
             onFinished()
         }
     }
@@ -1092,8 +1097,8 @@ struct TroubleSheet: View {
                 .padding(.top, 2)
 
             Text(isHebrew
-                ? "אם אתה לא רואה כפתור ברור — חפש למטה את מה שאתה רוצה ולחץ עליו."
-                : "If you don't see an obvious button — search at the bottom of the screen and tap it.")
+                ? "אם אתה לא רואה כפתור ברור, חפש למטה את מה שאתה רוצה ולחץ עליו."
+                : "If you don't see an obvious button, search at the bottom of the screen and tap it.")
                 .font(.system(.subheadline, design: .rounded, weight: .bold))
                 .foregroundColor(Color.jetBlack)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1485,18 +1490,17 @@ public struct LegacyCaptureSetupGuideView: View {
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
         .onAppear {
-            if skipIntro {
-                if storedStep >= 1 && storedStep <= completionStep {
-                    currentStep = storedStep
+            let startStep = skipIntro ? 1 : 0
+            if let fresh = AutomaticCaptureStateStore.getFreshLegacyProgress() {
+                if fresh >= startStep && fresh < completionStep {
+                    currentStep = fresh
                 } else {
-                    currentStep = 1
+                    currentStep = startStep
+                    storedStep = currentStep
                 }
             } else {
-                if storedStep >= 1 && storedStep <= completionStep {
-                    currentStep = storedStep
-                } else {
-                    currentStep = 0
-                }
+                currentStep = startStep
+                storedStep = currentStep
             }
         }
         .sheet(isPresented: $showTrouble) {
@@ -1630,14 +1634,14 @@ public struct LegacyCaptureSetupGuideView: View {
     // MARK: - Completion Content (Step 10)
     private var completionContent: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(isHebrew ? "הקליטה האוטומטית מוכנה" : "Automatic capture is ready")
+            Text(isHebrew ? "ההגדרה הסתיימה" : "Setup complete")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(Color.jetBlack)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(isHebrew
-                ? "מעכשיו, בכל פעם שתשלם עם Apple Pay, SPENT תקלוט את העסקה ברקע באופן אוטומטי."
-                : "From now on, whenever you pay with Apple Pay, SPENT will automatically capture the transaction in the background.")
+                ? "SPENT מחכה לקליטה הראשונה מהפעולה האוטומטית. אחרי התשלום הבא נדע שהכול מחובר."
+                : "SPENT is waiting for the first automatic capture. After your next payment, we'll know everything is connected.")
                 .font(.system(size: 16, weight: .regular, design: .rounded))
                 .foregroundColor(Color.textSecondary)
                 .lineSpacing(4)
@@ -1656,16 +1660,11 @@ public struct LegacyCaptureSetupGuideView: View {
             .padding(.top, 8)
             .padding(.bottom, 4)
 
-            // Subtle live status indicator
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(Color.luckyGreen)
-                    .frame(width: 8, height: 8)
-                Text(isHebrew ? "מוכן לפעולה הבאה ב-Apple Pay" : "Ready for your next Apple Pay purchase")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(Color.jetBlack.opacity(0.75))
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
+            // Quiet state text
+            Text(isHebrew ? "מחכה לקליטה הראשונה" : "Waiting for the first capture")
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -1798,6 +1797,7 @@ public struct LegacyCaptureSetupGuideView: View {
                 // Step 10 (Completion Screen): Single prominent "סיימתי" button
                 Button(action: {
                     Haptics.notify(.success)
+                    AutomaticCaptureStateStore.markSetupCompleted(at: Date())
                     onFinished()
                 }) {
                     Text(isHebrew ? "סיימתי" : "Done")
@@ -1825,8 +1825,10 @@ public struct LegacyCaptureSetupGuideView: View {
             if currentStep < completionStep {
                 currentStep += 1
                 storedStep = currentStep
+                AutomaticCaptureStateStore.saveLegacyProgress(step: currentStep)
             } else {
                 Haptics.notify(.success)
+                AutomaticCaptureStateStore.markSetupCompleted(at: Date())
                 onFinished()
             }
         }
@@ -1839,11 +1841,13 @@ public struct LegacyCaptureSetupGuideView: View {
                 if currentStep > 1 {
                     currentStep -= 1
                     storedStep = currentStep
+                    AutomaticCaptureStateStore.saveLegacyProgress(step: currentStep)
                 }
             } else {
                 if currentStep > 0 {
                     currentStep -= 1
                     storedStep = currentStep
+                    AutomaticCaptureStateStore.saveLegacyProgress(step: currentStep)
                 }
             }
         }

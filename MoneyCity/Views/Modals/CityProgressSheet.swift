@@ -225,8 +225,8 @@ public struct CityProgressSheet: View {
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
 
-                    Text(he ? "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים."
-                            : "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life.")
+                    Text(he ? "עם המשך התיעוד נפתחת מדי פעם מתנה קטנה שמוסיפה חיים לעיר."
+                            : "Consistent tracking unlocks small gifts that bring more life to your city.")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundColor(Color.textMuted)
                         .multilineTextAlignment(.center)

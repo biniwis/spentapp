@@ -130,6 +130,9 @@ public enum WalletIngestCoordinator {
             rawCurrency: IngestLogEntry.describe(currency), rawDate: IngestLogEntry.describe(transactionDate),
             intentName: intentName)
         DatabaseService.shared.record(log)
+        if AutomaticCaptureStateStore.isAutomaticCaptureIntent(intentName) {
+            AutomaticCaptureStateStore.markAutomaticCaptureDetected(at: log.receivedAt)
+        }
         defer {
             log.outcome += "\ningestID=\(machine.ingestID.uuidString); \(machine.states.map(\.rawValue).joined(separator: " → "))"
             DatabaseService.shared.persist()
@@ -139,7 +142,7 @@ public enum WalletIngestCoordinator {
                 currency: currency, date: transactionDate, source: intentName, pendingID: pendingID)
             switch outcome {
             case .duplicate:
-                log.outcome = "כפילות — לא נשמר שוב"
+                log.outcome = "כפילות: לא נשמר שוב"
                 return WalletIngestResult(message: AppLanguage.localized("העסקה הזו כבר טופלה.", "This transaction has already been processed."), succeeded: true)
             case .pending(let pending, let isNew):
                 if isNew {
@@ -157,7 +160,7 @@ public enum WalletIngestCoordinator {
                 log.resolvedAmount = transaction.amount
                 log.resolvedMerchant = transaction.merchant
                 log.categoryDetected = transaction.category.shortName
-                log.outcome = transaction.isConfirmed ? "נשמר בהצלחה" : "נשמר — ממתין לאישור"
+                log.outcome = transaction.isConfirmed ? "נשמר בהצלחה" : "נשמר: ממתין לאישור"
                 DatabaseService.shared.incrementMerchantRuleHitCount(for: transaction.merchant)
                 #if canImport(UserNotifications)
                 NotificationService.sendExpenseLoggedNotification(

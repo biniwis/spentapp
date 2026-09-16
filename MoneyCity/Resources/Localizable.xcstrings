@@ -42,6 +42,16 @@
         }
       }
     },
+    "%@ · %lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld %3$@"
+          }
+        }
+      }
+    },
     "%@ · %lld basis" : {
       "localizations" : {
         "en" : {
@@ -314,6 +324,16 @@
     "%lld active goals" : {
 
     },
+    "%lld of %lld days" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld days"
+          }
+        }
+      }
+    },
     "%lld visits (%@ total) • View Details" : {
       "localizations" : {
         "en" : {
@@ -326,6 +346,16 @@
     },
     "%lld יעדים מוגדרים" : {
 
+    },
+    "%lld מתוך %lld ימים" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld מתוך %2$lld ימים"
+          }
+        }
+      }
     },
     "%lld. %@" : {
       "localizations" : {
@@ -454,12 +484,6 @@
 
     },
     "A new month in the city" : {
-
-    },
-    "About city additions" : {
-
-    },
-    "About city life" : {
 
     },
     "About SPENT" : {
@@ -622,6 +646,9 @@
     "Automatic Capture Guide Previews:" : {
 
     },
+    "Automatic capture is ready" : {
+
+    },
     "Automatic Currency Conversion" : {
 
     },
@@ -740,19 +767,25 @@
     "City" : {
 
     },
-    "City additions" : {
-
-    },
     "City Archive" : {
 
     },
     "City companions — weekly addition" : {
 
     },
+    "City Life" : {
+
+    },
     "City routine" : {
 
     },
+    "City Worlds" : {
+
+    },
     "Close" : {
+
+    },
+    "Close building details" : {
 
     },
     "Confirm category" : {
@@ -910,6 +943,9 @@
         }
       }
     },
+    "Drag to rotate · Pinch to zoom · Tap to inspect" : {
+
+    },
     "Edit" : {
 
     },
@@ -990,7 +1026,7 @@
     "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling." : {
 
     },
-    "From time to time, someone new will arrive here." : {
+    "From now on, whenever you pay with Apple Pay, SPENT will automatically capture the transaction in the background." : {
 
     },
     "Full journey from city concept to reveal, with all transitions" : {
@@ -1009,9 +1045,6 @@
 
     },
     "Goal name (e.g. Emergency Fund, Trip)" : {
-
-    },
-    "Got it" : {
 
     },
     "Haptic Feedback" : {
@@ -1137,6 +1170,9 @@
     "In this test, transaction details may be empty or unclear — that's okay. The purpose is only to verify that the shortcut reaches SPENT." : {
 
     },
+    "In Your City" : {
+
+    },
     "Included" : {
 
     },
@@ -1161,10 +1197,16 @@
     "Interface Language" : {
 
     },
+    "Internal lab · Same demo data in both worlds · Selection is not saved" : {
+
+    },
     "Isolated Preview Sandbox" : {
 
     },
     "Keep streak tomorrow" : {
+
+    },
+    "Let's set it up" : {
 
     },
     "Limited Time" : {
@@ -1180,6 +1222,9 @@
 
     },
     "Live interactive 3D diorama lab with real-time density switching from Day 1 to Mega Metropolis:" : {
+
+    },
+    "Loading world…" : {
 
     },
     "Main Category" : {
@@ -1282,6 +1327,9 @@
     "Next" : {
 
     },
+    "Night" : {
+
+    },
     "No expenses recorded this month" : {
 
     },
@@ -1324,10 +1372,16 @@
     "On the budget screen" : {
 
     },
+    "One demo city, two worlds. Rotate, zoom and inspect in live 3D." : {
+
+    },
     "Open 3D ↗" : {
 
     },
     "Open Shortcuts" : {
+
+    },
+    "Open Shortcuts App" : {
 
     },
     "Open the shortcut screen in Shortcuts. At the bottom of the screen, below the search area, there is a ▶︎ button. Tap it to test-run the shortcut." : {
@@ -1383,6 +1437,9 @@
     "Preview" : {
 
     },
+    "Preview could not load" : {
+
+    },
     "Preview weekly companion rewards, unlock flow, and animated join ceremonies:" : {
 
     },
@@ -1397,6 +1454,16 @@
     },
     "Progress setting up automatic capture, about %lld%%" : {
 
+    },
+    "Progress setting up automatic capture, step %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Progress setting up automatic capture, step %1$lld of %2$lld"
+          }
+        }
+      }
     },
     "Quick Expense" : {
       "extractionState" : "manual",
@@ -1419,6 +1486,9 @@
 
     },
     "Reading the amount and merchant from your receipt…" : {
+
+    },
+    "Ready for your next Apple Pay purchase" : {
 
     },
     "Real Time" : {
@@ -1498,6 +1568,9 @@
         }
       }
     },
+    "Reload preview" : {
+
+    },
     "Remaining in budget" : {
 
     },
@@ -1523,6 +1596,9 @@
 
     },
     "Reset All Transactions & Data" : {
+
+    },
+    "Reset camera" : {
 
     },
     "Reset Confirmation Banner" : {
@@ -1647,6 +1723,9 @@
     "Set Goal" : {
 
     },
+    "Set it up once.\nThen it runs automatically." : {
+
+    },
     "Set monthly budget" : {
 
     },
@@ -1725,16 +1804,10 @@
     "SPENT doesn’t get access to your card or bank account." : {
 
     },
-    "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life." : {
-
-    },
     "SPENT Month" : {
 
     },
     "SPENT לא מקבלת גישה לכרטיס או לחשבון הבנק שלך." : {
-
-    },
-    "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים." : {
 
     },
     "Status:" : {
@@ -1797,6 +1870,9 @@
       }
     },
     "The current state is snapshotted first, so this can be undone." : {
+
+    },
+    "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life." : {
 
     },
     "The Nature Reserve changes with your budget and savings." : {
@@ -1950,6 +2026,9 @@
     "Undo" : {
 
     },
+    "Urban · Medieval" : {
+
+    },
     "Version, copyright & details" : {
 
     },
@@ -1963,6 +2042,9 @@
 
     },
     "Want to test if the connection works?" : {
+
+    },
+    "We'll set up your iPhone to pass transaction amounts and merchants to SPENT after every Apple Pay purchase." : {
 
     },
     "Weekly Addition Ceremony" : {
@@ -2038,6 +2120,9 @@
       }
     },
     "Without income, the savings figure rests on a number the app invented." : {
+
+    },
+    "World" : {
 
     },
     "You can change your target later" : {
@@ -2131,6 +2216,9 @@
 
     },
     "איפוס מבט" : {
+
+    },
+    "איפוס מצלמה" : {
 
     },
     "איפוס סינונים" : {
@@ -2257,6 +2345,9 @@
     "גלויות חודשיות (Mock)" : {
 
     },
+    "גרירה לסיבוב · צביטה לזום · הקשה לבחינת מבנה" : {
+
+    },
     "גרסה, זכויות יוצרים ומידע" : {
 
     },
@@ -2273,9 +2364,6 @@
 
     },
     "הבא" : {
-
-    },
-    "הבנתי" : {
 
     },
     "הגדר יעד" : {
@@ -2360,6 +2448,9 @@
 
     },
     "החודש: %@" : {
+
+    },
+    "החיים בעיר" : {
 
     },
     "החלף מטבע" : {
@@ -2485,6 +2576,9 @@
     "הקודם" : {
 
     },
+    "הקליטה האוטומטית מוכנה" : {
+
+    },
     "הקש להצגת פירוט הרובעים" : {
 
     },
@@ -2527,8 +2621,21 @@
     "התפלגות הוצאות" : {
 
     },
+    "התצוגה לא נטענה" : {
+
+    },
     "התקדמות בהגדרת קליטה אוטומטית, כ-%lld%%" : {
 
+    },
+    "התקדמות בהגדרת קליטה אוטומטית, שלב %lld מתוך %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "התקדמות בהגדרת קליטה אוטומטית, שלב %1$lld מתוך %2$lld"
+          }
+        }
+      }
     },
     "התראות" : {
 
@@ -2584,7 +2691,13 @@
     "חריגה של ₪650 מהתכנון החודשי" : {
 
     },
+    "טוען עולם…" : {
+
+    },
     "טיול ליפן" : {
+
+    },
+    "טען מחדש" : {
 
     },
     "טקס תוספת שבועית לעיר" : {
@@ -2594,6 +2707,9 @@
 
     },
     "טרם נרשמו הוצאות החודש" : {
+
+    },
+    "יאללה, נגדיר" : {
 
     },
     "יעד הוצאה חודשי" : {
@@ -2617,7 +2733,13 @@
     "יש לך הוצאות קבועות?" : {
 
     },
+    "כבר בעיר" : {
+
+    },
     "כדי ששמורת הטבע תשקף את קצב החודש, אפשר להגדיר כמה בערך תרצה להוציא בכל חודש." : {
+
+    },
+    "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים." : {
 
     },
     "כל %lld בחודש" : {
@@ -2659,6 +2781,9 @@
     "לחץ על שדה ׳סכום עסקה׳ בתוך הפעולה של SPENT ← בחר ׳קלט הקיצור׳ ← לחץ על הערך שנוסף ← בחר ׳כמות׳ מתוך פרטי העסקה." : {
 
     },
+    "לילה" : {
+
+    },
     "לכל בניין יש סיפור" : {
 
     },
@@ -2671,7 +2796,7 @@
     "לשחזר את הגיבוי הזה?" : {
 
     },
-    "מדי פעם תופיע כאן תוספת חדשה." : {
+    "מגדירים פעם אחת.\nאחר כך זה קורה לבד." : {
 
     },
     "מדיניות פרטיות" : {
@@ -2681,6 +2806,9 @@
 
     },
     "מה נוסף לעיר?" : {
+
+    },
+    "מוכן לפעולה הבאה ב-Apple Pay" : {
 
     },
     "מוסתר" : {
@@ -2734,7 +2862,13 @@
     "מנוע + אוצר ↗" : {
 
     },
+    "מעבדה פנימית בלבד · אותם נתוני דוגמה בשני העולמות · הבחירה לא נשמרת" : {
+
+    },
     "מעבדת תלת-ממד אינטראקטיבית" : {
+
+    },
+    "מעכשיו, בכל פעם שתשלם עם Apple Pay, SPENT תקלוט את העסקה ברקע באופן אוטומטי." : {
 
     },
     "מעל היעד ב־%@" : {
@@ -2785,6 +2919,9 @@
     "נא להזין סכום תקין" : {
 
     },
+    "נגדיר לאייפון להעביר ל-SPENT את סכום העסקה ואת בית העסק אחרי כל תשלום ב-Apple Pay." : {
+
+    },
     "נוצר בישראל באהבה 🏙️" : {
 
     },
@@ -2831,6 +2968,9 @@
     "סגור" : {
 
     },
+    "סגור פרטי מבנה" : {
+
+    },
     "סגירה" : {
 
     },
@@ -2856,6 +2996,9 @@
 
     },
     "סיור Onboarding מלא" : {
+
+    },
+    "סיימתי" : {
 
     },
     "סיכום חודשי" : {
@@ -2894,10 +3037,7 @@
     "עזרה ומשוב" : {
 
     },
-    "על החיים בעיר" : {
-
-    },
-    "על התוספות בעיר" : {
+    "עיר לדוגמה, שני עולמות. סיבוב, זום ובחינת מבנים בתלת־ממד." : {
 
     },
     "עסקאות" : {
@@ -2973,6 +3113,9 @@
 
     },
     "פתח את ״קיצורים״" : {
+
+    },
+    "פתח את אפליקציית קיצורים" : {
 
     },
     "פתח את מסך הקיצור עצמו ב׳קיצורים׳. בתחתית המסך, מתחת לאזור החיפוש, יש כפתור ▶︎. לחץ עליו כדי להריץ את הקיצור לבדיקה." : {
@@ -3115,9 +3258,6 @@
 
     },
     "שפת ממשק" : {
-
-    },
-    "תוספות לעיר" : {
 
     },
     "תצוגת 3D אינטראקטיבית עם החלפת מצבי צפיפות בזמן אמת – מתחילת חודש ועד מגה-מטרופולין:" : {

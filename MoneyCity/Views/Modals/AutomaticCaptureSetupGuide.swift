@@ -140,6 +140,18 @@ public struct AutomaticCaptureSetupGuide: View {
 
     // MARK: - Body
     public var body: some View {
+        if usesNewShortcutsFlow {
+            ios27GuideView
+        } else {
+            LegacyCaptureSetupGuideView(
+                skipIntro: skipIntro,
+                showCloseButton: showCloseButton,
+                onFinished: onFinished
+            )
+        }
+    }
+
+    private var ios27GuideView: some View {
         ZStack(alignment: .top) {
             Color.appBackground.ignoresSafeArea()
 
@@ -1370,26 +1382,663 @@ struct TroubleSheet: View {
     }
 }
 
+// MARK: - Legacy Capture Setup Guide View (iOS < 27)
+// Built faithfully to Figma flow: SPENT — Apple Pay Setup Flow (9 steps)
+public struct LegacyCaptureSetupGuideView: View {
+    public var skipIntro: Bool
+    public var showCloseButton: Bool
+    public var onFinished: () -> Void
+
+    public init(
+        skipIntro: Bool = false,
+        showCloseButton: Bool = true,
+        onFinished: @escaping () -> Void
+    ) {
+        self.skipIntro = skipIntro
+        self.showCloseButton = showCloseButton
+        self.onFinished = onFinished
+    }
+
+    @EnvironmentObject private var l10n: LocalizationManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // Persist active step so switching to Shortcuts and returning preserves position
+    @AppStorage("spent.capture.guide.legacy.step") private var storedStep: Int = 1
+    @AppStorage("user_name") private var storedUserName: String = ""
+
+    @State private var currentStep: Int = 1
+    @State private var showTrouble: Bool = false
+
+    private var isHebrew: Bool { l10n.language == .hebrew }
+
+    private var totalSteps: Int { 9 }
+    private var completionStep: Int { 10 }
+
+    private var pageAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.12) : .easeInOut(duration: 0.28)
+    }
+
+    private var progressFraction: Double {
+        if currentStep <= 0 { return 0 }
+        if currentStep >= completionStep { return 1.0 }
+        return max(0, min(1, Double(currentStep) / Double(completionStep)))
+    }
+
+    private var progressA11yPercent: Int {
+        Int((progressFraction * 100).rounded())
+    }
+
+    private var canGoBack: Bool {
+        if skipIntro {
+            return currentStep > 1
+        } else {
+            return currentStep > 0
+        }
+    }
+
+    private var activeStep: LegacySetupStep {
+        LegacySetupStep.step(for: max(1, min(totalSteps, currentStep)))
+    }
+
+    public var body: some View {
+        ZStack(alignment: .top) {
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Top bar: Back, progress bar, close
+                topBar
+                    .padding(.horizontal, 24)
+                    .padding(.top, 12)
+                    .padding(.bottom, 12)
+
+                // Scrollable content area
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        if currentStep == 0 {
+                            introContent
+                        } else if currentStep == completionStep {
+                            completionContent
+                        } else {
+                            stepContent(step: activeStep)
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 16)
+                    .frame(maxWidth: 520, alignment: .leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id(currentStep)
+                    .transition(reduceMotion ? .opacity : .asymmetric(
+                        insertion: .offset(x: isHebrew ? -24 : 24).combined(with: .opacity),
+                        removal:   .offset(x: isHebrew ?  24 : -24).combined(with: .opacity)
+                    ))
+                }
+
+                Spacer(minLength: 8)
+
+                // Bottom bar CTAs
+                bottomBar
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+                    .padding(.bottom, 20)
+                    .background(Color.appBackground)
+            }
+        }
+        .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
+        .onAppear {
+            if skipIntro {
+                if storedStep >= 1 && storedStep <= completionStep {
+                    currentStep = storedStep
+                } else {
+                    currentStep = 1
+                }
+            } else {
+                if storedStep >= 1 && storedStep <= completionStep {
+                    currentStep = storedStep
+                } else {
+                    currentStep = 0
+                }
+            }
+        }
+        .sheet(isPresented: $showTrouble) {
+            TroubleSheet(
+                context: .shortcuts,
+                usesNewShortcutsFlow: false,
+                isHebrew: isHebrew
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    // MARK: - Top Bar
+    private var topBar: some View {
+        HStack(spacing: 16) {
+            Button(action: goBack) {
+                Image(systemName: "arrow.backward")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(Color.jetBlack)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isHebrew ? "חזרה" : "Back")
+            .opacity(canGoBack ? 1 : 0)
+            .allowsHitTesting(canGoBack)
+
+            CaptureProgressBar(fraction: progressFraction, isHebrew: isHebrew)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(isHebrew
+                    ? "התקדמות בהגדרת קליטה אוטומטית, שלב \(currentStep) מתוך \(totalSteps)"
+                    : "Progress setting up automatic capture, step \(currentStep) of \(totalSteps)")
+
+            if showCloseButton {
+                Button(action: {
+                    Haptics.selection()
+                    onFinished()
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.jetBlack.opacity(0.6))
+                        .frame(width: 32, height: 32)
+                        .background(Color.jetBlack.opacity(0.06))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isHebrew ? "סגור" : "Close")
+            } else {
+                Color.clear.frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Intro Content (Step 0)
+    private var introContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(isHebrew
+                ? "מגדירים פעם אחת.\nאחר כך זה קורה לבד."
+                : "Set it up once.\nThen it runs automatically.")
+                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundColor(Color.jetBlack)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(isHebrew
+                ? "נגדיר לאייפון להעביר ל-SPENT את סכום העסקה ואת בית העסק אחרי כל תשלום ב-Apple Pay."
+                : "We'll set up your iPhone to pass transaction amounts and merchants to SPENT after every Apple Pay purchase.")
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 4)
+
+            VStack(alignment: .leading, spacing: 14) {
+                introReassuranceRow(
+                    icon: "sparkles",
+                    text: isHebrew ? "זה קצר, ומגדירים את זה רק פעם אחת." : "It's quick, and you only set it up once."
+                )
+                introReassuranceRow(
+                    icon: "lock.shield",
+                    text: isHebrew ? "העסקאות נשמרות רק במכשיר שלך ללא חיבור לבנק." : "Transactions stay securely on your device without bank connections."
+                )
+                introReassuranceRow(
+                    icon: "hand.tap",
+                    text: isHebrew ? "המדריך כולל צילומי מסך וסימוני טאפ מדויקים." : "The guide features step-by-step screenshots and exact tap indicators."
+                )
+            }
+            .padding(.top, 12)
+        }
+    }
+
+    private func introReassuranceRow(icon: String, text: String) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundColor(Color.jetBlack.opacity(0.6))
+                .frame(width: 22, height: 22)
+
+            Text(text)
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundColor(Color.jetBlack)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Step Content (Steps 1-9)
+    private func stepContent(step: LegacySetupStep) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Title
+            Text(isHebrew ? step.titleHe : step.titleEn)
+                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundColor(Color.jetBlack)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Body
+            Text(isHebrew ? step.bodyHe : step.bodyEn)
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Screenshot with Tap Indicator
+            screenshotCard(step: step)
+                .padding(.top, 6)
+        }
+    }
+
+    // MARK: - Completion Content (Step 10)
+    private var completionContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(isHebrew ? "הקליטה האוטומטית מוכנה" : "Automatic capture is ready")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(Color.jetBlack)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(isHebrew
+                ? "מעכשיו, בכל פעם שתשלם עם Apple Pay, SPENT תקלוט את העסקה ברקע באופן אוטומטי."
+                : "From now on, whenever you pay with Apple Pay, SPENT will automatically capture the transaction in the background.")
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // Dynamic onboarding-vibe city scene for automatic capture
+            OnboardingCityScene(
+                step: .automation,
+                mayorName: storedUserName,
+                targetAmountText: "",
+                currencySymbol: l10n.baseCurrency.symbol,
+                isRTL: isHebrew,
+                height: 220
+            )
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
+
+            // Subtle live status indicator
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Color.luckyGreen)
+                    .frame(width: 8, height: 8)
+                Text(isHebrew ? "מוכן לפעולה הבאה ב-Apple Pay" : "Ready for your next Apple Pay purchase")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundColor(Color.jetBlack.opacity(0.75))
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Screenshot Device Card
+    @ViewBuilder
+    private func screenshotCard(step: LegacySetupStep) -> some View {
+        ZStack(alignment: .topLeading) {
+            // The genuine iOS screenshot
+            Image(step.imageName)
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.jetBlack.opacity(0.08), lineWidth: 1)
+                )
+
+            // Green concentric tap indicator overlay
+            if let rx = step.tapRelativeX, let ry = step.tapRelativeY {
+                GeometryReader { geo in
+                    SpentTapIndicator()
+                        .position(x: geo.size.width * rx, y: geo.size.height * ry)
+                }
+            }
+        }
+        .environment(\.layoutDirection, .leftToRight) // Fixed LTR coordinates aligned with image pixels
+        .aspectRatio(259.0 / 520.0, contentMode: .fit)
+        .frame(maxHeight: 460)
+        .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    // MARK: - Bottom Bar
+    @ViewBuilder
+    private var bottomBar: some View {
+        VStack(spacing: 10) {
+            if currentStep == 0 {
+                // Intro CTAs
+                Button(action: advance) {
+                    Text(isHebrew ? "יאללה, נגדיר" : "Let's set it up")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.luckyGreen)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+
+                Button(action: {
+                    Haptics.selection()
+                    onFinished()
+                }) {
+                    Text(isHebrew ? "אעשה את זה אחר כך" : "I'll do this later")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(minHeight: 40)
+                }
+                .buttonStyle(.plain)
+
+            } else if currentStep == 1 {
+                // Step 1: Open Shortcuts button + Next button
+                Button(action: openShortcutsApp) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.forward.app")
+                            .font(.system(size: 15, weight: .semibold))
+                        Text(isHebrew ? "פתח את אפליקציית קיצורים" : "Open Shortcuts App")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    }
+                    .foregroundColor(Color.jetBlack)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.jetBlack.opacity(0.06))
+                    )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+
+                Button(action: advance) {
+                    Text(isHebrew ? "הבא" : "Next")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.luckyGreen)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+
+            } else if currentStep <= totalSteps {
+                // Steps 2 - 9: Back button + Next button
+                HStack(spacing: 12) {
+                    Button(action: goBack) {
+                        Text(isHebrew ? "הקודם" : "Back")
+                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.jetBlack)
+                            .frame(width: 105)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.jetBlack.opacity(0.06))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .bouncyPress()
+
+                    Button(action: advance) {
+                        Text(isHebrew ? "הבא" : "Next")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.luckyGreen)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .bouncyPress()
+                }
+            } else {
+                // Step 10 (Completion Screen): Single prominent "סיימתי" button
+                Button(action: {
+                    Haptics.notify(.success)
+                    onFinished()
+                }) {
+                    Text(isHebrew ? "סיימתי" : "Done")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.luckyGreen)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+            }
+        }
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Actions
+    private func advance() {
+        Haptics.impact(.medium)
+        withAnimation(pageAnimation) {
+            if currentStep < completionStep {
+                currentStep += 1
+                storedStep = currentStep
+            } else {
+                Haptics.notify(.success)
+                onFinished()
+            }
+        }
+    }
+
+    private func goBack() {
+        Haptics.selection()
+        withAnimation(pageAnimation) {
+            if skipIntro {
+                if currentStep > 1 {
+                    currentStep -= 1
+                    storedStep = currentStep
+                }
+            } else {
+                if currentStep > 0 {
+                    currentStep -= 1
+                    storedStep = currentStep
+                }
+            }
+        }
+    }
+
+    private func openShortcutsApp() {
+        Haptics.impact(.medium)
+        if let url = URL(string: "shortcuts://") {
+            UIApplication.shared.open(url)
+        }
+    }
+}
+
+// MARK: - SpentTapIndicator
+public struct SpentTapIndicator: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isPulsing: Bool = false
+
+    public init() {}
+
+    public var body: some View {
+        ZStack {
+            // Outer pulsing halo (from Figma TAP_HALO: 54x54)
+            Circle()
+                .stroke(Color.luckyGreen.opacity(0.25), lineWidth: 2)
+                .frame(width: 54, height: 54)
+                .scaleEffect(reduceMotion ? 1.0 : (isPulsing ? 1.16 : 0.88))
+                .opacity(reduceMotion ? 0.25 : (isPulsing ? 0.40 : 0.15))
+
+            // Middle ring (from Figma TAP_RING: 34x34)
+            Circle()
+                .fill(Color.white.opacity(0.10))
+                .frame(width: 34, height: 34)
+                .overlay(
+                    Circle()
+                        .stroke(Color.luckyGreen, lineWidth: 2.5)
+                )
+
+            // Center solid dot (from Figma TAP_DOT: 10x10)
+            Circle()
+                .fill(Color.luckyGreen)
+                .frame(width: 10, height: 10)
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) {
+                isPulsing = true
+            }
+        }
+    }
+}
+
+// MARK: - LegacySetupStep Model
+public struct LegacySetupStep: Identifiable {
+    public let id: Int
+    public let flowNumber: String
+    public let titleHe: String
+    public let titleEn: String
+    public let bodyHe: String
+    public let bodyEn: String
+    public let imageName: String
+    public let tapRelativeX: CGFloat?
+    public let tapRelativeY: CGFloat?
+
+    public static let allSteps: [LegacySetupStep] = [
+        LegacySetupStep(
+            id: 1,
+            flowNumber: "01",
+            titleHe: "פתח את אפליקציית קיצורים",
+            titleEn: "Open Shortcuts App",
+            bodyHe: "עבור בתפריט שלמטה ל״פעולות אוטומטיות״ והקש על + בפינה העליונה.",
+            bodyEn: "In the bottom menu, go to \"Automations\" and tap + in the top corner.",
+            imageName: "shortcut_legacy_step_01",
+            tapRelativeX: 0.1313,
+            tapRelativeY: 0.0923
+        ),
+        LegacySetupStep(
+            id: 2,
+            flowNumber: "02",
+            titleHe: "בחר את ״ארנק״",
+            titleEn: "Select \"Wallet\"",
+            bodyHe: "גלול ברשימת הטריגרים עד ״ארנק״ והקש עליו.",
+            bodyEn: "Scroll through the trigger list to \"Wallet\" and tap it.",
+            imageName: "shortcut_legacy_step_02",
+            tapRelativeX: 0.4903,
+            tapRelativeY: 0.7673
+        ),
+        LegacySetupStep(
+            id: 3,
+            flowNumber: "03",
+            titleHe: "בחר מה לעקוב",
+            titleEn: "Choose What to Track",
+            bodyHe: "סמן את הכרטיסים והקטגוריות הרצויים, ואז הקש ״הבא״.",
+            bodyEn: "Select the desired cards and categories, then tap \"Next\".",
+            imageName: "shortcut_legacy_step_03",
+            tapRelativeX: 0.1969,
+            tapRelativeY: 0.0808
+        ),
+        LegacySetupStep(
+            id: 4,
+            flowNumber: "04",
+            titleHe: "הוסף פעולה",
+            titleEn: "Add Action",
+            bodyHe: "הקש על ״יצירת קיצור חדש״ כדי להמשיך.",
+            bodyEn: "Tap \"New Blank Automation\" to continue.",
+            imageName: "shortcut_legacy_step_04",
+            tapRelativeX: 0.7027,
+            tapRelativeY: 0.3385
+        ),
+        LegacySetupStep(
+            id: 5,
+            flowNumber: "05",
+            titleHe: "חפש את SPENT",
+            titleEn: "Search for SPENT",
+            bodyHe: "הקלד Spe ובחר ״הקלטת עסקת Apple Pay״.",
+            bodyEn: "Type Spe and select \"Record Apple Pay Transaction\".",
+            imageName: "shortcut_legacy_step_05",
+            tapRelativeX: 0.2587,
+            tapRelativeY: 0.5288
+        ),
+        LegacySetupStep(
+            id: 6,
+            flowNumber: "06",
+            titleHe: "חבר את סכום העסקה",
+            titleEn: "Connect Transaction Amount",
+            bodyHe: "בשדה הסכום בחר ״קלט של קיצור״ ואז לחץ עליו שוב ובחר ״כמות״.",
+            bodyEn: "In the amount field select \"Shortcut Input\", tap it again and choose \"Amount\".",
+            imageName: "shortcut_legacy_step_06",
+            tapRelativeX: 0.3977,
+            tapRelativeY: 0.2596
+        ),
+        LegacySetupStep(
+            id: 7,
+            flowNumber: "07",
+            titleHe: "חבר את שם המקום",
+            titleEn: "Connect Merchant Name",
+            bodyHe: "בחר שוב ״קלט של קיצור״ בשדה הבא ולחץ עליו שוב ובחר בית העסק.",
+            bodyEn: "Select \"Shortcut Input\" again in the next field, tap it again, and choose Merchant.",
+            imageName: "shortcut_legacy_step_07",
+            tapRelativeX: 0.7529,
+            tapRelativeY: 0.2981
+        ),
+        LegacySetupStep(
+            id: 8,
+            flowNumber: "08",
+            titleHe: "בדוק שזה נשמר",
+            titleEn: "Verify It's Saved",
+            bodyHe: "חזור ל״פעולות אוטומטיות״ וודא שהאוטומציה מופיעה ברשימה, ולחץ עליה.",
+            bodyEn: "Return to \"Automations\", verify that the automation appears in the list, and tap it.",
+            imageName: "shortcut_legacy_step_09",
+            tapRelativeX: 0.50,
+            tapRelativeY: 0.22
+        ),
+        LegacySetupStep(
+            id: 9,
+            flowNumber: "09",
+            titleHe: "סיים את ההגדרה",
+            titleEn: "Finish Setup",
+            bodyHe: "וודא שהסימון הוא על ״הפעלה מיידית״, ואז הקש ״סיום״.",
+            bodyEn: "Verify it is set to \"Run Immediately\", then tap \"Done\".",
+            imageName: "shortcut_legacy_step_08",
+            tapRelativeX: 0.1351,
+            tapRelativeY: 0.0904
+        )
+    ]
+
+    public static func step(for id: Int) -> LegacySetupStep {
+        allSteps.first(where: { $0.id == id }) ?? allSteps[0]
+    }
+}
+
 // MARK: - Previews
-#Preview("Guide • Hebrew • Intro") {
-    AutomaticCaptureSetupGuide(skipIntro: false, onFinished: {})
+#Preview("Legacy Guide • Step 1 • Hebrew") {
+    LegacyCaptureSetupGuideView(skipIntro: true, onFinished: {})
         .environmentObject(LocalizationManager.shared)
 }
 
-#Preview("Guide • Hebrew • Screen 1") {
-    AutomaticCaptureSetupGuide(skipIntro: true, onFinished: {})
+#Preview("Legacy Guide • Step 6 • Connect Amount") {
+    LegacyCaptureSetupGuideView(skipIntro: true, onFinished: {})
         .environmentObject(LocalizationManager.shared)
+        .onAppear {
+            UserDefaults.standard.set(6, forKey: "spent.capture.guide.legacy.step")
+        }
 }
 
-#Preview("Guide • Hebrew • Amount") {
-    let g = AutomaticCaptureSetupGuide(skipIntro: true, onFinished: {})
-    // Force screen 4 via AppStorage for preview
-    return g.environmentObject(LocalizationManager.shared)
-        .onAppear { UserDefaults.standard.set(4, forKey: "spent.capture.guide.screen") }
+#Preview("Legacy Guide • Step 10 • Completion Screen") {
+    LegacyCaptureSetupGuideView(skipIntro: true, onFinished: {})
+        .environmentObject(LocalizationManager.shared)
+        .onAppear {
+            UserDefaults.standard.set(10, forKey: "spent.capture.guide.legacy.step")
+        }
 }
 
-#Preview("Guide • English") {
-    AutomaticCaptureSetupGuide(skipIntro: false, onFinished: {})
+#Preview("Legacy Guide • English") {
+    LegacyCaptureSetupGuideView(skipIntro: true, onFinished: {})
         .environmentObject({
             let m = LocalizationManager.shared
             m.language = .english
@@ -1397,8 +2046,12 @@ struct TroubleSheet: View {
         }())
 }
 
-#Preview("CaptureMappingDiagram • Hebrew") {
-    CaptureMappingDiagram(top: "כמות", mid: "קלט הקיצור", bot: "כמות")
-        .padding()
-        .environment(\.layoutDirection, .rightToLeft)
+#Preview("Automatic Guide • Legacy Variant") {
+    AutomaticCaptureSetupGuide(variant: .legacy, skipIntro: false, onFinished: {})
+        .environmentObject(LocalizationManager.shared)
+}
+
+#Preview("Automatic Guide • iOS 27 Variant") {
+    AutomaticCaptureSetupGuide(variant: .ios27, skipIntro: false, onFinished: {})
+        .environmentObject(LocalizationManager.shared)
 }

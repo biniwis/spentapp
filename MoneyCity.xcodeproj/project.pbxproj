@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        C17009160000000000000001 /* CityWorldsLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17009160000000000000002; };
+        C17009160000000000000003 /* diorama_medieval.html in Resources */ = {isa = PBXBuildFile; fileRef = C17009160000000000000004; };
 		CA2026091300000000000003 = {isa = PBXBuildFile; fileRef = CA2026091300000000000004; };
 		CA2026091300000000000005 = {isa = PBXBuildFile; fileRef = CA2026091300000000000006; };
 		CA2026091300000000000001 = {isa = PBXBuildFile; fileRef = CA2026091300000000000002; };
@@ -195,6 +197,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+        C17009160000000000000002 /* CityWorldsLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MoneyCity/Views/Modals/CityWorldsLabView.swift"; sourceTree = "<group>"; };
+        C17009160000000000000004 /* diorama_medieval.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "MoneyCity/Resources/diorama_medieval.html"; sourceTree = "<group>"; };
 		CA2026091300000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CityRewardEngineTests.swift"; sourceTree = "<group>"; };
 		CA2026091300000000000006 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CitySpendingBreakdownTests.swift"; sourceTree = "<group>"; };
 		CA2026091300000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MoneyCity/Services/CityRewardEngine.swift"; sourceTree = "<group>"; };
@@ -447,6 +451,7 @@
 				A1000016B2C3D4E5F6000016 /* MoneyIconRows4to7.swift */,
 				A1000017B2C3D4E5F6000017 /* SettingsSheet.swift */,
 				A1000033B2C3D4E5F6000033 /* DesignLabView.swift */,
+                C17009160000000000000002 /* CityWorldsLabView.swift */,
 				A1000018B2C3D4E5F6000018 /* ProfileVectorIcons.swift */,
 				A1000019B2C3D4E5F6000019 /* ApplePayGuideSheet.swift */,
 				A1000099B2C3D4E5F6000099 /* AutomaticCaptureSetupGuide.swift */,
@@ -502,6 +507,7 @@
 				0B556FB730714722856D9765 /* GeminiTransactionExtractor.swift */,
 				61A18AAFBB794302AD37A6FA /* VisionTransactionExtractor.swift */,
 				2B4395E1279D415AAC96C267 /* diorama.html */,
+                C17009160000000000000004 /* diorama_medieval.html */,
 				A10CA1100000000000000001 /* Localizable.xcstrings */,
 				A10CA1100000000000000002 /* AppShortcuts.xcstrings */,
 				B6AD39F4C06042E188D28C38 /* Assets.xcassets */,
@@ -611,6 +617,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				38F5A33FCB424885AF30A425 /* Resources */,
+                C17009160000000000000003 /* diorama_medieval.html in Resources */,
 				A10CA1100000000000000102 /* AppShortcuts.xcstrings in Resources */,
 				A10CA1100000000000000101 /* Localizable.xcstrings in Resources */,
 				B8EBADAACD014ADA96563047 /* Resources */,
@@ -756,6 +763,7 @@
 				B1000027B2C3D4E5F6000027 /* Sources */,
 				B1000029B2C3D4E5F6000029 /* Sources */,
 				B1000033B2C3D4E5F6000033 /* Sources */,
+                C17009160000000000000001 /* CityWorldsLabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -41,6 +41,16 @@ public struct DistrictBuildingInfo: Identifiable, Sendable {
 
 /// Living 3D Diorama with 2-Level Cinematic Zoom Navigation (Whole City <-> District Deep Dive) and interactive spatial building inspection.
 public struct ThreeDioramaView: ViewRepresentable {
+    #if DEBUG
+    // Only Design Lab supplies this session. Release builds always load Urban.
+    var worldPreviewSession: CityWorldPreviewSession?
+
+    func worldPreview(_ session: CityWorldPreviewSession) -> Self {
+        var view = self
+        view.worldPreviewSession = session
+        return view
+    }
+    #endif
     public let totalSpent: Double
     public let totalSavings: Double
     /// The amount that fills the savings park; 0 when the user has no baseline yet.
@@ -342,10 +352,35 @@ public struct ThreeDioramaView: ViewRepresentable {
             forMainFrameOnly: true
         )
         config.userContentController.addUserScript(initScript)
+        #if DEBUG
+        if worldPreviewSession != nil {
+            // The standalone Medieval prototype assigns its own demo payload later.
+            // Keep the native lab fixture authoritative from the very first frame.
+            config.userContentController.addUserScript(WKUserScript(
+                source: """
+                (() => {
+                    const payload = window._initialDataPayload;
+                    Object.defineProperty(window, '_initialDataPayload', {
+                        configurable: true, get: () => payload, set: () => {}
+                    });
+                })();
+                """,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+        }
+        #endif
         
         let webView = DioramaWebView(frame: .zero, configuration: config)
         context.coordinator.observeLifecycle(of: webView)
         webView.navigationDelegate = context.coordinator
+        var resourceName = "diorama"
+        #if DEBUG
+        if let session = worldPreviewSession {
+            resourceName = session.world.resourceName
+            session.attach(webView)
+        }
+        #endif
         #if canImport(UIKit)
         webView.isOpaque = false
         webView.backgroundColor = .clear
@@ -357,13 +392,16 @@ public struct ThreeDioramaView: ViewRepresentable {
         #endif
         
         // Load with explicit UTF-8 encoding so Hebrew and non-ASCII strings never degrade to question marks
-        if let htmlURL = Bundle.main.url(forResource: "diorama", withExtension: "html"),
+        if let htmlURL = Bundle.main.url(forResource: resourceName, withExtension: "html"),
            let htmlData = try? Data(contentsOf: htmlURL) {
             webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: htmlURL.deletingLastPathComponent())
-        } else if let htmlPath = Bundle.main.path(forResource: "diorama", ofType: "html"),
+        } else if let htmlPath = Bundle.main.path(forResource: resourceName, ofType: "html"),
                   let htmlData = try? Data(contentsOf: URL(fileURLWithPath: htmlPath)) {
             webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: URL(fileURLWithPath: htmlPath).deletingLastPathComponent())
         } else {
+            #if DEBUG
+            worldPreviewSession?.fail("Missing bundled resource: \(resourceName).html")
+            #endif
             #if SWIFT_PACKAGE
             if let moduleURL = Bundle.module.url(forResource: "diorama", withExtension: "html"),
                let htmlData = try? Data(contentsOf: moduleURL) {
@@ -527,10 +565,33 @@ public struct ThreeDioramaView: ViewRepresentable {
             // The page was (re)loaded, so whatever was sent before is gone.
             lastSentPayload = nil
             parent.updateData(in: webView, coordinator: self)
+            #if DEBUG
+            parent.worldPreviewSession?.finishLoading(webView)
+            #endif
         }
+
+        #if DEBUG
+        public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            parent.worldPreviewSession?.fail(error.localizedDescription)
+        }
+
+        public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            parent.worldPreviewSession?.fail(error.localizedDescription)
+        }
+
+        public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            parent.worldPreviewSession?.fail("The 3D renderer stopped. Reload the preview to continue.")
+        }
+        #endif
         
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "dioramaError" {
+                #if DEBUG
+                if let session = parent.worldPreviewSession {
+                    session.fail("\(message.body)")
+                    return
+                }
+                #endif
                 lastSentPayload = nil
                 MoneyCityLog.error("Diorama contract/rendering failure: \(message.body)")
                 assertionFailure("Diorama contract/rendering failure: \(message.body)")

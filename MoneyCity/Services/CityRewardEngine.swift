@@ -14,6 +14,34 @@ public struct CityRewardContext: Codable, Identifiable, Sendable {
     }
 }
 
+public struct CityRewardProgress: Sendable {
+    public let daysRemaining: Int
+    public let daysElapsed: Int
+    public let totalCycleDays: Int
+    public let activeDaysCount: Int
+    public let requiredActiveDays: Int
+    public let isReady: Bool
+    public let progressFraction: Double
+
+    public init(
+        daysRemaining: Int,
+        daysElapsed: Int,
+        totalCycleDays: Int = 7,
+        activeDaysCount: Int,
+        requiredActiveDays: Int = 3,
+        isReady: Bool,
+        progressFraction: Double
+    ) {
+        self.daysRemaining = daysRemaining
+        self.daysElapsed = daysElapsed
+        self.totalCycleDays = totalCycleDays
+        self.activeDaysCount = activeDaysCount
+        self.requiredActiveDays = requiredActiveDays
+        self.isReady = isReady
+        self.progressFraction = progressFraction
+    }
+}
+
 /// Persisted separately from inventory: no SwiftData schema or existing records change.
 public struct CityRewardState: Codable {
     public var lastWeeklyRewardDate: Date?
@@ -102,6 +130,43 @@ public struct CityRewardEngine {
     }
     public mutating func dismiss() {
         if state.pending != nil { state.counters["reward_dismissed_count", default: 0] += 1 }
+    }
+
+    public func progress(firstUse: Date = Date(), now: Date = Date()) -> CityRewardProgress {
+        if state.pending != nil {
+            return CityRewardProgress(
+                daysRemaining: 0,
+                daysElapsed: 7,
+                totalCycleDays: 7,
+                activeDaysCount: 3,
+                requiredActiveDays: 3,
+                isReady: true,
+                progressFraction: 1.0
+            )
+        }
+        let cycleStart = max(firstUse, state.lastWeeklyRewardDate ?? firstUse)
+        let startOfCycle = calendar.startOfDay(for: cycleStart)
+        let startOfNow = calendar.startOfDay(for: now)
+        let calendarDaysDiff = max(0, calendar.dateComponents([.day], from: startOfCycle, to: startOfNow).day ?? 0)
+        let daysElapsed = min(7, calendarDaysDiff)
+        let daysRemaining = max(0, 7 - daysElapsed)
+
+        let activeStart = max(startOfCycle, calendar.date(byAdding: .day, value: -6, to: startOfNow) ?? startOfNow)
+        let active = Set(state.activeDays.filter { $0 >= activeStart && $0 <= now }.map { calendar.startOfDay(for: $0) })
+        let activeCount = active.count
+
+        let fraction = min(1.0, max(0.08, Double(daysElapsed) / 7.0))
+        let isReady = daysRemaining == 0 && activeCount >= 3
+
+        return CityRewardProgress(
+            daysRemaining: daysRemaining,
+            daysElapsed: daysElapsed,
+            totalCycleDays: 7,
+            activeDaysCount: activeCount,
+            requiredActiveDays: 3,
+            isReady: isReady,
+            progressFraction: fraction
+        )
     }
     #if DEBUG
     public mutating func debugTrigger(_ trigger: CityRewardTrigger) { unlock(trigger, now: Date()) }

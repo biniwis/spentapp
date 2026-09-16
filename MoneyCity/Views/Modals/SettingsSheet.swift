@@ -177,7 +177,7 @@ public struct SettingsSheet: View {
                         settingsGroup(title: "SPENT") {
                             // Help & Feedback (Mailto to developer)
                             Button(action: {
-                                let email = "support@moneycity.app"
+                                let email = "spentapp.support@gmail.com"
                                 let subject = "SPENT Feedback"
                                 let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject
                                 if let url = URL(string: "mailto:\(email)?subject=\(encodedSubject)") {

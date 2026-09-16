@@ -502,6 +502,7 @@ public struct DesignLabView: View {
     @State private var debugRewardJoined = false
     @State private var showAllCompanionsCompletedSheet = false
     @State private var showCityDensityLab = false
+    @State private var showCityWorldsLab = false
     @State private var showCandidateLab = false
     @State private var showNotificationsLab = false
     @State private var showErrorStatesLab = false
@@ -679,6 +680,7 @@ public struct DesignLabView: View {
 
                         // ── Section 4: City Density States & 3D Lab ──
                         cityDensitySection
+                        cityWorldsSection
 
                         // ── Section 5: Future Labs ──
                         futureLabsSection
@@ -766,6 +768,10 @@ public struct DesignLabView: View {
         }
         .fullScreenCover(isPresented: $showCityDensityLab) {
             CityDensityLabSheet()
+                .environmentObject(l10n)
+        }
+        .fullScreenCover(isPresented: $showCityWorldsLab) {
+            CityWorldsLabView()
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showCandidateLab) {
@@ -1294,6 +1300,32 @@ public struct DesignLabView: View {
     }
 
     // MARK: - Section 4: City Density States
+    private var cityWorldsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "City Worlds", badge: "WORLD PREVIEW")
+            Button { showCityWorldsLab = true } label: {
+                HStack(spacing: 14) {
+                    MoneyIcon(.citySkyline, size: 28, color: Color.spentGreen)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Urban · Medieval")
+                            .font(.headline)
+                            .foregroundStyle(Color.deepNavy)
+                        Text(isHe
+                             ? "עיר לדוגמה, שני עולמות. סיבוב, זום ובחינת מבנים בתלת־ממד."
+                             : "One demo city, two worlds. Rotate, zoom and inspect in live 3D.")
+                            .font(.caption)
+                            .foregroundStyle(Color.textSecondary)
+                    }
+                    Spacer()
+                    Image(systemName: isHe ? "chevron.left" : "chevron.right")
+                }
+                .padding(16)
+                .background(Color.surfaceWarm, in: RoundedRectangle(cornerRadius: 18))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     private var cityDensitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader(

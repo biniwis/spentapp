@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A weekly reward ceremony, not an inventory or a map editor.
+/// A weekly reward ceremony and city life status sheet.
 public struct CityProgressSheet: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
@@ -9,21 +9,42 @@ public struct CityProgressSheet: View {
     public let unlockedEnrichments: [CityEnrichment]
     public var rewardContext: CityRewardContext? = nil
     public var previewJoined: ProgressRewardOption? = nil
+    public var rewardProgress: CityRewardProgress? = nil
     public let onSelectOption: (ProgressRewardOption) -> Bool
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var selected: ProgressRewardOption?
     @State private var joined: ProgressRewardOption?
     @State private var saveFailed = false
     @State private var isClaiming = false
-    @State private var showInfo = false
 
     private var he: Bool { l10n.isHebrew }
+    private var progress: CityRewardProgress {
+        rewardProgress ?? CityRewardEngine().progress()
+    }
+
+    public init(
+        options: [ProgressRewardOption],
+        unlockedEnrichments: [CityEnrichment],
+        rewardContext: CityRewardContext? = nil,
+        previewJoined: ProgressRewardOption? = nil,
+        rewardProgress: CityRewardProgress? = nil,
+        onSelectOption: @escaping (ProgressRewardOption) -> Bool
+    ) {
+        self.options = options
+        self.unlockedEnrichments = unlockedEnrichments
+        self.rewardContext = rewardContext
+        self.previewJoined = previewJoined
+        self.rewardProgress = rewardProgress
+        self.onSelectOption = onSelectOption
+    }
+
     private func title(_ option: ProgressRewardOption) -> String {
         if he { return option.title }
         return ["pet_cat_rooftop": "Rooftop cat", "pet_golden_dog": "Lakeside dog",
                 "resident_artist": "Street artist", "resident_skater": "The skater",
                 "resident_musician": "Street musician", "resident_balloon": "Balloon in the park"][option.id] ?? option.title
     }
+
     private func description(_ option: ProgressRewardOption) -> String {
         if he { return option.subtitle }
         return ["pet_cat_rooftop": "Usually seen around the shops.",
@@ -70,21 +91,55 @@ public struct CityProgressSheet: View {
         .system(.headline, design: .rounded, weight: .bold)
     }
 
+    private func countdownTitle(daysRemaining: Int, isReady: Bool) -> String {
+        if isReady {
+            return he ? "מתנה חדשה מוכנה לעיר" : "A new gift is ready"
+        }
+        if he {
+            switch daysRemaining {
+            case 0:
+                return "המתנה כמעט כאן"
+            case 1:
+                return "עוד יום אחד למתנה הבאה"
+            case 2:
+                return "עוד יומיים למתנה הבאה"
+            default:
+                return "עוד \(daysRemaining) ימים למתנה הבאה"
+            }
+        } else {
+            switch daysRemaining {
+            case 0:
+                return "Almost here"
+            case 1:
+                return "1 day until next gift"
+            default:
+                return "\(daysRemaining) days until next gift"
+            }
+        }
+    }
+
     public var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
+                // Top close bar
                 HStack {
-                    Button { showInfo = true } label: {
-                        Image(systemName: "info.circle").frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel(he ? "על התוספות בעיר" : "About city additions")
                     Spacer()
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark").font(.body.weight(.semibold)).frame(width: 44, height: 44)
+                        ZStack {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 36, height: 36)
+                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.deepNavy)
+                        }
                     }
                     .accessibilityLabel(he ? "סגירה" : "Close")
                 }
+
                 if let friend = joined {
+                    // Ceremony: Just joined
                     VStack(spacing: 24) {
                         hero(friend, size: 120).padding(.vertical, 20)
                         Text(he ? "\(title(friend)) \(friend.id == "resident_artist" ? "נוספה" : "נוסף") לעיר" : "\(title(friend)) added to the city")
@@ -95,6 +150,7 @@ public struct CityProgressSheet: View {
                     }
                     .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.94)))
                 } else if !options.isEmpty {
+                    // Ceremony: Options ready to claim
                     VStack(spacing: 10) {
                         Text(he ? "משהו חדש בעיר" : "Something new in the city").font(cardEyebrowFont)
                         Text(he ? "מה נוסף לעיר?" : "What's added to the city?").font(heroHeadingFont)
@@ -122,28 +178,19 @@ public struct CityProgressSheet: View {
                         .disabled(isClaiming)
                     }
                 } else {
-                    Text(he ? "תוספות לעיר" : "City additions").font(heroHeadingFont)
-                    Text(he ? "מדי פעם תופיע כאן תוספת חדשה." : "From time to time, someone new will arrive here.")
-                        .foregroundStyle(Color.textSecondary).multilineTextAlignment(.center)
-                    ForEach(renderedOwnedOptions) { option in
-                        HStack(spacing: 16) {
-                            hero(option, size: 52)
-                            Text(title(option)).font(.system(.headline, design: .rounded, weight: .bold))
-                            Spacer()
-                        }.padding(.vertical, 8)
-                    }
+                    // Default State: City life overview & Progress to next reward
+                    overviewContent
                 }
-            }.padding(22).foregroundStyle(Color.deepNavy)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 28)
+            .foregroundStyle(Color.deepNavy)
         }
-        .background(Color.appBackground)
+        .background(Color.appBackground.ignoresSafeArea())
         .presentationBackground(Color.appBackground)
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.72), .large])
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.fraction(0.56), .large])
         .presentationDragIndicator(.visible)
-        .alert(he ? "על החיים בעיר" : "About city life", isPresented: $showInfo) {
-            Button(he ? "הבנתי" : "Got it", role: .cancel) {}
-        } message: {
-            Text(he ? "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים." : "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life.")
-        }
         .alert(he ? "החבר עדיין לא נוסף" : "Your companion wasn’t added", isPresented: $saveFailed) {
             Button(he ? "אישור" : "OK", role: .cancel) {}
         } message: {
@@ -156,6 +203,91 @@ public struct CityProgressSheet: View {
                 let appliedItems = unlockedEnrichments.map { "\($0.itemId) (isApplied: \($0.isApplied))" }.joined(separator: ", ")
                 let renderedIds = owned.map(\.id).joined(separator: ", ")
                 print("[CityProgressSheet] Runtime Verification -> Total enrichments: \(unlockedEnrichments.count); Items: [\(appliedItems)]; Rendered owned IDs: [\(renderedIds)]; Visible count: \(owned.count)")
+            }
+        }
+    }
+
+    private var overviewContent: some View {
+        VStack(spacing: 16) {
+            // Unified Minimalist City Life & Next Reward Card
+            VStack(spacing: 16) {
+                // Emblem
+                ZStack {
+                    Circle()
+                        .fill(Color.themeLavenderSoft.opacity(0.65))
+                        .frame(width: 56, height: 56)
+                    MoneyIcon(.gift, size: 26, color: Color.deepNavy)
+                }
+
+                // Title & Calm Explanation
+                VStack(spacing: 6) {
+                    Text(he ? "החיים בעיר" : "City Life")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    Text(he ? "ככל שתמשיך לתעד את ההוצאות שלך, מדי פעם תיפתח מתנה חדשה לעיר — דמות, חפץ או משהו קטן שיכניס בה עוד חיים."
+                            : "The more consistently you track your expenses, the more often a new gift will appear in your city — a character, an object, or a small detail that brings it to life.")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(3)
+                        .padding(.horizontal, 6)
+                }
+
+                Divider().background(Color.borderSubtle).padding(.horizontal, 6)
+
+                // Minimalist Progress Gauge
+                VStack(spacing: 10) {
+                    Text(countdownTitle(daysRemaining: progress.daysRemaining, isReady: progress.isReady))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    // 7-day Progress Bar
+                    HStack(spacing: 6) {
+                        ForEach(0..<7, id: \.self) { dayIndex in
+                            let isDone = dayIndex < progress.daysElapsed
+                            let isCurrent = dayIndex == progress.daysElapsed
+
+                            RoundedRectangle(cornerRadius: 3.5, style: .continuous)
+                                .fill(isDone ? Color.primaryBlue : (isCurrent ? Color.primaryBlue.opacity(0.35) : Color.borderSubtle.opacity(0.6)))
+                                .frame(height: 6)
+                        }
+                    }
+                    .padding(.horizontal, 4)
+
+                    Text(he ? "\(progress.daysElapsed) מתוך \(progress.totalCycleDays) ימים"
+                            : "\(progress.daysElapsed) of \(progress.totalCycleDays) days")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                }
+                .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(20)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: Color.black.opacity(0.025), radius: 6, y: 2)
+
+            // Living in City Section (only shown if user already has companions in the city)
+            if !renderedOwnedOptions.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(he ? "כבר בעיר" : "In Your City")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+
+                    ForEach(renderedOwnedOptions) { option in
+                        HStack(spacing: 12) {
+                            hero(option, size: 36)
+                            Text(title(option))
+                                .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Spacer()
+                        }
+                        .padding(10)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
             }
         }
     }

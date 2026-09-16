@@ -733,6 +733,7 @@ public struct MainCityView: View {
                 options: weeklyRewardOptions,
                 unlockedEnrichments: allEnrichments.filter { $0.isApplied },
                 rewardContext: rewardEngine.state.pending,
+                rewardProgress: rewardEngine.progress(firstUse: companionFirstUse, now: companionNow),
                 onSelectOption: { opt in
                     companionNow = Date()
                     guard pendingCompanionWelcome == nil,

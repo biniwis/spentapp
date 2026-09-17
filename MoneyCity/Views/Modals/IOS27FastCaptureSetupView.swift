@@ -33,7 +33,7 @@ public struct IOS27FastCaptureSetupView: View {
         if isShowingManualGuide {
             // Manual 13-step setup (no routing loop)
             IOS27CaptureSetupGuideView(
-                skipIntro: false,
+                skipIntro: skipIntro,
                 showCloseButton: showCloseButton,
                 onFinished: onFinished
             )

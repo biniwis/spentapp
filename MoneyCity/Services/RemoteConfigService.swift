@@ -364,7 +364,7 @@ public final class RemoteConfigService: ObservableObject, @unchecked Sendable {
         fallbackHe: String,
         fallbackEn: String
     ) -> String {
-        let isHe = (defaults.string(forKey: "app_language_pref") ?? "he") == "he"
+        let isHe = AppLanguage.current == .hebrew
         return localizedCopy(key: key, fallbackHe: fallbackHe, fallbackEn: fallbackEn, isHebrew: isHe)
     }
 

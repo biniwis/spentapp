@@ -736,4 +736,30 @@ final class P0StabilityTests: XCTestCase {
         XCTAssertEqual(key1, key2, "Sorted rawValue hashing must be order-independent")
         XCTAssertNotEqual(key1, key3, "Distinct category sets with identical count must not collide")
     }
+
+    @MainActor
+    func testLanguageResolutionAndDeviceDefault() {
+        // AppLanguage.deviceDefault correctly reflects device preferred language
+        let preferred = Locale.preferredLanguages.first?.lowercased() ?? ""
+        if preferred.hasPrefix("he") {
+            XCTAssertEqual(AppLanguage.deviceDefault, .hebrew)
+        } else {
+            XCTAssertEqual(AppLanguage.deviceDefault, .english)
+        }
+
+        // Test explicit preference setting and persistence
+        let original = LocalizationManager.shared.currentLanguageRaw
+        defer {
+            LocalizationManager.shared.currentLanguageRaw = original
+        }
+
+        LocalizationManager.shared.currentLanguageRaw = "en"
+        XCTAssertEqual(LocalizationManager.shared.language, .english)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "app_language_pref"), "en")
+
+        LocalizationManager.shared.currentLanguageRaw = "he"
+        XCTAssertEqual(LocalizationManager.shared.language, .hebrew)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: "app_language_pref"), "he")
+    }
 }
+

@@ -57,8 +57,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
 
     /// User-facing localized category name using current app preference
     public var displayName: String {
-        let isEn = UserDefaults.standard.string(forKey: "app_language_pref") == AppLanguage.english.rawValue
-        return displayName(for: isEn ? .english : .hebrew)
+        displayName(for: AppLanguage.current)
     }
     
     /// User-facing display name in English
@@ -100,8 +99,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
 
     /// User-facing short name for compact badges using current app preference
     public var shortName: String {
-        let isEn = UserDefaults.standard.string(forKey: "app_language_pref") == AppLanguage.english.rawValue
-        return shortName(for: isEn ? .english : .hebrew)
+        shortName(for: AppLanguage.current)
     }
 
     /// Short name in English

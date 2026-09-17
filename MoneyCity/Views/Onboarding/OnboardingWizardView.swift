@@ -126,6 +126,13 @@ public struct OnboardingWizardView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 0) {
+                            if currentStep == 1 {
+                                languageSelector
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.top, 2)
+                                    .padding(.bottom, 16)
+                            }
+
                             stepTitleSection
                                 .padding(.horizontal, 26)
 
@@ -321,6 +328,47 @@ public struct OnboardingWizardView: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(isHebrew ? "שלב \(currentStep) מתוך 5" : "Step \(currentStep) of 5")
+    }
+
+    // MARK: - Step 1 Language Selector
+    private var languageSelector: some View {
+        HStack(spacing: 0) {
+            ForEach(AppLanguage.allCases) { lang in
+                let isSelected = l10n.language == lang
+                Button {
+                    guard l10n.language != lang else { return }
+                    Haptics.selection()
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        l10n.currentLanguageRaw = lang.rawValue
+                    }
+                } label: {
+                    Text(lang.displayName)
+                        .font(.system(size: 13, weight: isSelected ? .semibold : .regular, design: .rounded))
+                        .foregroundStyle(isSelected ? Color.jetBlack : Color.jetBlack.opacity(0.5))
+                        .frame(width: 68, height: 26)
+                        .background(
+                            Group {
+                                if isSelected {
+                                    Capsule()
+                                        .fill(Color.white)
+                                        .shadow(color: Color.black.opacity(0.06), radius: 1.5, y: 1)
+                                }
+                            }
+                        )
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(3)
+        .background(
+            Capsule()
+                .fill(Color.jetBlack.opacity(0.06))
+        )
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .environment(\.layoutDirection, .leftToRight)
     }
 
     private var stepTitleSection: some View {

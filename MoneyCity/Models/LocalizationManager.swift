@@ -6,9 +6,22 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     case hebrew = "he"
     case english = "en"
 
+    /// Resolves the device's preferred language when no explicit user preference is saved.
+    /// Hebrew if device preferred language starts with "he", otherwise English (for English and all other languages).
+    public static var deviceDefault: AppLanguage {
+        let preferred = Locale.preferredLanguages.first?.lowercased()
+            ?? Locale.current.language.languageCode?.identifier.lowercased()
+            ?? ""
+        return preferred.hasPrefix("he") ? .hebrew : .english
+    }
+
     /// Readable from background ingestion and notification callbacks as well as the UI.
     public static var current: AppLanguage {
-        AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app_language_pref") ?? "he") ?? .hebrew
+        if let raw = UserDefaults.standard.string(forKey: "app_language_pref"),
+           let lang = AppLanguage(rawValue: raw) {
+            return lang
+        }
+        return .deviceDefault
     }
 
     public static func localized(_ hebrew: String, _ english: String) -> String {
@@ -101,7 +114,7 @@ public enum CurrencyType: String, CaseIterable, Identifiable, Codable, Sendable 
 public final class LocalizationManager: ObservableObject {
     public static let shared = LocalizationManager()
 
-    @AppStorage("app_language_pref") public var currentLanguageRaw: String = AppLanguage.hebrew.rawValue {
+    @AppStorage("app_language_pref") public var currentLanguageRaw: String = AppLanguage.deviceDefault.rawValue {
         didSet { objectWillChange.send() }
     }
 
@@ -118,11 +131,14 @@ public final class LocalizationManager: ObservableObject {
 
     nonisolated public var language: AppLanguage {
         get {
-            let raw = UserDefaults.standard.string(forKey: "app_language_pref") ?? AppLanguage.hebrew.rawValue
-            return AppLanguage(rawValue: raw) ?? .hebrew
+            let raw = UserDefaults.standard.string(forKey: "app_language_pref") ?? AppLanguage.deviceDefault.rawValue
+            return AppLanguage(rawValue: raw) ?? .deviceDefault
         }
         set {
             UserDefaults.standard.set(newValue.rawValue, forKey: "app_language_pref")
+            Task { @MainActor in
+                LocalizationManager.shared.currentLanguageRaw = newValue.rawValue
+            }
         }
     }
 

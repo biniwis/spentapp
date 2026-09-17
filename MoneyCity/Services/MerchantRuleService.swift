@@ -45,12 +45,17 @@ public enum MerchantRuleService {
             .max(by: { $0.merchantKey.count < $1.merchantKey.count })
     }
 
-    /// Classification with the user's corrections applied first, keyword matching second.
+    /// Classification with:
+    /// 1. User's own corrections applied first
+    /// 2. Global Remote Merchant Overrides applied second
+    /// 3. Built-in keyword categorization engine third
     public static func classify(
         merchant: String,
         amount: Double,
-        rules: [MerchantRule]
+        rules: [MerchantRule],
+        remoteConfig: RemoteConfigService = .shared
     ) -> ClassificationResult {
+        // 1. User's own rule always wins
         if let rule = rule(for: merchant, in: rules) {
             let building = rule.buildingIdRaw ?? CategorizationEngine.shared.mapToBuildingId(
                 category: rule.category,
@@ -59,6 +64,17 @@ public enum MerchantRuleService {
             // The user told us directly, so this is not a guess and needs no confirmation.
             return ClassificationResult(category: rule.category, buildingId: building, confidence: 1.0)
         }
+
+        // 2. Global Remote Merchant Override
+        if let remoteCategory = remoteConfig.merchantOverride(for: merchant) {
+            let building = CategorizationEngine.shared.mapToBuildingId(
+                category: remoteCategory,
+                merchant: merchant
+            )
+            return ClassificationResult(category: remoteCategory, buildingId: building, confidence: 0.98)
+        }
+
+        // 3. Built-in Categorization Engine
         return CategorizationEngine.shared.classify(merchant: merchant, amount: amount)
     }
 

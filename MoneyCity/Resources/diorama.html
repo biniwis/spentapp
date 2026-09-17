@@ -6633,7 +6633,14 @@ window.dioramaEnergyState = function () {
       if (amountText.startsWith("+") || amountText.startsWith("-") || amountText.startsWith("−")) {
         amountText = amountText.substring(1).trim();
       }
-      bubbleEl.innerHTML = '<span class="' + signClass + '">' + sign + '</span><span>' + amountText + '</span>';
+      const signSpan = document.createElement("span");
+      signSpan.className = signClass;
+      signSpan.textContent = sign;
+      const amountSpan = document.createElement("span");
+      amountSpan.textContent = amountText;
+      bubbleEl.textContent = "";
+      bubbleEl.appendChild(signSpan);
+      bubbleEl.appendChild(amountSpan);
       (overlaysContainer || stage || document.body).appendChild(bubbleEl);
 
       activeExpenseFocus = {

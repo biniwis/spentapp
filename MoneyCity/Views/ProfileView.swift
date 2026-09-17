@@ -793,17 +793,19 @@ public struct ProfileView: View {
 
             Divider().background(Color.borderSubtle).padding(.leading, 68)
 
-            menuRow(
-                title: l10n.language == .hebrew ? "יעדי חיסכון" : "Savings Goals",
-                subtitle: l10n.language == .hebrew ? "מעקב אחר התקדמות החיסכון שלך" : "Track your savings progress",
-                iconBg: Color(red: 209/255, green: 250/255, blue: 229/255)
-            ) {
-                MoneyIcon(.coins, size: 24)
-            } action: {
-                showGoalsSheet = true
-            }
+            if RemoteConfigService.shared.isFeatureEnabled("savingsGoals") {
+                menuRow(
+                    title: l10n.language == .hebrew ? "יעדי חיסכון" : "Savings Goals",
+                    subtitle: l10n.language == .hebrew ? "מעקב אחר התקדמות החיסכון שלך" : "Track your savings progress",
+                    iconBg: Color(red: 209/255, green: 250/255, blue: 229/255)
+                ) {
+                    MoneyIcon(.coins, size: 24)
+                } action: {
+                    showGoalsSheet = true
+                }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
+            }
 
             menuRow(
                 title: l10n.language == .hebrew ? "הוצאות קבועות ומנויים" : "Fixed Expenses & Subscriptions",
@@ -817,22 +819,24 @@ public struct ProfileView: View {
 
             Divider().background(Color.borderSubtle).padding(.leading, 68)
 
-            menuRow(
-                title: l10n.language == .hebrew ? "קליטה אוטומטית" : "Automatic Capture",
-                subtitle: automaticCaptureSubtitle,
-                iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
-            ) {
-                MoneyIcon(.lightning, size: 24)
-            } action: {
-                switch automaticCaptureState {
-                case .notConfigured, .setupInProgress:
-                    showApplePayGuideSheet = true
-                case .configuredAwaitingFirstCapture, .captureDetected:
-                    showAutomaticCaptureStatus = true
+            if RemoteConfigService.shared.isFeatureEnabled("automaticCapture") {
+                menuRow(
+                    title: l10n.language == .hebrew ? "קליטה אוטומטית" : "Automatic Capture",
+                    subtitle: automaticCaptureSubtitle,
+                    iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
+                ) {
+                    MoneyIcon(.lightning, size: 24)
+                } action: {
+                    switch automaticCaptureState {
+                    case .notConfigured, .setupInProgress:
+                        showApplePayGuideSheet = true
+                    case .configuredAwaitingFirstCapture, .captureDetected:
+                        showAutomaticCaptureStatus = true
+                    }
                 }
-            }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
+            }
 
             menuRow(
                 title: l10n.language == .hebrew ? "גיבוי ושחזור" : "Backup & Restore",

@@ -305,3 +305,18 @@ Deep verification is reserved for genuinely risky work.
 For isolated visual components:
 Preview first.
 Simulator only when truly required.
+
+## Remote Content System
+
+1. לפני Release חדש עבור שינוי קטן של copy/content/enable-disable, לבדוק אם הוא מתאים ל־Remote Config.
+2. לא להפוך את SPENT ל־server-driven UI.
+3. Remote Config הוא data/config בלבד.
+4. לכל דבר מרוחק חייב להיות bundled fallback.
+5. Last Known Good נשמר מקומית.
+6. user merchant rule תמיד קודם ל־global rule.
+7. core finance/data integrity לעולם אינם remotely mutable.
+8. field חדש חייב להיות backward-compatible.
+9. production ו־staging נשארים מופרדים.
+10. אין polling מיותר.
+11. אין שינוי Recap במסגרת Remote Content System V1 אלא אם המשתמש מבקש זאת במפורש.
+12. Remote Config לא צריך להפוך משימת UI קטנה לפרויקט architecture גדול.

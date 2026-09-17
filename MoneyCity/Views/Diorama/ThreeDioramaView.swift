@@ -324,10 +324,42 @@ public struct ThreeDioramaView: ViewRepresentable {
         return "null"
     }
     
+    public static let knownDistrictIds: Set<String> = [
+        "food", "shopping", "housing", "transport", "entertainment",
+        "health", "subscriptions", "finance", "savings", "miscellaneous",
+        "other", "civic", "city", "groceries", "coffee", "misc"
+    ]
+
+    public static let knownSlotIds: Set<String> = [
+        "slot_tree_sakura", "slot_pet_golden_dog", "slot_repair_bench",
+        "slot_park_bridge", "slot_fountain_marble", "slot_cafe_stand",
+        "slot_resident_artist", "slot_repair_lamp", "slot_pet_cat_rooftop",
+        "slot_bike_station", "slot_flower_bed_plaza", "slot_public_art_sculpture",
+        "slot_repair_sidewalk", "slot_park_center", "slot_park_overlook",
+        "slot_food_plaza", "slot_shop_promenade", "slot_housing_terrace",
+        "slot_tech_plaza"
+    ]
+
+    public static let knownEnrichmentIds: Set<String> = [
+        "tree_sakura", "flower_bed_plaza", "repair_bench", "repair_lamp",
+        "resident_artist", "pet_cat_rooftop", "bike_station", "cafe_stand",
+        "repair_sidewalk", "fountain_marble", "pet_golden_dog", "park_bridge",
+        "public_art_sculpture"
+    ]
+
+    static func jsonLiteral<T: Encodable>(_ value: T) -> String {
+        guard let data = try? JSONEncoder().encode(value),
+              let str = String(data: data, encoding: .utf8) else {
+            return "null"
+        }
+        return str
+    }
+
     /// Explicit district JS that always fires — bypasses optional-nil omission in JSONEncoder
     private var districtJS: String {
-        if let d = selectedDistrict {
-            return "if(window.setDistrict){window.setDistrict('\(d)');}"
+        if let d = selectedDistrict, Self.knownDistrictIds.contains(d) {
+            let encoded = Self.jsonLiteral(d)
+            return "if(window.setDistrict){window.setDistrict(\(encoded));}"
         } else {
             return "if(window.setDistrict){window.setDistrict(null);}"
         }
@@ -346,8 +378,10 @@ public struct ThreeDioramaView: ViewRepresentable {
         
         // Inject current city data payload at document start
         let currentHour = timeOfDayOverride ?? Self.currentDeviceLocalHour
+        let safeHour = currentHour.isFinite ? (currentHour * 100).rounded() / 100.0 : 12.0
+        let powerLiteral = Self.jsonLiteral(context.coordinator.powerMode)
         let initScript = WKUserScript(
-            source: "window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = '\(context.coordinator.powerMode)'; window._initialTimeOfDay = \(currentHour);",
+            source: "window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = \(powerLiteral); window._initialTimeOfDay = \(safeHour);",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )
@@ -420,13 +454,14 @@ public struct ThreeDioramaView: ViewRepresentable {
         let isOverride = timeOfDayOverride != nil
         let animateTime = !isOverride && !coordinator.isInitialDelivery
         coordinator.isInitialDelivery = false
-        let roundedHour = (currentHour * 100).rounded() / 100.0
+        let roundedHour = currentHour.isFinite ? (currentHour * 100).rounded() / 100.0 : 12.0
 
         let timeControl = "if(window.setTimeOfDay){window.setTimeOfDay(\(roundedHour), \(animateTime ? "true" : "false"));}"
 
+        let powerLiteral = Self.jsonLiteral(coordinator.powerMode)
         let controls = """
         window._initialRenderPaused = \(paused ? "true" : "false");
-        window._initialPowerMode = '\(coordinator.powerMode)';
+        window._initialPowerMode = \(powerLiteral);
         if(window.pauseDioramaRendering){window.pauseDioramaRendering(window._initialRenderPaused);}
         if(window.setDioramaPowerMode){window.setDioramaPowerMode(window._initialPowerMode);}
         \(timeControl)
@@ -446,16 +481,23 @@ public struct ThreeDioramaView: ViewRepresentable {
             if(window.setCityOverview){window.setCityOverview(\(isOverview ? "true" : "false"));}
             if(window.resetCityView){window.resetCityView(\(viewResetToken));}
             """
-            if let bId = selectedBuildingId {
-                script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding('\(bId)');}"
+            if let bId = selectedBuildingId, CityBuilding.allKnownBuildingIds.contains(bId) {
+                let bIdLiteral = Self.jsonLiteral(bId)
+                script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding(\(bIdLiteral));}"
             } else {
                 script += "\nif(window.selectDioramaBuilding){window.selectDioramaBuilding(null);}"
             }
             if let focus = buildingFocusRequest, focus.id != coordinator.lastHandledFocusToken {
                 coordinator.lastHandledFocusToken = focus.id
-                let rawAmtText = focus.formattedAmount ?? "\(focus.amount)"
-                let formattedAmtEscaped = rawAmtText.replacingOccurrences(of: "'", with: "\\'")
-                script += "\nif(window.focusDioramaBuilding){window.focusDioramaBuilding('\(focus.buildingId)', \(focus.amount), '\(focus.id.uuidString)', '\(formattedAmtEscaped)', \(focus.isRefund ? "true" : "false"));}"
+                let validBuildingId = CityBuilding.allKnownBuildingIds.contains(focus.buildingId) ? focus.buildingId : "city_sorting_hub"
+                let bIdArg = Self.jsonLiteral(validBuildingId)
+                let safeAmount = focus.amount.isFinite ? focus.amount : 0.0
+                let tokenArg = Self.jsonLiteral(focus.id.uuidString)
+                let rawAmtText = focus.formattedAmount ?? "\(safeAmount)"
+                let safeAmtText = InputSanitizer.sanitizeSingleLine(rawAmtText, maxLength: 64)
+                let amtTextArg = Self.jsonLiteral(safeAmtText)
+                let refundArg = focus.isRefund ? "true" : "false"
+                script += "\nif(window.focusDioramaBuilding){window.focusDioramaBuilding(\(bIdArg), \(safeAmount), \(tokenArg), \(amtTextArg), \(refundArg));}"
             }
             js = script
         }
@@ -499,7 +541,8 @@ public struct ThreeDioramaView: ViewRepresentable {
                 guard self.parent.timeOfDayOverride == nil else { return }
                 guard let webView = self.observedWebView else { return }
                 let hour = (ThreeDioramaView.currentDeviceLocalHour * 100).rounded() / 100.0
-                webView.evaluateJavaScript("if(window.setTimeOfDay){window.setTimeOfDay(\(hour), true);}", completionHandler: nil)
+                let safeHour = hour.isFinite ? hour : 12.0
+                webView.evaluateJavaScript("if(window.setTimeOfDay){window.setTimeOfDay(\(safeHour), true);}", completionHandler: nil)
             }
         }
 
@@ -570,6 +613,25 @@ public struct ThreeDioramaView: ViewRepresentable {
             #endif
         }
 
+        public func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.cancel)
+                return
+            }
+            // Allow local file/bundle loading and about:blank
+            if url.isFileURL || url.absoluteString == "about:blank" {
+                decisionHandler(.allow)
+                return
+            }
+            // Block all external network navigation (http, https, arbitrary custom schemes)
+            MoneyCityLog.error("Blocked unauthorized navigation in Diorama WebView: \(url.absoluteString)")
+            decisionHandler(.cancel)
+        }
+
         #if DEBUG
         public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             parent.worldPreviewSession?.fail(error.localizedDescription)
@@ -604,23 +666,45 @@ public struct ThreeDioramaView: ViewRepresentable {
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(name: .dioramaReady, object: nil)
                 }
-            } else if message.name == "districtSelected", let distId = message.body as? String {
-                parent.onSelectDistrict(distId)
+            } else if message.name == "districtSelected", let rawDistId = message.body as? String {
+                let distId = InputSanitizer.sanitizeIdentifier(rawDistId)
+                if ThreeDioramaView.knownDistrictIds.contains(distId) {
+                    parent.onSelectDistrict(distId)
+                } else {
+                    MoneyCityLog.error("Rejected unknown district ID from JS: \(distId)")
+                }
             } else if message.name == "zoomReset" {
                 parent.onSelectDistrict(nil)
             } else if message.name == "slotTapped", let dict = message.body as? [String: Any] {
-                let slotId = dict["slotId"] as? String ?? ""
-                let currentItem = dict["currentItem"] as? String
+                guard let rawSlotId = dict["slotId"] as? String else { return }
+                let slotId = InputSanitizer.sanitizeIdentifier(rawSlotId)
+                guard ThreeDioramaView.knownSlotIds.contains(slotId) || slotId.hasPrefix("slot_") else {
+                    MoneyCityLog.error("Rejected unknown slot ID from JS: \(slotId)")
+                    return
+                }
+                let rawCurrentItem = dict["currentItem"] as? String
+                let currentItem: String? = rawCurrentItem.flatMap { item in
+                    let sanitized = InputSanitizer.sanitizeIdentifier(item)
+                    return ThreeDioramaView.knownEnrichmentIds.contains(sanitized) ? sanitized : nil
+                }
                 parent.onSlotTapped?(slotId, currentItem)
             } else if message.name == "buildingTapped", let dict = message.body as? [String: Any] {
-                let id = dict["id"] as? String ?? "b1"
-                let district = dict["district"] as? String ?? "food"
-                let name = dict["name"] as? String ?? AppLanguage.localized("מסעדה", "Restaurant")
-                // Zero, not an invented figure: MainCityView recomputes all three from the
-                // user's own transactions before anything is shown.
-                let amount = dict["amount"] as? Double ?? 0
-                let visits = dict["visits"] as? Int ?? 0
-                let trend = dict["trend"] as? String ?? ""
+                guard let rawId = dict["id"] as? String else { return }
+                let id = InputSanitizer.sanitizeIdentifier(rawId)
+                guard CityBuilding.allKnownBuildingIds.contains(id) else {
+                    MoneyCityLog.error("Rejected unknown building ID from JS: \(id)")
+                    return
+                }
+                let rawDistrict = dict["district"] as? String ?? "food"
+                let district = ThreeDioramaView.knownDistrictIds.contains(rawDistrict) ? rawDistrict : "civic"
+                let rawName = dict["name"] as? String ?? AppLanguage.localized("מסעדה", "Restaurant")
+                let name = InputSanitizer.sanitizeSingleLine(rawName, maxLength: 100)
+                let rawAmount = dict["amount"] as? Double ?? 0
+                let amount = rawAmount.isFinite ? rawAmount : 0
+                let rawVisits = dict["visits"] as? Int ?? 0
+                let visits = max(0, min(100_000, rawVisits))
+                let rawTrend = dict["trend"] as? String ?? ""
+                let trend = InputSanitizer.sanitizeSingleLine(rawTrend, maxLength: 100)
                 
                 let info = DistrictBuildingInfo(id: id, districtId: district, name: name, amount: amount, visitCount: visits, trendText: trend)
                 parent.onBuildingSelected(info)

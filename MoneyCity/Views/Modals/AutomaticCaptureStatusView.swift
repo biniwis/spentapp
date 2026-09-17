@@ -102,9 +102,19 @@ public struct AutomaticCaptureStatusView: View {
     private var mainStateTitle: String {
         switch state {
         case .captureDetected:
-            return isHebrew ? "זוהתה קליטה" : "Capture detected"
+            return RemoteConfigService.shared.localizedCopy(
+                key: "capture.active.title",
+                fallbackHe: "זוהתה קליטה",
+                fallbackEn: "Capture detected",
+                isHebrew: isHebrew
+            )
         case .configuredAwaitingFirstCapture, .notConfigured, .setupInProgress:
-            return isHebrew ? "מחכה לקליטה הראשונה" : "Waiting for first capture"
+            return RemoteConfigService.shared.localizedCopy(
+                key: "capture.waiting.title",
+                fallbackHe: "מחכה לקליטה הראשונה",
+                fallbackEn: "Waiting for first capture",
+                isHebrew: isHebrew
+            )
         }
     }
 

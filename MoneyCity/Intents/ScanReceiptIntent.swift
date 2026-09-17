@@ -27,6 +27,13 @@ public struct ScanReceiptIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        guard RemoteConfigService.shared.isFeatureEnabled("receiptScanner", default: true) else {
+            return .result(
+                value: AppLanguage.localized("סורק הקבלות מושבת זמנית", "Receipt scanner is temporarily disabled"),
+                dialog: IntentDialog(stringLiteral: AppLanguage.localized("סורק הקבלות מושבת זמנית על ידי המערכת.", "Receipt scanner is temporarily disabled."))
+            )
+        }
+
         guard let imageFile = imageFile else {
             return .result(
                 value: AppLanguage.localized("לא התקבלה תמונה לסריקה", "No image was provided to scan"),
@@ -35,6 +42,12 @@ public struct ScanReceiptIntent: AppIntent {
         }
 
         let imageData = imageFile.data
+        guard imageData.count <= 25 * 1024 * 1024 else {
+            return .result(
+                value: AppLanguage.localized("התמונה גדולה מדי לסריקה", "Image is too large to scan"),
+                dialog: IntentDialog(stringLiteral: AppLanguage.localized("גודל התמונה חורג מהמגבלה המותרת (25MB).", "Image file exceeds the 25MB limit."))
+            )
+        }
         let rules = DatabaseService.shared.fetchMerchantRules()
 
         do {

@@ -43,15 +43,15 @@ public final class SavingsGoal: Identifiable {
         baselineCaptured: Bool = false
     ) {
         self.id = id
-        self.name = name
-        self.icon = icon
-        self.targetAmount = targetAmount
-        self.savedAmount = savedAmount
-        self.currency = currency
+        self.name = InputSanitizer.sanitizeSingleLine(name, maxLength: InputSanitizer.maxMerchantLength)
+        self.icon = InputSanitizer.sanitizeSingleLine(icon, maxLength: 64)
+        self.targetAmount = targetAmount.isFinite ? max(0.0, targetAmount) : 0.0
+        self.savedAmount = savedAmount.isFinite ? max(0.0, savedAmount) : 0.0
+        self.currency = InputSanitizer.sanitizeSingleLine(currency, maxLength: InputSanitizer.maxCurrencyLength)
         self.targetDate = targetDate
         self.createdAt = createdAt
         self.completedAt = completedAt
-        self.unlinkedBaseline = unlinkedBaseline
+        self.unlinkedBaseline = unlinkedBaseline.isFinite ? max(0.0, unlinkedBaseline) : 0.0
         self.baselineCaptured = baselineCaptured
     }
 }

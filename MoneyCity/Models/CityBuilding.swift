@@ -312,6 +312,17 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
         }
         return nil
     }
+
+    /// Whitelist of all known architectural building IDs recognized by the diorama and app.
+    public static let allKnownBuildingIds: Set<String> = {
+        var set = Set<String>()
+        for cat in SpendingCategory.primaryCategories {
+            for b in buildings(for: cat) {
+                set.insert(b.id)
+            }
+        }
+        return set
+    }()
 }
 
 // MARK: - Spatial Focus Request

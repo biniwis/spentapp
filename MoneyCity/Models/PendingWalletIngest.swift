@@ -138,13 +138,14 @@ public struct PendingWalletIngest: Codable, Identifiable, Sendable {
         timestamp: Date = Date(),
         source: String = "ApplePay"
     ) {
-        self.id = id
-        self.merchant = merchant
-        self.currency = currency
-        self.categoryRawValue = categoryRawValue
-        self.buildingId = buildingId
+        self.id = InputSanitizer.sanitizeIdentifier(id)
+        self.merchant = InputSanitizer.sanitizeSingleLine(merchant, maxLength: InputSanitizer.maxMerchantLength)
+        self.currency = InputSanitizer.sanitizeSingleLine(currency, maxLength: InputSanitizer.maxCurrencyLength)
+        let cat = SpendingCategory(rawValue: categoryRawValue) ?? .other
+        self.categoryRawValue = cat.canonical.rawValue
+        self.buildingId = buildingId.map { InputSanitizer.sanitizeIdentifier($0) }
         self.timestamp = timestamp
-        self.source = source
+        self.source = InputSanitizer.sanitizeSingleLine(source, maxLength: 32)
     }
 
 

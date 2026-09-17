@@ -38,9 +38,13 @@ public struct QuickExpensePromptIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        let cleanMerchant = (merchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
-            ? merchant!.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard amount.isFinite && amount > 0 else {
+            throw IngestIntentError.executionFailed(AppLanguage.localized("לא התקבל סכום תקין.", "Invalid amount provided."))
+        }
+        let rawMerchant = (merchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? merchant!
             : AppLanguage.localized("הוצאה כללית", "General expense")
+        let cleanMerchant = InputSanitizer.sanitizeSingleLine(rawMerchant, maxLength: InputSanitizer.maxMerchantLength)
 
         let result = await WalletIngestCoordinator.run(
             amount: amount,

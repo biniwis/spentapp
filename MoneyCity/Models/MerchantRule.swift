@@ -39,11 +39,11 @@ public final class MerchantRule: Identifiable {
         createdAt: Date = Date()
     ) {
         self.id = id
-        self.merchantKey = merchantKey
-        self.displayName = displayName
-        self.categoryRawValue = category.rawValue
-        self.buildingIdRaw = buildingId
-        self.hitCount = hitCount
+        self.merchantKey = InputSanitizer.sanitizeSingleLine(merchantKey, maxLength: InputSanitizer.maxMerchantLength)
+        self.displayName = InputSanitizer.sanitizeSingleLine(displayName, maxLength: InputSanitizer.maxMerchantLength)
+        self.categoryRawValue = category.canonical.rawValue
+        self.buildingIdRaw = buildingId.map { InputSanitizer.sanitizeIdentifier($0) }
+        self.hitCount = max(0, hitCount)
         self.createdAt = createdAt
     }
 }

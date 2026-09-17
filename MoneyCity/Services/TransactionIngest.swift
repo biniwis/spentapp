@@ -133,7 +133,8 @@ public enum TransactionIngest {
     /// A currency is a symbol or a three-letter code, and never contains digits.
     public static func sanitizedCurrency(_ raw: String?) -> String? {
         guard let raw else { return nil }
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitized = InputSanitizer.sanitizeSingleLine(raw, maxLength: InputSanitizer.maxCurrencyLength)
+        let trimmed = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, trimmed.count <= 4 else { return nil }
         guard !trimmed.contains(where: { $0.isNumber }) else { return nil }
         return trimmed
@@ -352,7 +353,8 @@ public enum TransactionIngest {
     /// Israeli district/location metadata, card headers, and trailing currency amounts.
     public static func normalizedMerchant(_ merchant: String?) -> String? {
         guard let raw = merchant else { return nil }
-        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitized = InputSanitizer.sanitizeSingleLine(raw, maxLength: InputSanitizer.maxMerchantLength)
+        var text = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
 
         // 1. If multi-line (e.g. "Isracard\nמחוז תל אביב, Chacoli, ₪ 6.00"), pick content lines

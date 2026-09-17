@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+
+  "features": {
+    "notifications": true,
+    "automaticCapture": true,
+    "receiptScanner": true,
+    "weeklyAdditions": true,
+    "savingsGoals": true
+  },
+
+  "announcement": null,
+
+  "copy": {},
+
+  "captureGuide": {
+    "mode": "native",
+    "forceVariant": null,
+    "revision": 1,
+    "steps": null
+  },
+
+  "notifications": {
+    "weeklyDigest": null,
+    "monthlyRecap": null,
+    "cityNarrativeEnabled": true,
+    "captureHealthCheckEnabled": true
+  },
+
+  "merchantOverrides": []
+}

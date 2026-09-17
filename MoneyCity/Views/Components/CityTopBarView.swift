@@ -26,19 +26,21 @@ public struct CityTopBarView: View {
 
             Spacer()
 
-            Button {
-                onOpenCompanions()
-            } label: {
-                MoneyIcon(.gift, size: 24)
-                    .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.94), in: Circle())
-                    .overlay(alignment: .topTrailing) {
-                        if hasWeeklyReward {
-                            Circle().fill(MoneyCityTheme.neonLime).frame(width: 10, height: 10)
+            if RemoteConfigService.shared.isFeatureEnabled("weeklyAdditions") {
+                Button {
+                    onOpenCompanions()
+                } label: {
+                    MoneyIcon(.gift, size: 24)
+                        .frame(width: 44, height: 44)
+                        .background(Color.white.opacity(0.94), in: Circle())
+                        .overlay(alignment: .topTrailing) {
+                            if hasWeeklyReward {
+                                Circle().fill(MoneyCityTheme.neonLime).frame(width: 10, height: 10)
+                            }
                         }
-                    }
+                }
+                .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — תוספת שבועית" : "City companions — weekly addition")
             }
-            .accessibilityLabel(l10n.isHebrew ? "מצטרפים לעיר — תוספת שבועית" : "City companions — weekly addition")
 
             Button(action: {
                 Haptics.selection()

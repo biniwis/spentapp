@@ -88,8 +88,17 @@ public struct AutomaticCaptureSetupGuide: View {
     private var isHebrew: Bool { l10n.language == .hebrew }
 
     // MARK: - OS Version Detection (Shortcuts Flow)
+    private var effectiveVariant: AutomaticCaptureGuideVariant {
+        if variant == .automatic,
+           let forced = RemoteConfigService.shared.captureGuideForceVariant,
+           let parsed = AutomaticCaptureGuideVariant(rawValue: forced) {
+            return parsed
+        }
+        return variant
+    }
+
     private var usesNewShortcutsFlow: Bool {
-        switch variant {
+        switch effectiveVariant {
         case .ios27:
             return true
         case .legacy:
@@ -110,6 +119,12 @@ public struct AutomaticCaptureSetupGuide: View {
 
     // The active screen sequence (screen 2 is omitted in iOS 27 flow)
     private var activeScreens: [Int] {
+        if let customSteps = RemoteConfigService.shared.captureGuideSteps, !customSteps.isEmpty {
+            let validSteps = customSteps.filter { (0...6).contains($0) }
+            if !validSteps.isEmpty {
+                return skipIntro ? validSteps.filter { $0 != 0 } : validSteps
+            }
+        }
         let base = usesNewShortcutsFlow ? [1, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6]
         return skipIntro ? base : [0] + base
     }

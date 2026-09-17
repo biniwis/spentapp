@@ -15,6 +15,9 @@ public enum NotificationService {
     public static let actionEnterAmount = "ACTION_ENTER_AMOUNT"
 
     public static var isEnabled: Bool {
+        guard RemoteConfigService.shared.isFeatureEnabled("notifications", default: true) else {
+            return false
+        }
         let defaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
         return defaults.object(forKey: "notifications_enabled") as? Bool ?? true
     }
@@ -82,17 +85,32 @@ public enum NotificationService {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier])
 
+        let remoteWeekly = RemoteConfigService.shared.weeklyDigestConfig
+        if let weekly = remoteWeekly, weekly.enabled == false {
+            return
+        }
+
+        let defaultTitleHe = "העיר שלך מחכה לך 🏙️"
+        let defaultTitleEn = "Your City Awaits 🏙️"
+        let defaultBodyHe = "עבר עוד שבוע — פתח את SPENT כדי לראות איך ההוצאות שלך עיצבו את קו הרקיע."
+        let defaultBodyEn = "Another week has passed — open SPENT to see how your spending shaped the skyline."
+
+        let titleOverride = isHebrew ? remoteWeekly?.title?["he"] : remoteWeekly?.title?["en"]
+        let bodyOverride = isHebrew ? remoteWeekly?.body?["he"] : remoteWeekly?.body?["en"]
+
         let content = UNMutableNotificationContent()
-        content.title = isHebrew ? "העיר שלך מחכה לך 🏙️" : "Your City Awaits 🏙️"
-        content.body = isHebrew
-            ? "עבר עוד שבוע — פתח את SPENT כדי לראות איך ההוצאות שלך עיצבו את קו הרקיע."
-            : "Another week has passed — open SPENT to see how your spending shaped the skyline."
+        content.title = (titleOverride?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? titleOverride!
+            : (isHebrew ? defaultTitleHe : defaultTitleEn)
+        content.body = (bodyOverride?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? bodyOverride!
+            : (isHebrew ? defaultBodyHe : defaultBodyEn)
         content.sound = .default
 
         var components = DateComponents()
-        components.weekday = 1
-        components.hour = 20
-        components.minute = 0
+        components.weekday = remoteWeekly?.weekday ?? 1
+        components.hour = remoteWeekly?.hour ?? 20
+        components.minute = remoteWeekly?.minute ?? 0
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         let request = UNNotificationRequest(identifier: weeklyIdentifier, content: content, trigger: trigger)
@@ -104,19 +122,34 @@ public enum NotificationService {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [monthlyRecapIdentifier])
 
+        let remoteMonthly = RemoteConfigService.shared.monthlyRecapConfig
+        if let monthly = remoteMonthly, monthly.enabled == false {
+            return
+        }
+
+        let defaultTitleHe = "הסיכום החודשי של העיר שלך מוכן! 🏙️🎉"
+        let defaultTitleEn = "Your Monthly City Recap is Ready! 🏙️🎉"
+        let defaultBodyHe = "חודש חדש נפתח! היכנס לגלות איזה רובע הוביל, מה היה יום השיא ואיך נראה קו הרקיע שלך."
+        let defaultBodyEn = "A new month has begun! Tap to discover your top district, peak day, and city story."
+
+        let titleOverride = isHebrew ? remoteMonthly?.title?["he"] : remoteMonthly?.title?["en"]
+        let bodyOverride = isHebrew ? remoteMonthly?.body?["he"] : remoteMonthly?.body?["en"]
+
         let content = UNMutableNotificationContent()
-        content.title = isHebrew ? "הסיכום החודשי של העיר שלך מוכן! 🏙️🎉" : "Your Monthly City Recap is Ready! 🏙️🎉"
-        content.body = isHebrew
-            ? "חודש חדש נפתח! היכנס לגלות איזה רובע הוביל, מה היה יום השיא ואיך נראה קו הרקיע שלך."
-            : "A new month has begun! Tap to discover your top district, peak day, and city story."
+        content.title = (titleOverride?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? titleOverride!
+            : (isHebrew ? defaultTitleHe : defaultTitleEn)
+        content.body = (bodyOverride?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false)
+            ? bodyOverride!
+            : (isHebrew ? defaultBodyHe : defaultBodyEn)
         content.sound = .default
         content.userInfo = ["type": "monthly_recap"]
 
-        // Fires on the 1st of every month at 11:00 AM
+        // Fires on the 1st of every month at 11:00 AM by default
         var components = DateComponents()
-        components.day = 1
-        components.hour = 11
-        components.minute = 0
+        components.day = remoteMonthly?.day ?? 1
+        components.hour = remoteMonthly?.hour ?? 11
+        components.minute = remoteMonthly?.minute ?? 0
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         let request = UNNotificationRequest(identifier: monthlyRecapIdentifier, content: content, trigger: trigger)

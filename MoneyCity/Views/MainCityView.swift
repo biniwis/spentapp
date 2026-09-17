@@ -112,6 +112,10 @@ public struct MainCityView: View {
     @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
     @State private var showBrandSplash: Bool
 
+    // ── Remote Config & Announcement ──
+    @ObservedObject private var remoteConfig = RemoteConfigService.shared
+    @State private var showApplePayGuideSheet: Bool = false
+
     // ── In-App Pending Wallet Ingests (Missing Amount Fallback) ──
     @State private var pendingWalletItems: [PendingWalletIngest] = []
     @State private var resolvingPendingItem: PendingWalletIngest? = nil
@@ -355,6 +359,27 @@ public struct MainCityView: View {
             // Zen mode, Past Month indicators, and Unresolved Pending Banners (city only)
             if activeTab == "city" {
                 VStack(spacing: 8) {
+                    if let announcement = remoteConfig.activeAnnouncement() {
+                        RemoteAnnouncementBanner(
+                            announcement: announcement,
+                            onAction: { action in
+                                switch action {
+                                case .openCaptureGuide:
+                                    showApplePayGuideSheet = true
+                                case .openProfile:
+                                    activeTab = "profile"
+                                case .none:
+                                    break
+                                }
+                            },
+                            onDismiss: {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    remoteConfig.dismissAnnouncement(id: announcement.id)
+                                }
+                            }
+                        )
+                    }
+
                     HStack {
                         if isSnapshotMode {
                             Button(action: closeMonthSnapshot) {
@@ -700,6 +725,10 @@ public struct MainCityView: View {
                 transactions: feedFilteredTransactions
             )
             .environmentObject(l10n)
+        }
+        .fullScreenCover(isPresented: $showApplePayGuideSheet) {
+            ApplePayGuideSheet()
+                .environmentObject(l10n)
         }
         .onChange(of: companionScenePhase) { _, phase in
             if phase == .active {

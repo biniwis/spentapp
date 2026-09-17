@@ -329,9 +329,14 @@ public enum DataPortabilityService {
         case replace
     }
 
+    public static let maxBackupFileSize = 15 * 1024 * 1024 // 15 MB
+    public static let maxRecordCount = 50_000
+
     public enum ImportError: LocalizedError {
         case notABackup
         case futureFormat(Int)
+        case fileTooLarge
+        case tooManyRecords
 
         public var errorDescription: String? {
             switch self {
@@ -339,6 +344,10 @@ public enum DataPortabilityService {
                 return AppLanguage.localized("הקובץ הזה אינו גיבוי של MoneyCity.", "This file is not a MoneyCity backup.")
             case .futureFormat(let v):
                 return AppLanguage.localized("הגיבוי נוצר בגרסה חדשה יותר של האפליקציה (פורמט \(v)).", "This backup was created by a newer version of the app (format \(v)).")
+            case .fileTooLarge:
+                return AppLanguage.localized("קובץ הגיבוי גדול מדי (מקסימום 15MB).", "Backup file exceeds maximum allowed size (15MB).")
+            case .tooManyRecords:
+                return AppLanguage.localized("קובץ הגיבוי מכיל יותר מדי רשומות.", "Backup file contains too many records.")
             }
         }
     }
@@ -349,16 +358,30 @@ public enum DataPortabilityService {
         public var exportedAt: Date? = nil
     }
 
+    public static func isPlausibleDate(_ date: Date, reference: Date = Date()) -> Bool {
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: date)
+        let refYear = calendar.component(.year, from: reference)
+        return year >= 2000 && year <= refYear + 10
+    }
+
     @MainActor
     public static func importData(
         _ data: Data,
         into context: ModelContext,
         mode: ImportMode = .merge
     ) throws -> ImportSummary {
+        guard data.count <= maxBackupFileSize else {
+            throw ImportError.fileTooLarge
+        }
+
         let envelope = try makeDecoder().decode(Envelope.self, from: data)
         guard envelope.format == formatIdentifier else { throw ImportError.notABackup }
         guard envelope.formatVersion <= formatVersion else {
             throw ImportError.futureFormat(envelope.formatVersion)
+        }
+        guard envelope.totalRecords <= maxRecordCount else {
+            throw ImportError.tooManyRecords
         }
 
         var summary = ImportSummary()
@@ -382,26 +405,39 @@ public enum DataPortabilityService {
         var txIds = mode == .replace ? Set<UUID>() : (try existingIds(Transaction.self) { $0.id })
         for dto in envelope.transactions {
             guard !txIds.contains(dto.id) else { summary.skipped += 1; continue }
+            guard dto.amount.isFinite, let sanitizedAmount = MoneyAmount.sanitizedSigned(dto.amount) else {
+                continue
+            }
+            let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
+            let cleanMerchant = InputSanitizer.sanitizeSingleLine(dto.merchant, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
+            let date = isPlausibleDate(dto.timestamp) ? dto.timestamp : Date()
+            let cleanNote = dto.note.map { InputSanitizer.sanitizeMultiline($0, maxLength: InputSanitizer.maxNoteLength) }
+            let validBuildingId = dto.buildingId.flatMap { raw -> String? in
+                let cleaned = InputSanitizer.sanitizeIdentifier(raw)
+                return CityBuilding.allKnownBuildingIds.contains(cleaned) ? cleaned : nil
+            }
+            let safeConfidence = dto.confidenceScore.isFinite ? min(1.0, max(0.0, dto.confidenceScore)) : 1.0
+
             let t = Transaction(
-                amount: MoneyAmount.sanitizedSigned(dto.amount) ?? 0,
-                merchant: dto.merchant,
-                category: SpendingCategory(rawValue: dto.category) ?? .other
+                id: dto.id,
+                amount: sanitizedAmount,
+                currency: cleanCurrency.isEmpty ? "₪" : cleanCurrency,
+                merchant: cleanMerchant,
+                category: category,
+                timestamp: date,
+                confidenceScore: safeConfidence,
+                isManual: dto.isManual,
+                isConfirmed: dto.isConfirmed,
+                note: cleanNote,
+                buildingId: validBuildingId,
+                originalAmount: dto.originalAmount.flatMap { $0.isFinite ? $0 : nil },
+                originalCurrency: dto.originalCurrency.map { InputSanitizer.sanitizeSingleLine($0, maxLength: InputSanitizer.maxCurrencyLength) },
+                exchangeRate: dto.exchangeRate.flatMap { $0.isFinite && $0 > 0 ? $0 : nil },
+                savingsGoalId: dto.savingsGoalId,
+                installmentPlanId: dto.installmentPlanId,
+                installmentIndex: dto.installmentIndex.flatMap { (1...120).contains($0) ? $0 : nil }
             )
-            t.id = dto.id
-            t.currency = dto.currency
-            t.categoryRawValue = dto.category
-            t.timestamp = dto.timestamp
-            t.confidenceScore = dto.confidenceScore
-            t.isManual = dto.isManual
-            t.isConfirmed = dto.isConfirmed
-            t.note = dto.note
-            t.buildingIdRaw = dto.buildingId
-            t.originalAmount = dto.originalAmount
-            t.originalCurrency = dto.originalCurrency
-            t.exchangeRate = dto.exchangeRate
-            t.savingsGoalId = dto.savingsGoalId
-            t.installmentPlanId = dto.installmentPlanId
-            t.installmentIndex = dto.installmentIndex
             context.insert(t)
             txIds.insert(dto.id)
             summary.added += 1
@@ -410,17 +446,26 @@ public enum DataPortabilityService {
         var recIds = mode == .replace ? Set<UUID>() : (try existingIds(RecurringExpense.self) { $0.id })
         for dto in envelope.recurring {
             guard !recIds.contains(dto.id) else { summary.skipped += 1; continue }
+            guard dto.amount.isFinite, let sanitizedAmount = MoneyAmount.sanitized(dto.amount) else {
+                continue
+            }
+            let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
+            let cleanMerchant = InputSanitizer.sanitizeSingleLine(dto.merchant, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
+            let day = max(1, min(31, dto.dayOfMonth))
+
             let r = RecurringExpense(
-                merchant: dto.merchant, amount: MoneyAmount.sanitized(dto.amount) ?? 0,
-                category: SpendingCategory(rawValue: dto.category) ?? .other,
-                dayOfMonth: dto.dayOfMonth
+                merchant: cleanMerchant,
+                amount: sanitizedAmount,
+                category: category,
+                dayOfMonth: day
             )
             r.id = dto.id
-            r.currency = dto.currency
-            r.categoryRawValue = dto.category
+            r.currency = cleanCurrency.isEmpty ? "₪" : cleanCurrency
+            r.categoryRawValue = category.rawValue
             r.isActive = dto.isActive
-            r.lastGeneratedPeriod = dto.lastGeneratedPeriod
-            r.createdAt = dto.createdAt
+            r.lastGeneratedPeriod = dto.lastGeneratedPeriod.map { InputSanitizer.sanitizeIdentifier($0, maxLength: 32) }
+            r.createdAt = isPlausibleDate(dto.createdAt) ? dto.createdAt : Date()
             context.insert(r)
             recIds.insert(dto.id)
             summary.added += 1
@@ -429,11 +474,18 @@ public enum DataPortabilityService {
         var incIds = mode == .replace ? Set<UUID>() : (try existingIds(IncomeSource.self) { $0.id })
         for dto in envelope.income {
             guard !incIds.contains(dto.id) else { summary.skipped += 1; continue }
-            let i = IncomeSource(name: dto.name, amount: MoneyAmount.sanitized(dto.amount) ?? 0, dayOfMonth: dto.dayOfMonth)
+            guard dto.amount.isFinite, let sanitizedAmount = MoneyAmount.sanitized(dto.amount) else {
+                continue
+            }
+            let cleanName = InputSanitizer.sanitizeSingleLine(dto.name, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
+            let day = max(1, min(31, dto.dayOfMonth))
+
+            let i = IncomeSource(name: cleanName, amount: sanitizedAmount, dayOfMonth: day)
             i.id = dto.id
-            i.currency = dto.currency
+            i.currency = cleanCurrency.isEmpty ? "₪" : cleanCurrency
             i.isActive = dto.isActive
-            i.createdAt = dto.createdAt
+            i.createdAt = isPlausibleDate(dto.createdAt) ? dto.createdAt : Date()
             context.insert(i)
             incIds.insert(dto.id)
             summary.added += 1
@@ -442,13 +494,16 @@ public enum DataPortabilityService {
         var budIds = mode == .replace ? Set<UUID>() : (try existingIds(CategoryBudget.self) { $0.id })
         for dto in envelope.budgets {
             guard !budIds.contains(dto.id) else { summary.skipped += 1; continue }
+            guard dto.monthlyLimit.isFinite && dto.monthlyLimit >= 0 else { continue }
+            let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
+
             let b = CategoryBudget(
-                category: SpendingCategory(rawValue: dto.category) ?? .other,
+                category: category,
                 monthlyLimit: dto.monthlyLimit
             )
             b.id = dto.id
-            b.categoryRawValue = dto.category
-            b.createdAt = dto.createdAt
+            b.categoryRawValue = category.rawValue
+            b.createdAt = isPlausibleDate(dto.createdAt) ? dto.createdAt : Date()
             context.insert(b)
             budIds.insert(dto.id)
             summary.added += 1
@@ -457,16 +512,23 @@ public enum DataPortabilityService {
         var ruleIds = mode == .replace ? Set<UUID>() : (try existingIds(MerchantRule.self) { $0.id })
         for dto in envelope.merchantRules {
             guard !ruleIds.contains(dto.id) else { summary.skipped += 1; continue }
+            let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
+            let cleanKey = InputSanitizer.sanitizeSingleLine(dto.merchantKey, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanDisplay = InputSanitizer.sanitizeSingleLine(dto.displayName, maxLength: InputSanitizer.maxMerchantLength)
+            let validBuildingId = dto.buildingId.flatMap { raw -> String? in
+                let cleaned = InputSanitizer.sanitizeIdentifier(raw)
+                return CityBuilding.allKnownBuildingIds.contains(cleaned) ? cleaned : nil
+            }
+
             let r = MerchantRule(
-                merchantKey: dto.merchantKey,
-                displayName: dto.displayName,
-                category: SpendingCategory(rawValue: dto.category) ?? .other
+                id: dto.id,
+                merchantKey: cleanKey,
+                displayName: cleanDisplay,
+                category: category,
+                buildingId: validBuildingId,
+                hitCount: max(0, dto.hitCount),
+                createdAt: isPlausibleDate(dto.createdAt) ? dto.createdAt : Date()
             )
-            r.id = dto.id
-            r.categoryRawValue = dto.category
-            r.buildingIdRaw = dto.buildingId
-            r.hitCount = dto.hitCount
-            r.createdAt = dto.createdAt
             context.insert(r)
             ruleIds.insert(dto.id)
             summary.added += 1
@@ -475,20 +537,33 @@ public enum DataPortabilityService {
         var planIds = mode == .replace ? Set<UUID>() : (try existingIds(InstallmentPlan.self) { $0.id })
         for dto in envelope.installments {
             guard !planIds.contains(dto.id) else { summary.skipped += 1; continue }
-            let payments = min(36, max(1, dto.numberOfPayments))
+            guard dto.totalAmount.isFinite, let sanitizedTotal = MoneyAmount.sanitized(dto.totalAmount) else {
+                continue
+            }
+            let payments = min(120, max(1, dto.numberOfPayments))
+            let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
+            let cleanMerchant = InputSanitizer.sanitizeSingleLine(dto.merchant, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
+            let validBuildingId = dto.buildingId.flatMap { raw -> String? in
+                let cleaned = InputSanitizer.sanitizeIdentifier(raw)
+                return CityBuilding.allKnownBuildingIds.contains(cleaned) ? cleaned : nil
+            }
+            let firstDate = isPlausibleDate(dto.firstChargeDate) ? dto.firstChargeDate : Date()
+            let createdDate = isPlausibleDate(dto.createdAt) ? dto.createdAt : Date()
+            let lastMat = max(0, min(payments, dto.lastMaterializedIndex ?? 0))
+
             let p = InstallmentPlan(
-                merchant: dto.merchant,
-                totalAmount: MoneyAmount.sanitized(dto.totalAmount) ?? 0,
+                id: dto.id,
+                merchant: cleanMerchant,
+                totalAmount: sanitizedTotal,
+                currency: cleanCurrency.isEmpty ? "₪" : cleanCurrency,
                 numberOfPayments: payments,
-                firstChargeDate: dto.firstChargeDate,
-                category: SpendingCategory(rawValue: dto.category) ?? .other,
-                createdAt: dto.createdAt,
-                lastMaterializedIndex: dto.lastMaterializedIndex ?? 0,
-                buildingIdRaw: dto.buildingId
+                firstChargeDate: firstDate,
+                category: category,
+                createdAt: createdDate,
+                lastMaterializedIndex: lastMat,
+                buildingIdRaw: validBuildingId
             )
-            p.id = dto.id
-            p.currency = dto.currency
-            p.categoryRawValue = dto.category
             context.insert(p)
             planIds.insert(dto.id)
             summary.added += 1
@@ -497,16 +572,29 @@ public enum DataPortabilityService {
         var goalIds = mode == .replace ? Set<UUID>() : (try existingIds(SavingsGoal.self) { $0.id })
         for dto in envelope.savingsGoals {
             guard !goalIds.contains(dto.id) else { summary.skipped += 1; continue }
-            let g = SavingsGoal(name: dto.name, targetAmount: dto.targetAmount)
-            g.id = dto.id
-            g.icon = dto.icon
-            g.savedAmount = dto.savedAmount
-            g.currency = dto.currency
-            g.targetDate = dto.targetDate
-            g.createdAt = dto.createdAt
-            g.completedAt = dto.completedAt
-            g.unlinkedBaseline = dto.unlinkedBaseline
-            g.baselineCaptured = dto.baselineCaptured
+            let cleanName = InputSanitizer.sanitizeSingleLine(dto.name, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanIcon = InputSanitizer.sanitizeSingleLine(dto.icon, maxLength: 64)
+            let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
+            let targetAmt = dto.targetAmount.isFinite ? max(0.0, dto.targetAmount) : 0.0
+            let savedAmt = dto.savedAmount.isFinite ? max(0.0, dto.savedAmount) : 0.0
+            let targetDate = dto.targetDate.flatMap { isPlausibleDate($0) ? $0 : nil }
+            let createdDate = isPlausibleDate(dto.createdAt) ? dto.createdAt : Date()
+            let completedDate = dto.completedAt.flatMap { isPlausibleDate($0) ? $0 : nil }
+            let unlinked = dto.unlinkedBaseline.isFinite ? max(0.0, dto.unlinkedBaseline) : 0.0
+
+            let g = SavingsGoal(
+                id: dto.id,
+                name: cleanName,
+                icon: cleanIcon,
+                targetAmount: targetAmt,
+                savedAmount: savedAmt,
+                currency: cleanCurrency.isEmpty ? "₪" : cleanCurrency,
+                targetDate: targetDate,
+                createdAt: createdDate,
+                completedAt: completedDate,
+                unlinkedBaseline: unlinked,
+                baselineCaptured: dto.baselineCaptured
+            )
             context.insert(g)
             goalIds.insert(dto.id)
             summary.added += 1
@@ -515,21 +603,31 @@ public enum DataPortabilityService {
         var enrIds = mode == .replace ? Set<UUID>() : (try existingIds(CityEnrichment.self) { $0.id })
         for dto in envelope.enrichments {
             guard !enrIds.contains(dto.id) else { summary.skipped += 1; continue }
+            let cleanItemId = InputSanitizer.sanitizeIdentifier(dto.itemId)
+            let cleanName = InputSanitizer.sanitizeSingleLine(dto.name, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanSubtitle = InputSanitizer.sanitizeSingleLine(dto.subtitle, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanIcon = InputSanitizer.sanitizeSingleLine(dto.icon, maxLength: 64)
+            let type = EnrichmentType(rawValue: dto.type) ?? .decoration
+            let cleanTier = InputSanitizer.sanitizeSingleLine(dto.tier, maxLength: 32)
+            let unlockedDate = isPlausibleDate(dto.unlockedDate) ? dto.unlockedDate : Date()
+            let savedAmt = dto.savedAmount.isFinite ? max(0.0, dto.savedAmount) : 0.0
+            let cleanDistrictId = InputSanitizer.sanitizeIdentifier(dto.districtId)
+            let cleanSlotId = dto.placedSlotId.map { InputSanitizer.sanitizeIdentifier($0) }
+
             let e = CityEnrichment(
-                itemId: dto.itemId,
-                name: dto.name,
-                icon: dto.icon,
-                type: EnrichmentType(rawValue: dto.type) ?? .decoration
+                id: dto.id,
+                itemId: cleanItemId,
+                name: cleanName,
+                subtitle: cleanSubtitle,
+                icon: cleanIcon,
+                type: type,
+                tier: cleanTier,
+                unlockedDate: unlockedDate,
+                savedAmount: savedAmt,
+                districtId: cleanDistrictId,
+                isApplied: dto.isApplied,
+                placedSlotId: cleanSlotId
             )
-            e.id = dto.id
-            e.subtitle = dto.subtitle
-            e.typeRawValue = dto.type
-            e.tierRawValue = dto.tier
-            e.unlockedDate = dto.unlockedDate
-            e.savedAmount = dto.savedAmount
-            e.districtId = dto.districtId
-            e.isApplied = dto.isApplied
-            e.placedSlotId = dto.placedSlotId
             context.insert(e)
             enrIds.insert(dto.id)
             summary.added += 1

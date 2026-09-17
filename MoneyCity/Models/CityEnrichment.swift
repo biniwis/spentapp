@@ -77,16 +77,16 @@ public final class CityEnrichment: Identifiable {
         placedSlotId: String? = nil
     ) {
         self.id = id
-        self.itemId = itemId
-        self.name = name
-        self.subtitle = subtitle
-        self.icon = icon
+        self.itemId = InputSanitizer.sanitizeIdentifier(itemId)
+        self.name = InputSanitizer.sanitizeSingleLine(name, maxLength: InputSanitizer.maxMerchantLength)
+        self.subtitle = InputSanitizer.sanitizeSingleLine(subtitle, maxLength: InputSanitizer.maxMerchantLength)
+        self.icon = InputSanitizer.sanitizeSingleLine(icon, maxLength: 64)
         self.typeRawValue = type.rawValue
-        self.tierRawValue = tier
+        self.tierRawValue = InputSanitizer.sanitizeSingleLine(tier, maxLength: 32)
         self.unlockedDate = unlockedDate
-        self.savedAmount = savedAmount
-        self.districtId = districtId
+        self.savedAmount = savedAmount.isFinite ? max(0.0, savedAmount) : 0.0
+        self.districtId = InputSanitizer.sanitizeIdentifier(districtId)
         self.isApplied = isApplied
-        self.placedSlotId = placedSlotId
+        self.placedSlotId = placedSlotId.map { InputSanitizer.sanitizeIdentifier($0) }
     }
 }

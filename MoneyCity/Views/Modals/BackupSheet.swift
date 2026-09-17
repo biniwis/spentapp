@@ -108,15 +108,30 @@ public struct BackupSheet: View {
 
     private func prepareExport() {
         do {
+            cleanupTemporaryBackups()
             let data = try DataPortabilityService.exportData(context: modelContext)
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent(DataPortabilityService.suggestedFileName())
-            try data.write(to: url, options: .atomic)
+            try data.write(to: url, options: [.atomic, .completeFileProtection])
+            if let oldURL = exportURL, oldURL != url {
+                try? FileManager.default.removeItem(at: oldURL)
+            }
             exportURL = url
             exportError = nil
         } catch {
             exportError = isHebrew ? "הייצוא נכשל: \(error.localizedDescription)"
                                    : "Export failed: \(error.localizedDescription)"
+        }
+    }
+
+    private func cleanupTemporaryBackups() {
+        let tempDir = FileManager.default.temporaryDirectory
+        if let files = try? FileManager.default.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil) {
+            for file in files where file.lastPathComponent.hasPrefix("MoneyCity-") && file.pathExtension == "json" {
+                if file != exportURL {
+                    try? FileManager.default.removeItem(at: file)
+                }
+            }
         }
     }
 

@@ -227,6 +227,9 @@ struct MoneyCityApp: App {
         Task {
             await WalletIngestCoordinator.drainPendingBackgroundCompletions()
         }
+        Task {
+            await RemoteConfigService.shared.refreshIfNeeded()
+        }
     }
     
     private func syncPendingWidgetTransactions() {
@@ -240,26 +243,39 @@ struct MoneyCityApp: App {
 
 public enum WidgetTransactionQueue {
     public static let key = "pending_widget_transactions"
+    public static let maxQueueSize = 100
 
     /// Migrates any legacy entries missing an "id" field by assigning a stable UUID.
     /// Filters out irrecoverably malformed items (missing both amount and merchant, or invalid structure)
-    /// so they do not poison the queue.
+    /// so they do not poison the queue. Enforces maxQueueSize limit and input sanitization.
     public static func sanitizeAndMigrate(raw: [[String: Any]]) -> (valid: [[String: Any]], malformedCount: Int) {
         var valid: [[String: Any]] = []
         var malformed = 0
 
         for var item in raw {
-            let amount = item["amount"] as? Double
-            let merchant = item["merchant"] as? String
+            if valid.count >= maxQueueSize {
+                malformed += 1
+                continue
+            }
+            let rawAmount = item["amount"] as? Double
+            let validAmount = (rawAmount != nil && rawAmount!.isFinite) ? rawAmount : nil
+            let rawMerchant = item["merchant"] as? String
+            let sanitizedMerchant = rawMerchant.map { InputSanitizer.sanitizeSingleLine($0, maxLength: InputSanitizer.maxMerchantLength) }
 
             // An item is irrecoverably malformed if it has neither amount nor merchant
-            guard amount != nil || (merchant != nil && !merchant!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) else {
+            guard validAmount != nil || (sanitizedMerchant != nil && !sanitizedMerchant!.isEmpty) else {
                 malformed += 1
                 continue
             }
 
+            if let validAmount { item["amount"] = validAmount }
+            if let sanitizedMerchant { item["merchant"] = sanitizedMerchant }
+
             // Assign stable ID if missing from legacy formats
-            if (item["id"] as? String)?.isEmpty ?? true {
+            let rawId = item["id"] as? String
+            if let rawId, !rawId.isEmpty {
+                item["id"] = InputSanitizer.sanitizeIdentifier(rawId)
+            } else {
                 item["id"] = UUID().uuidString
             }
             valid.append(item)

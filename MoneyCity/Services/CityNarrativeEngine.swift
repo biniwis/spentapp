@@ -68,6 +68,7 @@ public final class CityNarrativeEngine: @unchecked Sendable {
 
     /// Checks if a proactive narrative push can be sent now.
     public func isEligibleForProactivePush(now: Date = Date()) -> Bool {
+        guard RemoteConfigService.shared.isCityNarrativeEnabled else { return false }
         reconcileState(now: now)
         guard let last = lastProactiveAttemptDate else { return true }
         return now.timeIntervalSince(last) >= 7 * 86400
@@ -116,7 +117,12 @@ public final class CityNarrativeEngine: @unchecked Sendable {
         // Verify watchdog: if missing but eligible and not expired, restore anchored to lastApplePayDate
         if let lastDate = lastApplePayDate {
             let now = Date()
-            if let armed = watchdogArmedUntil, armed > now {
+            if !RemoteConfigService.shared.isCaptureHealthCheckEnabled {
+                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [Self.idWatchdog])
+                lock.lock()
+                self.watchdogArmedUntil = nil
+                lock.unlock()
+            } else if let armed = watchdogArmedUntil, armed > now {
                 // Watchdog is active and waiting in the future
             } else if watchdogArmedUntil == nil {
                 armWatchdog(anchorDate: lastDate)
@@ -169,6 +175,13 @@ public final class CityNarrativeEngine: @unchecked Sendable {
     private func armWatchdog(anchorDate: Date) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [Self.idWatchdog])
+
+        guard RemoteConfigService.shared.isCaptureHealthCheckEnabled else {
+            lock.lock()
+            self.watchdogArmedUntil = nil
+            lock.unlock()
+            return
+        }
 
         let context = DatabaseService.shared.context
         let cutoff = Date().addingTimeInterval(-14 * 86400)

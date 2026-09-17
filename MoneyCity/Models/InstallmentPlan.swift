@@ -43,14 +43,14 @@ public final class InstallmentPlan: Identifiable {
         buildingIdRaw: String? = nil
     ) {
         self.id = id
-        self.merchant = merchant
-        self.totalAmount = totalAmount
-        self.currency = currency
-        self.numberOfPayments = max(1, numberOfPayments)
+        self.merchant = InputSanitizer.sanitizeSingleLine(merchant, maxLength: InputSanitizer.maxMerchantLength)
+        self.totalAmount = totalAmount.isFinite ? max(0.0, totalAmount) : 0.0
+        self.currency = InputSanitizer.sanitizeSingleLine(currency, maxLength: InputSanitizer.maxCurrencyLength)
+        self.numberOfPayments = min(120, max(1, numberOfPayments))
         self.firstChargeDate = firstChargeDate
-        self.categoryRawValue = category.rawValue
+        self.categoryRawValue = category.canonical.rawValue
         self.createdAt = createdAt
-        self.lastMaterializedIndex = lastMaterializedIndex
-        self.buildingIdRaw = buildingIdRaw
+        self.lastMaterializedIndex = max(0, min(self.numberOfPayments, lastMaterializedIndex))
+        self.buildingIdRaw = buildingIdRaw.map { InputSanitizer.sanitizeIdentifier($0) }
     }
 }

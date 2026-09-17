@@ -7,6 +7,7 @@ public struct AutomaticCaptureStatusView: View {
     @EnvironmentObject private var l10n: LocalizationManager
 
     @State private var showSetupGuide: Bool = false
+    @State private var showManualGuide: Bool = false
     @State private var showTrouble: Bool = false
 
     private var isHebrew: Bool { l10n.language == .hebrew }
@@ -20,31 +21,32 @@ public struct AutomaticCaptureStatusView: View {
                 Color.appBackground.ignoresSafeArea()
 
                 VStack(alignment: .leading, spacing: 0) {
-                    Spacer().frame(height: 24)
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(mainStateTitle)
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                    // Status Header
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(mainStateTitle)
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                            .fixedSize(horizontal: false, vertical: true)
+                            Text(bodyDescription)
+                                .font(.system(size: 15, weight: .regular, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                                .lineSpacing(4)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                        Text(bodyDescription)
-                            .font(.system(size: 15, weight: .regular, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
-                            .lineSpacing(4)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        if case .captureDetected(let date) = state {
-                            Text(AutomaticCaptureStateStore.formatLastDetected(date: date, isHebrew: isHebrew))
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.textMuted)
-                                .padding(.top, 6)
+                            if case .captureDetected(let date) = state {
+                                Text(AutomaticCaptureStateStore.formatLastDetected(date: date, isHebrew: isHebrew))
+                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color.textMuted)
+                                    .padding(.top, 6)
+                            }
                         }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 24)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(.horizontal, 24)
 
-                    Spacer()
+                    Spacer(minLength: 16)
 
                     // Action buttons
                     bottomActionButtons
@@ -71,6 +73,15 @@ public struct AutomaticCaptureStatusView: View {
             ApplePayGuideSheet()
                 .environmentObject(l10n)
         }
+        .fullScreenCover(isPresented: $showManualGuide) {
+            AutomaticCaptureSetupGuide(
+                forceManualGuide: true,
+                skipIntro: false,
+                showCloseButton: true,
+                onFinished: { showManualGuide = false }
+            )
+            .environmentObject(l10n)
+        }
         .sheet(isPresented: $showTrouble) {
             TroubleSheet(
                 context: .shortcuts,
@@ -84,69 +95,146 @@ public struct AutomaticCaptureStatusView: View {
     // MARK: - Action Buttons
     @ViewBuilder
     private var bottomActionButtons: some View {
-        switch state {
-        case .captureDetected:
-            // Working state: calm screen with only a quiet secondary action
-            Button(action: {
-                Haptics.selection()
-                showTrouble = true
-            }) {
-                Text(isHebrew ? "פתרון בעיות" : "Troubleshooting")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
-            }
-            .buttonStyle(.plain)
+        VStack(spacing: 12) {
+            switch state {
+            case .captureDetected:
+                Button(action: {
+                    Haptics.impact(.medium)
+                    showSetupGuide = true
+                }) {
+                    Text(isHebrew ? "הוסף קיצור מחדש" : "Add Shortcut Again")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.deepNavy)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
 
-        case .configuredAwaitingFirstCapture:
-            Button(action: {
-                Haptics.selection()
-                showTrouble = true
-            }) {
-                Text(isHebrew ? "לא עובד?" : "Not working?")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: 44)
-            }
-            .buttonStyle(.plain)
+                Button(action: {
+                    Haptics.selection()
+                    showManualGuide = true
+                }) {
+                    Text(isHebrew ? "מדריך הגדרה ידנית" : "Manual Setup Guide")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
 
-        case .setupInProgress:
-            Button(action: {
-                Haptics.impact(.medium)
-                showSetupGuide = true
-            }) {
-                Text(isHebrew ? "המשך הגדרה" : "Continue Setup")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.deepNavy)
-                    )
-            }
-            .buttonStyle(.plain)
-            .bouncyPress()
+                Button(action: {
+                    Haptics.selection()
+                    showTrouble = true
+                }) {
+                    Text(isHebrew ? "פתרון בעיות" : "Troubleshooting")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
 
-        case .notConfigured:
-            Button(action: {
-                Haptics.impact(.medium)
-                showSetupGuide = true
-            }) {
-                Text(isHebrew ? "הגדר קליטה אוטומטית" : "Set Up Automatic Capture")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.luckyGreen)
-                    )
+            case .configuredAwaitingFirstCapture:
+                Button(action: {
+                    Haptics.impact(.medium)
+                    showSetupGuide = true
+                }) {
+                    Text(isHebrew ? "הוסף קיצור מחדש" : "Add Shortcut Again")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.deepNavy)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+
+                Button(action: {
+                    Haptics.selection()
+                    showManualGuide = true
+                }) {
+                    Text(isHebrew ? "מדריך הגדרה ידנית" : "Manual Setup Guide")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    Haptics.selection()
+                    showTrouble = true
+                }) {
+                    Text(isHebrew ? "לא עובד?" : "Not working?")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+
+            case .setupInProgress:
+                Button(action: {
+                    Haptics.impact(.medium)
+                    showSetupGuide = true
+                }) {
+                    Text(isHebrew ? "המשך הגדרה" : "Continue Setup")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.deepNavy)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+
+                Button(action: {
+                    Haptics.selection()
+                    showManualGuide = true
+                }) {
+                    Text(isHebrew ? "מדריך הגדרה ידנית" : "Manual Setup Guide")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+
+            case .notConfigured:
+                Button(action: {
+                    Haptics.impact(.medium)
+                    showSetupGuide = true
+                }) {
+                    Text(isHebrew ? "הגדר קליטה אוטומטית" : "Set Up Automatic Capture")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.luckyGreen)
+                        )
+                }
+                .buttonStyle(.plain)
+                .bouncyPress()
+
+                Button(action: {
+                    Haptics.selection()
+                    showManualGuide = true
+                }) {
+                    Text(isHebrew ? "מדריך הגדרה ידנית" : "Manual Setup Guide")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-            .bouncyPress()
         }
     }
 

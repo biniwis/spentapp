@@ -215,4 +215,89 @@ final class AutomaticCaptureStateStoreTests: XCTestCase {
         // Capture detected ALWAYS beats in-progress setup
         XCTAssertEqual(store.state(now: now), .captureDetected(detected))
     }
+
+    // Test 16: markFastSetupOpenedAutomations sets fresh automations and .setupInProgress
+    func test16_fastSetupOpenedAutomations_returnsSetupInProgress() {
+        let now = Date()
+        store.markFastSetupOpenedAutomations(at: now)
+
+        XCTAssertTrue(store.hasFreshFastSetupOpenedAutomations(now: now))
+        XCTAssertTrue(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertEqual(store.state(now: now), .setupInProgress)
+    }
+
+    // Test 17: Stale fastSetupOpenedAutomations (> 24 hours) expires and returns .notConfigured
+    func test17_staleFastSetupOpenedAutomations_expiresAndReturnsNotConfigured() {
+        let now = Date()
+        let twentyFiveHoursAgo = now.addingTimeInterval(-25 * 60 * 60)
+
+        store.markFastSetupOpenedAutomations(at: twentyFiveHoursAgo)
+        XCTAssertFalse(store.hasFreshFastSetupOpenedAutomations(now: now))
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertEqual(store.state(now: now), .notConfigured)
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupOpenedAutomationsAt))
+    }
+
+    // Test 18: clearFastSetupProgress clears both startedAt and openedAutomationsAt
+    func test18_clearFastSetupProgress_clearsBothTimestamps() {
+        let now = Date()
+        store.markFastSetupStarted(at: now)
+        store.markFastSetupOpenedAutomations(at: now)
+
+        XCTAssertTrue(store.hasFreshFastSetupStarted(now: now))
+        XCTAssertTrue(store.hasFreshFastSetupOpenedAutomations(now: now))
+
+        store.clearFastSetupProgress()
+
+        XCTAssertFalse(store.hasFreshFastSetupStarted(now: now))
+        XCTAssertFalse(store.hasFreshFastSetupOpenedAutomations(now: now))
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupStartedAt))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupOpenedAutomationsAt))
+    }
+
+    // Test 19: markSetupCompleted clears openedAutomationsAt and transitions to .configuredAwaitingFirstCapture
+    func test19_markSetupCompleted_clearsOpenedAutomations() {
+        let now = Date()
+        store.markFastSetupOpenedAutomations(at: now)
+
+        store.markSetupCompleted(at: now)
+
+        XCTAssertFalse(store.hasFreshFastSetupOpenedAutomations(now: now))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupOpenedAutomationsAt))
+        XCTAssertEqual(store.state(now: now), .configuredAwaitingFirstCapture)
+    }
+
+    // Test 20: markAutomaticCaptureDetected clears openedAutomationsAt and transitions to .captureDetected
+    func test20_markAutomaticCaptureDetected_clearsOpenedAutomations() {
+        let now = Date()
+        store.markFastSetupOpenedAutomations(at: now)
+
+        let detected = now.addingTimeInterval(5)
+        store.markAutomaticCaptureDetected(at: detected)
+
+        XCTAssertFalse(store.hasFreshFastSetupOpenedAutomations(now: now))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupOpenedAutomationsAt))
+        XCTAssertEqual(store.state(now: detected), .captureDetected(detected))
+    }
+
+    // Test 21: Existing completed or active users are not broken
+    func test21_existingUsers_remainStable() {
+        let pastDate = Date(timeIntervalSince1970: 1700000000)
+
+        // Case A: User completed setup before, waiting for first capture
+        testDefaults.set(pastDate.timeIntervalSince1970, forKey: AutomaticCaptureStateStore.Key.setupCompletedAt)
+        XCTAssertEqual(store.state(), .configuredAwaitingFirstCapture)
+
+        // Case B: User with active capture detected
+        let captureDate = Date(timeIntervalSince1970: 1710000000)
+        testDefaults.set(captureDate.timeIntervalSince1970, forKey: AutomaticCaptureStateStore.Key.lastDetectedAt)
+        XCTAssertEqual(store.state(), .captureDetected(captureDate))
+    }
+
+    // Test 22: Shortcuts URL constants validation
+    func test22_shortcutsURLConstants() {
+        XCTAssertEqual(IOS27FastCaptureSetupView.automationsURL.absoluteString, "shortcuts://automations")
+        XCTAssertEqual(IOS27FastCaptureSetupView.fallbackShortcutsURL.absoluteString, "shortcuts://")
+    }
 }

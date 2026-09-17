@@ -44,6 +44,8 @@ public struct AutomaticCaptureSetupGuide: View {
     public var variant: AutomaticCaptureGuideVariant
     /// When true: screen 0 (intro) is skipped and starts at step 1.
     public var skipIntro: Bool
+    /// When true: forces manual 13-step guide instead of Fast Setup.
+    public var forceManualGuide: Bool
     /// Called when the user finishes or taps the secondary dismiss CTA.
     public var onFinished: () -> Void
     /// When true: a close (×) button appears in the top-right corner.
@@ -51,11 +53,13 @@ public struct AutomaticCaptureSetupGuide: View {
 
     public init(
         variant: AutomaticCaptureGuideVariant = .automatic,
+        forceManualGuide: Bool = false,
         skipIntro: Bool = false,
         showCloseButton: Bool = true,
         onFinished: @escaping () -> Void
     ) {
         self.variant = variant
+        self.forceManualGuide = forceManualGuide
         self.skipIntro = skipIntro
         self.showCloseButton = showCloseButton
         self.onFinished = onFinished
@@ -94,7 +98,7 @@ public struct AutomaticCaptureSetupGuide: View {
     // MARK: - Body
     public var body: some View {
         if usesNewShortcutsFlow {
-            if RemoteConfigService.shared.isFastSetupEnabled {
+            if !forceManualGuide && RemoteConfigService.shared.isFastSetupEnabled {
                 IOS27FastCaptureSetupView(
                     skipIntro: skipIntro,
                     showCloseButton: showCloseButton,

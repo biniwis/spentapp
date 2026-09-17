@@ -24,6 +24,7 @@ public struct ProfileView: View {
     @State private var showRecurringSheet = false
     @State private var showGoalsSheet = false
     @State private var showApplePayGuideSheet = false
+    @State private var showManualCaptureGuide = false
     @State private var showAutomaticCaptureStatus = false
     @State private var showRecapArchive = false
     @State private var showBackupSheet = false
@@ -251,6 +252,15 @@ public struct ProfileView: View {
         .fullScreenCover(isPresented: $showApplePayGuideSheet) {
             ApplePayGuideSheet()
                 .environmentObject(l10n)
+        }
+        .fullScreenCover(isPresented: $showManualCaptureGuide) {
+            AutomaticCaptureSetupGuide(
+                forceManualGuide: true,
+                skipIntro: false,
+                showCloseButton: true,
+                onFinished: { showManualCaptureGuide = false }
+            )
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showAutomaticCaptureStatus) {
             AutomaticCaptureStatusView()
@@ -832,6 +842,25 @@ public struct ProfileView: View {
                         showApplePayGuideSheet = true
                     case .configuredAwaitingFirstCapture, .captureDetected:
                         showAutomaticCaptureStatus = true
+                    }
+                }
+                .contextMenu {
+                    Button {
+                        showAutomaticCaptureStatus = true
+                    } label: {
+                        Label(l10n.language == .hebrew ? "סטטוס קליטה" : "Capture Status", systemImage: "info.circle")
+                    }
+
+                    Button {
+                        showApplePayGuideSheet = true
+                    } label: {
+                        Label(l10n.language == .hebrew ? "הוסף קיצור מחדש" : "Add Shortcut Again", systemImage: "plus.circle")
+                    }
+
+                    Button {
+                        showManualCaptureGuide = true
+                    } label: {
+                        Label(l10n.language == .hebrew ? "מדריך הגדרה ידנית" : "Manual Setup Guide", systemImage: "book")
                     }
                 }
 

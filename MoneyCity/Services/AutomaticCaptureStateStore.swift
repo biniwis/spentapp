@@ -39,6 +39,7 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         public static let guideLegacyUpdatedAt = "spent.capture.guide.legacy.updatedAt"
 
         public static let fastSetupStartedAt = "spent.capture.fastSetup.startedAt"
+        public static let fastSetupOpenedAutomationsAt = "spent.capture.fastSetup.openedAutomationsAt"
 
         public static let bootstrapV1 = "spent.capture.bootstrap.v1"
     }
@@ -93,7 +94,7 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         }
         let updatedDate = Date(timeIntervalSince1970: updatedTimestamp)
         let elapsed = now.timeIntervalSince(updatedDate)
-        if elapsed >= 0 && elapsed < Self.setupProgressTTL {
+        if elapsed >= -60 && elapsed < Self.setupProgressTTL {
             return userDefaults.object(forKey: Key.guideScreen) != nil
         } else {
             // Expired (> 24 hours): reset and treat as nonexistent
@@ -126,7 +127,7 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         }
         let updatedDate = Date(timeIntervalSince1970: updatedTimestamp)
         let elapsed = now.timeIntervalSince(updatedDate)
-        if elapsed >= 0 && elapsed < Self.setupProgressTTL {
+        if elapsed >= -60 && elapsed < Self.setupProgressTTL {
             return userDefaults.object(forKey: Key.guideLegacyStep) != nil
         } else {
             // Expired (> 24 hours): reset and treat as nonexistent
@@ -152,23 +153,47 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         userDefaults.set(date.timeIntervalSince1970, forKey: Key.fastSetupStartedAt)
     }
 
-    public func hasFreshFastSetupProgress(now: Date = Date()) -> Bool {
+    public func markFastSetupOpenedAutomations(at date: Date = Date()) {
+        userDefaults.set(date.timeIntervalSince1970, forKey: Key.fastSetupOpenedAutomationsAt)
+    }
+
+    public func hasFreshFastSetupStarted(now: Date = Date()) -> Bool {
         guard let updatedTimestamp = userDefaults.object(forKey: Key.fastSetupStartedAt) as? Double, updatedTimestamp > 0 else {
             return false
         }
         let updatedDate = Date(timeIntervalSince1970: updatedTimestamp)
         let elapsed = now.timeIntervalSince(updatedDate)
-        if elapsed >= 0 && elapsed < Self.setupProgressTTL {
+        if elapsed >= -60 && elapsed < Self.setupProgressTTL {
             return true
         } else {
-            // Expired (> 24 hours): reset and treat as nonexistent
-            clearFastSetupProgress()
+            userDefaults.removeObject(forKey: Key.fastSetupStartedAt)
             return false
         }
     }
 
+    public func hasFreshFastSetupOpenedAutomations(now: Date = Date()) -> Bool {
+        guard let updatedTimestamp = userDefaults.object(forKey: Key.fastSetupOpenedAutomationsAt) as? Double, updatedTimestamp > 0 else {
+            return false
+        }
+        let updatedDate = Date(timeIntervalSince1970: updatedTimestamp)
+        let elapsed = now.timeIntervalSince(updatedDate)
+        if elapsed >= -60 && elapsed < Self.setupProgressTTL {
+            return true
+        } else {
+            userDefaults.removeObject(forKey: Key.fastSetupOpenedAutomationsAt)
+            return false
+        }
+    }
+
+    public func hasFreshFastSetupProgress(now: Date = Date()) -> Bool {
+        let freshStarted = hasFreshFastSetupStarted(now: now)
+        let freshAutomations = hasFreshFastSetupOpenedAutomations(now: now)
+        return freshStarted || freshAutomations
+    }
+
     public func clearFastSetupProgress() {
         userDefaults.removeObject(forKey: Key.fastSetupStartedAt)
+        userDefaults.removeObject(forKey: Key.fastSetupOpenedAutomationsAt)
     }
 
     // MARK: - Completion & Detection
@@ -226,6 +251,18 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
 
     public static func markFastSetupStarted(at date: Date = Date()) {
         shared.markFastSetupStarted(at: date)
+    }
+
+    public static func markFastSetupOpenedAutomations(at date: Date = Date()) {
+        shared.markFastSetupOpenedAutomations(at: date)
+    }
+
+    public static func hasFreshFastSetupStarted(now: Date = Date()) -> Bool {
+        shared.hasFreshFastSetupStarted(now: now)
+    }
+
+    public static func hasFreshFastSetupOpenedAutomations(now: Date = Date()) -> Bool {
+        shared.hasFreshFastSetupOpenedAutomations(now: now)
     }
 
     public static func hasFreshFastSetupProgress(now: Date = Date()) -> Bool {

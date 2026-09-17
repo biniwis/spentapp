@@ -786,7 +786,16 @@
     "Could not extract receipt" : {
 
     },
+    "Couldn't add the shortcut" : {
+
+    },
+    "Couldn't add the shortcut?" : {
+
+    },
     "Couldn't create the portrait" : {
+
+    },
+    "Couldn't find the shortcut" : {
 
     },
     "Crafted with care 🏙️" : {
@@ -906,7 +915,7 @@
     "Did you add the shortcut?" : {
 
     },
-    "Didn't work" : {
+    "Did you enable the SPENT shortcut?" : {
 
     },
     "Dismiss alert" : {
@@ -1095,6 +1104,9 @@
     "How to create the automation?" : {
 
     },
+    "I enabled it" : {
+
+    },
     "I'll do this later" : {
 
     },
@@ -1118,7 +1130,10 @@
         }
       }
     },
-    "If you added the shortcut on your iPhone, all that's left is waiting for the next payment to confirm everything works." : {
+    "If the SPENT shortcut is enabled in Automations, setup is complete." : {
+
+    },
+    "If you added the SPENT shortcut, all that's left is enabling it in Automations." : {
 
     },
     "If you don't see an obvious button, search at the bottom of the screen and tap it." : {
@@ -1214,6 +1229,9 @@
 
     },
     "Loading world…" : {
+
+    },
+    "Look for SPENT in Automations" : {
 
     },
     "Main Category" : {
@@ -1368,6 +1386,12 @@
 
     },
     "Open 3D ↗" : {
+
+    },
+    "Open Automations" : {
+
+    },
+    "Open Automations Again" : {
 
     },
     "Open Shortcuts" : {
@@ -1864,6 +1888,9 @@
     "The Nature Reserve changes with your budget and savings." : {
 
     },
+    "The shortcut you added should appear there. Open it and turn it on." : {
+
+    },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
 
     },
@@ -2003,9 +2030,6 @@
     "Troubleshooting" : {
 
     },
-    "Troubleshooting Options" : {
-
-    },
     "Try Again" : {
 
     },
@@ -2117,10 +2141,10 @@
     "World" : {
 
     },
-    "Yes, I added it" : {
+    "You can change your target later" : {
 
     },
-    "You can change your target later" : {
+    "You can reopen the link, switch to manual setup, or open Shortcuts." : {
 
     },
     "You're All Caught Up" : {
@@ -2231,7 +2255,10 @@
     "אם אתה לא רואה כפתור ברור, חפש למטה את מה שאתה רוצה ולחץ עליו." : {
 
     },
-    "אם הוספת את הקיצור באייפון, נשאר רק לחכות לתשלום הבא כדי לוודא שהכול עובד." : {
+    "אם הוספת את הקיצור של SPENT, נשאר רק להפעיל אותו בפעולות האוטומטיות." : {
+
+    },
+    "אם קיצור SPENT מופעל בפעולות האוטומטיות, ההגדרה הסתיימה." : {
 
     },
     "אנא הזן סכום תקין" : {
@@ -2244,6 +2271,9 @@
 
     },
     "אפשר לנסות לשתף שוב." : {
+
+    },
+    "אפשר לפתוח את הקישור מחדש, לעבור להגדרה ידנית, או לפתוח את קיצורים." : {
 
     },
     "אפשר לשנות את היעד אחר כך" : {
@@ -2415,9 +2445,6 @@
     "הוספה מהירה +" : {
 
     },
-    "הוספת את הקיצור?" : {
-
-    },
     "הוספת הוצאה" : {
 
     },
@@ -2544,6 +2571,12 @@
     "הפעל קליטה אוטומטית" : {
 
     },
+    "הפעלת את קיצור SPENT?" : {
+
+    },
+    "הפעלתי" : {
+
+    },
     "הפקד" : {
 
     },
@@ -2584,6 +2617,12 @@
 
     },
     "הקודם" : {
+
+    },
+    "הקיצור נוסף?" : {
+
+    },
+    "הקיצור שהוספת אמור להופיע שם. פתח אותו והפעל אותו." : {
 
     },
     "הקש להצגת פירוט הרובעים" : {
@@ -2686,6 +2725,9 @@
     "חיסכון ₪480" : {
 
     },
+    "חפש את SPENT בפעולות האוטומטיות" : {
+
+    },
     "חפש עסקה או קטגוריה..." : {
 
     },
@@ -2755,19 +2797,22 @@
     "כמה ברצונך להפקיד?" : {
 
     },
-    "כן, הוספתי" : {
-
-    },
     "לא בשימוש — התקרות למטה גוברות" : {
 
     },
     "לא הצלחנו לפענח את החשבונית" : {
 
     },
+    "לא הצלחת להוסיף את הקיצור?" : {
+
+    },
+    "לא הצלחתי להוסיף את הקיצור" : {
+
+    },
     "לא מוצא איך להוסיף את SPENT?" : {
 
     },
-    "לא עבד לי" : {
+    "לא מצאתי את הקיצור" : {
 
     },
     "לא עובד?" : {
@@ -3119,13 +3164,16 @@
     "פתח את קיצורים" : {
 
     },
+    "פתח פעולות אוטומטיות" : {
+
+    },
+    "פתח שוב פעולות אוטומטיות" : {
+
+    },
     "פתח תלת-ממד ↗" : {
 
     },
     "פתרון בעיות" : {
-
-    },
-    "פתרונות אפשריים" : {
 
     },
     "צור" : {

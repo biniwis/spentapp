@@ -18,7 +18,9 @@
     "mode": "native",
     "forceVariant": null,
     "revision": 1,
-    "steps": null
+    "steps": null,
+    "fastSetupEnabled": true,
+    "shortcutURL": "https://www.icloud.com/shortcuts/72aa49c6fe0449fd99703e8d4f2a1853"
   },
 
   "notifications": {

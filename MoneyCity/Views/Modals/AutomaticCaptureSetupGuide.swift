@@ -94,11 +94,19 @@ public struct AutomaticCaptureSetupGuide: View {
     // MARK: - Body
     public var body: some View {
         if usesNewShortcutsFlow {
-            IOS27CaptureSetupGuideView(
-                skipIntro: skipIntro,
-                showCloseButton: showCloseButton,
-                onFinished: onFinished
-            )
+            if RemoteConfigService.shared.isFastSetupEnabled {
+                IOS27FastCaptureSetupView(
+                    skipIntro: skipIntro,
+                    showCloseButton: showCloseButton,
+                    onFinished: onFinished
+                )
+            } else {
+                IOS27CaptureSetupGuideView(
+                    skipIntro: skipIntro,
+                    showCloseButton: showCloseButton,
+                    onFinished: onFinished
+                )
+            }
         } else {
             LegacyCaptureSetupGuideView(
                 skipIntro: skipIntro,

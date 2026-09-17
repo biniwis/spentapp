@@ -718,7 +718,7 @@ enum RecapInsightEngine {
             family: .accumulation,
             kind: .smallPurchasesAccumulation,
             headlineEn: "\(small.count) small purchases under \(money(cap)) added up.",
-            headlineHe: "\(small.count) רכישות קטנות מתחת ל\(money(cap)) הצטברו.",
+            headlineHe: "\(small.count) רכישות של עד \(money(cap)) הצטברו החודש.",
             valueEn: money(smallTotal),
             valueHe: money(smallTotal),
             supportEn: "\(pct(share)) of this month's variable spending",
@@ -797,12 +797,12 @@ enum RecapInsightEngine {
             id: RecapInsightKind.repeatedMerchant.rawValue + ":" + stat.key,
             family: .merchant,
             kind: .repeatedMerchant,
-            headlineEn: "\(stat.name)\ncalled you back again and again.",
-            headlineHe: "חזרת ל\(stat.name)\nשוב ושוב.",
-            valueEn: "\(stat.count) visits",
-            valueHe: "\(stat.count) ביקורים",
-            supportEn: money(stat.total) + " built up · " + pct(share) + " of purchases",
-            supportHe: money(stat.total) + " הצטברו · " + pct(share) + " מהרכישות",
+            headlineEn: "\(stat.name) called you back again and again.",
+            headlineHe: "\(stat.name) היה המקום שחזרת אליו הכי הרבה.",
+            valueEn: "\(stat.count) times",
+            valueHe: "\(stat.count) פעמים",
+            supportEn: money(stat.total) + " in total · " + pct(share) + " of expenses",
+            supportHe: money(stat.total) + " בסך הכול · " + pct(share) + " מההוצאות",
             merchant: stat.name,
             category: stat.category,
             count: stat.count,
@@ -846,16 +846,38 @@ enum RecapInsightEngine {
         let total = matches.reduce(0) { $0 + $1.amount }
         guard days.count >= 4, share >= 0.18 else { return nil }
 
+        let headlineEn: String
+        let headlineHe: String
+        let valueEn: String
+        let valueHe: String
+
+        if kind == .deliveryHabit {
+            headlineEn = "Delivery became a regular part of the month."
+            headlineHe = "הזמנת משלוחים לאורך החודש."
+            valueEn = "\(matches.count) orders · \(days.count) different days"
+            valueHe = "\(matches.count) הזמנות · \(days.count) ימים שונים"
+        } else if kind == .coffeeHabit {
+            headlineEn = "Coffee became a regular part of the month."
+            headlineHe = "קנית קפה לאורך החודש."
+            valueEn = "\(matches.count) times · \(days.count) different days"
+            valueHe = "\(matches.count) פעמים · \(days.count) ימים שונים"
+        } else {
+            headlineEn = name + " became a fixture of the month."
+            headlineHe = name + " היה חלק קבוע מהחודש."
+            valueEn = "\(matches.count) times · \(days.count) different days"
+            valueHe = "\(matches.count) פעמים · \(days.count) ימים שונים"
+        }
+
         return RecapInsight(
             id: kind.rawValue,
             family: family,
             kind: kind,
-            headlineEn: name + " became a fixture of the month.",
-            headlineHe: name + " הפך לחלק קבוע מהחודש.",
-            valueEn: "\(matches.count) orders · \(days.count) different days",
-            valueHe: "\(matches.count) הזמנות · \(days.count) ימים שונים",
+            headlineEn: headlineEn,
+            headlineHe: headlineHe,
+            valueEn: valueEn,
+            valueHe: valueHe,
             supportEn: money(total) + " in total",
-            supportHe: money(total) + " ביחד",
+            supportHe: money(total) + " בסך הכול",
             count: matches.count,
             totalAmount: total,
             shareOfTotal: share,
@@ -906,11 +928,11 @@ enum RecapInsightEngine {
             family: .repetition,
             kind: .repeatedCategory,
             headlineEn: "\(name) showed up \(run.count) times.",
-            headlineHe: "\(nameHe) הופיע \(run.count) פעמים.",
+            headlineHe: "היו \(run.count) הוצאות על \(nameHe) החודש.",
             valueEn: "\(run.days) different days",
             valueHe: "\(run.days) ימים שונים",
-            supportEn: money(run.total) + " across the month",
-            supportHe: money(run.total) + " על פני החודש",
+            supportEn: money(run.total) + " during the month",
+            supportHe: money(run.total) + " במהלך החודש",
             category: run.category,
             count: run.count,
             totalAmount: run.total,
@@ -964,12 +986,18 @@ enum RecapInsightEngine {
         f.locale = Locale(identifier: "en_US")
         f.dateFormat = "MMM d"
 
+        let fHe = DateFormatter()
+        fHe.calendar = ctx.calendar
+        fHe.locale = Locale(identifier: "he_IL")
+        fHe.dateFormat = "d בMMMM"
+        let dayHe = fHe.string(from: top.date)
+
         return RecapInsight(
             id: RecapInsightKind.busiestDay.rawValue + ":" + isoDay(top.date),
             family: .timing,
             kind: .busiestDay,
-            headlineEn: "\(top.count) purchases happened on the \(f.string(from: top.date)).",
-            headlineHe: "ב\(isoDay(top.date)) בוצעו \(top.count) רכישות.",
+            headlineEn: "\(f.string(from: top.date)) was the busiest day of the month.",
+            headlineHe: "\(dayHe) היה היום עם הכי הרבה רכישות.",
             valueEn: "\(top.categories) categories that day · " + money(top.total),
             valueHe: "\(top.categories) קטגוריות באותו יום · " + money(top.total),
             date: top.date,
@@ -1023,8 +1051,8 @@ enum RecapInsightEngine {
             headlineHe: "העיר הייתה שקטה.",
             valueEn: "\(bestRun) days in a row without spending",
             valueHe: "\(bestRun) ימים ברצף בלי הוצאה",
-            supportEn: "out of \(spanDays) active days tracked",
-            supportHe: "מתוך \(spanDays) ימים שנמדדו",
+            supportEn: nil,
+            supportHe: nil,
             count: bestRun,
             shareOfTotal: share,
             basis: [
@@ -1062,8 +1090,8 @@ enum RecapInsightEngine {
             id: RecapInsightKind.firstHalfVsSecondHalf.rawValue,
             family: .comparison,
             kind: .firstHalfVsSecondHalf,
-            headlineEn: secondHeavier ? "The month built up toward the end." : "The month front-loaded its spending.",
-            headlineHe: secondHeavier ? "החודש התגבר לקראת הסוף." : "החודש הוציא את עיקר הכסף בהתחלה.",
+            headlineEn: secondHeavier ? "In the second half of the month, you spent more per day." : "In the first half of the month, you spent more per day.",
+            headlineHe: secondHeavier ? "בחצי השני של החודש הוצאת יותר ליום." : "בחצי הראשון של החודש הוצאת יותר ליום.",
             valueEn: pct(abs(diff)) + " per-day difference",
             valueHe: pct(abs(diff)) + " הפרש בהוצאה היומית",
             supportEn: secondHeavier ? "second half averaged " + money(secondAvg) + " / day" : "first half averaged " + money(firstAvg) + " / day",
@@ -1128,10 +1156,10 @@ enum RecapInsightEngine {
             id: RecapInsightKind.dayOfWeekPattern.rawValue + ":" + String(top.weekday),
             family: .timing,
             kind: .dayOfWeekPattern,
-            headlineEn: "\(dayName)s stood apart this month.",
-            headlineHe: "ימי \(dayNameHe) בלטו החודש.",
-            valueEn: String(format: "%.1f", ratio) + "x your typical such day",
-            valueHe: String(format: "%.1f", ratio) + " פי מיום אופייני",
+            headlineEn: "On \(dayName)s, you spent more than usual.",
+            headlineHe: "בימי \(dayNameHe) הוצאת יותר מהרגיל.",
+            valueEn: String(format: "%.1f", ratio) + "x a typical day",
+            valueHe: "פי " + String(format: "%.1f", ratio) + " מההוצאה ביום רגיל",
             supportEn: money(top.averagePerWeek) + " on those days across " + String(top.weeksSeen) + " weeks",
             supportHe: money(top.averagePerWeek) + " בימים האלה לאורך " + String(top.weeksSeen) + " שבועות",
             count: top.count,
@@ -1181,12 +1209,12 @@ enum RecapInsightEngine {
             id: RecapInsightKind.spendingConcentration.rawValue,
             family: .concentration,
             kind: .spendingConcentration,
-            headlineEn: "A handful of purchases carried the month.",
-            headlineHe: "קומץ רכישות נשא את החודש.",
+            headlineEn: "A large share of expenses came from a few purchases.",
+            headlineHe: "חלק גדול מההוצאות הגיע מכמה רכישות.",
             valueEn: "\(k) purchases · " + pct(shareAtK) + " of the month",
-            valueHe: "\(k) רכישות · " + pct(shareAtK) + " מהחודש",
+            valueHe: "\(k) רכישות · " + pct(shareAtK) + " מההוצאות",
             supportEn: money(total) + " among " + String(txs.count) + " purchases",
-            supportHe: money(total) + " מתוך " + String(txs.count) + " רכישות",
+            supportHe: money(total) + " מתוך " + String(txs.count) + " הוצאות",
             count: k,
             totalAmount: total,
             shareOfTotal: shareAtK,
@@ -1216,10 +1244,10 @@ enum RecapInsightEngine {
             id: RecapInsightKind.merchantDiversity.rawValue,
             family: .diversity,
             kind: .merchantDiversity,
-            headlineEn: "This month toured a lot of places.",
-            headlineHe: "החודש הסתובב בהרבה מקומות.",
-            valueEn: "\(merchants.count) different places · \(txs.count) purchases",
-            valueHe: "\(merchants.count) מקומות שונים · \(txs.count) רכישות",
+            headlineEn: "You bought at many different places this month.",
+            headlineHe: "קנית בהרבה מקומות שונים החודש.",
+            valueEn: "\(merchants.count) different places · \(txs.count) expenses",
+            valueHe: "\(merchants.count) מקומות שונים · \(txs.count) הוצאות",
             supportEn: "across \(categories.count) categories",
             supportHe: "בין \(categories.count) קטגוריות",
             count: merchants.count,
@@ -1301,19 +1329,17 @@ enum RecapInsightEngine {
         let magnitude = Int(abs(change.direction).rounded())
         let name = change.category.shortNameEn
         let nameHe = change.category.shortName(for: .hebrew)
-        let directionWord = up ? "more" : "less"
-        let directionWordHe = up ? "יותר" : "פחות"
 
         return RecapInsight(
             id: "categoryChange:" + change.category.rawValue + ":" + (up ? "up" : "down"),
             family: .category,
             kind: .categoryChange,
-            headlineEn: "\(name) took up \(magnitude)% \(directionWord) space.",
-            headlineHe: "\(nameHe) תפס \(magnitude)% \(directionWordHe) מקום.",
+            headlineEn: up ? "You spent more on \(name) than last month." : "You spent less on \(name) than last month.",
+            headlineHe: up ? "הוצאת יותר על \(nameHe) מהחודש הקודם." : "הוצאת פחות על \(nameHe) מהחודש הקודם.",
             valueEn: (up ? "+" : "−") + String(magnitude) + "%",
             valueHe: (up ? "+" : "−") + String(magnitude) + "%",
-            supportEn: money(change.current) + " now vs " + money(change.previous) + " last month",
-            supportHe: money(change.current) + " עכשיו לעומת " + money(change.previous) + " בחודש הקודם",
+            supportEn: money(change.current) + " this month vs " + money(change.previous) + " last month",
+            supportHe: money(change.current) + " החודש לעומת " + money(change.previous) + " בחודש הקודם",
             category: change.category,
             totalAmount: change.current,
             direction: change.direction,
@@ -1350,8 +1376,8 @@ enum RecapInsightEngine {
             id: RecapInsightKind.bigVsFrequent.rawValue,
             family: .merchant,
             kind: .bigVsFrequent,
-            headlineEn: "The places you return to aren't the places that cost the most.",
-            headlineHe: "המקומות שחוזרים אליהם\nלא המקומות שמוציאים עליהם הכי הרבה.",
+            headlineEn: "The place you visited most wasn't the place where you spent the most.",
+            headlineHe: "המקום שחזרת אליו הכי הרבה לא היה המקום שבו הוצאת הכי הרבה.",
             valueEn: mostVisited.name + " ×\(mostVisited.count)   vs   " + biggestTotal.name,
             valueHe: mostVisited.name + " ×\(mostVisited.count)   לעומת   " + biggestTotal.name,
             supportEn: "\(biggestTotal.name): " + money(biggestTotal.total),
@@ -1407,17 +1433,19 @@ enum RecapInsightEngine {
         guard let hit = best else { return nil }
         let merchant = hit.transaction.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let merchantKey = merchant.isEmpty ? nil : MerchantRuleService.normalizedKey(merchant)
+        let catShortEn = hit.category.shortNameEn.lowercased()
+        let catShortHe = hit.category.shortName(for: .hebrew)
 
         return RecapInsight(
             id: RecapInsightKind.outlierPurchase.rawValue + ":" + hit.category.rawValue,
             family: .outlier,
             kind: .outlierPurchase,
-            headlineEn: "One purchase broke the pattern.",
-            headlineHe: "רכישה אחת שברה את התבנית.",
+            headlineEn: "One purchase was significantly higher than usual.",
+            headlineHe: "רכישה אחת הייתה גבוהה משמעותית מהרגיל.",
             valueEn: money(hit.transaction.amount),
             valueHe: money(hit.transaction.amount),
-            supportEn: "typical " + hit.category.shortNameEn.lowercased() + " ≈ " + money(hit.typical) + " · " + String(format: "%.1f", hit.ratio) + "x",
-            supportHe: "ארוחות טיפוסיות ≈ " + money(hit.typical) + " · פי " + String(format: "%.1f", hit.ratio),
+            supportEn: "typical in " + catShortEn + " ≈ " + money(hit.typical) + " · " + String(format: "%.1f", hit.ratio) + "x",
+            supportHe: "הוצאה טיפוסית ב" + catShortHe + ": " + money(hit.typical) + " · פי " + String(format: "%.1f", hit.ratio),
             merchant: merchant.isEmpty ? nil : merchant,
             category: hit.category,
             date: hit.transaction.timestamp,

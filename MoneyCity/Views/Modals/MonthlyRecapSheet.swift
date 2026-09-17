@@ -337,29 +337,29 @@ struct RecapEditorialCopy {
     var statement: String {
         switch shot {
         case .opening: return he ? "החודש שלך ב־SPENT" : "YOUR MONTH IN SPENT"
-        case .total: return he ? "זה הסכום שעבר בעיר החודש." : "What passed through your city this month."
-        case .activity: return he ? (recap.transactionCount == 1 ? "עסקה אחת החודש" : "עסקאות החודש") : (recap.transactionCount == 1 ? "transaction this month" : "transactions this month")
-        case .district: return recap.biggestDistrict == nil ? (he ? "העיר הייתה שקטה החודש." : "A quiet month in your city.") : (he ? "הרובע הבולט" : "YOUR TOP DISTRICT")
-        case .portrait: return money(recap.totalSpent) + " · " + String(recap.transactionCount) + (he ? (recap.transactionCount == 1 ? " עסקה" : " עסקאות") : (recap.transactionCount == 1 ? " transaction" : " transactions"))
+        case .total: return he ? "זה מה שהוצאת החודש." : "What you spent this month."
+        case .activity: return he ? (recap.transactionCount == 1 ? "הוצאה אחת החודש" : "הוצאות החודש") : (recap.transactionCount == 1 ? "expense this month" : "expenses this month")
+        case .district: return recap.biggestDistrict == nil ? (he ? "לא נרשמו הוצאות החודש." : "No spending recorded this month.") : (he ? "הרובע הגדול החודש" : "YOUR TOP DISTRICT")
+        case .portrait: return money(recap.totalSpent) + " · " + String(recap.transactionCount) + (he ? (recap.transactionCount == 1 ? " הוצאה" : " הוצאות") : (recap.transactionCount == 1 ? " expense" : " expenses"))
         case .insight(let i):
             switch i.type {
-            case .merchantRepeat: return he ? "יש מקום שחזרת אליו\nשוב ושוב." : "One place kept\ncalling you back."
-            case .biggestPurchase: return he ? "רכישה אחת בלטה\nמעל כולן." : "One purchase stood\nabove the rest."
-            case .biggestDay: return he ? "יום אחד שינה\nאת הקצב." : "One day picked\nup the pace."
-            case .monthChange: return he ? (i.primaryValue < 0 ? "החודש עבר בעיר\nפחות כסף." : "החודש עבר בעיר\nיותר כסף.") : (i.primaryValue < 0 ? "Less spending.\nA little more space." : "More spending moved through the city.")
-            case .categoryChange: return (he ? i.category?.shortName(for: .hebrew) : i.category?.shortNameEn).map { name in he ? "\(name).\n\(i.primaryValue < 0 ? "פחות" : "יותר") מקום החודש." : "\(name) took up\n\(i.primaryValue < 0 ? "less" : "more") space." } ?? ""
-            case .weekendRhythm: return he ? "העיר התעוררה בעיקר ב…" : "The city came alive on…"
+            case .merchantRepeat: return he ? "המקום שחזרת אליו\nהכי הרבה." : "The place you returned to\nmost."
+            case .biggestPurchase: return he ? "הרכישה הגדולה החודש." : "Your largest purchase this month."
+            case .biggestDay: return he ? "היום עם הכי הרבה הוצאות." : "The day with the most spending."
+            case .monthChange: return he ? (i.primaryValue < 0 ? "הוצאת פחות מהחודש הקודם." : "הוצאת יותר מהחודש הקודם.") : (i.primaryValue < 0 ? "You spent less than last month." : "You spent more than last month.")
+            case .categoryChange: return (he ? i.category?.shortName(for: .hebrew) : i.category?.shortNameEn).map { name in he ? "ההוצאות על \(name)\n\(i.primaryValue < 0 ? "ירדו" : "עלו") החודש." : "Spending on \(name)\n\(i.primaryValue < 0 ? "decreased" : "increased") this month." } ?? ""
+            case .weekendRhythm: return he ? "רוב ההוצאות התרכזו\nבסוף השבוע." : "Most spending fell\non the weekend."
             case .curated:
                 if let h = he ? i.headlineHe : i.headlineEn, !h.isEmpty { return h }
                 return he ? "כך עבר החודש." : "Here's how your month went."
             }
-        case .noticed: return he ? "דברים ששמנו לב אליהם" : "THINGS WE NOTICED"
+        case .noticed: return he ? "עוד כמה דברים מהחודש" : "THINGS WE NOTICED"
         }
     }
     var detail: String {
         switch shot {
         case .opening: return year
-        case .activity: return he ? "\(recap.transactionCount) עסקאות נרשמו החודש." : "\(recap.transactionCount) transactions recorded this month."
+        case .activity: return he ? (recap.transactionCount == 1 ? "הוצאה אחת נרשמה החודש." : "\(recap.transactionCount) הוצאות נרשמו החודש.") : (recap.transactionCount == 1 ? "1 expense recorded this month." : "\(recap.transactionCount) expenses recorded this month.")
         case .district:
             guard let d = recap.biggestDistrict, recap.totalSpent > 0 else { return "" }
             return money(d.amount) + " · " + String(Int((d.amount / recap.totalSpent * 100).rounded())) + (he ? "% מהחודש" : "% of the month")
@@ -374,7 +374,7 @@ struct RecapEditorialCopy {
                 return he ? "\(pct)% \(dir) מ\(name)" : "\(pct)% \(dir) than \(name)"
             } ?? ""
             let merchantText: String = recap.mostRepeatedStop.map { m in
-                he ? "\(m.merchantName) \(m.visitCount) פעמים" : "\(m.merchantName) \(m.visitCount) visits"
+                he ? "\(m.merchantName) \(m.visitCount) פעמים" : "\(m.merchantName) \(m.visitCount) times"
             } ?? ""
             let parts = [districtText, compText, merchantText].filter { !$0.isEmpty }
             return parts.isEmpty
@@ -383,13 +383,13 @@ struct RecapEditorialCopy {
         case .total: return ""
         case .insight(let i):
             switch i.type {
-            case .merchantRepeat: return "\(i.count) " + (he ? "פעמים החודש." : "visits this month.")
+            case .merchantRepeat: return "\(i.count) " + (he ? "פעמים החודש." : "times this month.")
             case .biggestPurchase: return i.merchant?.isEmpty == false ? i.merchant! : ((he ? i.category?.shortName(for: .hebrew) : i.category?.shortNameEn) ?? "")
-            case .biggestDay: return money(i.primaryValue) + " · \(i.count) " + (he ? "רכישות לא קבועות" : "non-recurring purchases")
+            case .biggestDay: return money(i.primaryValue) + " · \(i.count) " + (he ? "הוצאות" : "expenses")
             case .monthChange, .categoryChange:
                 let f = DateFormatter(); f.locale = Locale(identifier: he ? "he_IL" : "en_US"); f.dateFormat = "MMMM"
                 return (he ? "לעומת " : "Compared with ") + f.string(from: i.date ?? recap.date)
-            case .weekendRhythm: return "\(Int(i.primaryValue.rounded()))% " + (he ? "מהרכישות היו בשישי ובשבת." : "of purchases fell on Friday and Saturday.")
+            case .weekendRhythm: return "\(Int(i.primaryValue.rounded()))% " + (he ? "מההוצאות היו בסוף השבוע." : "of expenses fell on the weekend.")
             case .curated: return (he ? i.supportHe : i.supportEn) ?? ""
             }
         case .noticed: return ""
@@ -401,7 +401,7 @@ struct RecapEditorialCopy {
             for row in rows {
                 let head = (he ? row.headlineHe : row.headlineEn) ?? ""
                 let val = (he ? row.valueHe : row.valueEn) ?? ""
-                parts.append([head, val].filter { !$0.isEmpty }.joined(separator: " — "))
+                parts.append([head, val].filter { !$0.isEmpty }.joined(separator: ", "))
             }
             return parts.filter { !$0.isEmpty }.joined(separator: ". ")
         }
@@ -674,7 +674,9 @@ struct RecapSceneFrame: View {
                 VStack(alignment: hAlignment, spacing: 10) {
                     text(copy.statement, size: 24, at: 2.0)
                     text(copy.hero, size: he ? 56 : 66, at: 2.6, hero: true)
-                    text(copy.detail, size: 18, at: 3.3, width: 338)
+                    if !copy.detail.isEmpty {
+                        text(copy.detail, size: 18, at: 3.3, width: 338)
+                    }
                 }
                 .frame(width: 338, alignment: alignment)
                 .offset(x: 26, y: 110)
@@ -721,7 +723,7 @@ struct RecapSceneFrame: View {
         let val = (he ? row.valueHe : row.valueEn) ?? ""
         if head.isEmpty { return val }
         if val.isEmpty { return head }
-        return head + (he ? " — " : " · ") + val
+        return head + " · " + val
     }
 
     /// Things We Noticed: rows reveal one after the other, calm and light. Not a
@@ -773,8 +775,8 @@ struct RecapSceneFrame: View {
                     currency + recap.totalSpent.formatted(.number.precision(.fractionLength(0))) +
                     " · " + String(recap.transactionCount) +
                     (he
-                        ? (recap.transactionCount == 1 ? " רכישה" : " רכישות")
-                        : (recap.transactionCount == 1 ? " purchase" : " purchases")),
+                        ? (recap.transactionCount == 1 ? " הוצאה" : " הוצאות")
+                        : (recap.transactionCount == 1 ? " expense" : " expenses")),
                     size: 17, at: 3.7, width: 280
                 )
 
@@ -815,13 +817,13 @@ struct RecapSceneFrame: View {
                 // ── Row 5: top repeated merchant OR busiest district fallback ──
                 if let m = recap.mostRepeatedStop {
                     let line = he
-                        ? "\(m.merchantName) — \(m.visitCount) ביקורים החודש"
-                        : "\(m.merchantName) — \(m.visitCount) visits this month"
+                        ? "\(m.merchantName) · \(m.visitCount) פעמים החודש"
+                        : "\(m.merchantName) · \(m.visitCount) times this month"
                     text(line, size: 14, at: 5.5, width: 280)
                 } else if let b = recap.busiestDistrict, b.category != recap.biggestDistrict?.category {
                     let line = he
-                        ? "הכי פעיל: \(b.nameHe) · \(b.transactionCount) עסקאות"
-                        : "Most active: \(b.nameEn) · \(b.transactionCount) transactions"
+                        ? "הכי פעיל: \(b.nameHe) · \(b.transactionCount) הוצאות"
+                        : "Most active: \(b.nameEn) · \(b.transactionCount) expenses"
                     text(line, size: 14, at: 5.5, width: 280)
                 }
 
@@ -829,7 +831,7 @@ struct RecapSceneFrame: View {
                 if let fact = recap.microFactInsight {
                     let microHead = (he ? fact.headlineHe : fact.headlineEn) ?? ""
                     let microVal = (he ? fact.valueHe : fact.valueEn) ?? ""
-                    let micro = [microHead, microVal].filter { !$0.isEmpty }.joined(separator: he ? " — " : " · ")
+                    let micro = [microHead, microVal].filter { !$0.isEmpty }.joined(separator: " · ")
                     if !micro.isEmpty {
                         text("· " + micro, size: 13, at: 6.1, width: 280)
                     }

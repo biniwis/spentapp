@@ -466,6 +466,9 @@
     "A new month in the city" : {
 
     },
+    "A quick iPhone setup, and then expenses can enter SPENT automatically." : {
+
+    },
     "About SPENT" : {
 
     },
@@ -777,6 +780,9 @@
     "Consistent tracking unlocks small gifts that bring more life to your city." : {
 
     },
+    "Continue Setup" : {
+
+    },
     "Could not extract receipt" : {
 
     },
@@ -897,6 +903,12 @@
     "DEVELOPMENT & DESIGN" : {
 
     },
+    "Did you add the shortcut?" : {
+
+    },
+    "Didn't work" : {
+
+    },
     "Dismiss alert" : {
 
     },
@@ -942,6 +954,9 @@
 
     },
     "Empty States" : {
+
+    },
+    "Enable Automatic Capture" : {
 
     },
     "Engine — generateCandidates" : {
@@ -1103,6 +1118,9 @@
         }
       }
     },
+    "If you added the shortcut on your iPhone, all that's left is waiting for the next payment to confirm everything works." : {
+
+    },
     "If you don't see an obvious button, search at the bottom of the screen and tap it." : {
 
     },
@@ -1199,6 +1217,9 @@
 
     },
     "Main Category" : {
+
+    },
+    "Manual Setup" : {
 
     },
     "Maybe later" : {
@@ -1323,6 +1344,9 @@
 
     },
     "Not in use — the ceilings below take over" : {
+
+    },
+    "Not working?" : {
 
     },
     "Notifications" : {
@@ -1685,6 +1709,9 @@
     "Set monthly budget" : {
 
     },
+    "Set Up Automatic Capture" : {
+
+    },
     "Set Up New Savings Goal" : {
 
     },
@@ -1692,9 +1719,6 @@
 
     },
     "Setup complete" : {
-
-    },
-    "Setup guide" : {
 
     },
     "Share" : {
@@ -1976,6 +2000,15 @@
     "Trip to Japan" : {
 
     },
+    "Troubleshooting" : {
+
+    },
+    "Troubleshooting Options" : {
+
+    },
+    "Try Again" : {
+
+    },
     "Uncategorized Transactions" : {
 
     },
@@ -2082,6 +2115,9 @@
 
     },
     "World" : {
+
+    },
+    "Yes, I added it" : {
 
     },
     "You can change your target later" : {
@@ -2193,6 +2229,9 @@
 
     },
     "אם אתה לא רואה כפתור ברור, חפש למטה את מה שאתה רוצה ולחץ עליו." : {
+
+    },
+    "אם הוספת את הקיצור באייפון, נשאר רק לחכות לתשלום הבא כדי לוודא שהכול עובד." : {
 
     },
     "אנא הזן סכום תקין" : {
@@ -2322,6 +2361,15 @@
     "הגדר יעד לקרן חירום, חופשה או השקעה — ושמורת הטבע תצמח יחד איתו." : {
 
     },
+    "הגדר קליטה אוטומטית" : {
+
+    },
+    "הגדרה ידנית" : {
+
+    },
+    "הגדרה קצרה באייפון, ואחרי זה ההוצאות יכולות להיכנס ל-SPENT לבד." : {
+
+    },
     "הגדרות" : {
 
     },
@@ -2365,6 +2413,9 @@
 
     },
     "הוספה מהירה +" : {
+
+    },
+    "הוספת את הקיצור?" : {
 
     },
     "הוספת הוצאה" : {
@@ -2457,6 +2508,9 @@
     "המרת מטבע אוטומטית" : {
 
     },
+    "המשך הגדרה" : {
+
+    },
     "הסיכום החודשי הראשון שלך יופיע בסיום החודש" : {
 
     },
@@ -2485,6 +2539,9 @@
 
     },
     "הפעל" : {
+
+    },
+    "הפעל קליטה אוטומטית" : {
 
     },
     "הפקד" : {
@@ -2698,6 +2755,9 @@
     "כמה ברצונך להפקיד?" : {
 
     },
+    "כן, הוספתי" : {
+
+    },
     "לא בשימוש — התקרות למטה גוברות" : {
 
     },
@@ -2705,6 +2765,12 @@
 
     },
     "לא מוצא איך להוסיף את SPENT?" : {
+
+    },
+    "לא עבד לי" : {
+
+    },
+    "לא עובד?" : {
 
     },
     "לאיזו קטגוריה להעביר?" : {
@@ -2741,9 +2807,6 @@
 
     },
     "מדיניות פרטיות" : {
-
-    },
-    "מדריך ההגדרה" : {
 
     },
     "מדריך קליטה אוטומטית (Automatic Capture Guide):" : {
@@ -2892,6 +2955,9 @@
 
     },
     "נמחקה: זארה — ₪199.90" : {
+
+    },
+    "נסה שוב" : {
 
     },
     "נקלטה עסקה • יש לערוך ולהזין סכום" : {
@@ -3054,6 +3120,12 @@
 
     },
     "פתח תלת-ממד ↗" : {
+
+    },
+    "פתרון בעיות" : {
+
+    },
+    "פתרונות אפשריים" : {
 
     },
     "צור" : {

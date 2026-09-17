@@ -11,6 +11,7 @@
 		CA2026091700000000000012 /* InputSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000011 /* InputSanitizer.swift */; };
 		CA2026091600000000000002 /* AutomaticCaptureStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091600000000000001 /* AutomaticCaptureStateStore.swift */; };
 		CA2026091600000000000004 /* AutomaticCaptureStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091600000000000003 /* AutomaticCaptureStatusView.swift */; };
+		CA2026091700000000000021 /* IOS27FastCaptureSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000020 /* IOS27FastCaptureSetupView.swift */; };
 		CA2026091600000000000006 /* AutomaticCaptureStateStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091600000000000005 /* AutomaticCaptureStateStoreTests.swift */; };
 		CA2026091700000000000002 /* RemoteConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000001 /* RemoteConfigService.swift */; };
 		CA2026091700000000000004 /* RemoteAnnouncementBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000003 /* RemoteAnnouncementBanner.swift */; };
@@ -210,6 +211,7 @@
 		CA2026091700000000000011 /* InputSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InputSanitizer.swift"; path = "MoneyCity/Services/InputSanitizer.swift"; sourceTree = "<group>"; };
 		CA2026091600000000000001 /* AutomaticCaptureStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AutomaticCaptureStateStore.swift"; path = "MoneyCity/Services/AutomaticCaptureStateStore.swift"; sourceTree = "<group>"; };
 		CA2026091600000000000003 /* AutomaticCaptureStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AutomaticCaptureStatusView.swift"; path = "MoneyCity/Views/Modals/AutomaticCaptureStatusView.swift"; sourceTree = "<group>"; };
+		CA2026091700000000000020 /* IOS27FastCaptureSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "IOS27FastCaptureSetupView.swift"; path = "MoneyCity/Views/Modals/IOS27FastCaptureSetupView.swift"; sourceTree = "<group>"; };
 		CA2026091600000000000005 /* AutomaticCaptureStateStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AutomaticCaptureStateStoreTests.swift"; sourceTree = "<group>"; };
 		CA2026091700000000000001 /* RemoteConfigService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RemoteConfigService.swift"; path = "MoneyCity/Services/RemoteConfigService.swift"; sourceTree = "<group>"; };
 		CA2026091700000000000003 /* RemoteAnnouncementBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RemoteAnnouncementBanner.swift"; path = "MoneyCity/Views/Components/RemoteAnnouncementBanner.swift"; sourceTree = "<group>"; };
@@ -475,6 +477,7 @@
 				A1000019B2C3D4E5F6000019 /* ApplePayGuideSheet.swift */,
 				A1000099B2C3D4E5F6000099 /* AutomaticCaptureSetupGuide.swift */,
 				CA2026091600000000000003 /* AutomaticCaptureStatusView.swift */,
+				CA2026091700000000000020 /* IOS27FastCaptureSetupView.swift */,
 				A1000020B2C3D4E5F6000020 /* PrivacyPolicySheet.swift */,
 				A1000021B2C3D4E5F6000021 /* AboutSpentSheet.swift */,
 				A1000022B2C3D4E5F6000022 /* DonutArcShape.swift */,
@@ -791,6 +794,7 @@
                 C17009160000000000000001 /* CityWorldsLabView.swift in Sources */,
 				CA2026091600000000000002 /* AutomaticCaptureStateStore.swift in Sources */,
 				CA2026091600000000000004 /* AutomaticCaptureStatusView.swift in Sources */,
+				CA2026091700000000000021 /* IOS27FastCaptureSetupView.swift in Sources */,
 				CA2026091700000000000002 /* RemoteConfigService.swift in Sources */,
 				CA2026091700000000000012 /* InputSanitizer.swift in Sources */,
 				CA2026091700000000000004 /* RemoteAnnouncementBanner.swift in Sources */,

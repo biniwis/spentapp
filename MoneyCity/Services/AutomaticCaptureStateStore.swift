@@ -38,6 +38,8 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         public static let guideLegacyStep = "spent.capture.guide.legacy.step"
         public static let guideLegacyUpdatedAt = "spent.capture.guide.legacy.updatedAt"
 
+        public static let fastSetupStartedAt = "spent.capture.fastSetup.startedAt"
+
         public static let bootstrapV1 = "spent.capture.bootstrap.v1"
     }
 
@@ -68,9 +70,10 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         }
 
         // C. Fresh guide progress
+        let freshFast = hasFreshFastSetupProgress(now: now)
         let freshIOS27 = hasFreshIOS27Progress(now: now)
         let freshLegacy = hasFreshLegacyProgress(now: now)
-        if freshIOS27 || freshLegacy {
+        if freshFast || freshIOS27 || freshLegacy {
             return .setupInProgress
         }
 
@@ -144,9 +147,33 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         userDefaults.removeObject(forKey: Key.guideLegacyUpdatedAt)
     }
 
+    // MARK: - Fast Setup Progress
+    public func markFastSetupStarted(at date: Date = Date()) {
+        userDefaults.set(date.timeIntervalSince1970, forKey: Key.fastSetupStartedAt)
+    }
+
+    public func hasFreshFastSetupProgress(now: Date = Date()) -> Bool {
+        guard let updatedTimestamp = userDefaults.object(forKey: Key.fastSetupStartedAt) as? Double, updatedTimestamp > 0 else {
+            return false
+        }
+        let updatedDate = Date(timeIntervalSince1970: updatedTimestamp)
+        let elapsed = now.timeIntervalSince(updatedDate)
+        if elapsed >= 0 && elapsed < Self.setupProgressTTL {
+            return true
+        } else {
+            // Expired (> 24 hours): reset and treat as nonexistent
+            clearFastSetupProgress()
+            return false
+        }
+    }
+
+    public func clearFastSetupProgress() {
+        userDefaults.removeObject(forKey: Key.fastSetupStartedAt)
+    }
+
     // MARK: - Completion & Detection
     /// Mark setup as completed.
-    /// Stores setup.completedAt, clears both guide progress tracks, but preserves lastDetectedAt.
+    /// Stores setup.completedAt, clears both guide progress tracks and fast setup, but preserves lastDetectedAt.
     public func markSetupCompleted(at date: Date = Date()) {
         userDefaults.set(date.timeIntervalSince1970, forKey: Key.setupCompletedAt)
         resetGuideProgress()
@@ -155,7 +182,7 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
     /// Mark automatic capture detected from Shortcuts invocation.
     /// 1. Set lastDetectedAt
     /// 2. Ensure setup is considered completed
-    /// 3. Clear guide progress
+    /// 3. Clear guide progress and fast setup
     public func markAutomaticCaptureDetected(at date: Date) {
         userDefaults.set(date.timeIntervalSince1970, forKey: Key.lastDetectedAt)
         if userDefaults.object(forKey: Key.setupCompletedAt) == nil {
@@ -164,8 +191,9 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         resetGuideProgress()
     }
 
-    /// Clears guide screen/step/timestamps without deleting setupCompletedAt or lastDetectedAt.
+    /// Clears guide screen/step/timestamps and fast setup without deleting setupCompletedAt or lastDetectedAt.
     public func resetGuideProgress() {
+        clearFastSetupProgress()
         clearIOS27Progress()
         clearLegacyProgress()
     }
@@ -194,6 +222,18 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
     // MARK: - Static Convenience Forwarders
     public static func state(now: Date = Date()) -> AutomaticCaptureState {
         shared.state(now: now)
+    }
+
+    public static func markFastSetupStarted(at date: Date = Date()) {
+        shared.markFastSetupStarted(at: date)
+    }
+
+    public static func hasFreshFastSetupProgress(now: Date = Date()) -> Bool {
+        shared.hasFreshFastSetupProgress(now: now)
+    }
+
+    public static func clearFastSetupProgress() {
+        shared.clearFastSetupProgress()
     }
 
     public static func saveIOS27Progress(screen: Int, at date: Date = Date()) {

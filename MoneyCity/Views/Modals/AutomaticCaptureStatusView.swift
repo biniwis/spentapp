@@ -7,6 +7,7 @@ public struct AutomaticCaptureStatusView: View {
     @EnvironmentObject private var l10n: LocalizationManager
 
     @State private var showSetupGuide: Bool = false
+    @State private var showTrouble: Bool = false
 
     private var isHebrew: Bool { l10n.language == .hebrew }
     private var state: AutomaticCaptureState { AutomaticCaptureStateStore.state() }
@@ -46,35 +47,9 @@ public struct AutomaticCaptureStatusView: View {
                     Spacer()
 
                     // Action buttons
-                    VStack(spacing: 10) {
-                        Button(action: openShortcuts) {
-                            Text(isHebrew ? "פתח את קיצורים" : "Open Shortcuts")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color.deepNavy)
-                                )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button(action: replaySetupGuide) {
-                            Text(isHebrew ? "מדריך ההגדרה" : "Setup guide")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(Color.jetBlack.opacity(0.05))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 24)
+                    bottomActionButtons
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 24)
                 }
             }
             .navigationTitle(isHebrew ? "קליטה אוטומטית" : "Automatic Capture")
@@ -96,6 +71,83 @@ public struct AutomaticCaptureStatusView: View {
             ApplePayGuideSheet()
                 .environmentObject(l10n)
         }
+        .sheet(isPresented: $showTrouble) {
+            TroubleSheet(
+                context: .shortcuts,
+                usesNewShortcutsFlow: true,
+                isHebrew: isHebrew
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    // MARK: - Action Buttons
+    @ViewBuilder
+    private var bottomActionButtons: some View {
+        switch state {
+        case .captureDetected:
+            // Working state: calm screen with only a quiet secondary action
+            Button(action: {
+                Haptics.selection()
+                showTrouble = true
+            }) {
+                Text(isHebrew ? "פתרון בעיות" : "Troubleshooting")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.plain)
+
+        case .configuredAwaitingFirstCapture:
+            Button(action: {
+                Haptics.selection()
+                showTrouble = true
+            }) {
+                Text(isHebrew ? "לא עובד?" : "Not working?")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.plain)
+
+        case .setupInProgress:
+            Button(action: {
+                Haptics.impact(.medium)
+                showSetupGuide = true
+            }) {
+                Text(isHebrew ? "המשך הגדרה" : "Continue Setup")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.deepNavy)
+                    )
+            }
+            .buttonStyle(.plain)
+            .bouncyPress()
+
+        case .notConfigured:
+            Button(action: {
+                Haptics.impact(.medium)
+                showSetupGuide = true
+            }) {
+                Text(isHebrew ? "הגדר קליטה אוטומטית" : "Set Up Automatic Capture")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.luckyGreen)
+                    )
+            }
+            .buttonStyle(.plain)
+            .bouncyPress()
+        }
     }
 
     // MARK: - Copy resolution
@@ -104,17 +156,21 @@ public struct AutomaticCaptureStatusView: View {
         case .captureDetected:
             return RemoteConfigService.shared.localizedCopy(
                 key: "capture.active.title",
-                fallbackHe: "זוהתה קליטה",
-                fallbackEn: "Capture detected",
+                fallbackHe: "קליטה אוטומטית פעילה",
+                fallbackEn: "Automatic capture active",
                 isHebrew: isHebrew
             )
-        case .configuredAwaitingFirstCapture, .notConfigured, .setupInProgress:
+        case .configuredAwaitingFirstCapture:
             return RemoteConfigService.shared.localizedCopy(
                 key: "capture.waiting.title",
-                fallbackHe: "מחכה לקליטה הראשונה",
+                fallbackHe: "מחכים לקליטה הראשונה",
                 fallbackEn: "Waiting for first capture",
                 isHebrew: isHebrew
             )
+        case .setupInProgress:
+            return isHebrew ? "המשך הגדרה" : "Continue setup"
+        case .notConfigured:
+            return isHebrew ? "קליטה אוטומטית" : "Automatic Capture"
         }
     }
 
@@ -124,24 +180,18 @@ public struct AutomaticCaptureStatusView: View {
             return isHebrew
                 ? "SPENT כבר קיבלה הפעלה דרך הפעולה האוטומטית באייפון."
                 : "SPENT has already received an event through the automatic action on your iPhone."
-        case .configuredAwaitingFirstCapture, .notConfigured, .setupInProgress:
+        case .configuredAwaitingFirstCapture:
             return isHebrew
-                ? "אחרי התשלום הבא ב-Apple Pay נוכל לוודא שהקליטה מגיעה ל-SPENT."
-                : "After your next Apple Pay payment, we'll be able to confirm that captures are reaching SPENT."
+                ? "אחרי התשלום הבא ב-Apple Pay נוודא שהקליטה מגיעה ל-SPENT."
+                : "After your next Apple Pay payment, we'll verify that captures are reaching SPENT."
+        case .setupInProgress:
+            return isHebrew
+                ? "התחלת להגדיר קליטה אוטומטית. אפשר להמשיך עם הקיצור המוכן או לעבור להגדרה ידנית."
+                : "You've started setting up automatic capture. You can continue with the shortcut or switch to manual setup."
+        case .notConfigured:
+            return isHebrew
+                ? "הגדרה קצרה באייפון, ואחרי זה ההוצאות יכולות להיכנס ל-SPENT לבד."
+                : "A quick iPhone setup, and then expenses can enter SPENT automatically."
         }
-    }
-
-    // MARK: - Actions
-    private func openShortcuts() {
-        Haptics.impact(.medium)
-        if let url = URL(string: "shortcuts://") {
-            UIApplication.shared.open(url)
-        }
-    }
-
-    private func replaySetupGuide() {
-        Haptics.selection()
-        AutomaticCaptureStateStore.resetGuideProgress()
-        showSetupGuide = true
     }
 }

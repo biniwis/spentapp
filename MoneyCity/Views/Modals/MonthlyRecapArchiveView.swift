@@ -109,7 +109,9 @@ public struct MonthlyRecapArchiveView: View {
         let isRTL = layoutDirection == .rightToLeft
         let monthTitle = l10n.language == .hebrew ? recap.monthNameHe : recap.monthNameEn
         let vibeTitle = l10n.language == .hebrew ? recap.cityVibe.titleHe : recap.cityVibe.titleEn
-        let countText = l10n.language == .hebrew ? "\(recap.transactionCount) עסקאות" : "\(recap.transactionCount) visits"
+        let countText = l10n.language == .hebrew
+            ? (recap.transactionCount == 1 ? "הוצאה אחת" : "\(recap.transactionCount) הוצאות")
+            : (recap.transactionCount == 1 ? "1 expense" : "\(recap.transactionCount) expenses")
         let spentText = l10n.format(amount: recap.totalSpent)
         
         return HStack(alignment: .bottom, spacing: 0) {

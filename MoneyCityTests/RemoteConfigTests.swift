@@ -395,4 +395,77 @@ final class RemoteConfigTests: XCTestCase {
         XCTAssertEqual(restoredService.currentConfig.revision, 88)
         XCTAssertTrue(restoredService.isFeatureEnabled("persistedFlag"))
     }
+
+    // MARK: - 11. Fast Setup & Shortcut URL Validation
+
+    func testFastSetupConfigDecoding() throws {
+        let json = """
+        {
+          "schemaVersion": 1,
+          "revision": 10,
+          "features": {},
+          "copy": {},
+          "captureGuide": {
+            "mode": "native",
+            "fastSetupEnabled": false,
+            "shortcutURL": "https://www.icloud.com/shortcuts/custom123"
+          },
+          "notifications": {},
+          "merchantOverrides": []
+        }
+        """
+        let data = Data(json.utf8)
+        let config = try RemoteConfigService.decodeJSON(from: data)
+
+        XCTAssertEqual(config.captureGuide.fastSetupEnabled, false)
+        XCTAssertEqual(config.captureGuide.shortcutURL, "https://www.icloud.com/shortcuts/custom123")
+    }
+
+    func testResolvedShortcutURLSecurity() {
+        let service = RemoteConfigService(defaults: testDefaults)
+        let defaultExpected = URL(string: RemoteConfigService.defaultShortcutURL)!
+
+        // Default state when nil
+        XCTAssertTrue(service.isFastSetupEnabled)
+        XCTAssertEqual(service.resolvedShortcutURL, defaultExpected)
+
+        // Valid iCloud Shortcut URL
+        var configValid = RemoteConfigRoot.bundledDefault
+        configValid.captureGuide.shortcutURL = "https://www.icloud.com/shortcuts/72aa49c6fe0449fd99703e8d4f2a1853"
+        configValid.captureGuide.fastSetupEnabled = true
+        service.updateConfig(configValid)
+
+        XCTAssertTrue(service.isFastSetupEnabled)
+        XCTAssertEqual(service.resolvedShortcutURL.absoluteString, "https://www.icloud.com/shortcuts/72aa49c6fe0449fd99703e8d4f2a1853")
+
+        // Valid icloud.com without www
+        var configNoWWW = RemoteConfigRoot.bundledDefault
+        configNoWWW.captureGuide.shortcutURL = "https://icloud.com/shortcuts/test456"
+        service.updateConfig(configNoWWW)
+        XCTAssertEqual(service.resolvedShortcutURL.absoluteString, "https://icloud.com/shortcuts/test456")
+
+        // Insecure scheme (http) -> must fallback
+        var configHTTP = RemoteConfigRoot.bundledDefault
+        configHTTP.captureGuide.shortcutURL = "http://www.icloud.com/shortcuts/test456"
+        service.updateConfig(configHTTP)
+        XCTAssertEqual(service.resolvedShortcutURL, defaultExpected)
+
+        // Untrusted host (phishing/open redirect) -> must fallback
+        var configUntrusted = RemoteConfigRoot.bundledDefault
+        configUntrusted.captureGuide.shortcutURL = "https://malicious-site.com/shortcuts/steal"
+        service.updateConfig(configUntrusted)
+        XCTAssertEqual(service.resolvedShortcutURL, defaultExpected)
+
+        // Missing /shortcuts/ path prefix -> must fallback
+        var configBadPath = RemoteConfigRoot.bundledDefault
+        configBadPath.captureGuide.shortcutURL = "https://www.icloud.com/other/path"
+        service.updateConfig(configBadPath)
+        XCTAssertEqual(service.resolvedShortcutURL, defaultExpected)
+
+        // Empty string -> must fallback
+        var configEmpty = RemoteConfigRoot.bundledDefault
+        configEmpty.captureGuide.shortcutURL = "   "
+        service.updateConfig(configEmpty)
+        XCTAssertEqual(service.resolvedShortcutURL, defaultExpected)
+    }
 }

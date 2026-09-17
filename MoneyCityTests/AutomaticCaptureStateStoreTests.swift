@@ -147,4 +147,72 @@ final class AutomaticCaptureStateStoreTests: XCTestCase {
         XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.guideLegacyUpdatedAt))
         XCTAssertEqual(store.state(), .configuredAwaitingFirstCapture)
     }
+
+    // Test 10: Fast Setup started -> .setupInProgress
+    func test10_fastSetupStarted_returnsSetupInProgress() {
+        let now = Date()
+        store.markFastSetupStarted(at: now)
+
+        XCTAssertTrue(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertEqual(store.state(now: now), .setupInProgress)
+    }
+
+    // Test 11: Stale Fast Setup progress (> 24 hours) expires and returns .notConfigured
+    func test11_staleFastSetupProgress_expiresAndReturnsNotConfigured() {
+        let now = Date()
+        let twentyFiveHoursAgo = now.addingTimeInterval(-25 * 60 * 60)
+
+        store.markFastSetupStarted(at: twentyFiveHoursAgo)
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertEqual(store.state(now: now), .notConfigured)
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupStartedAt))
+    }
+
+    // Test 12: markSetupCompleted clears Fast Setup progress
+    func test12_markSetupCompleted_clearsFastSetupProgress() {
+        let now = Date()
+        store.markFastSetupStarted(at: now)
+
+        store.markSetupCompleted(at: now)
+
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupStartedAt))
+        XCTAssertEqual(store.state(now: now), .configuredAwaitingFirstCapture)
+    }
+
+    // Test 13: markAutomaticCaptureDetected clears Fast Setup progress
+    func test13_markAutomaticCaptureDetected_clearsFastSetupProgress() {
+        let now = Date()
+        store.markFastSetupStarted(at: now)
+
+        let detected = now.addingTimeInterval(10)
+        store.markAutomaticCaptureDetected(at: detected)
+
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupStartedAt))
+        XCTAssertEqual(store.state(now: detected), .captureDetected(detected))
+    }
+
+    // Test 14: clearFastSetupProgress cleans fastSetupStartedAt (e.g. when user chooses manual setup)
+    func test14_clearFastSetupProgress_resetsFastSetup() {
+        let now = Date()
+        store.markFastSetupStarted(at: now)
+        XCTAssertTrue(store.hasFreshFastSetupProgress(now: now))
+
+        store.clearFastSetupProgress()
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: now))
+        XCTAssertEqual(store.state(now: now), .notConfigured)
+    }
+
+    // Test 15: captureDetected precedence beats Fast Setup in progress
+    func test15_captureDetectedPrecedence_beatsFastSetup() {
+        let now = Date()
+        let detected = now.addingTimeInterval(-60)
+        testDefaults.set(detected.timeIntervalSince1970, forKey: AutomaticCaptureStateStore.Key.lastDetectedAt)
+
+        store.markFastSetupStarted(at: now)
+
+        // Capture detected ALWAYS beats in-progress setup
+        XCTAssertEqual(store.state(now: now), .captureDetected(detected))
+    }
 }

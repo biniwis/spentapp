@@ -106,17 +106,23 @@ public struct RemoteCaptureGuideConfig: Codable, Equatable, Sendable {
     public var forceVariant: String?
     public var revision: Int?
     public var steps: [Int]?
+    public var fastSetupEnabled: Bool?
+    public var shortcutURL: String?
 
     public init(
         mode: String? = "native",
         forceVariant: String? = nil,
         revision: Int? = 1,
-        steps: [Int]? = nil
+        steps: [Int]? = nil,
+        fastSetupEnabled: Bool? = nil,
+        shortcutURL: String? = nil
     ) {
         self.mode = mode
         self.forceVariant = forceVariant
         self.revision = revision
         self.steps = steps
+        self.fastSetupEnabled = fastSetupEnabled
+        self.shortcutURL = shortcutURL
     }
 }
 
@@ -205,6 +211,7 @@ public final class RemoteConfigService: ObservableObject, @unchecked Sendable {
     // Production and Staging raw endpoints on the main branch
     public static let defaultProductionURL = URL(string: "https://raw.githubusercontent.com/biniwis/spentapp/main/remote-config/production.json")!
     public static let defaultStagingURL = URL(string: "https://raw.githubusercontent.com/biniwis/spentapp/main/remote-config/staging.json")!
+    public static let defaultShortcutURL = "https://www.icloud.com/shortcuts/72aa49c6fe0449fd99703e8d4f2a1853"
 
     // Keys
     private let keyLastRefreshAttempt = "remote_config_last_refresh_attempt_timestamp"
@@ -455,6 +462,30 @@ public final class RemoteConfigService: ObservableObject, @unchecked Sendable {
 
     public var captureGuideSteps: [Int]? {
         currentConfig.captureGuide.steps
+    }
+
+    public var isFastSetupEnabled: Bool {
+        currentConfig.captureGuide.fastSetupEnabled ?? true
+    }
+
+    public var resolvedShortcutURL: URL {
+        let fallback = URL(string: Self.defaultShortcutURL)!
+        guard let urlString = currentConfig.captureGuide.shortcutURL?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              let url = URL(string: urlString) else {
+            return fallback
+        }
+        guard let scheme = url.scheme?.lowercased(), scheme == "https" else {
+            return fallback
+        }
+        guard let host = url.host?.lowercased(),
+              host == "icloud.com" || host == "www.icloud.com" else {
+            return fallback
+        }
+        guard url.path.hasPrefix("/shortcuts/") else {
+            return fallback
+        }
+        return url
     }
 
     // MARK: - Static Decoding & Bundled Fallback

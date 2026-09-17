@@ -952,7 +952,7 @@ public struct ProfileView: View {
         case .setupInProgress:
             return isHe ? "המשך הגדרה" : "Continue setup"
         case .configuredAwaitingFirstCapture:
-            return isHe ? "מחכה לקליטה הראשונה" : "Waiting for first capture"
+            return isHe ? "מחכים לקליטה הראשונה" : "Waiting for first capture"
         case .captureDetected(let date):
             return AutomaticCaptureStateStore.formatLastDetected(date: date, isHebrew: isHe)
         }

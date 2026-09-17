@@ -24,6 +24,7 @@ public struct ProfileView: View {
     @State private var showRecurringSheet = false
     @State private var showGoalsSheet = false
     @State private var showApplePayGuideSheet = false
+    @State private var applePayGuideEntryMode: FastSetupEntryMode = .restart
     @State private var showManualCaptureGuide = false
     @State private var showAutomaticCaptureStatus = false
     @State private var showRecapArchive = false
@@ -250,7 +251,7 @@ public struct ProfileView: View {
                 .environmentObject(l10n)
         }
         .fullScreenCover(isPresented: $showApplePayGuideSheet) {
-            ApplePayGuideSheet()
+            ApplePayGuideSheet(entryMode: applePayGuideEntryMode)
                 .environmentObject(l10n)
         }
         .fullScreenCover(isPresented: $showManualCaptureGuide) {
@@ -838,7 +839,11 @@ public struct ProfileView: View {
                     MoneyIcon(.lightning, size: 24)
                 } action: {
                     switch automaticCaptureState {
-                    case .notConfigured, .setupInProgress:
+                    case .notConfigured:
+                        applePayGuideEntryMode = .restart
+                        showApplePayGuideSheet = true
+                    case .setupInProgress:
+                        applePayGuideEntryMode = .resume
                         showApplePayGuideSheet = true
                     case .configuredAwaitingFirstCapture, .captureDetected:
                         showAutomaticCaptureStatus = true
@@ -852,6 +857,7 @@ public struct ProfileView: View {
                     }
 
                     Button {
+                        applePayGuideEntryMode = .restart
                         showApplePayGuideSheet = true
                     } label: {
                         Label(l10n.language == .hebrew ? "הוסף קיצור מחדש" : "Add Shortcut Again", systemImage: "plus.circle")

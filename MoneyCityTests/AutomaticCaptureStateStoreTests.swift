@@ -300,4 +300,121 @@ final class AutomaticCaptureStateStoreTests: XCTestCase {
         XCTAssertEqual(IOS27FastCaptureSetupView.automationsURL.absoluteString, "shortcuts://automations")
         XCTAssertEqual(IOS27FastCaptureSetupView.fallbackShortcutsURL.absoluteString, "shortcuts://")
     }
+
+    // Test 23: lastDetectedDate property returns Date when set, nil when unset
+    func test23_lastDetectedDate_behavior() {
+        XCTAssertNil(store.lastDetectedDate)
+        XCTAssertFalse(store.hasLastDetectedCapture)
+
+        let testDate = Date(timeIntervalSince1970: 1720001234)
+        store.markAutomaticCaptureDetected(at: testDate)
+
+        XCTAssertNotNil(store.lastDetectedDate)
+        XCTAssertTrue(store.hasLastDetectedCapture)
+        XCTAssertEqual(store.lastDetectedDate?.timeIntervalSince1970, testDate.timeIntervalSince1970)
+    }
+
+    // Test 24: FastSetupEntryMode equality and cases
+    func test24_fastSetupEntryMode() {
+        let restartMode: FastSetupEntryMode = .restart
+        let resumeMode: FastSetupEntryMode = .resume
+
+        XCTAssertEqual(restartMode, .restart)
+        XCTAssertEqual(resumeMode, .resume)
+        XCTAssertNotEqual(restartMode, resumeMode)
+    }
+
+    // Test 25: Date formatting contains no em-dash or en-dash
+    func test25_dateFormatting_noDashes() {
+        let testDate = Date()
+
+        let formattedHebrew = AutomaticCaptureStateStore.formatLastDetected(date: testDate, isHebrew: true)
+        XCTAssertFalse(formattedHebrew.contains("—"), "Must not contain em-dash")
+        XCTAssertFalse(formattedHebrew.contains("–"), "Must not contain en-dash")
+
+        let formattedEnglish = AutomaticCaptureStateStore.formatLastDetected(date: testDate, isHebrew: false)
+        XCTAssertFalse(formattedEnglish.contains("—"), "Must not contain em-dash")
+        XCTAssertFalse(formattedEnglish.contains("–"), "Must not contain en-dash")
+
+        // Older date
+        let olderDate = Calendar.current.date(byAdding: .day, value: -10, to: testDate)!
+        let formattedOldHe = AutomaticCaptureStateStore.formatLastDetected(date: olderDate, isHebrew: true)
+        XCTAssertFalse(formattedOldHe.contains("—"))
+        XCTAssertFalse(formattedOldHe.contains("–"))
+
+        let formattedOldEn = AutomaticCaptureStateStore.formatLastDetected(date: olderDate, isHebrew: false)
+        XCTAssertFalse(formattedOldEn.contains("—"))
+        XCTAssertFalse(formattedOldEn.contains("–"))
+    }
+
+    // Test 26: Reconfigure (restart) clears fast setup progress but keeps historical capture and setupCompleted
+    func test26_restartKeepsHistory() {
+        let pastDate = Date(timeIntervalSince1970: 1700000000)
+        store.markAutomaticCaptureDetected(at: pastDate)
+        XCTAssertEqual(store.state(), .captureDetected(pastDate))
+
+        // Start fast setup progress
+        let newProgressDate = Date()
+        store.markFastSetupStarted(at: newProgressDate)
+        store.markFastSetupOpenedAutomations(at: newProgressDate)
+
+        // Clear fast setup progress (like restart mode does)
+        store.clearFastSetupProgress()
+
+        // Fast setup progress is wiped
+        XCTAssertFalse(store.hasFreshFastSetupStarted(now: newProgressDate))
+        XCTAssertFalse(store.hasFreshFastSetupOpenedAutomations(now: newProgressDate))
+        XCTAssertFalse(store.hasFreshFastSetupProgress(now: newProgressDate))
+
+        // Historical capture is completely preserved
+        XCTAssertEqual(store.lastDetectedDate?.timeIntervalSince1970, pastDate.timeIntervalSince1970)
+        XCTAssertTrue(store.hasLastDetectedCapture)
+        XCTAssertEqual(store.state(), .captureDetected(pastDate))
+    }
+
+    // Test 27: FastSetupStep enum equality and states
+    func test27_fastSetupStepEnum() {
+        XCTAssertEqual(IOS27FastCaptureSetupView.FastSetupStep.initial, .initial)
+        XCTAssertEqual(IOS27FastCaptureSetupView.FastSetupStep.shortcutAddedCheckpoint, .shortcutAddedCheckpoint)
+        XCTAssertEqual(IOS27FastCaptureSetupView.FastSetupStep.openAutomationsPrompt, .openAutomationsPrompt)
+        XCTAssertEqual(IOS27FastCaptureSetupView.FastSetupStep.automationsEnabledCheckpoint, .automationsEnabledCheckpoint)
+        XCTAssertEqual(IOS27FastCaptureSetupView.FastSetupStep.captureDetectedSuccess, .captureDetectedSuccess)
+        XCTAssertNotEqual(IOS27FastCaptureSetupView.FastSetupStep.initial, .shortcutAddedCheckpoint)
+        XCTAssertNotEqual(IOS27FastCaptureSetupView.FastSetupStep.openAutomationsPrompt, .automationsEnabledCheckpoint)
+        XCTAssertNotEqual(IOS27FastCaptureSetupView.FastSetupStep.automationsEnabledCheckpoint, .captureDetectedSuccess)
+    }
+
+    // Test 28: Detection comparison in session
+    func test28_sessionDetectionLogic() {
+        let historicalCapture = Date(timeIntervalSince1970: 1700000000)
+        let sessionStartedAt = Date(timeIntervalSince1970: 1720000000)
+        let newInSessionCapture = Date(timeIntervalSince1970: 1720000010)
+
+        // Historical capture does not exceed sessionStartedAt
+        XCTAssertFalse(historicalCapture > sessionStartedAt)
+
+        // Capture detected during session DOES exceed sessionStartedAt
+        XCTAssertTrue(newInSessionCapture > sessionStartedAt)
+    }
+
+    // Test 29: clearFastSetupOpenedAutomations clears automations timestamp but preserves startedAt
+    func test29_clearFastSetupOpenedAutomations_preservesStartedAt() {
+        let now = Date()
+        store.markFastSetupStarted(at: now)
+        store.markFastSetupOpenedAutomations(at: now)
+
+        XCTAssertTrue(store.hasFreshFastSetupStarted(now: now))
+        XCTAssertTrue(store.hasFreshFastSetupOpenedAutomations(now: now))
+
+        store.clearFastSetupOpenedAutomations()
+
+        // openedAutomations is cleared
+        XCTAssertFalse(store.hasFreshFastSetupOpenedAutomations(now: now))
+        XCTAssertNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupOpenedAutomationsAt))
+
+        // startedAt is still intact
+        XCTAssertTrue(store.hasFreshFastSetupStarted(now: now))
+        XCTAssertNotNil(testDefaults.object(forKey: AutomaticCaptureStateStore.Key.fastSetupStartedAt))
+        XCTAssertTrue(store.hasFreshFastSetupProgress(now: now))
+    }
 }

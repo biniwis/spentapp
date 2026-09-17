@@ -6,10 +6,15 @@ public struct ApplePayGuideSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
 
-    public init() {}
+    public var entryMode: FastSetupEntryMode
+
+    public init(entryMode: FastSetupEntryMode = .restart) {
+        self.entryMode = entryMode
+    }
 
     public var body: some View {
         AutomaticCaptureSetupGuide(
+            entryMode: entryMode,
             skipIntro: false,
             showCloseButton: true,
             onFinished: { dismiss() }

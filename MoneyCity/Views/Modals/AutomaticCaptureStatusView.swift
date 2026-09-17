@@ -7,6 +7,7 @@ public struct AutomaticCaptureStatusView: View {
     @EnvironmentObject private var l10n: LocalizationManager
 
     @State private var showSetupGuide: Bool = false
+    @State private var setupGuideEntryMode: FastSetupEntryMode = .restart
     @State private var showManualGuide: Bool = false
     @State private var showTrouble: Bool = false
 
@@ -70,7 +71,7 @@ public struct AutomaticCaptureStatusView: View {
         }
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
         .fullScreenCover(isPresented: $showSetupGuide) {
-            ApplePayGuideSheet()
+            ApplePayGuideSheet(entryMode: setupGuideEntryMode)
                 .environmentObject(l10n)
         }
         .fullScreenCover(isPresented: $showManualGuide) {
@@ -100,6 +101,7 @@ public struct AutomaticCaptureStatusView: View {
             case .captureDetected:
                 Button(action: {
                     Haptics.impact(.medium)
+                    setupGuideEntryMode = .restart
                     showSetupGuide = true
                 }) {
                     Text(isHebrew ? "הוסף קיצור מחדש" : "Add Shortcut Again")
@@ -140,6 +142,7 @@ public struct AutomaticCaptureStatusView: View {
             case .configuredAwaitingFirstCapture:
                 Button(action: {
                     Haptics.impact(.medium)
+                    setupGuideEntryMode = .restart
                     showSetupGuide = true
                 }) {
                     Text(isHebrew ? "הוסף קיצור מחדש" : "Add Shortcut Again")
@@ -180,6 +183,7 @@ public struct AutomaticCaptureStatusView: View {
             case .setupInProgress:
                 Button(action: {
                     Haptics.impact(.medium)
+                    setupGuideEntryMode = .resume
                     showSetupGuide = true
                 }) {
                     Text(isHebrew ? "המשך הגדרה" : "Continue Setup")
@@ -209,6 +213,7 @@ public struct AutomaticCaptureStatusView: View {
             case .notConfigured:
                 Button(action: {
                     Haptics.impact(.medium)
+                    setupGuideEntryMode = .restart
                     showSetupGuide = true
                 }) {
                     Text(isHebrew ? "הגדר קליטה אוטומטית" : "Set Up Automatic Capture")

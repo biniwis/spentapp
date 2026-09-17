@@ -23,6 +23,12 @@ public enum AutomaticCaptureState: Equatable, Sendable {
     }
 }
 
+/// Entry mode for Fast Setup: fresh start vs resuming an active in-progress attempt.
+public enum FastSetupEntryMode: Equatable, Sendable {
+    case restart
+    case resume
+}
+
 /// Single source of truth for Automatic Capture lifecycle state, TTL, and persistence.
 public final class AutomaticCaptureStateStore: @unchecked Sendable {
     public static let shared = AutomaticCaptureStateStore()
@@ -196,6 +202,10 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         userDefaults.removeObject(forKey: Key.fastSetupOpenedAutomationsAt)
     }
 
+    public func clearFastSetupOpenedAutomations() {
+        userDefaults.removeObject(forKey: Key.fastSetupOpenedAutomationsAt)
+    }
+
     // MARK: - Completion & Detection
     /// Mark setup as completed.
     /// Stores setup.completedAt, clears both guide progress tracks and fast setup, but preserves lastDetectedAt.
@@ -233,6 +243,13 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
             return true
         }
         return false
+    }
+
+    public var lastDetectedDate: Date? {
+        guard let timestamp = userDefaults.object(forKey: Key.lastDetectedAt) as? Double, timestamp > 0 else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: timestamp)
     }
 
     public func markBootstrapped() {
@@ -273,6 +290,10 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
         shared.clearFastSetupProgress()
     }
 
+    public static func clearFastSetupOpenedAutomations() {
+        shared.clearFastSetupOpenedAutomations()
+    }
+
     public static func saveIOS27Progress(screen: Int, at date: Date = Date()) {
         shared.saveIOS27Progress(screen: screen, at: date)
     }
@@ -307,6 +328,10 @@ public final class AutomaticCaptureStateStore: @unchecked Sendable {
 
     public static var hasLastDetectedCapture: Bool {
         shared.hasLastDetectedCapture
+    }
+
+    public static var lastDetectedDate: Date? {
+        shared.lastDetectedDate
     }
 
     public static func markBootstrapped() {

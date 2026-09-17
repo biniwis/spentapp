@@ -4,15 +4,18 @@ import SwiftUI
 /// Opens a user-tested pre-configured iCloud Shortcut with one tap,
 /// while keeping the 13-step manual setup fully accessible.
 public struct IOS27FastCaptureSetupView: View {
+    public var entryMode: FastSetupEntryMode
     public var skipIntro: Bool
     public var showCloseButton: Bool
     public var onFinished: () -> Void
 
     public init(
+        entryMode: FastSetupEntryMode = .restart,
         skipIntro: Bool = false,
         showCloseButton: Bool = true,
         onFinished: @escaping () -> Void
     ) {
+        self.entryMode = entryMode
         self.skipIntro = skipIntro
         self.showCloseButton = showCloseButton
         self.onFinished = onFinished
@@ -24,19 +27,20 @@ public struct IOS27FastCaptureSetupView: View {
 
     public enum FastSetupStep: Equatable {
         case initial
-        case shortcutAddedPrompt
-        case enabledConfirmation
+        case shortcutAddedCheckpoint
+        case openAutomationsPrompt
+        case automationsEnabledCheckpoint
+        case captureDetectedSuccess
     }
 
     public static let automationsURL = URL(string: "shortcuts://automations")!
     public static let fallbackShortcutsURL = URL(string: "shortcuts://")!
 
     @State private var currentStep: FastSetupStep = .initial
+    @State private var sessionStartedAt: Date = Date()
     @State private var didTapOpenShortcut: Bool = false
     @State private var didTapOpenAutomations: Bool = false
     @State private var isShowingManualGuide: Bool = false
-    @State private var showShortcutTroubleOptions: Bool = false
-    @State private var showAutomationsTroubleOptions: Bool = false
 
     private var isHebrew: Bool { l10n.language == .hebrew }
 
@@ -63,10 +67,14 @@ public struct IOS27FastCaptureSetupView: View {
                             switch currentStep {
                             case .initial:
                                 initialContent
-                            case .shortcutAddedPrompt:
-                                shortcutAddedPromptContent
-                            case .enabledConfirmation:
-                                enabledConfirmationContent
+                            case .shortcutAddedCheckpoint:
+                                shortcutAddedCheckpointContent
+                            case .openAutomationsPrompt:
+                                openAutomationsPromptContent
+                            case .automationsEnabledCheckpoint:
+                                automationsEnabledCheckpointContent
+                            case .captureDetectedSuccess:
+                                captureDetectedSuccessContent
                             }
                         }
                         .padding(.horizontal, 24)
@@ -94,79 +102,48 @@ public struct IOS27FastCaptureSetupView: View {
                     handleReturnToApp()
                 }
             }
-            .confirmationDialog(
-                isHebrew ? "לא הצלחת להוסיף את הקיצור?" : "Couldn't add the shortcut?",
-                isPresented: $showShortcutTroubleOptions,
-                titleVisibility: .visible
-            ) {
-                Button(isHebrew ? "נסה שוב" : "Try Again") {
-                    openShortcutLink()
-                }
-                Button(isHebrew ? "הגדרה ידנית" : "Manual Setup") {
-                    switchToManualSetup()
-                }
-                Button(isHebrew ? "פתח את קיצורים" : "Open Shortcuts") {
-                    openShortcutsApp()
-                }
-                Button(isHebrew ? "ביטול" : "Cancel", role: .cancel) {}
-            } message: {
-                Text(isHebrew
-                    ? "אפשר לפתוח את הקישור מחדש, לעבור להגדרה ידנית, או לפתוח את קיצורים."
-                    : "You can reopen the link, switch to manual setup, or open Shortcuts.")
-            }
-            .confirmationDialog(
-                isHebrew ? "חפש את SPENT בפעולות האוטומטיות" : "Look for SPENT in Automations",
-                isPresented: $showAutomationsTroubleOptions,
-                titleVisibility: .visible
-            ) {
-                Button(isHebrew ? "פתח שוב פעולות אוטומטיות" : "Open Automations Again") {
-                    openAutomationsLink()
-                }
-                Button(isHebrew ? "הגדרה ידנית" : "Manual Setup") {
-                    switchToManualSetup()
-                }
-                Button(isHebrew ? "פתח את קיצורים" : "Open Shortcuts") {
-                    openShortcutsApp()
-                }
-                Button(isHebrew ? "ביטול" : "Cancel", role: .cancel) {}
-            } message: {
-                Text(isHebrew
-                    ? "הקיצור שהוספת אמור להופיע שם. פתח אותו והפעל אותו."
-                    : "The shortcut you added should appear there. Open it and turn it on.")
-            }
         }
     }
 
     // MARK: - Lifecycle Handlers
     private func updateStepOnAppear() {
-        if AutomaticCaptureStateStore.hasLastDetectedCapture {
-            onFinished()
-            return
-        }
-        if AutomaticCaptureStateStore.hasFreshFastSetupOpenedAutomations() {
-            currentStep = .enabledConfirmation
-        } else if AutomaticCaptureStateStore.hasFreshFastSetupProgress() {
-            currentStep = .shortcutAddedPrompt
-        } else {
+        sessionStartedAt = Date()
+
+        switch entryMode {
+        case .restart:
+            AutomaticCaptureStateStore.clearFastSetupProgress()
             currentStep = .initial
+        case .resume:
+            if AutomaticCaptureStateStore.hasFreshFastSetupOpenedAutomations() {
+                currentStep = .automationsEnabledCheckpoint
+            } else if AutomaticCaptureStateStore.hasFreshFastSetupProgress() {
+                currentStep = .shortcutAddedCheckpoint
+            } else {
+                currentStep = .initial
+            }
         }
     }
 
     private func handleReturnToApp() {
-        if AutomaticCaptureStateStore.hasLastDetectedCapture {
-            onFinished()
+        let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
+
+        // If a brand new capture arrived during this setup session, show success screen with "סיום" instead of auto-dismissing
+        if let lastCapture = AutomaticCaptureStateStore.lastDetectedDate, lastCapture > sessionStartedAt {
+            withAnimation(animation) {
+                currentStep = .captureDetectedSuccess
+            }
             return
         }
-        let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
-        if currentStep == .initial && (didTapOpenShortcut || AutomaticCaptureStateStore.hasFreshFastSetupProgress()) {
+
+        if currentStep == .initial && didTapOpenShortcut {
             didTapOpenShortcut = false
             withAnimation(animation) {
-                currentStep = .shortcutAddedPrompt
+                currentStep = .shortcutAddedCheckpoint
             }
-        } else if currentStep == .shortcutAddedPrompt && (didTapOpenAutomations || AutomaticCaptureStateStore.hasFreshFastSetupOpenedAutomations()) {
+        } else if currentStep == .openAutomationsPrompt && didTapOpenAutomations {
             didTapOpenAutomations = false
             withAnimation(animation) {
-                currentStep = .enabledConfirmation
+                currentStep = .automationsEnabledCheckpoint
             }
         }
     }
@@ -214,9 +191,9 @@ public struct IOS27FastCaptureSetupView: View {
         }
     }
 
-    private var shortcutAddedPromptContent: some View {
+    private var shortcutAddedCheckpointContent: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(isHebrew ? "הקיצור נוסף?" : "Did you add the shortcut?")
+            Text(isHebrew ? "הוספת את קיצור SPENT?" : "Did you add the SPENT shortcut?")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(Color.jetBlack)
                 .fixedSize(horizontal: false, vertical: true)
@@ -231,7 +208,24 @@ public struct IOS27FastCaptureSetupView: View {
         }
     }
 
-    private var enabledConfirmationContent: some View {
+    private var openAutomationsPromptContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(isHebrew ? "עכשיו מפעילים את קיצור SPENT" : "Now enable the SPENT shortcut")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(Color.jetBlack)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(isHebrew
+                ? "נפתח את אזור הפעולות האוטומטיות באפליקציית קיצורים, ושם רק מפעילים את הקיצור שהוספת."
+                : "We'll open the Automations area in Shortcuts, and simply turn on the shortcut you just added.")
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var automationsEnabledCheckpointContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(isHebrew ? "הפעלת את קיצור SPENT?" : "Did you enable the SPENT shortcut?")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -248,16 +242,37 @@ public struct IOS27FastCaptureSetupView: View {
         }
     }
 
+    private var captureDetectedSuccessContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(isHebrew ? "הקליטה כבר עובדת" : "Automatic Capture is Working")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(Color.jetBlack)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(isHebrew
+                ? "עסקה נקלטה בהצלחה ב-SPENT. הכול מחובר ומוכן לשימוש."
+                : "A transaction was successfully captured in SPENT. Everything is connected and ready to use.")
+                .font(.system(size: 16, weight: .regular, design: .rounded))
+                .foregroundColor(Color.textSecondary)
+                .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
     // MARK: - Bottom Bar CTAs
     private var bottomBar: some View {
         VStack(spacing: 12) {
             switch currentStep {
             case .initial:
                 initialBottomBar
-            case .shortcutAddedPrompt:
-                shortcutAddedPromptBottomBar
-            case .enabledConfirmation:
-                enabledConfirmationBottomBar
+            case .shortcutAddedCheckpoint:
+                shortcutAddedCheckpointBottomBar
+            case .openAutomationsPrompt:
+                openAutomationsPromptBottomBar
+            case .automationsEnabledCheckpoint:
+                automationsEnabledCheckpointBottomBar
+            case .captureDetectedSuccess:
+                captureDetectedSuccessBottomBar
             }
         }
         .frame(maxWidth: 520)
@@ -290,7 +305,60 @@ public struct IOS27FastCaptureSetupView: View {
         }
     }
 
-    private var shortcutAddedPromptBottomBar: some View {
+    private var shortcutAddedCheckpointBottomBar: some View {
+        VStack(spacing: 10) {
+            Button(action: {
+                Haptics.impact(.medium)
+                let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
+                withAnimation(animation) {
+                    currentStep = .openAutomationsPrompt
+                }
+            }) {
+                Text(isHebrew ? "הצלחתי" : "I succeeded")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.luckyGreen)
+                    )
+            }
+            .buttonStyle(.plain)
+            .bouncyPress()
+
+            Button(action: openShortcutLink) {
+                Text(isHebrew ? "נסה שוב" : "Try Again")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.jetBlack)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.jetBlack.opacity(0.06))
+                    )
+            }
+            .buttonStyle(.plain)
+            .bouncyPress()
+
+            Button(action: {
+                Haptics.selection()
+                AutomaticCaptureStateStore.clearFastSetupProgress()
+                let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
+                withAnimation(animation) {
+                    currentStep = .initial
+                }
+            }) {
+                Text(isHebrew ? "חזרה" : "Back")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var openAutomationsPromptBottomBar: some View {
         VStack(spacing: 12) {
             Button(action: openAutomationsLink) {
                 Text(isHebrew ? "פתח פעולות אוטומטיות" : "Open Automations")
@@ -308,9 +376,13 @@ public struct IOS27FastCaptureSetupView: View {
 
             Button(action: {
                 Haptics.selection()
-                showShortcutTroubleOptions = true
+                AutomaticCaptureStateStore.clearFastSetupOpenedAutomations()
+                let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
+                withAnimation(animation) {
+                    currentStep = .shortcutAddedCheckpoint
+                }
             }) {
-                Text(isHebrew ? "לא הצלחתי להוסיף את הקיצור" : "Couldn't add the shortcut")
+                Text(isHebrew ? "חזרה" : "Back")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(Color.textSecondary)
                     .frame(minHeight: 44)
@@ -319,10 +391,10 @@ public struct IOS27FastCaptureSetupView: View {
         }
     }
 
-    private var enabledConfirmationBottomBar: some View {
-        VStack(spacing: 12) {
+    private var automationsEnabledCheckpointBottomBar: some View {
+        VStack(spacing: 10) {
             Button(action: confirmSetupCompleted) {
-                Text(isHebrew ? "הפעלתי" : "I enabled it")
+                Text(isHebrew ? "הצלחתי" : "I succeeded")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -335,16 +407,52 @@ public struct IOS27FastCaptureSetupView: View {
             .buttonStyle(.plain)
             .bouncyPress()
 
+            Button(action: openAutomationsLink) {
+                Text(isHebrew ? "נסה שוב" : "Try Again")
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.jetBlack)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(Color.jetBlack.opacity(0.06))
+                    )
+            }
+            .buttonStyle(.plain)
+            .bouncyPress()
+
             Button(action: {
                 Haptics.selection()
-                showAutomationsTroubleOptions = true
+                AutomaticCaptureStateStore.clearFastSetupOpenedAutomations()
+                let animation: Animation? = reduceMotion ? nil : .easeInOut(duration: 0.25)
+                withAnimation(animation) {
+                    currentStep = .openAutomationsPrompt
+                }
             }) {
-                Text(isHebrew ? "לא מצאתי את הקיצור" : "Couldn't find the shortcut")
+                Text(isHebrew ? "חזרה" : "Back")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundColor(Color.textSecondary)
                     .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    private var captureDetectedSuccessBottomBar: some View {
+        VStack(spacing: 12) {
+            Button(action: confirmSetupCompleted) {
+                Text(isHebrew ? "סיום" : "Done")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.luckyGreen)
+                    )
+            }
+            .buttonStyle(.plain)
+            .bouncyPress()
         }
     }
 
@@ -382,14 +490,10 @@ public struct IOS27FastCaptureSetupView: View {
         AutomaticCaptureStateStore.clearFastSetupProgress()
         onFinished()
     }
-
-    private func openShortcutsApp() {
-        Haptics.selection()
-        UIApplication.shared.open(Self.fallbackShortcutsURL)
-    }
 }
 
 #Preview("Fast Setup • Initial") {
     IOS27FastCaptureSetupView(onFinished: {})
         .environmentObject(LocalizationManager.shared)
 }
+

@@ -138,16 +138,6 @@
     "%@ • נדרשת עריכת סכום" : {
 
     },
-    "%@ → %@ → %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ → %2$@ → %3$@"
-          }
-        }
-      }
-    },
     "%@ added to the city" : {
 
     },
@@ -357,16 +347,6 @@
         }
       }
     },
-    "%lld. %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld. %2$@"
-          }
-        }
-      }
-    },
     "%lld%%" : {
 
     },
@@ -417,10 +397,10 @@
     "+ הוסף את היעד הראשון" : {
 
     },
-    "+, choose Automation, choose Wallet" : {
+    "+, choose Automations, choose Wallet" : {
 
     },
-    "+, בחר פעולה אוטומטית, בחר ארנק" : {
+    "+, בחר פעולות אוטומטיות, בחר ארנק" : {
 
     },
     "+%@" : {
@@ -567,7 +547,7 @@
         }
       }
     },
-    "After tapping +, choose \"Automation\", and then choose \"Wallet\"." : {
+    "After tapping +, choose \"Automations\", and then choose \"Wallet\"." : {
 
     },
     "All" : {
@@ -650,9 +630,6 @@
 
     },
     "Automatic Currency Conversion" : {
-
-    },
-    "Automations, +, Automation, Wallet" : {
 
     },
     "Avg per transaction" : {
@@ -1129,9 +1106,6 @@
     "If you don't see an obvious button, search at the bottom of the screen and tap it." : {
 
     },
-    "If you received a notification from SPENT, the shortcut is connected to the app." : {
-
-    },
     "Image file to scan" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1161,13 +1135,10 @@
     "In Shortcuts there isn't always an obvious Add button. Simply use the search bar at the bottom, search for \"Record Apple Pay Transaction\" and tap the result. It will be added to the screen." : {
 
     },
-    "In Shortcuts: go to the Automation tab, tap + and choose \"Transaction\" (under Wallet)." : {
+    "In Shortcuts: go to the Automations tab, tap + and choose \"Wallet\"." : {
 
     },
     "In the automation setup screen, choose the cards you pay with. You may need to scroll down slightly to see \"Run Immediately\"." : {
-
-    },
-    "In this test, transaction details may be empty or unclear, and that's okay. The purpose is only to verify that the shortcut reaches SPENT." : {
 
     },
     "In Your City" : {
@@ -1285,9 +1256,6 @@
         }
       }
     },
-    "Merchant, Shortcut Input, Merchant" : {
-
-    },
     "Merge" : {
 
     },
@@ -1384,9 +1352,6 @@
     "Open Shortcuts App" : {
 
     },
-    "Open the shortcut screen in Shortcuts. At the bottom of the screen, below the search area, there is a ▶︎ button. Tap it to test-run the shortcut." : {
-
-    },
     "Operating in Offline Mode" : {
 
     },
@@ -1450,9 +1415,6 @@
 
     },
     "Profile" : {
-
-    },
-    "Progress setting up automatic capture, about %lld%%" : {
 
     },
     "Progress setting up automatic capture, step %lld of %lld" : {
@@ -1696,9 +1658,6 @@
         }
       }
     },
-    "Search at bottom, SPENT, Record Apple Pay Transaction" : {
-
-    },
     "Search transaction or category..." : {
 
     },
@@ -1825,19 +1784,16 @@
     "Step %lld of 5" : {
 
     },
-    "Stuck?" : {
-
-    },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
 
     },
     "Tap for Quick Add +" : {
 
     },
-    "Tap the \"Merchant\" field inside the SPENT action → choose \"Shortcut Input\" → tap the added value → choose \"Merchant\" from the transaction details." : {
+    "Tap the \"Merchant Name\" field inside the SPENT action → choose \"Shortcut Input\" → choose \"Merchant\" from the transaction details." : {
 
     },
-    "Tap the \"Transaction Amount\" field inside the SPENT action → choose \"Shortcut Input\" → tap the added value → choose \"Amount\" from the transaction details." : {
+    "Tap the \"Transaction Amount\" field inside the SPENT action → choose \"Shortcut Input\" → choose \"Amount\" from the transaction details." : {
 
     },
     "Tap the marked building to discover the expenses behind it." : {
@@ -1971,9 +1927,6 @@
         }
       }
     },
-    "Transaction Amount, Shortcut Input, Amount" : {
-
-    },
     "Transaction captured • Tap to edit amount" : {
 
     },
@@ -2048,9 +2001,6 @@
 
     },
     "Waiting for the first capture" : {
-
-    },
-    "Want to test if the connection works?" : {
 
     },
     "We'll set up your iPhone to pass transaction amounts and merchants to SPENT after every Apple Pay purchase." : {
@@ -2179,7 +2129,7 @@
     "אולי אחר כך" : {
 
     },
-    "אחרי לחיצה על +, בחר ׳פעולה אוטומטית׳, ולאחר מכן בחר ׳ארנק׳." : {
+    "אחרי לחיצה על +, בחר ׳פעולות אוטומטיות׳, ולאחר מכן בחר ׳ארנק׳." : {
 
     },
     "איך יוצרים את הפעולה האוטומטית?" : {
@@ -2245,9 +2195,6 @@
     "אם אתה לא רואה כפתור ברור, חפש למטה את מה שאתה רוצה ולחץ עליו." : {
 
     },
-    "אם קיבלת התראה של SPENT, הקיצור מחובר לאפליקציה." : {
-
-    },
     "אנא הזן סכום תקין" : {
 
     },
@@ -2284,10 +2231,7 @@
     "ב׳קיצורים׳ לא תמיד יש כפתור ברור של הוספה. פשוט השתמש בשדה החיפוש שמופיע למטה, חפש ׳הקלטת עסקת Apple Pay׳ ולחץ על התוצאה. היא תתווסף למסך." : {
 
     },
-    "באפליקציה ׳קיצורים׳: עבור ללשונית פעולה אוטומטית, לחץ על + ובחר ׳עסקה׳ (תחת ארנק)." : {
-
-    },
-    "בבדיקה הזאת פרטי העסקה יכולים להיות ריקים או לא ברורים, וזה בסדר. המטרה היא רק לבדוק שהקיצור מצליח להגיע אל SPENT." : {
+    "באפליקציה ׳קיצורים׳: עבור ללשונית פעולות אוטומטיות, לחץ על + ובחר ׳ארנק׳." : {
 
     },
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
@@ -2323,9 +2267,6 @@
           }
         }
       }
-    },
-    "בית העסק, קלט הקיצור, בית העסק" : {
-
     },
     "בית עסק / תיאור" : {
 
@@ -2633,9 +2574,6 @@
     "התצוגה לא נטענה" : {
 
     },
-    "התקדמות בהגדרת קליטה אוטומטית, כ-%lld%%" : {
-
-    },
     "התקדמות בהגדרת קליטה אוטומטית, שלב %lld מתוך %lld" : {
       "localizations" : {
         "en" : {
@@ -2689,9 +2627,6 @@
 
     },
     "חיסכון ₪480" : {
-
-    },
-    "חיפוש למטה, SPENT, הקלטת עסקת Apple Pay" : {
 
     },
     "חפש עסקה או קטגוריה..." : {
@@ -2781,10 +2716,10 @@
     "לוח שנה ומעבר לתאריך" : {
 
     },
-    "לחץ על שדה ׳בית העסק׳ בתוך הפעולה של SPENT ← בחר ׳קלט הקיצור׳ ← לחץ על הערך שנוסף ← בחר ׳בית העסק׳ מתוך פרטי העסקה." : {
+    "לחץ על שדה ׳סכום העסקה׳ בתוך הפעולה של SPENT ← בחר ׳קלט של קיצור׳ ← בחר ׳כמות׳ מתוך פרטי העסקה." : {
 
     },
-    "לחץ על שדה ׳סכום עסקה׳ בתוך הפעולה של SPENT ← בחר ׳קלט הקיצור׳ ← לחץ על הערך שנוסף ← בחר ׳כמות׳ מתוך פרטי העסקה." : {
+    "לחץ על שדה ׳שם בית העסק׳ בתוך הפעולה של SPENT ← בחר ׳קלט של קיצור׳ ← בחר ׳בית העסק׳ מתוך פרטי העסקה." : {
 
     },
     "לילה" : {
@@ -2962,9 +2897,6 @@
     "נקלטה עסקה • יש לערוך ולהזין סכום" : {
 
     },
-    "נתקעת?" : {
-
-    },
     "סביבת בדיקות מבודדת" : {
 
     },
@@ -3029,9 +2961,6 @@
 
     },
     "סכום כולל" : {
-
-    },
-    "סכום עסקה, קלט הקיצור, כמות" : {
 
     },
     "סקירת 12 חודשים" : {
@@ -3100,9 +3029,6 @@
     "פירוט עבור %@:" : {
 
     },
-    "פעולות אוטומטיות, +, פעולה אוטומטית, ארנק" : {
-
-    },
     "פעיל היום! 🔥" : {
 
     },
@@ -3121,13 +3047,7 @@
     "פריסה לתשלומים" : {
 
     },
-    "פתח את ״קיצורים״" : {
-
-    },
     "פתח את אפליקציית קיצורים" : {
-
-    },
-    "פתח את מסך הקיצור עצמו ב׳קיצורים׳. בתחתית המסך, מתחת לאזור החיפוש, יש כפתור ▶︎. לחץ עליו כדי להריץ את הקיצור לבדיקה." : {
 
     },
     "פתח את קיצורים" : {
@@ -3182,9 +3102,6 @@
 
     },
     "רובע סיפור + רגע משמעותי" : {
-
-    },
-    "רוצה לבדוק שהחיבור עובד?" : {
 
     },
     "רצף ימים פעיל" : {

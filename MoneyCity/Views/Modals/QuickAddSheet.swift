@@ -10,13 +10,26 @@ public struct QuickAddSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var l10n: LocalizationManager
     public let initialCategory: SpendingCategory?
+    public let initialCategoryIsExplicit: Bool
     public let initialMerchant: String?
     public let initialBuildingId: String?
+    public typealias OnSaveAction = (
+        _ amount: Double,
+        _ category: SpendingCategory,
+        _ merchant: String,
+        _ originalAmount: Double?,
+        _ originalCurrency: String?,
+        _ exchangeRate: Double?,
+        _ buildingId: String?,
+        _ isCategoryExplicit: Bool
+    ) -> Void
+
     public let titleOverride: String?
-    public let onSave: (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
+    public let onSave: OnSaveAction
     
     public init(
         initialCategory: SpendingCategory? = nil,
+        initialCategoryIsExplicit: Bool = false,
         initialCurrency: CurrencyType? = nil,
         initialMerchant: String? = nil,
         initialBuildingId: String? = nil,
@@ -24,10 +37,37 @@ public struct QuickAddSheet: View {
         onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
         self.initialCategory = initialCategory
+        self.initialCategoryIsExplicit = initialCategoryIsExplicit
         self.initialMerchant = initialMerchant
         self.initialBuildingId = initialBuildingId
         self.titleOverride = titleOverride
-        self.onSave = onSave
+        self.onSave = { amount, cat, merch, origAmt, origCurr, rate, bId, _ in
+            onSave(amount, cat, merch, origAmt, origCurr, rate, bId)
+        }
+        _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        if let initialMerchant, !initialMerchant.isEmpty {
+            _note = State(initialValue: initialMerchant)
+        }
+        if let initialBuildingId {
+            _selectedBuildingId = State(initialValue: initialBuildingId)
+        }
+    }
+
+    public init(
+        initialCategory: SpendingCategory? = nil,
+        initialCategoryIsExplicit: Bool = false,
+        initialCurrency: CurrencyType? = nil,
+        initialMerchant: String? = nil,
+        initialBuildingId: String? = nil,
+        titleOverride: String? = nil,
+        onSaveWithExplicitFlag: @escaping OnSaveAction
+    ) {
+        self.initialCategory = initialCategory
+        self.initialCategoryIsExplicit = initialCategoryIsExplicit
+        self.initialMerchant = initialMerchant
+        self.initialBuildingId = initialBuildingId
+        self.titleOverride = titleOverride
+        self.onSave = onSaveWithExplicitFlag
         _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
         if let initialMerchant, !initialMerchant.isEmpty {
             _note = State(initialValue: initialMerchant)
@@ -41,6 +81,7 @@ public struct QuickAddSheet: View {
     @State private var note: String = ""
     @State private var selectedCurrency: CurrencyType = .ils
     @State private var selectedCategory: SpendingCategory? = nil
+    @State private var userExplicitlySelectedCategory: Bool = false
     @State private var selectedBuildingId: String? = nil
     @State private var showErrorHint = false
     @State private var paymentCount: Int = 1
@@ -468,6 +509,7 @@ public struct QuickAddSheet: View {
                 }
             } else {
                 selectedCategory = cat
+                userExplicitlySelectedCategory = true
                 selectedBuildingId = available.first?.id
                 showErrorHint = false
                 isAmountFocused = false
@@ -596,6 +638,7 @@ public struct QuickAddSheet: View {
         Button(action: {
             Haptics.selection()
             selectedCategory = cat
+            userExplicitlySelectedCategory = true
             selectedBuildingId = b.id
             showErrorHint = false
             isAmountFocused = false
@@ -938,7 +981,8 @@ public struct QuickAddSheet: View {
         let origCurr: String? = isForeign ? selectedCurrency.symbol : nil
         let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
 
-        onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId)
+        let isCategoryExplicit = userExplicitlySelectedCategory || (initialCategory != nil && initialCategoryIsExplicit)
+        onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId, isCategoryExplicit)
         Haptics.notify(.success)
         dismiss()
     }

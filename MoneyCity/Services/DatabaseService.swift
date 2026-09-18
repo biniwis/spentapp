@@ -596,27 +596,39 @@ public final class DatabaseService {
         if let rule = MerchantRuleService.ruleAfterCorrection(merchant: merchant, category: category, buildingId: buildingId, existing: existing) {
             context.insert(rule)
         }
-        try? context.save()
+        _ = DatabaseService.safeSave(context)
     }
     
     /// The rule the app has learned for a merchant, if any.
-    ///
-    /// The merchant sheet showed its "always remember" switch permanently on because nothing
-    /// ever asked whether a rule existed. It does now.
     public func merchantRule(for merchant: String) -> MerchantRule? {
-        let key = MerchantRuleService.normalizedKey(merchant)
-        guard !key.isEmpty else { return nil }
-        return fetchMerchantRules().first { $0.merchantKey == key }
+        let rules = fetchMerchantRules()
+        guard let matched = MerchantRuleService.rule(for: merchant, in: rules) else {
+            return nil
+        }
+        let canonical = MerchantCanonicalizer.canonicalKey(for: merchant)
+        if !canonical.isEmpty && matched.merchantKey != canonical {
+            matched.merchantKey = canonical
+            _ = DatabaseService.safeSave(context)
+        }
+        return matched
     }
 
-    /// Forget a merchant. There was no way to do this at all — the switch could be turned
-    /// off, and the app carried on auto-categorising regardless.
+    /// Forget a merchant.
     @discardableResult
     public func forgetMerchant(_ merchant: String) -> Bool {
         guard let rule = merchantRule(for: merchant) else { return false }
         context.delete(rule)
-        try? context.save()
+        _ = DatabaseService.safeSave(context)
         return true
+    }
+
+    /// Safe history recovery: disabled.
+    /// In the existing app, automatically recognized transactions can also have `isConfirmed == true`.
+    /// The Transaction model does not reliably prove whether the category was explicitly selected/corrected
+    /// by the user vs inferred by an automatic heuristic. A false permanent learned rule is worse than asking
+    /// the user again, so history recovery is disabled.
+    public func recoverFromHistoryIfSafe(for merchant: String) -> (category: SpendingCategory, buildingId: String)? {
+        return nil
     }
 
     public func fetchMerchantRules() -> [MerchantRule] {

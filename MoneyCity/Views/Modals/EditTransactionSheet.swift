@@ -14,6 +14,7 @@ public struct EditTransactionSheet: View {
     @State private var amountText: String = ""
     @State private var selectedCategory: SpendingCategory = .food
     @State private var selectedBuildingId: String = "food_bistro"
+    @State private var hasUserExplicitlySelectedCategory: Bool = false
     @State private var showAmountError: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showMerchantDetails: Bool = false
@@ -253,6 +254,7 @@ public struct EditTransactionSheet: View {
                                     Button(action: {
                                         withAnimation(.spring(response: 0.25)) {
                                             selectedBuildingId = b.id
+                                            hasUserExplicitlySelectedCategory = true
                                         }
                                         Haptics.impact(.light)
                                     }) {
@@ -441,6 +443,7 @@ public struct EditTransactionSheet: View {
         return Button(action: {
             withAnimation(.spring(response: 0.25)) {
                 selectedCategory = cat
+                hasUserExplicitlySelectedCategory = true
                 updateBuildingForCategory(cat)
             }
             Haptics.impact(.light)
@@ -485,15 +488,19 @@ public struct EditTransactionSheet: View {
             return
         }
         let isRefund = transaction.note?.contains("זיכוי") == true || transaction.amount < 0
-        transaction.merchant = merchantText.trimmingCharacters(in: .whitespaces).isEmpty ? transaction.merchant : merchantText.trimmingCharacters(in: .whitespaces)
+        let finalMerchant = merchantText.trimmingCharacters(in: .whitespaces).isEmpty ? transaction.merchant : merchantText.trimmingCharacters(in: .whitespaces)
+        transaction.merchant = finalMerchant
         transaction.amount = isRefund ? -amount : amount
         if isRefund {
             transaction.note = "זיכוי מאושר"
         }
-        // A correction here is knowledge about this merchant, not just this row.
-        if transaction.category != selectedCategory || transaction.buildingIdRaw != selectedBuildingId {
+        // Only create/update a MerchantRule when the user's action genuinely represents
+        // an explicit category choice/confirmation. Editing merchant text, note, amount,
+        // date, etc. must NOT automatically convert an inferred category into a learned rule.
+        let isExplicitCategoryAction = hasUserExplicitlySelectedCategory || (transaction.needsCategorization && selectedCategory != .other)
+        if isExplicitCategoryAction && !finalMerchant.isEmpty && selectedCategory != .other {
             DatabaseService.shared.rememberCorrection(
-                merchant: transaction.merchant,
+                merchant: finalMerchant,
                 category: selectedCategory,
                 buildingId: selectedBuildingId
             )

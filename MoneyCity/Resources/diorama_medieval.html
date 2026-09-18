@@ -502,10 +502,11 @@
     
     function sidewalkPaverTex() {
       const c = cv(128, 128), g = c.getContext("2d");
-      g.fillStyle = "#FAF5EE";
- g.fillRect(0, 0, 128, 128);
-      g.strokeStyle = "#E8DFD3";
- g.lineWidth = 1.5;
+      /* Hand-cut limestone paving instead of the Urban white sidewalk grid. */
+      g.fillStyle = "#D8C9AD";
+      g.fillRect(0, 0, 128, 128);
+      g.strokeStyle = "#B8A487";
+      g.lineWidth = 2;
       for (let x = 0;
  x <= 128;
  x += 32) {
@@ -590,9 +591,11 @@
     const M_WOOD       = mat(0x9A633D, 0.88);
     const M_WHITE      = mat(0xFFFCF6, 0.76);
     const M_GOLD       = mat(0xEFB64A, 0.48, 0.55);
-    const M_GRASS_LIME = mat(0x7DBB45, 0.86);
-    const M_GRASS_DARK = mat(0x328A49, 0.88);
-    const M_ASPHALT    = mat(0x8C7C6C, 0.90);
+    /* Medieval ground palette: dry meadow, moss and packed earth.  These
+       replace the bright Urban lawn/road colors in this themed renderer. */
+    const M_GRASS_LIME = mat(0xA8B86B, 0.90);
+    const M_GRASS_DARK = mat(0x557746, 0.92);
+    const M_ASPHALT    = mat(0x8A7762, 0.93);
     const M_WATER      = new THREE.MeshStandardMaterial({
       
       
@@ -684,7 +687,7 @@
     
     
     const paverMat = new THREE.MeshStandardMaterial({
- map: sidewalkPaverTex(), color: C(0xF4EBDD), roughness: 0.90 }
+      map: sidewalkPaverTex(), color: C(0xD8C9AD), roughness: 0.94 }
 );
     const pavedBlocks = [];
     function addSidewalkBlock(cx, cz, w, d) {
@@ -1707,6 +1710,15 @@
       cart.add(mesh(roundedBox(0.34, 0.20, 0.26, 0.04), MD_SACK, -0.18, 0.42, -0.08, false, false));
       cart.add(mesh(roundedBox(0.26, 0.17, 0.22, 0.04), mat(color || 0xB8452E, 0.8), 0.16, 0.40, 0.0, false, false));
       cart.add(mesh(new THREE.SphereGeometry(0.07, 6, 5), mat(0xD9A05B, 0.85), 0.30, 0.32, -0.18, false, false));
+      /* This is the moving-cart layer used by the current Medieval map's
+         road traffic. Keep the courier joke on the shared cart itself so it
+         remains visible even when the dedicated delivery pool is quiet. */
+      const courierBag = new THREE.Group();
+      courierBag.position.set(0.08, 0.55, -0.08);
+      cart.add(courierBag);
+      courierBag.add(mesh(roundedBox(0.34, 0.24, 0.24, 0.045), mat(0x1289E0, 0.98), 0, 0, 0, false, true));
+      courierBag.add(mesh(new THREE.BoxGeometry(0.38, 0.028, 0.03), MD_TIMBER_LT, 0, 0.08, -0.135, false, false));
+      courierBag.add(mesh(new THREE.BoxGeometry(0.05, 0.11, 0.02), M_WHITE, 0, 0.01, 0.125, false, false));
       var appearance = buildAppearanceProfile("handcart-pusher:" + ((color || 0xB8452E).toString(16)));
       var pusher = makeFigure({ appearance: appearance });
       var ud = pusher.userData;
@@ -1929,12 +1941,39 @@
     /* gable / pitched roof; ridge along X unless opts.dir flips it */
     function mdGableRoof(parent, w, d, h, m, y, opts) {
       opts = opts || {};
-      const ov = opts.ov === undefined ? 0.22 : opts.ov;
+      /* Keep the skyline readable at city scale: compact eaves and a lower
+         pitch prevent neighbouring plots from visually swallowing each other. */
+      h *= 0.88;
+      const ov = opts.ov === undefined ? 0.12 : opts.ov;
       const run = w + 2 * ov, spanHalf = d / 2 + ov;
       const g = new THREE.Group();
       g.position.y = y;
       parent.add(g);
       mdRoofSlope(g, run, spanHalf, h, m, 0);
+      /* Solid triangular gable core. The previous implementation only drew
+         two end triangles, leaving the roof volume open from the camera angle.
+         This prism is the actual upper wall, so every gable is a closed mass. */
+      const gableShape = new THREE.Shape();
+      gableShape.moveTo(-run / 2, 0);
+      gableShape.lineTo(run / 2, 0);
+      gableShape.lineTo(0, h);
+      gableShape.closePath();
+      const gableGeo = new THREE.ExtrudeGeometry(gableShape, { depth: spanHalf * 2 - 0.08, bevelEnabled: false });
+      gableGeo.translate(0, 0, -spanHalf + 0.04);
+      g.add(mesh(gableGeo, opts.gableMat || MD_STONE, 0, 0, 0, false, true));
+      /* Broad timber eaves make the roof read as seated on the walls at phone scale. */
+      const eaveMat = (opts.eaveMat || MD_TIMBER_LT);
+      [-1, 1].forEach(function (zs) {
+        g.add(mesh(new THREE.BoxGeometry(run + 0.10, 0.11, 0.13), eaveMat, 0, 0.015, zs * spanHalf, true, true));
+        /* Close the under-roof void. At isometric scale a thin floating roof
+           reads as a separate object; a shallow gable apron keeps the roof
+           seated on the wall even when a venue profile grows in tiers. */
+        g.add(mesh(new THREE.BoxGeometry(run - 0.10, 0.52, 0.10), MD_PLASTER, 0, -0.25, zs * (spanHalf - 0.035), true, true));
+        for (let bx = -1; bx <= 1; bx += 2) {
+          g.add(mesh(new THREE.BoxGeometry(0.09, 0.18, 0.09), eaveMat, bx * (run / 2 - 0.12), -0.045, zs * spanHalf, true, true));
+        }
+      });
+      g.add(mesh(new THREE.BoxGeometry(run - 0.10, 0.52, d * 0.56), MD_PLASTER, 0, -0.25, 0, false, true));
       const spoke = opts.steps ? opts.steps : 0;
       if (spoke > 1) {
         for (let i = 0; i <= spoke; i++) {
@@ -1973,11 +2012,17 @@
     /* pyramid-shaped (hipped) roof; compact buildings */
     function mdHipRoof(parent, w, d, h, m, y, opts) {
       opts = opts || {};
-      const ov = opts.ov === undefined ? 0.24 : opts.ov;
+      h *= 0.88;
+      const ov = opts.ov === undefined ? 0.14 : opts.ov;
       const run = w + 2 * ov, span = d + 2 * ov;
       const g = new THREE.Group();
       g.position.y = y;
       parent.add(g);
+      const eaveMat = (opts.eaveMat || MD_TIMBER_LT);
+      [-1, 1].forEach(function (s) {
+        g.add(mesh(new THREE.BoxGeometry(run + 0.10, 0.10, 0.13), eaveMat, 0, 0.02, s * span / 2, true, true));
+        g.add(mesh(new THREE.BoxGeometry(0.13, 0.10, span + 0.10), eaveMat, s * run / 2, 0.02, 0, true, true));
+      });
       const apexH = h, base = span;
       mdTriPanel(g, -run / 2, [[0, -span / 2], [0, span / 2], [apexH, 0]], m);
       mdTriPanel(g, run / 2, [[0, span / 2], [0, -span / 2], [apexH, 0]], m);
@@ -2000,7 +2045,8 @@
     /* single-lean lean-to: low eave at front (+Z), rising to a back wall */
     function mdLeanToRoof(parent, w, d, h, m, y, opts) {
       opts = opts || {};
-      const ov = 0.22;
+      h *= 0.90;
+      const ov = 0.14;
       const run = w + 2 * ov;
       const ridgeZ = -d / 2, frontZ = d / 2 + ov;
       const g = new THREE.Group();
@@ -2906,7 +2952,64 @@
       };
 
       return P[id] || null;
-    }/* MEDIEVAL makeBuilding -- replaces original; same tier contract.
+    }
+
+    /* Shared growth language for every venue.  Profiles still own their
+       silhouette; this adds one small, meaning-driven landmark as a venue
+       grows so higher tiers do not become anonymous extra boxes. */
+    function mdTierIdentity(tg, id, tier, w, d) {
+      if (tier < 1) return;
+      if (id === "house_tower") {
+        if (tier === 1) mdRidgeTurret(tg, w * 0.34, -d * 0.20, 1.4);
+        if (tier >= 2) finial(tg, w * 0.34, -d * 0.20, 2.5 + tier * 0.22, null);
+      } else if (id === "house_util") {
+        mdBarrel(tg, -w * 0.34, d * 0.38);
+        if (tier >= 2) woodPile(tg, w * 0.30, d * 0.38, tier + 1);
+      } else if (id === "house_subs") {
+        mdDormer(tg, tier % 2 ? -w * 0.18 : w * 0.18, d * 0.30, 0.28, 0.75, MD_TILE_SLATE, 0.4 + tier * 0.18);
+      } else if (id === "food_super") {
+        stall(tg, tier % 2 ? -w * 0.28 : w * 0.28, -d * 0.20, {}, 0.72, tier % 2 ? CANVAS_R : CANVAS_GRN);
+        mdCrateStack(tg, -w * 0.34, d * 0.38, tier + 1);
+      } else if (id === "food_bistro") {
+        mdBarrel(tg, tier % 2 ? -w * 0.34 : w * 0.34, d * 0.38);
+        awning(tg, Math.min(1.25, w * 0.72), 0.38, 1.55 + tier * 0.12, tier % 2 ? CANVAS_R : CREAM, 0, d * 0.42);
+      } else if (id === "food_coffee") {
+        mdCrateStack(tg, -w * 0.30, d * 0.36, tier + 1);
+        mdBarrel(tg, w * 0.30, d * 0.36);
+      } else if (id === "food_wolt") {
+        mdCrateStack(tg, -w * 0.30, -d * 0.30, tier + 1);
+        mdCart(tg, w * 0.30, d * 0.30, 0.1 * tier);
+      } else if (id === "shop_boutique") {
+        clothSpill(tg, tier % 2 ? -w * 0.32 : w * 0.32, d * 0.38, 1.2 + tier * 0.12, 0.35 + tier * 0.08, tier % 2 ? 0x8E3B55 : 0x3E5580);
+      } else if (id === "shop_tech") {
+        sootPlate(tg, tier % 2 ? -w * 0.24 : w * 0.24, -d * 0.30, 0.82 + tier * 0.08, 0.34, 0.22, 0);
+        woodPile(tg, w * 0.30, d * 0.36, tier + 1);
+      } else if (id === "shop_travel") {
+        mdHitchRail(tg, 0, d * 0.40, Math.min(1.2, w * 0.75), 0);
+        if (tier >= 2) mdCart(tg, -w * 0.30, -d * 0.34, 0);
+      } else if (id === "shop_arcade") {
+        mdPennantLine(tg, -w * 0.36, -d * 0.30, w * 0.36, -d * 0.30, 1.25 + tier * 0.12, [0xDC2626, 0xFACC15, 0x2563EB]);
+        if (tier >= 2) fairTop(tg, w * 0.28, d * 0.28, 0.25 + tier * 0.03, 0.7 + tier * 0.08, tier % 2 ? CANVAS_R : CANVAS_B);
+      } else if (id === "health_pharmacy") {
+        herbRack(tg, tier % 2 ? -w * 0.30 : w * 0.30, d * 0.38, 1.0 + tier * 0.12);
+        mdWindowBox(tg, tier % 2 ? w * 0.30 : -w * 0.30, d * 0.34, "herbs");
+      } else if (id === "museum_curiosities") {
+        mdRidgeTurret(tg, tier % 2 ? -w * 0.24 : w * 0.24, 0, 1.1 + tier * 0.15);
+        mdBarrel(tg, -w * 0.30, d * 0.38);
+      } else if (id === "city_sorting_hub") {
+        mdCrateStack(tg, tier % 2 ? -w * 0.30 : w * 0.30, d * 0.36, tier + 1);
+        mdCart(tg, -w * 0.30, -d * 0.34, 0);
+      } else if (id === "finance_bank") {
+        gatePost(tg, -w * 0.30, d * 0.38, 0.75 + tier * 0.08);
+        gatePost(tg, w * 0.30, d * 0.38, 0.75 + tier * 0.08);
+        if (tier >= 2) mdRidgeTurret(tg, 0, 0, 1.2 + tier * 0.16);
+      } else if (id === "trans_station") {
+        mdHay(tg, tier % 2 ? -w * 0.30 : w * 0.30, -d * 0.30, 0.7 + tier * 0.10);
+        mdHitchRail(tg, 0, d * 0.38, Math.min(1.2, w * 0.7), 0);
+      }
+    }
+
+    /* MEDIEVAL makeBuilding -- replaces original; same tier contract.
        Profiled venues (tiers present) build four self-contained tier masses
        (tierGroups); unprofiled venues keep the ground/floor/roof arrangement.
        Only the tier-1 mass is visible during the pack pass, so packRigidModel
@@ -2941,6 +3044,8 @@
           tg.visible = (ti === 0);
           shell.add(tg);
           tierFns[ti](tg, w, d, cfg, ti);
+          /* Keep tier profiles self-contained; optional identity dressing is
+             applied by the profile builders that own their local helpers. */
           tierGroups.push({ visibleAt: ti + 1, group: tg });
         }
       } else {
@@ -3071,10 +3176,15 @@ function mdTierLookup(id) {
   }
 
   /* ------------------------- roof family helpers ------------------------- */
-  function rAcross(tg, w, d, h, m, y, o) { o = o || {}; return mdGableRoof(tg, w, d, h, m, y, o); }
-  function rFront(tg, w, d, h, m, y, o) { o = o || {}; o.dir = "z"; return mdGableRoof(tg, w, d, h, m, y, o); }
-  function rHip(tg, w, d, h, m, y, o) { return mdHipRoof(tg, w, d, h, m, y, o); }
-  function rLean(tg, w, d, h, m, y, o) { return mdLeanToRoof(tg, w, d, h, m, y, o); }
+  /* Tiered landmark profiles pass the wall crown as their roof anchor.  The old
+     prototype placed the eaves a few tenths above that crown, exposing a white
+     gap from the isometric camera.  Keep the profile data readable, but seat all
+     legacy roof families on the mass below them. */
+  function roofSeat(y) { return (y || 0) - 0.24; }
+  function rAcross(tg, w, d, h, m, y, o) { o = o || {}; return mdGableRoof(tg, w, d, h, m, roofSeat(y), o); }
+  function rFront(tg, w, d, h, m, y, o) { o = o || {}; o.dir = "z"; return mdGableRoof(tg, w, d, h, m, roofSeat(y), o); }
+  function rHip(tg, w, d, h, m, y, o) { return mdHipRoof(tg, w, d, h, m, roofSeat(y), o); }
+  function rLean(tg, w, d, h, m, y, o) { return mdLeanToRoof(tg, w, d, h, m, roofSeat(y), o); }
   function rTent(tg, w, d, h, m, y, o) { return mdTentRoof(tg, w, d, h, m, y, o); }
   function chimney(tg, x, z, yBase, h) { mdChimney(tg, x, z, yBase, h); }
   function stackBig(tg, x, z, yBase, h, m, rad) {   /* heavy masonry chimney — skyline piece */
@@ -3205,6 +3315,8 @@ function mdTierLookup(id) {
       stackBig(tg, -0.78, -0.55, 1.5, 1.35, null, 0.17);             /* oversized chimney */
       chimney(tg, 0.55, 0.1, 1.5, 0.7);
       mdTreeBed(tg, -0.55, 1.05, "cherry");
+      mdLanternPost(tg, 0.82, 0.92);
+      mdBarrel(tg, -0.86, 0.86);
     },
     function (tg, w, d) {                       /* tier 2: perpendicular wing → T  */
       at(tg, -0.75, 0, 0, function (g) {
@@ -3248,6 +3360,8 @@ function mdTierLookup(id) {
       rAcross(tg, 1.45, 1.35, 1.05, SLATE, 1.0, {});
       stackBig(tg, -0.45, -0.6, 1.0, 1.0, BRK, 0.16);                /* chunky chimney */
       woodPile(tg, 0.6, 0.95, 4);
+      mdBarrel(tg, -0.70, 0.90);
+      mdWindowBox(tg, 0.42, 0.78, "herbs");
     },
     function (tg, w, d) {                       /* tier 2: big lean-to annex → L footprint  */
       at(tg, 0, 0.9, 0, function (g) {
@@ -3288,6 +3402,8 @@ function mdTierLookup(id) {
         rLean(g, 0.8, 0.62, 0.7, WTH, 1.9, { dir: "-z" });           /* tiny rear roof extension */
       });
       chimney(tg, -0.3, -0.9, 2.0, 0.6);
+      mdHangingSign(tg, 1.05, 1.95, 1.12, "SCRIBE", 0.38);
+      clothSpill(tg, 0.30, 1.0, 1.38, 0.42, 0.22, 0x6E7D52);
     },
     function (tg, w, d) {                       /* tier 2: corbelled jetty + first dormer  */
       tg.add(mesh(new THREE.BoxGeometry(1.25, 0.55, 1.1), TIML, 0, 1.5, 0.02, false, false));
@@ -3314,6 +3430,10 @@ function mdTierLookup(id) {
   P.food_super = [
     function (tg, w, d) {                       /* tier 1: one lonely vendor canopy  */
       stall(tg, -0.55, -0.3, {}, 1.15, CANVAS_R);
+      stall(tg, 0.55, 0.30, {}, 0.92, CANVAS_GRN);
+      mdCrateStack(tg, -0.72, 0.72, 3);
+      mdBarrel(tg, 0.78, -0.52);
+      awning(tg, 0.86, 0.42, 1.30, CREAM, 0.18, 0.82);
       marketSign(tg, 0.15, -0.55, 1.6, false);
     },
     function (tg, w, d) {                       /* tier 2: two stalls make a corner  */
@@ -3331,36 +3451,36 @@ function mdTierLookup(id) {
       stall(tg, -0.4, 0.6, {}, 0.9, CANVAS_GRN);
       mdBarrel(tg, 0.5, 0.72);
     },
-    function (tg, w, d) {                       /* tier 4: dense quilt — central hall + wings  */
+    function (tg, w, d) {                       /* tier 4: one legible market hall + front stalls  */
       at(tg, 0.05, 0.0, 0, function (g) {
-        g.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.15, 6), TIMB, -0.55, 0.58, 0.35, false, false));
-        g.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 1.15, 6), TIMB, 0.55, 0.58, 0.35, false, false));
-        rAcross(g, 1.15, 0.85, 0.8, WTH, 1.15, {});                  /* tiny timber market hall  */
+        walls(g, 1.35, 0.92, 0.85, POX, { plinth: 0.16, frame: true, door: false });
+        rAcross(g, 1.35, 0.92, 0.72, WTH, 0.92, {});                 /* one shallow readable roof */
+        mdHangingSign(g, 0, 0.92, 0.85, "MARKET", 0.34);
       });
-      stall(tg, -0.78, 0.05, {}, 0.9, CANVAS_R);
-      stall(tg, 0.72, -0.2, {}, 0.9, CANVAS_GRN);
-      stall(tg, 0.35, 0.85, {}, 0.8, CREAM);
-      awning(tg, 0.5, 0.4, 1.45, CANVAS_R, -0.5, 0.5);
-      marketSign(tg, 0.05, -0.35, 2.3, true);
-      mdPennantLine(tg, -0.85, -0.3, 0.85, -0.3, 2.1, [0xDC2626, 0xFACC15, 0x2563EB]);
-      mdCrateStack(tg, 0.82, 0.6, 2);
-      mdBarrel(tg, -0.82, -0.62);
+      stall(tg, -0.62, -0.72, {}, 0.78, CANVAS_R);
+      stall(tg, 0.62, -0.72, {}, 0.78, CANVAS_GRN);
+      mdCrateStack(tg, 0.82, 0.58, 1);
+      mdBarrel(tg, -0.82, 0.58);
     }
   ];
 
   /* ================= 5. food_bistro — STORYBOOK INN (broken-T, two tones, big uneven chimney) ================= */
   P.food_bistro = [
-    function (tg, w, d) {                       /* tier 1: giant steep main roof  */
+    function (tg, w, d) {                       /* tier 1: readable inn with one restrained roof  */
       walls(tg, 1.8, 1.5, 1.4, PLAS, { frame: true, wins: 2, plinth: 0.28 });
-      rAcross(tg, 1.8, 1.4, 1.85, TERRA, 1.5, {});                   /* VERY steep */
-      stackBig(tg, -0.62, -0.62, 1.5, 1.5, BRK, 0.18);               /* big uneven chimney */
-      mdDormer(tg, 0.25, 0.6, 0.4, 1.0, TERRA, 0.78);
-      awning(tg, 1.2, 0.6, 2.2, CREAM, 0, 0.92);
+      rAcross(tg, 1.8, 1.4, 1.12, TERRA, 1.5, {});
+      chimney(tg, -0.62, -0.62, 1.05, 0.95);
+      mdDormer(tg, 0.22, 0.55, 0.34, 0.78, TERRA, 0.62);
+      awning(tg, 0.9, 0.5, 1.55, CREAM, 0, 0.92);
+      mdHangingSign(tg, 1.8, 1.4, 1.08, "INN", 0.46);
+      mdBarrel(tg, -0.62, 0.92);
+      mdBarrel(tg, -0.30, 0.96);
+      mdWindowBox(tg, 0.55, 0.88, "flowers");
     },
-    function (tg, w, d) {                       /* tier 2: perpendicular wing → cross  */
+    function (tg, w, d) {                       /* tier 2: one low side wing  */
       at(tg, -0.7, 0, 0, function (g) {
         walls(g, 1.0, 1.15, 1.9, POX, { frame: true, door: false });
-        rFront(g, 1.0, 1.9, 0.95, WTH, 1.15, {});
+        rFront(g, 1.0, 1.9, 0.62, WTH, 1.15, {});
       });
       chimney(tg, 0.35, -0.75, 1.15, 0.85);
       mdBarrel(tg, -0.55, 1.18);
@@ -3479,6 +3599,8 @@ function mdTierLookup(id) {
       clothSpill(tg, 0.35, 0.98, 1.6, 0.6, 0.3, 0x8E3B55);
       clothSpill(tg, -0.35, 0.98, 1.55, 0.5, 0.3, 0x0F766E);
       awning(tg, 0.85, 0.5, 1.5, CANVAS_B, 0, 0.98);
+      mdHangingSign(tg, 0.95, 1.9, 1.08, "TAILOR", 0.42);
+      mdWindowBox(tg, -0.48, 0.92, "flowers");
     },
     function (tg, w, d) {                       /* tier 2: projecting top floor (jetty)  */
       tg.add(mesh(new THREE.BoxGeometry(1.22, 0.55, 1.15), TIML, 0, 1.42, 0.05, false, false));
@@ -3513,6 +3635,9 @@ function mdTierLookup(id) {
       stackBig(tg, -0.6, -0.75, 0.85, 2.4, CBM, 0.24);               /* THE forge chimney */
       sootPlate(tg, 0.55, -0.15, 1.0, 0.5, 0.34, 0.0);               /* soot-darkened roof area */
       chimney(tg, 0.7, 0.1, 0.85, 0.7);
+      mdBarrel(tg, -0.82, 0.80);
+      woodPile(tg, 0.76, 0.76, 4);
+      mdHangingSign(tg, 2.0, 1.7, 0.72, "FORGE", 0.44);
     },
     function (tg, w, d) {                       /* tier 2: vent chimney + side lean-to  */
       stackBig(tg, 0.75, 0.5, 0.85, 1.6, CBM, 0.13);
@@ -3557,6 +3682,9 @@ function mdTierLookup(id) {
         rAcross(g, 1.5, 0.75, 0.55, WTH, 1.15, {});                  /* porch roof in front */
       });
       chimney(tg, -0.6, 0.2, 1.1, 0.65);
+      mdHangingSign(tg, 1.7, 0.9, 0.86, "COACH", 0.40);
+      mdHitchRail(tg, -0.62, -0.72, 1.0, 0);
+      mdCrateStack(tg, 0.58, -0.68, 2);
     },
     function (tg, w, d) {                       /* tier 2: stable wing + booking booth on the ends  */
       at(tg, -0.55, 0.15, 0, function (g) {
@@ -3593,6 +3721,8 @@ function mdTierLookup(id) {
     function (tg, w, d) {                       /* tier 1: open wooden stage + one striped pavilion  */
       stageDeck(tg, 0.95, 0.85, -0.15, -0.35);
       at(tg, -0.55, -0.6, 0, function (g) { mdPavilion(g, 1.0, 1.35, CANVAS_B, 0, 0.45); });
+      mdPennantLine(tg, -0.82, 0.35, 0.78, 0.35, 1.55, [0xDC2626, 0xFACC15, 0x2563EB]);
+      boothTiny(tg, 0.48, 0.48, WTH);
     },
     function (tg, w, d) {                       /* tier 2: two pointy tents + bunting  */
       fairTop(tg, 0.62, -0.6, 0.34, 1.05, CANVAS_R);
@@ -3632,6 +3762,9 @@ function mdTierLookup(id) {
       rLean(tg, 1.15, 1.95, 0.85, MOSS, 1.45, {});                  /* lower moss lean over the rest — ridge reads offset */
       turretCone(tg, 1.0, -0.95, 0, 0.18, 2.1, PBL, MOSS, 0.05);     /* little leaning corner turret */
       herbRack(tg, -0.5, 0.92, 1.5);
+      mdWindowBox(tg, 0.45, 0.82, "herbs");
+      mdBarrel(tg, 0.72, -0.62);
+      mdHangingSign(tg, 1.15, 1.95, 1.0, "HERBS", 0.42);
       at(tg, -0.55, -0.95, 0, function (g) {
         rLean(g, 0.6, 0.7, 0.55, MOSS, 1.45, { dir: "-z" });         /* rear herb-drying roof */
       });
@@ -3676,6 +3809,8 @@ function mdTierLookup(id) {
       rHip(tg, 2.0, 1.9, 1.15, HONEY, 1.25, {});
       mdRidgeTurret(tg, 0, 0, 1.25);                                  /* central raised lantern */
       mdLanternPost(tg, -0.85, 1.15);
+      mdRidgeTurret(tg, 0, 0.20, 1.25);
+      mdBarrel(tg, 0.78, 0.86);
     },
     function (tg, w, d) {                       /* tier 2: two tiny corner stone projections  */
       turretCone(tg, 0.98, -0.95, 0, 0.2, 1.05, STONE, HONEY);
@@ -3711,6 +3846,8 @@ function mdTierLookup(id) {
       rAcross(tg, 2.0, 1.75, 0.9, SLATE, 0.5, {});                    /* oversized long roof */
       chimney(tg, -0.75, -0.6, 0.9, 0.6);
       mdCrateStack(tg, -0.8, 0.82, 3);
+      mdCart(tg, 0.72, 0.78, 0.12);
+      mdHitchRail(tg, 0.0, -0.86, 1.2, 0);
     },
     function (tg, w, d) {                       /* tier 2: loading canopy the full long side  */
       at(tg, 0, -0.95, 0, function (g) {
@@ -3750,6 +3887,9 @@ function mdTierLookup(id) {
       rAcross(tg, 1.85, 1.6, 1.6, SLATE, 1.55, { steps: 5 });
       mdRidgeTurret(tg, 0, 0, 1.55);                                 /* small roof crest */
       mdLanternPost(tg, -0.7, 0.98);
+      mdHangingSign(tg, 1.85, 1.6, 1.10, "TREASURY", 0.42);
+      gatePost(tg, -0.66, 0.92, 0.9);
+      gatePost(tg, 0.66, 0.92, 0.9);
     },
     function (tg, w, d) {                       /* tier 2: corner buttresses + rear stepped gable  */
       turretCone(tg, 0.9, 0.9, 0, 0.2, 1.35, STONE, SLATE);
@@ -3793,6 +3933,9 @@ function mdTierLookup(id) {
         rLean(g, 0.7, 0.7, 0.6, WTH, 1.2, {});
       });
       mdHay(tg, 0.45, -0.5, 0.9);
+      mdHitchRail(tg, 0.0, 0.86, 1.25, 0);
+      mdCart(tg, 0.72, -0.76, 0.18);
+      mdLanternPost(tg, -0.98, 0.84);
     },
     function (tg, w, d) {                       /* tier 2: perpendicular wing → L  */
       at(tg, -0.6, 0.5, 0, function (g) {
@@ -3859,7 +4002,16 @@ function mdTierLookup(id) {
         rec.stall.visible = false;
         rec.shell.visible = true;
         rec.tierGroups.forEach(function (tg) {
-          const want = tier >= tg.visibleAt;
+          /* Compound venues read best as one legible building plus one
+             deliberate extension.  The old additive reveal left every
+             previous stable wing and roof visible, so the silhouette became
+             a pile of intersecting roofs at higher tiers.  Keep the original
+             base mass and show only the current extension for the stable;
+             other profiles retain their existing growth behavior. */
+          const compactGrowth = rec.id === "trans_station" || rec.id === "food_super" || rec.id === "food_bistro" || rec.id === "shop_arcade"
+          const want = compactGrowth
+            ? (tg.visibleAt === 1 || tg.visibleAt === tier)
+            : tier >= tg.visibleAt;
           if (want && !tg.group.visible && previous >= 0) raise(tg.group);
           tg.group.visible = want;
         });
@@ -4581,52 +4733,13 @@ function mdTierLookup(id) {
     }
     
     function makeCourier(color, poseVariant) {
-      const g = new THREE.Group();
-      const body = mat(color || 0x8A5A2B, 0.85, 0.05);
-      g.add(mesh(roundedBox(0.95, 0.20, 0.30, 0.08), body, 0, 0.22, 0, false, false));
-      g.add(mesh(new THREE.BoxGeometry(0.48, 0.04, 0.24), mat(0x18181B, 0.9), 0, 0.33, 0, false, false));
-      g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.58, 6), mat(0x1E293B, 0.5), 0.34, 0.50, 0, false, false));
-      g.add(mesh(new THREE.BoxGeometry(0.035, 0.035, 0.28), mat(0x18181B, 0.8), 0.34, 0.72, 0, false, false));
-      g.add(mesh(new THREE.SphereGeometry(0.055, 8, 8), M_WHITE, 0.38, 0.58, 0, false, false));
-      
-      const rider = makeFigure({
- seated: true, appearance: buildAppearanceProfile("courier:" + ((color || 0x8A5A2B).toString(16)) + ":" + (poseVariant || 0)) }
-);
-      rider.userData.lifeActor = true;
-      if (poseVariant === 1) {
-        if (rider.userData.torso) rider.userData.torso.rotation.y = 0.24;
-      }
- else if (poseVariant === 2) {
-        if (rider.userData.armR) {
- rider.userData.armR.rotation.x = -0.75;
- rider.userData.armR.rotation.z = 0.22;
- }
-      }
- else if (poseVariant === 3) {
-        if (rider.userData.torso) {
- rider.userData.torso.rotation.z = -0.14;
- rider.userData.torso.rotation.x = 0.08;
- }
-      }
-      rider.position.set(-0.06, 0.04, 0);
- rider.rotation.y = Math.PI / 2;
- g.add(rider);
-      g.add(mesh(roundedBox(0.30, 0.32, 0.30, 0.04), body, -0.30, 0.58, 0, false, false));
-      g.add(mesh(new THREE.BoxGeometry(0.20, 0.20, 0.02), M_WHITE, -0.30, 0.58, 0.16, false, false));
-      [[-0.36], [0.36]].forEach(function (p) {
-        const wh = mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.08, 12), mat(0x09090B, 0.9), p[0], 0.145, 0, false, false);
-        wh.rotation.x = Math.PI / 2;
- g.add(wh);
-      }
-);
-      
+      /* Medieval delivery unit: the existing SPENT figure is already built
+         into mdHandCartUnit, standing behind the handles and moving as one
+         root with the cart. Add the blue courier satchel to the cargo bed,
+         never to the worker, so it cannot float independently. */
       const vehicle = new THREE.Group();
- g.rotation.y = -Math.PI / 2;
- vehicle.add(g);
-      vehicle.userData = {
- rider: rider, scooter: g }
-;
-      return packRigidModel(vehicle);
+      mdHandCartUnit(vehicle, 0, 0, 0, color || 0x8A5A2B);
+      return vehicle;
     }
     function makeWorker(vest) {
       const g = new THREE.Group();
@@ -4787,6 +4900,18 @@ function createCar(color, isBus, isTaxi) {
       if (!moved) return;
       m.dist += moved;
       rig.wheels.forEach(function (w) { w.rotation.x = m.dist / 0.19; });
+      /* Hand-cart workers share the cart root, so their gait and pushing arms
+         advance from the same travelled distance as the wheels. */
+      if (rig.pusher && rig.pusher.userData) {
+        const p = rig.pusher.userData;
+        const pg = m.dist / 0.34;
+        const swing = Math.sin(pg) * 0.42 * rm;
+        if (p.legL) p.legL.rotation.x = swing;
+        if (p.legR) p.legR.rotation.x = -swing;
+        if (p.armL) p.armL.rotation.x = 1.12 + Math.sin(pg + Math.PI) * 0.07 * rm;
+        if (p.armR) p.armR.rotation.x = 1.12 + Math.sin(pg) * 0.07 * rm;
+        if (p.torso) p.torso.rotation.x = 0.08 + Math.sin(pg * 2) * 0.018 * rm;
+      }
       if (rig.horse) {
         const h = rig.horse;
         const stride = 0.34;
@@ -5625,19 +5750,24 @@ const CHARACTER = {
     const fountainGroup = new THREE.Group();
     fountainGroup.position.set(0, Y_WALK, 1.3);
     root.add(fountainGroup);
-    /* octagonal market well: layered chunky stone basin */
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.32, 8), MD_STONE_DK, 0, 0.16, 0));
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.30, 1.42, 0.14, 8), MD_STONE, 0, 0.08, 0, false, true));
-    const fountRim = mesh(new THREE.CylinderGeometry(1.27, 1.30, 0.12, 8), MD_STONE, 0, 0.34, 0, false, false);
+    /* Medieval civic water garden: a low fish pond was more believable here
+       than a tall ornamental fountain, while keeping the same animated water
+       hooks used by the renderer. */
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.32, 1.42, 0.26, 12), MD_STONE_DK, 0, 0.13, 0));
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(1.38, 1.48, 0.12, 12), MD_STONE, 0, 0.08, 0, false, true));
+    const fountRim = mesh(new THREE.CylinderGeometry(1.34, 1.38, 0.13, 12), MD_STONE, 0, 0.29, 0, false, false);
     fountainGroup.add(fountRim);
-    /* worn basin top + inner water */
-    const fWater = mesh(new THREE.CylinderGeometry(1.10, 1.12, 0.06, 8), M_WATER, 0, 0.36, 0);
+    /* shallow water surface with a small central stone island */
+    const fWater = mesh(new THREE.CylinderGeometry(1.16, 1.20, 0.055, 12), M_WATER, 0, 0.34, 0);
     fountainGroup.add(fWater);
-    /* central carved stone post (well pump / market post) */
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(0.14, 0.18, 0.75, 8), MD_STONE, 0, 0.75, 0));
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.34, 7), MD_TIMBER, 0, 1.08, 0, false, false));
-    fountainGroup.add(mesh(new THREE.CylinderGeometry(0.20, 0.18, 0.07, 8), MD_STONE_TAN, 0, 1.28, 0, false, false));
-    /* side water outlets (small spouts on rim) */
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(0.32, 0.38, 0.16, 8), MD_STONE_TAN, 0, 0.43, 0));
+    fountainGroup.add(mesh(new THREE.CylinderGeometry(0.20, 0.25, 0.12, 8), MD_VERD, 0, 0.55, 0, false, false));
+    /* tiny fish and reeds make the water read as a living town pond */
+    [[-0.48, 0.25, 0xD98545], [0.36, -0.28, 0xC7A34B], [0.12, 0.62, 0xD66E4A]].forEach(function (fish) {
+      fountainGroup.add(mesh(new THREE.SphereGeometry(0.075, 7, 5), mat(fish[2], 0.88), fish[0], 0.40, fish[1], false, false));
+      fountainGroup.add(mesh(new THREE.ConeGeometry(0.045, 0.14, 5), mat(fish[2], 0.88), fish[0] - 0.08, 0.40, fish[1], false, false));
+    });
+    /* four modest rim spouts retain the gentle water animation */
     [-1, 1].forEach(function (sx) {
       [-1, 1].forEach(function (sz) {
         fountainGroup.add(mesh(new THREE.BoxGeometry(0.05, 0.03, 0.12), MD_LANTERN_BR, sx * 1.22, 0.40, sz * 1.22, false, false));
@@ -5648,7 +5778,9 @@ const CHARACTER = {
       const a = i * 1.26 + 0.4;
       fountainGroup.add(mesh(new THREE.SphereGeometry(0.035, 5, 4), MD_VERD, Math.cos(a) * 1.3, 0.08, Math.sin(a) * 1.3, false, false));
     }
-    animObjects.push({ type: "fountain_spout", spout: fWater });
+    /* Keep the legacy hook for renderer compatibility, but mark this as a pond
+       surface so it never inherits the old rising fountain motion. */
+    animObjects.push({ type: "fountain_spout", spout: fWater, pond: true });
     const fRippleMat = new THREE.MeshBasicMaterial({ color: 0x4B8B9A, transparent: true, opacity: 0.6, depthWrite: false });
     const fRipple = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.34, 24), fRippleMat);
     fRipple.rotation.x = -Math.PI / 2;
@@ -5981,6 +6113,7 @@ const CHARACTER = {
     const transportUnits = [];
     for (let i = 0; i < 4; i++) {
       const u = new THREE.Group();
+      /* The four stable horses belong on the rear hitch line inside the yard. */
       u.position.set(-2.1 + i * 1.25, 0, 1.9);
       u.rotation.y = 0.12;
       transportYard.add(u);
@@ -5993,7 +6126,10 @@ const CHARACTER = {
     let parkedTaxi;
     (function () {
       const coach = mdWagon(0xB8452E, true);
-      coach.position.set(3.3, 0, 0.6);
+      /* Park the coach inside the right side of the stable compound.  Its horse
+         extends forward from the wagon, so the old x=3.3 anchor put that horse
+         beyond the yard edge and made it appear to float outside the map. */
+      coach.position.set(2.0, 0, 0.55);
       coach.rotation.y = Math.PI / 2;
       coach.scale.setScalar(1.0);
       transportYard.add(coach);
@@ -10344,6 +10480,10 @@ foodSub:["restaurant","groceries","coffee","delivery"], shoppingSub:["fashion","
             a.arm.rotation.x = -1.2 + Math.sin(now * 0.0016) * 0.14;
             break;
           case "fountain_spout":            if (a.spout) {
+              if (a.pond) {
+                a.spout.scale.set(1, 1 + Math.sin(now * 0.0012) * 0.025, 1);
+                break;
+              }
               const sP = Math.sin(now * 0.0025);
               a.spout.scale.set(                1 + sP * 0.18,                1 + Math.sin(now * 0.0035) * 0.25,                1 + sP * 0.18              );
               a.spout.rotation.y += dt * 0.4;

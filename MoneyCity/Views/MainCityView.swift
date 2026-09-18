@@ -662,54 +662,66 @@ public struct MainCityView: View {
         .sheet(isPresented: $showQuickAdd, onDismiss: {
             quickAddPreselectedCategory = nil
         }) {
-            QuickAddSheet(initialCategory: quickAddPreselectedCategory, initialCurrency: l10n.baseCurrency) { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId in
-                let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
-                let tx = Transaction(
-                    amount: amount,
-                    currency: l10n.baseCurrency.symbol,
-                    merchant: note,
-                    category: cat,
-                    timestamp: Date(),
-                    confidenceScore: 1.0,
-                    isManual: true,
-                    isConfirmed: true,
-                    note: nil,
-                    buildingId: finalBuildingId,
-                    originalAmount: origAmount,
-                    originalCurrency: origCurrency,
-                    exchangeRate: exchangeRate
-                )
-                modelContext.insert(tx)
-                guard DatabaseService.safeSave(modelContext) else {
-                    Haptics.notify(.error)
-                    return
+            QuickAddSheet(
+                initialCategory: quickAddPreselectedCategory,
+                initialCategoryIsExplicit: quickAddPreselectedCategory != nil,
+                initialCurrency: l10n.baseCurrency,
+                onSaveWithExplicitFlag: { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit in
+                    let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
+                    let tx = Transaction(
+                        amount: amount,
+                        currency: l10n.baseCurrency.symbol,
+                        merchant: note,
+                        category: cat,
+                        timestamp: Date(),
+                        confidenceScore: 1.0,
+                        isManual: true,
+                        isConfirmed: true,
+                        note: nil,
+                        buildingId: finalBuildingId,
+                        originalAmount: origAmount,
+                        originalCurrency: origCurrency,
+                        exchangeRate: exchangeRate
+                    )
+                    modelContext.insert(tx)
+                    guard DatabaseService.safeSave(modelContext) else {
+                        Haptics.notify(.error)
+                        return
+                    }
+
+                    let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if isCategoryExplicit && !trimmed.isEmpty && cat != .other {
+                        DatabaseService.shared.rememberCorrection(
+                            merchant: note,
+                            category: cat,
+                            buildingId: finalBuildingId
+                        )
+                    }
+                    let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
+                    ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                        amount: amount,
+                        merchant: merchantTitle,
+                        buildingId: finalBuildingId,
+                        transactionId: tx.id,
+                        isRefund: false
+                    )
+
+                    let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
+                        ? String(format: "%.0f", amount)
+                        : String(format: "%.2f", amount)
+                    let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
+
+                    buildingFocusRequest = CityBuildingFocusRequest(
+                        token: UUID(),
+                        buildingId: finalBuildingId,
+                        amount: amount,
+                        formattedAmount: formattedAmount,
+                        isRefund: false,
+                        transactionId: tx.id,
+                        source: .manualExpense
+                    )
                 }
-
-                let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
-                let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
-                ExpenseConfirmationCoordinator.shared.triggerConfirmation(
-                    amount: amount,
-                    merchant: merchantTitle,
-                    buildingId: finalBuildingId,
-                    transactionId: tx.id,
-                    isRefund: false
-                )
-
-                let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
-                    ? String(format: "%.0f", amount)
-                    : String(format: "%.2f", amount)
-                let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
-
-                buildingFocusRequest = CityBuildingFocusRequest(
-                    token: UUID(),
-                    buildingId: finalBuildingId,
-                    amount: amount,
-                    formattedAmount: formattedAmount,
-                    isRefund: false,
-                    transactionId: tx.id,
-                    source: .manualExpense
-                )
-            }
+            )
             .environmentObject(l10n)
         }
         .sheet(isPresented: $showBudgetSheet) {
@@ -842,22 +854,25 @@ public struct MainCityView: View {
         let isDefaultName = pending.merchant.isEmpty || pending.merchant == "תשלום Apple Pay" || pending.merchant == "Apple Pay payment"
         QuickAddSheet(
             initialCategory: initialCat,
+            initialCategoryIsExplicit: false,
             initialCurrency: curr,
             initialMerchant: isDefaultName ? "" : pending.merchant,
             initialBuildingId: pending.buildingId,
-            titleOverride: l10n.language == .hebrew ? "עריכת עסקת Apple Pay" : "Edit Apple Pay Transaction"
-        ) { amount, cat, merchant, origAmount, origCurrency, exchangeRate, buildingId in
-            saveResolvedPending(
-                pending: pending,
-                amount: amount,
-                cat: cat,
-                merchant: merchant,
-                origAmount: origAmount,
-                origCurrency: origCurrency,
-                exchangeRate: exchangeRate,
-                buildingId: buildingId
-            )
-        }
+            titleOverride: l10n.language == .hebrew ? "עריכת עסקת Apple Pay" : "Edit Apple Pay Transaction",
+            onSaveWithExplicitFlag: { amount, cat, merchant, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit in
+                saveResolvedPending(
+                    pending: pending,
+                    amount: amount,
+                    cat: cat,
+                    merchant: merchant,
+                    origAmount: origAmount,
+                    origCurrency: origCurrency,
+                    exchangeRate: exchangeRate,
+                    buildingId: buildingId,
+                    isCategoryExplicit: isCategoryExplicit
+                )
+            }
+        )
         .environmentObject(l10n)
     }
 
@@ -869,7 +884,8 @@ public struct MainCityView: View {
         origAmount: Double?,
         origCurrency: String?,
         exchangeRate: Double?,
-        buildingId: String?
+        buildingId: String?,
+        isCategoryExplicit: Bool = true
     ) {
         let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: merchant)
         let tx = Transaction(
@@ -898,6 +914,13 @@ public struct MainCityView: View {
         resolvingPendingItem = nil
 
         let trimmed = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        if isCategoryExplicit && !trimmed.isEmpty && cat != .other {
+            DatabaseService.shared.rememberCorrection(
+                merchant: merchant,
+                category: cat,
+                buildingId: finalBuildingId
+            )
+        }
         let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
         ExpenseConfirmationCoordinator.shared.triggerConfirmation(
             amount: amount,

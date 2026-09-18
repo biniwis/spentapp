@@ -20,7 +20,7 @@ final class RealNotificationTests: XCTestCase {
     private let payments: [Payment] = [
         Payment(merchant: "Chacoli",              amount: 6.00,   location: "מחוז תל אביב תל אביב-יפו", expectedName: "Chacoli"),
         Payment(merchant: "GMF* Toms And Ko Bam", amount: 22.00,  location: "מחוז גבעתיים",             expectedName: "GMF* Toms And Ko Bam"),
-        Payment(merchant: "Kokpit 67",            amount: 115.00, location: "מחוז תל אביב גבעתיים",     expectedName: "Kokpit"),
+        Payment(merchant: "Kokpit 67",            amount: 115.00, location: "מחוז תל אביב גבעתיים",     expectedName: "Kokpit 67"),
         Payment(merchant: "AM:PM",                amount: 9.90,   location: "מחוז תל אביב תל אביב-יפו", expectedName: "AM:PM"),
         Payment(merchant: "k.j",                  amount: 13.00,  location: "מחוז תל אביב גבעתיים",     expectedName: "k.j"),
         Payment(merchant: "שופרסל",                amount: 47.25,  location: "גבעתיים, מחוז תל אביב",     expectedName: "שופרסל"),
@@ -78,7 +78,7 @@ final class RealNotificationTests: XCTestCase {
     /// The specific regression: "Kokpit 67" is a bar with a house number, not a ₪67 charge.
     func testAHouseNumberIsNeverBookedAsTheAmount() {
         XCTAssertNil(viaSingleField("Kokpit 67").amount)
-        XCTAssertEqual(viaSingleField("Kokpit 67").merchant, "Kokpit")
+        XCTAssertEqual(viaSingleField("Kokpit 67").merchant, "Kokpit 67")
         // With a real amount attached it must still come through untouched.
         XCTAssertEqual(viaSingleField("Kokpit 67 ₪115.00").amount, 115.00)
     }

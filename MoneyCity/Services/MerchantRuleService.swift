@@ -10,14 +10,9 @@ public enum MerchantRuleService {
     /// otherwise a two-letter rule would swallow half the user's history.
     public static let minimumSubstringLength = 3
 
-    /// Lowercased, trimmed, whitespace collapsed. Wallet pads and cases merchant names
-    /// inconsistently between transactions at the same shop.
+    /// Canonical internal key for matching and learning.
     public static func normalizedKey(_ merchant: String) -> String {
-        merchant
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-            .split(whereSeparator: { $0.isWhitespace })
-            .joined(separator: " ")
+        MerchantCanonicalizer.canonicalKey(for: merchant)
     }
 
     /// Checks if a rule key matches text respecting word boundaries.
@@ -30,30 +25,63 @@ public enum MerchantRuleService {
 
     /// The rule that should win for this merchant.
     ///
-    /// An exact match always beats a substring match, and among substring matches the
-    /// longest key wins — "רמי לוי" must beat a broader "רמי" rule.
+    /// Resolution Order:
+    /// 1. Exact match by canonical key
+    /// 2. Compatible legacy rule match (with lazy backfill)
+    /// 3. Conservative learned alias match
+    /// 4. Substring match for compound names (longest key wins)
     public static func rule(for merchant: String, in rules: [MerchantRule]) -> MerchantRule? {
         let key = normalizedKey(merchant)
         guard !key.isEmpty else { return nil }
 
+        // 1. Exact canonical match
         if let exact = rules.first(where: { $0.merchantKey == key }) {
             return exact
         }
 
-        return rules
-            .filter { $0.merchantKey.count >= minimumSubstringLength && matchesKey(ruleKey: $0.merchantKey, in: key) }
-            .max(by: { $0.merchantKey.count < $1.merchantKey.count })
+        // 2. Legacy compatibility match
+        let legacyKey = MerchantCanonicalizer.legacyNormalizedKey(merchant)
+        if let legacyMatch = rules.first(where: { rule in
+            rule.merchantKey == legacyKey
+                || MerchantCanonicalizer.canonicalKey(for: rule.displayName) == key
+                || MerchantCanonicalizer.canonicalKey(for: rule.merchantKey) == key
+        }) {
+            // Lazy migration: update rule's merchantKey to canonicalKey
+            legacyMatch.merchantKey = key
+            return legacyMatch
+        }
+
+        // 3. Conservative learned alias match
+        if let aliasMatch = MerchantCanonicalizer.findUnambiguousLearnedAlias(for: merchant, in: rules) {
+            return aliasMatch
+        }
+
+        // 4. Substring match (longest key wins; numbers must match if present)
+        let keyDigits = key.filter { $0.isNumber }
+        let candidates = rules.filter { rule in
+            guard rule.merchantKey.count >= minimumSubstringLength else { return false }
+            let ruleDigits = rule.merchantKey.filter { $0.isNumber }
+            if !ruleDigits.isEmpty && ruleDigits != keyDigits {
+                return false
+            }
+            return matchesKey(ruleKey: rule.merchantKey, in: key)
+        }
+
+        return candidates.max(by: { $0.merchantKey.count < $1.merchantKey.count })
     }
 
     /// Classification with:
-    /// 1. User's own corrections applied first
-    /// 2. Global Remote Merchant Overrides applied second
-    /// 3. Built-in keyword categorization engine third
+    /// 1. User's own learned rule always wins (confidence: 1.0)
+    /// 2. Previously confirmed manual history recovery (confidence: 1.0)
+    /// 3. Global Remote Merchant Overrides applied third (confidence: 0.98)
+    /// 4. Built-in keyword categorization engine fourth
+    /// 5. Unknown / requires review fallback
     public static func classify(
         merchant: String,
         amount: Double,
         rules: [MerchantRule],
-        remoteConfig: RemoteConfigService = .shared
+        remoteConfig: RemoteConfigService = .shared,
+        historyFallback: ((String) -> (category: SpendingCategory, buildingId: String)?)? = nil
     ) -> ClassificationResult {
         // 1. User's own rule always wins
         if let rule = rule(for: merchant, in: rules) {
@@ -61,20 +89,34 @@ public enum MerchantRuleService {
                 category: rule.category,
                 merchant: merchant
             )
-            // The user told us directly, so this is not a guess and needs no confirmation.
-            return ClassificationResult(category: rule.category, buildingId: building, confidence: 1.0)
+            // Determine source for diagnostics
+            let canonical = normalizedKey(merchant)
+            let source: ClassificationSource
+            if rule.merchantKey == canonical {
+                source = .userRule
+            } else if MerchantCanonicalizer.matchesLearnedAlias(candidate: merchant, learnedKey: rule.merchantKey) {
+                source = .learnedAlias
+            } else {
+                source = .legacyUserRule
+            }
+            return ClassificationResult(category: rule.category, buildingId: building, confidence: 1.0, source: source)
         }
 
-        // 2. Global Remote Merchant Override
+        // 2. Safe Historical Confirmation Recovery
+        if let history = historyFallback?(merchant) {
+            return ClassificationResult(category: history.category, buildingId: history.buildingId, confidence: 1.0, source: .historyRecovery)
+        }
+
+        // 3. Global Remote Merchant Override
         if let remoteCategory = remoteConfig.merchantOverride(for: merchant) {
             let building = CategorizationEngine.shared.mapToBuildingId(
                 category: remoteCategory,
                 merchant: merchant
             )
-            return ClassificationResult(category: remoteCategory, buildingId: building, confidence: 0.98)
+            return ClassificationResult(category: remoteCategory, buildingId: building, confidence: 0.98, source: .remoteOverride)
         }
 
-        // 3. Built-in Categorization Engine
+        // 4. Built-in Categorization Engine
         return CategorizationEngine.shared.classify(merchant: merchant, amount: amount)
     }
 
@@ -90,17 +132,26 @@ public enum MerchantRuleService {
         guard !key.isEmpty else { return nil }
 
         let building = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: category, merchant: merchant)
+        let legacyKey = MerchantCanonicalizer.legacyNormalizedKey(merchant)
 
-        if let match = existing.first(where: { $0.merchantKey == key }) {
+        // Check if an existing rule matches by canonical key, legacy key, display name, or alias
+        if let match = existing.first(where: {
+            $0.merchantKey == key
+                || $0.merchantKey == legacyKey
+                || MerchantCanonicalizer.canonicalKey(for: $0.displayName) == key
+                || MerchantCanonicalizer.canonicalKey(for: $0.merchantKey) == key
+                || MerchantCanonicalizer.matchesLearnedAlias(candidate: merchant, learnedKey: $0.merchantKey)
+        }) {
             match.category = category
             match.buildingIdRaw = building
-            match.displayName = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+            match.displayName = MerchantCanonicalizer.safeDisplayMerchant(merchant)
+            match.merchantKey = key // migrate to canonical
             return nil
         }
 
         return MerchantRule(
             merchantKey: key,
-            displayName: merchant.trimmingCharacters(in: .whitespacesAndNewlines),
+            displayName: MerchantCanonicalizer.safeDisplayMerchant(merchant),
             category: category,
             buildingId: building
         )

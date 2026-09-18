@@ -273,7 +273,7 @@ public enum TransactionIngest {
         return nil
     }
 
-    /// Strips currency symbols, Hebrew currency terms, transaction prefixes, and numeric runs so "Chacoli ₪6.00" yields "Chacoli".
+    /// Strips currency symbols, Hebrew currency terms, transaction prefixes, and amount runs while preserving digits in merchant names (e.g. "Kokpit 67 ₪115.00" yields "Kokpit 67").
     /// Returns nil when nothing but digits and punctuation was there to begin with.
     public static func nameWithoutAmount(_ text: String) -> String? {
         var stripped = text
@@ -290,11 +290,20 @@ public enum TransactionIngest {
             }
         }
         
-        stripped = stripped.replacingOccurrences(
-            of: "[0-9\u{0660}-\u{0669}]+(?:[.,][0-9]+)*",
-            with: " ",
-            options: .regularExpression
-        )
+        // Strip amounts accompanied by currency symbols or money keywords
+        let amountWithCurrencyPatterns = [
+            #"(?:₪|\$|€|£|ILS|USD|EUR|GBP|NIS|nis|ש״ח|ש"ח|שח|שקלים|שקל)\s*[0-9]+(?:[.,][0-9]{1,2})?"#,
+            #"[0-9]+(?:[.,][0-9]{1,2})?\s*(?:₪|\$|€|£|ILS|USD|EUR|GBP|NIS|nis|ש״ח|ש"ח|שח|שקלים|שקל)"#,
+            #"(?:בסך|ע״ס|סך)\s*[0-9]+(?:[.,][0-9]{1,2})?(?:\s*(?:₪|\$|€|£|ILS|USD|EUR|GBP|NIS|nis|ש״ח|ש"ח|שח|שקלים|שקל))?"#
+        ]
+        for pattern in amountWithCurrencyPatterns {
+            stripped = stripped.replacingOccurrences(of: pattern, with: " ", options: [.regularExpression, .caseInsensitive])
+        }
+
+        // Strip standalone trailing or leading decimal currency amounts (e.g. " 50.00" or "42.90 ")
+        stripped = stripped.replacingOccurrences(of: #"(?:^|[\s,\-–—])[0-9]+[.,][0-9]{2}(?=$|[\s,\-–—])"#, with: " ", options: .regularExpression)
+
+        // Strip residual currency symbols and terms
         for symbol in ["₪", "$", "€", "£", "ILS", "USD", "EUR", "GBP", "NIS", "nis", "ש״ח", "ש\"ח", "שח", "שקלים", "שקל", "בסך", "ע״ס", "סך"] {
             stripped = stripped.replacingOccurrences(of: symbol, with: " ", options: .caseInsensitive)
         }
@@ -353,8 +362,7 @@ public enum TransactionIngest {
     /// Israeli district/location metadata, card headers, and trailing currency amounts.
     public static func normalizedMerchant(_ merchant: String?) -> String? {
         guard let raw = merchant else { return nil }
-        let sanitized = InputSanitizer.sanitizeSingleLine(raw, maxLength: InputSanitizer.maxMerchantLength)
-        var text = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
 
         // 1. If multi-line (e.g. "Isracard\nמחוז תל אביב, Chacoli, ₪ 6.00"), pick content lines
@@ -370,6 +378,7 @@ public enum TransactionIngest {
                 text = lines.joined(separator: ", ")
             }
         }
+        text = InputSanitizer.sanitizeSingleLine(text, maxLength: InputSanitizer.maxMerchantLength)
 
         // 2. Strip Israeli district/location prefixes first (e.g. "מחוז תל אביב תל אביב-יפו, ", "מחוז... גבעתיים, ", "מחוז מרכז, ")
         if let range = text.range(of: #"^מחוז[\s\.\u{2026}]*[^,]+,\s*"#, options: .regularExpression) {
@@ -390,8 +399,17 @@ public enum TransactionIngest {
         }
 
         // 5. Strip trailing amount strings (e.g. ", ₪ 6.00", " - ₪22.00", ", 9.90 ₪", " ₪ 13.00", " 45.00 ש״ח")
-        if let range = text.range(of: #"[\s,\-]+(?:₪|\$|€|NIS|ILS|ש״ח|ש\"ח|שח)?\s*[0-9]+(?:[.,][0-9]{1,2})?\s*(?:₪|\$|€|NIS|ILS|ש״ח|ש\"ח|שח)?\s*$"#, options: .regularExpression) {
-            text.removeSubrange(range)
+        // NOTE: Must require either a currency mark OR decimal digits so house numbers / store numbers (e.g. "Kokpit 67", "Cafe 48") are never stripped.
+        let trailingAmountPatterns = [
+            #"[\s,\-]+(?:₪|\$|€|NIS|ILS|nis|ils|ש״ח|ש"ח|שח)\s*[0-9]+(?:[.,][0-9]{1,2})?\s*$"#,
+            #"[\s,\-]+[0-9]+(?:[.,][0-9]{1,2})?\s*(?:₪|\$|€|NIS|ILS|nis|ils|ש״ח|ש"ח|שח)\s*$"#,
+            #"[\s,\-]+[0-9]+[.,][0-9]{1,2}\s*$"#
+        ]
+        for pattern in trailingAmountPatterns {
+            if let range = text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) {
+                text.removeSubrange(range)
+                break
+            }
         }
 
         // 6. Trim residual punctuation and whitespace
@@ -410,11 +428,11 @@ public enum TransactionIngest {
         date: Date,
         in existing: [Transaction]
     ) -> Bool {
-        let key = normalizedMerchant(merchant)?.lowercased() ?? ""
+        let key = MerchantCanonicalizer.canonicalKey(for: merchant)
         return existing.contains { tx in
             let storedAmount = tx.originalAmount.map { tx.amount < 0 ? -abs($0) : abs($0) } ?? tx.amount
             let storedCurrency = tx.originalCurrency ?? tx.currency
-            return (normalizedMerchant(tx.merchant)?.lowercased() ?? "") == key
+            return MerchantCanonicalizer.canonicalKey(for: tx.merchant) == key
                 && currencyKey(storedCurrency) == currencyKey(currency)
                 && abs(storedAmount - amount) < 0.005
                 && abs(tx.timestamp.timeIntervalSince(date)) <= duplicateWindow
@@ -487,9 +505,15 @@ public enum TransactionIngest {
             classification = ClassificationResult(
                 category: .other,
                 buildingId: "city_sorting_hub",
-                confidence: 0.0
+                confidence: 0.0,
+                source: .unknown
             )
         }
+
+        let isLearnedRule = classification.source == .userRule
+            || classification.source == .legacyUserRule
+            || classification.source == .learnedAlias
+            || classification.source == .historyRecovery
 
         let isRecognized = (finalParsedAmount > 0) && hasExplicitMerchant && (classification.confidence >= 0.8)
 
@@ -540,8 +564,8 @@ public enum TransactionIngest {
             finalCurrency = baseCurrType.symbol
         }
 
-        let isConfirmed = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? false : isRecognized
-        let confidenceScore: Double = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? 0.5 : (isRecognized ? classification.confidence : 0.0)
+        let isConfirmed = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? false : (isLearnedRule ? true : isRecognized)
+        let confidenceScore: Double = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? 0.5 : (isLearnedRule ? 1.0 : (isRecognized ? classification.confidence : 0.0))
         let note: String? = isRefund
             ? "זיכוי / החזר מ-Apple Pay (ממתין לבדיקתך)"
             : (!hasExplicitMerchant ? "Apple Pay (בית עסק לא זוהה - ממתין למיון)" : nil)

@@ -1,14 +1,31 @@
 import Foundation
 
+public enum ClassificationSource: String, Sendable, Codable {
+    case userRule
+    case legacyUserRule
+    case historyRecovery
+    case learnedAlias
+    case remoteOverride
+    case heuristic
+    case unknown
+}
+
 public struct ClassificationResult: Sendable {
     public let category: SpendingCategory
     public let buildingId: String
     public let confidence: Double
+    public let source: ClassificationSource
     
-    public init(category: SpendingCategory, buildingId: String, confidence: Double) {
+    public init(
+        category: SpendingCategory,
+        buildingId: String,
+        confidence: Double,
+        source: ClassificationSource = .heuristic
+    ) {
         self.category = category
         self.buildingId = buildingId
         self.confidence = confidence
+        self.source = source
     }
 }
 
@@ -221,7 +238,7 @@ public final class CategorizationEngine: Sendable {
     public func classify(merchant: String, amount: Double) -> ClassificationResult {
         var clean = merchant.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         if clean.isEmpty {
-            return ClassificationResult(category: .other, buildingId: "city_sorting_hub", confidence: 0.0)
+            return ClassificationResult(category: .other, buildingId: "city_sorting_hub", confidence: 0.0, source: .unknown)
         }
         
         // 1. Strip common payment gateway/aggregator prefixes in both English & Hebrew
@@ -240,7 +257,7 @@ public final class CategorizationEngine: Sendable {
         
         clean = clean.trimmingCharacters(in: CharacterSet(charactersIn: " ,-:;•*\"'״׳").union(.whitespacesAndNewlines))
         if clean.isEmpty {
-            return ClassificationResult(category: .other, buildingId: "city_sorting_hub", confidence: 0.0)
+            return ClassificationResult(category: .other, buildingId: "city_sorting_hub", confidence: 0.0, source: .unknown)
         }
         
         // 3. Tokenize merchant into distinct words
@@ -307,8 +324,9 @@ public final class CategorizationEngine: Sendable {
         let finalCat = bestCategory ?? .other
         let confidence = bestCategory != nil ? 0.95 : 0.50
         let buildingId = mapToBuildingId(category: finalCat, merchant: clean)
+        let source: ClassificationSource = bestCategory != nil ? .heuristic : .unknown
         
-        return ClassificationResult(category: finalCat, buildingId: buildingId, confidence: confidence)
+        return ClassificationResult(category: finalCat, buildingId: buildingId, confidence: confidence, source: source)
     }
     
     private let venueFallbackDictionary: [SpendingCategory: [String]] = [

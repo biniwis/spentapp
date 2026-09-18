@@ -40,7 +40,7 @@ public final class MerchantRule: Identifiable {
     ) {
         self.id = id
         self.merchantKey = InputSanitizer.sanitizeSingleLine(merchantKey, maxLength: InputSanitizer.maxMerchantLength)
-        self.displayName = InputSanitizer.sanitizeSingleLine(displayName, maxLength: InputSanitizer.maxMerchantLength)
+        self.displayName = MerchantCanonicalizer.safeDisplayMerchant(displayName)
         self.categoryRawValue = category.canonical.rawValue
         self.buildingIdRaw = buildingId.map { InputSanitizer.sanitizeIdentifier($0) }
         self.hitCount = max(0, hitCount)

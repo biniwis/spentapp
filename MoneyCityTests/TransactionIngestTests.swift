@@ -464,7 +464,7 @@ final class TransactionIngestTests: XCTestCase {
         // 8. Merchant containing digits
         let withDigits = parseSingle("Kokpit 67 ₪50.00")
         XCTAssertEqual(withDigits.amount, 50.00)
-        XCTAssertEqual(withDigits.merchant, "Kokpit")
+        XCTAssertEqual(withDigits.merchant, "Kokpit 67")
 
         // 9. Missing merchant (amount only)
         let missingMerchant = parseSingle("₪42.90")

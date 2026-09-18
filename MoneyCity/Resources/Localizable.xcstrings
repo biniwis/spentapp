@@ -469,6 +469,9 @@
     "A quick iPhone setup, and then expenses can enter SPENT automatically." : {
 
     },
+    "A transaction was successfully captured in SPENT. Everything is connected and ready to use." : {
+
+    },
     "About SPENT" : {
 
     },
@@ -531,6 +534,9 @@
       }
     },
     "Add fixed expenses" : {
+
+    },
+    "Add Shortcut Again" : {
 
     },
     "Add transactions from your Home Screen with a single tap." : {
@@ -632,6 +638,9 @@
     "Automatic Capture Guide Previews:" : {
 
     },
+    "Automatic Capture is Working" : {
+
+    },
     "Automatic Currency Conversion" : {
 
     },
@@ -720,6 +729,9 @@
         }
       }
     },
+    "Capture Status" : {
+
+    },
     "Categories" : {
 
     },
@@ -786,16 +798,7 @@
     "Could not extract receipt" : {
 
     },
-    "Couldn't add the shortcut" : {
-
-    },
-    "Couldn't add the shortcut?" : {
-
-    },
     "Couldn't create the portrait" : {
-
-    },
-    "Couldn't find the shortcut" : {
 
     },
     "Crafted with care 🏙️" : {
@@ -912,7 +915,7 @@
     "DEVELOPMENT & DESIGN" : {
 
     },
-    "Did you add the shortcut?" : {
+    "Did you add the SPENT shortcut?" : {
 
     },
     "Did you enable the SPENT shortcut?" : {
@@ -1104,7 +1107,7 @@
     "How to create the automation?" : {
 
     },
-    "I enabled it" : {
+    "I succeeded" : {
 
     },
     "I'll do this later" : {
@@ -1231,13 +1234,13 @@
     "Loading world…" : {
 
     },
-    "Look for SPENT in Automations" : {
-
-    },
     "Main Category" : {
 
     },
     "Manual Setup" : {
+
+    },
+    "Manual Setup Guide" : {
 
     },
     "Maybe later" : {
@@ -1370,6 +1373,9 @@
     "Notifications" : {
 
     },
+    "Now enable the SPENT shortcut" : {
+
+    },
     "of %@" : {
 
     },
@@ -1389,12 +1395,6 @@
 
     },
     "Open Automations" : {
-
-    },
-    "Open Automations Again" : {
-
-    },
-    "Open Shortcuts" : {
 
     },
     "Open Shortcuts App" : {
@@ -1888,9 +1888,6 @@
     "The Nature Reserve changes with your budget and savings." : {
 
     },
-    "The shortcut you added should appear there. Open it and turn it on." : {
-
-    },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
 
     },
@@ -2060,6 +2057,9 @@
     "Waiting for the first capture" : {
 
     },
+    "We'll open the Automations area in Shortcuts, and simply turn on the shortcut you just added." : {
+
+    },
     "We'll set up your iPhone to pass transaction amounts and merchants to SPENT after every Apple Pay purchase." : {
 
     },
@@ -2142,9 +2142,6 @@
 
     },
     "You can change your target later" : {
-
-    },
-    "You can reopen the link, switch to manual setup, or open Shortcuts." : {
 
     },
     "You're All Caught Up" : {
@@ -2271,9 +2268,6 @@
 
     },
     "אפשר לנסות לשתף שוב." : {
-
-    },
-    "אפשר לפתוח את הקישור מחדש, לעבור להגדרה ידנית, או לפתוח את קיצורים." : {
 
     },
     "אפשר לשנות את היעד אחר כך" : {
@@ -2439,10 +2433,16 @@
     "הוסף הוצאה שכבר ביצעת וראה איפה היא מופיעה בעיר." : {
 
     },
+    "הוסף קיצור מחדש" : {
+
+    },
     "הוספה" : {
 
     },
     "הוספה מהירה +" : {
+
+    },
+    "הוספת את קיצור SPENT?" : {
 
     },
     "הוספת הוצאה" : {
@@ -2574,9 +2574,6 @@
     "הפעלת את קיצור SPENT?" : {
 
     },
-    "הפעלתי" : {
-
-    },
     "הפקד" : {
 
     },
@@ -2616,13 +2613,13 @@
     "הצג פחות" : {
 
     },
+    "הצלחתי" : {
+
+    },
     "הקודם" : {
 
     },
-    "הקיצור נוסף?" : {
-
-    },
-    "הקיצור שהוספת אמור להופיע שם. פתח אותו והפעל אותו." : {
+    "הקליטה כבר עובדת" : {
 
     },
     "הקש להצגת פירוט הרובעים" : {
@@ -2725,9 +2722,6 @@
     "חיסכון ₪480" : {
 
     },
-    "חפש את SPENT בפעולות האוטומטיות" : {
-
-    },
     "חפש עסקה או קטגוריה..." : {
 
     },
@@ -2803,16 +2797,7 @@
     "לא הצלחנו לפענח את החשבונית" : {
 
     },
-    "לא הצלחת להוסיף את הקיצור?" : {
-
-    },
-    "לא הצלחתי להוסיף את הקיצור" : {
-
-    },
     "לא מוצא איך להוסיף את SPENT?" : {
-
-    },
-    "לא מצאתי את הקיצור" : {
 
     },
     "לא עובד?" : {
@@ -2852,6 +2837,9 @@
 
     },
     "מדיניות פרטיות" : {
+
+    },
+    "מדריך הגדרה ידנית" : {
 
     },
     "מדריך קליטה אוטומטית (Automatic Capture Guide):" : {
@@ -3005,6 +2993,9 @@
     "נסה שוב" : {
 
     },
+    "נפתח את אזור הפעולות האוטומטיות באפליקציית קיצורים, ושם רק מפעילים את הקיצור שהוספת." : {
+
+    },
     "נקלטה עסקה • יש לערוך ולהזין סכום" : {
 
     },
@@ -3036,6 +3027,9 @@
 
     },
     "סווג עסקאות" : {
+
+    },
+    "סטטוס קליטה" : {
 
     },
     "סטטוס:" : {
@@ -3086,6 +3080,9 @@
     "עיר לדוגמה, שני עולמות. סיבוב, זום ובחינת מבנים בתלת־ממד." : {
 
     },
+    "עכשיו מפעילים את קיצור SPENT" : {
+
+    },
     "עם המשך התיעוד נפתחת מדי פעם מתנה קטנה שמוסיפה חיים לעיר." : {
 
     },
@@ -3111,6 +3108,9 @@
 
     },
     "עסקאות שמחכות לסיווג" : {
+
+    },
+    "עסקה נקלטה בהצלחה ב-SPENT. הכול מחובר ומוכן לשימוש." : {
 
     },
     "עקוב היום! ✨" : {
@@ -3161,13 +3161,7 @@
     "פתח את אפליקציית קיצורים" : {
 
     },
-    "פתח את קיצורים" : {
-
-    },
     "פתח פעולות אוטומטיות" : {
-
-    },
-    "פתח שוב פעולות אוטומטיות" : {
 
     },
     "פתח תלת-ממד ↗" : {

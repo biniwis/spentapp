@@ -33,7 +33,7 @@ final class SalvageTests: XCTestCase {
     func testANumberInTheShopNameIsNotTreatedAsAnAmount() {
         let out = TransactionIngest.salvage(amount: 0, amountText: nil, merchant: "Kokpit 67")
         XCTAssertNil(out.amount, "₪67 would be invented instead of the real ₪115")
-        XCTAssertEqual(out.merchant, "Kokpit")
+        XCTAssertEqual(out.merchant, "Kokpit 67")
     }
 
     func testTheSameShopWithARealAmountKeepsTheRealAmount() {
@@ -129,7 +129,7 @@ final class SingleFieldPayloadTests: XCTestCase {
 
     func testRealPayloadsFromTheLockScreen() {
         XCTAssertEqual(viaSingleField("Kokpit 67 ₪115.00").amount, 115.00)
-        XCTAssertEqual(viaSingleField("Kokpit 67 ₪115.00").merchant, "Kokpit")
+        XCTAssertEqual(viaSingleField("Kokpit 67 ₪115.00").merchant, "Kokpit 67")
         XCTAssertEqual(viaSingleField("AM:PM ₪9.90").amount, 9.90)
         XCTAssertEqual(viaSingleField("AM:PM ₪9.90").merchant, "AM:PM")
         XCTAssertEqual(viaSingleField("GMF* Toms And Ko Bam ₪22.00").amount, 22.00)

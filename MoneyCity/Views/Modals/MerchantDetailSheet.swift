@@ -308,9 +308,8 @@ public struct MerchantDetailSheet: View {
             tx.confidenceScore = 1.0
         }
         try? modelContext.save()
-        if rememberCategory {
-            DatabaseService.shared.rememberCorrection(merchant: merchantName, category: cat)
-        }
+        rememberCategory = true
+        DatabaseService.shared.rememberCorrection(merchant: merchantName, category: cat)
         Haptics.impact(.light)
     }
 }

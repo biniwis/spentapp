@@ -85,6 +85,8 @@ public struct MonthlyCity: Identifiable, Sendable {
     public var savingsTarget: Double
     /// How the park looks, 0 parched to 1 lush. A normally-run month sits near 0.78.
     /// This is the month's verdict, and it resets with the month.
+    /// Monthly spending volume relative to the budget/history baseline, independent of pace.
+    public var cityHallProgress: Double
     public var parkHealth: Double
     /// Day-to-day spending this month — everything except rent, bills, subscriptions and
     /// savings. This is what the garden is measured on.
@@ -112,6 +114,7 @@ public struct MonthlyCity: Identifiable, Sendable {
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
+        cityHallProgress: Double = 0,
         parkHealth: Double = CitySimulationEngine.healthyParkLevel,
         everydaySpent: Double = 0,
         everydayBaseline: Double = 0,
@@ -130,6 +133,7 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
+        self.cityHallProgress = cityHallProgress
         self.parkHealth = parkHealth
         self.everydaySpent = everydaySpent
         self.everydayBaseline = everydayBaseline
@@ -140,5 +144,41 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.tiles = tiles
         self.headlineStory = headlineStory
         self.habits = habits
+    }
+}
+
+/// Presentation choice only; both worlds consume the same financial simulation.
+public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
+    case urban, medieval
+    public var id: String { rawValue }
+    public var resourceName: String { self == .urban ? "diorama" : "diorama_medieval" }
+
+    public func title(isHebrew: Bool) -> String {
+        switch self {
+        case .urban: return isHebrew ? "עיר מודרנית" : "Modern city"
+        case .medieval: return isHebrew ? "עיר ימי הביניים" : "Medieval city"
+        }
+    }
+}
+
+/// Stores only visual configuration. Months before onboarding keep their original Urban map.
+enum CityMapSelection {
+    static let preferenceKey = "spent.city.mapSelection"
+
+    static func style(for date: Date, selection: String) -> CityMapStyle {
+        let parts = selection.split(separator: "|")
+        guard parts.count == 2, monthID(date) >= String(parts[0]),
+              let style = CityMapStyle(rawValue: String(parts[1])) else { return .urban }
+        return style
+    }
+
+    static func saveInitial(_ style: CityMapStyle, date: Date = Date(), defaults: UserDefaults = .standard) {
+        // The onboarding choice is the user's explicit map choice for this month.
+        defaults.set("\(monthID(date))|\(style.rawValue)", forKey: preferenceKey)
+    }
+
+    private static func monthID(_ date: Date) -> String {
+        let parts = Calendar(identifier: .gregorian).dateComponents([.year, .month], from: date)
+        return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
     }
 }

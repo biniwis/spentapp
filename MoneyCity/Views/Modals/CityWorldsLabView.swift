@@ -32,9 +32,17 @@ final class CityWorldPreviewSession: ObservableObject {
     }
 
     func switchWorld(to next: World) {
-        guard next != world, !isLoading else { return }
+        guard next != world else { return }
+        let wasLoading = isLoading
         isLoading = true
         error = nil
+        // If the current renderer has not finished yet, there is no camera state
+        // worth preserving. Reload the requested world immediately instead of
+        // leaving the segmented control disabled forever.
+        guard !wasLoading, webView != nil else {
+            reload(world: next)
+            return
+        }
         // Snapshot the actual interpolated camera, not only its destination.
         let capture = """
         (() => {
@@ -149,7 +157,6 @@ struct CityWorldsLabView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .disabled(session.isLoading)
                 .padding(.horizontal)
 
                 ZStack {

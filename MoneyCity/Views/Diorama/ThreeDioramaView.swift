@@ -42,7 +42,7 @@ public struct DistrictBuildingInfo: Identifiable, Sendable {
 /// Living 3D Diorama with 2-Level Cinematic Zoom Navigation (Whole City <-> District Deep Dive) and interactive spatial building inspection.
 public struct ThreeDioramaView: ViewRepresentable {
     #if DEBUG
-    // Only Design Lab supplies this session. Release builds always load Urban.
+    // Only Design Lab supplies this session. Production selects its world through mapStyle.
     var worldPreviewSession: CityWorldPreviewSession?
 
     func worldPreview(_ session: CityWorldPreviewSession) -> Self {
@@ -51,11 +51,13 @@ public struct ThreeDioramaView: ViewRepresentable {
         return view
     }
     #endif
+    public let mapStyle: CityMapStyle
     public let totalSpent: Double
     public let totalSavings: Double
     /// The amount that fills the savings park; 0 when the user has no baseline yet.
     public let savingsTarget: Double
     /// How the reserve looks this month, 0 parched to 1 lush. Resets with the month.
+    public let cityHallProgress: Double
     public let parkHealth: Double
     /// Bumped by the app every time the user asks for the city view back. The map resets its
     /// camera whenever this changes, which is the only way to reset a camera that is already
@@ -95,9 +97,11 @@ public struct ThreeDioramaView: ViewRepresentable {
     }
     
     public init(
+        mapStyle: CityMapStyle = .urban,
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
+        cityHallProgress: Double = 0,
         parkHealth: Double = 0.78,
         viewResetToken: Int = 0,
         isOverview: Bool = false,
@@ -121,9 +125,11 @@ public struct ThreeDioramaView: ViewRepresentable {
         onSlotTapped: ((String, String?) -> Void)? = nil,
         onCameraOffsetChanged: ((Bool) -> Void)? = nil
     ) {
+        self.mapStyle = mapStyle
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
+        self.cityHallProgress = cityHallProgress
         self.parkHealth = parkHealth
         self.viewResetToken = viewResetToken
         self.isOverview = isOverview
@@ -225,6 +231,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         /// What a full savings park is worth for this user. 0 when there is no baseline.
         public let savingsTarget: Double
         /// How the reserve looks this month, 0 parched to 1 lush.
+        public var cityHallProgress: Double = 0
         public let parkHealth: Double
         public let otherAmount: Double?
         public let museumAmount: Double?
@@ -279,6 +286,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             transport: transport,
             savings: savings,
             savingsTarget: savingsTarget,
+            cityHallProgress: cityHallProgress,
             parkHealth: parkHealth,
             otherAmount: otherSpend,
             museumAmount: museumSpend,
@@ -408,7 +416,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         let webView = DioramaWebView(frame: .zero, configuration: config)
         context.coordinator.observeLifecycle(of: webView)
         webView.navigationDelegate = context.coordinator
-        var resourceName = "diorama"
+        var resourceName = mapStyle.resourceName
         #if DEBUG
         if let session = worldPreviewSession {
             resourceName = session.world.resourceName
@@ -437,7 +445,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             worldPreviewSession?.fail("Missing bundled resource: \(resourceName).html")
             #endif
             #if SWIFT_PACKAGE
-            if let moduleURL = Bundle.module.url(forResource: "diorama", withExtension: "html"),
+            if let moduleURL = Bundle.module.url(forResource: resourceName, withExtension: "html"),
                let htmlData = try? Data(contentsOf: moduleURL) {
                 webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: moduleURL.deletingLastPathComponent())
             }
@@ -656,7 +664,9 @@ public struct ThreeDioramaView: ViewRepresentable {
                 #endif
                 lastSentPayload = nil
                 MoneyCityLog.error("Diorama contract/rendering failure: \(message.body)")
-                assertionFailure("Diorama contract/rendering failure: \(message.body)")
+                // A renderer/content error must not terminate the app in DEBUG. Keep the
+                // WebView alive so the concrete JavaScript error can be inspected and the
+                // city can recover on the next update.
             } else if message.name == "dioramaReady" {
                 if let wv = message.webView {
                     lastSentPayload = nil

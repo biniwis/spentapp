@@ -11,6 +11,7 @@ public struct MainCityView: View {
     @Query(sort: \CityEnrichment.unlockedDate, order: .reverse) private var allEnrichments: [CityEnrichment]
     
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
+    @AppStorage(CityMapSelection.preferenceKey) private var mapSelection = ""
     @AppStorage("userName") private var userName = ""
 
     @Query private var categoryBudgets: [CategoryBudget]
@@ -307,9 +308,11 @@ public struct MainCityView: View {
             ZStack(alignment: .top) {
                 // 1. 3D Living Diorama Island (Edge-to-edge full canvas)
                 DioramaReadyWrapper(
+                    mapStyle: CityMapSelection.style(for: currentDate, selection: mapSelection),
                     totalSpent: currentCity.totalSpent,
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
+                    cityHallProgress: currentCity.cityHallProgress,
                     parkHealth: currentCity.parkHealth,
                     viewResetToken: cityViewResetToken,
                     isOverview: isSnapshotMode,
@@ -1103,7 +1106,14 @@ public struct MainCityView: View {
         // were authored as design placeholders and nothing ever updates them, so tapping the
         // coffee shop always claimed "12 עסקאות • ‎+20%" whatever the user actually spent.
         // Everything shown here is recomputed from the user's own transactions.
-        let real = liveBuildingInfo(for: building)
+        let real = building.id == "city_hall" ? DistrictBuildingInfo(
+            id: "city_hall", districtId: "civic",
+            name: l10n.language == .hebrew ? "עיריית SPENT" : "SPENT City Hall",
+            amount: currentCity.totalSpent, visitCount: 0,
+            trendText: l10n.language == .hebrew
+                ? "\(Int((currentCity.cityHallProgress * 100).rounded()))% מהחודש נבנה · עמלות ובנקים כלולים"
+                : "\(Int((currentCity.cityHallProgress * 100).rounded()))% of the month built · banking included"
+        ) : liveBuildingInfo(for: building)
         // Selecting a different building only changed the numbers inside a card that was
         // already on screen, so SwiftUI reused the same view: no transition ran, nothing moved,
         // and the tap felt like it had missed. The `.id` on the card below makes a swap a real

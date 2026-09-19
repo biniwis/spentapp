@@ -4,9 +4,11 @@ import SwiftUI
 /// Provides a shimmer skeleton while the WebGL scene is initializing.
 public struct DioramaReadyWrapper: View {
     // Pass-through all ThreeDioramaView params
+    public let mapStyle: CityMapStyle
     public let totalSpent: Double
     public let totalSavings: Double
     public let savingsTarget: Double
+    public let cityHallProgress: Double
     public let parkHealth: Double
     /// Bumped whenever the user asks for the default city view back.
     public let viewResetToken: Int
@@ -37,9 +39,11 @@ public struct DioramaReadyWrapper: View {
     @State private var hasStarted = false
 
     public init(
+        mapStyle: CityMapStyle = .urban,
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
+        cityHallProgress: Double = 0,
         parkHealth: Double = 0.78,
         viewResetToken: Int = 0,
         isOverview: Bool = false,
@@ -63,9 +67,11 @@ public struct DioramaReadyWrapper: View {
         onSlotTapped: ((String, String?) -> Void)? = nil,
         onCameraOffsetChanged: ((Bool) -> Void)? = nil
     ) {
+        self.mapStyle = mapStyle
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
+        self.cityHallProgress = cityHallProgress
         self.parkHealth = parkHealth
         self.viewResetToken = viewResetToken
         self.isOverview = isOverview
@@ -96,9 +102,10 @@ public struct DioramaReadyWrapper: View {
             // Once started, keep the same WebView and only pause its renderer.
             if hasStarted || !isPaused {
             ThreeDioramaView(
-                totalSpent: totalSpent,
+                mapStyle: mapStyle,                totalSpent: totalSpent,
                 totalSavings: totalSavings,
                 savingsTarget: savingsTarget,
+                cityHallProgress: cityHallProgress,
                 parkHealth: parkHealth,
                 viewResetToken: viewResetToken,
                 isOverview: isOverview,
@@ -122,6 +129,7 @@ public struct DioramaReadyWrapper: View {
                 onSlotTapped: onSlotTapped,
                 onCameraOffsetChanged: onCameraOffsetChanged
             )
+            .id(mapStyle)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
                 guard !hasStarted else { return }

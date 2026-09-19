@@ -235,9 +235,9 @@
       shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
       shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
       housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 0,    lookY: 0.6, lookZ: -9.2 },
-      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 9.4,  lookY: 0.4, lookZ: -9.4 },
+      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 0,    lookY: 0.4, lookZ: 0 },
       transport:{ az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 9.2, lookY: 0.6, lookZ: 9.2 },
-      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: -0.4 }
+      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: 9.2 }
     };
 
     let currentMode = "city";
@@ -3034,13 +3034,9 @@
     addSidewalkBlock(0, 0, 8.6, 8.6);
     addKerb(0, 0, 8.6, 8.6);
 
-    const plazaInlay = mesh(new THREE.CylinderGeometry(2.75, 2.75, 0.03, 36), mat(0xEFE7D8, 0.9), 0, Y_WALK + 0.01, 1.3, false, true);
-    root.add(plazaInlay);
-    const plazaRim = mesh(new THREE.TorusGeometry(2.75, 0.06, 6, 44), M_WARM_STONE, 0, Y_WALK + 0.02, 1.3, false, false);
-    plazaRim.rotation.x = -Math.PI / 2; root.add(plazaRim);
-
     const fountainGroup = new THREE.Group();
-    fountainGroup.position.set(0, Y_WALK, 1.3);
+    fountainGroup.position.set(2.65, Y_WALK, -2.65);
+    fountainGroup.scale.setScalar(0.52);
     root.add(fountainGroup);
     fountainGroup.add(mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.22, 24), mat(0xE7E1D2, 0.55), 0, 0.11, 0));
     const fountRim = mesh(new THREE.TorusGeometry(1.27, 0.06, 6, 28), M_WARM_STONE, 0, 0.22, 0, false, false);
@@ -3058,62 +3054,51 @@
     fountainGroup.add(fRipple);
     animObjects.push({ type: "fountain_ripple", ring: fRipple, mat: fRippleMat });
 
-    const spentGroup = new THREE.Group();
-    spentGroup.position.set(0, Y_WALK, -1.9);
-    root.add(spentGroup);
-
-    spentGroup.add(mesh(roundedBox(3.8, 2.1, 2.7, 0.12), M_CREAM, 0, 1.05, 0));
-    spentGroup.add(mesh(roundedBox(4.3, 0.16, 3.2, 0.08), M_WARM_STONE, 0, 0.08, 0.10, false, true));
-    spentGroup.add(mesh(roundedBox(4.0, 0.12, 2.9, 0.06), M_WARM_STONE, 0, 0.20, 0.06, false, true));
-    for (let i = -2; i <= 2; i++) {
-      spentGroup.add(mesh(new THREE.CylinderGeometry(0.11, 0.12, 1.52, 12), M_WHITE, i * 0.55, 1.02, 1.58));
-      spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.10, 12), M_WHITE, i * 0.55, 0.31, 1.58, false, false));
-      spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.08, 12), M_WHITE, i * 0.55, 1.80, 1.58, false, false));
+    // Monthly volume landmark: deliberately non-selectable and separate from banking.
+    addSidewalkBlock(9.4, -9.4, 4.6, 4.3);
+    addKerb(9.4, -9.4, 4.6, 4.3);
+    const cityHall = new THREE.Group(); cityHall.name = "city_hall";
+    cityHall.position.set(9.4, Y_WALK, -9.4); root.add(cityHall);
+    const cityHallHit = hitProxy(3.2, 3.0, 2.8);
+    cityHallHit.position.set(0, 1.5, 0);
+    cityHallHit.userData = { id: "city_hall", district: "civic", name: "עיריית SPENT", amount: 0, trend: "נפח ההוצאות החודשי", shell: cityHall };
+    cityHall.add(cityHallHit);
+    interactiveBuildings.push(cityHallHit);
+    buildingRoots.city_hall = cityHall;
+    const hallStages = [];
+    const hallGlass = glassMaterial(0x9FC7F0); registerGlass(hallGlass);
+    for (let stage = 0; stage < 4; stage++) {
+      const g = new THREE.Group(); cityHall.add(g); hallStages.push(g);
+      const w = stage === 0 ? 1.85 : 2.9, d = stage === 0 ? 1.7 : 2.35;
+      const h = stage < 2 ? 1.35 : 2.65;
+      g.add(mesh(roundedBox(w, h, d, 0.09), M_CREAM, 0, h / 2, 0));
+      g.add(mesh(roundedBox(w + 0.18, 0.14, d + 0.18, 0.06), M_WARM_STONE, 0, 0.07, 0));
+      g.add(mesh(roundedBox(w + 0.15, 0.16, d + 0.15, 0.05), mat(0x397E70, 0.8), 0, h + 0.08, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.46, 0.8, 0.05), hallGlass, 0, 0.47, d / 2 + 0.03));
+      const sign = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#344B48", "#FFF4DB", 32) });
+      g.add(mesh(new THREE.BoxGeometry(0.95, 0.22, 0.05), sign, 0, 1.09, d / 2 + 0.04));
+      [-1, 1].forEach(function (side) {
+        g.add(mesh(new THREE.BoxGeometry(0.36, 0.52, 0.04), hallGlass, side * w * 0.33, 0.72, d / 2 + 0.03));
+        if (stage >= 1) g.add(mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.05, 8), M_WHITE, side * 0.62, 0.65, d / 2 + 0.19));
+        if (stage >= 2) g.add(mesh(new THREE.BoxGeometry(0.48, 0.65, 0.04), hallGlass, side * 0.74, 2.01, d / 2 + 0.03));
+      });
+      if (stage >= 1) g.add(mesh(roundedBox(1.5, 0.12, 0.55, 0.04), M_WARM_STONE, 0, 1.23, d / 2 + 0.15));
+      if (stage === 3) {
+        g.add(mesh(roundedBox(0.88, 1.22, 0.88, 0.06), M_CREAM, 0, 3.34, -0.18));
+        g.add(mesh(roundedBox(1.03, 0.17, 1.03, 0.05), M_WARM_STONE, 0, 4.03, -0.18));
+        g.add(mesh(new THREE.PlaneGeometry(0.60, 0.60), new THREE.MeshBasicMaterial({ map: clockTex() }), 0, 3.43, 0.27));
+      }
+      packRigidModel(g);
     }
-    spentGroup.add(mesh(new THREE.BoxGeometry(2.24, 0.20, 0.50), M_WHITE, 0, 1.88, 1.58));
-    (function () {
-      const sh = new THREE.Shape();
-      sh.moveTo(-1.16, 0); sh.lineTo(1.16, 0); sh.lineTo(0, 0.54); sh.closePath();
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.30, bevelEnabled: false });
-      geo.translate(0, 0, -0.15);
-      spentGroup.add(mesh(geo, M_CREAM, 0, 1.98, 1.58));
-    })();
-    const spentSignMat = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#1E293B", "#F59E0B", 38) });
-    spentGroup.add(mesh(new THREE.BoxGeometry(1.5, 0.30, 0.05), spentSignMat, 0, 1.62, 1.36, false, false));
-    const civicGlass = glassMaterial(0x9FC7F0); registerGlass(civicGlass);
-    [-1.35, 1.35].forEach(function (x) {
-      spentGroup.add(mesh(new THREE.BoxGeometry(0.52, 0.78, 0.05), civicGlass, x, 1.05, 1.36, false, false));
-      spentGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.82, 0.06), M_MULLION, x, 1.05, 1.38, false, false));
-    });
-    roofDeck(spentGroup, 3.8, 2.7, 2.1, { ac: true, vent: true, tank: false });
-
-    const tower = mesh(roundedBox(1.35, 2.3, 1.35, 0.10), M_CREAM, 0, 3.25, -0.10);
-    spentGroup.add(tower);
-    spentGroup.add(mesh(roundedBox(1.55, 0.14, 1.55, 0.06), M_WARM_STONE, 0, 4.45, -0.10, false, false));
-    const clockM = new THREE.MeshBasicMaterial({ map: clockTex() });
-    spentGroup.add(mesh(new THREE.PlaneGeometry(0.72, 0.72), clockM, 0, 3.85, 0.59, false, false));
-    const clockBack = mesh(new THREE.PlaneGeometry(0.72, 0.72), clockM, 0, 3.85, -0.79, false, false);
-    clockBack.rotation.y = Math.PI; spentGroup.add(clockBack);
-    const spire = mesh(new THREE.ConeGeometry(1.05, 1.7, 4), mat(0x2FA88A, 0.55), 0, 5.35, -0.10);
-    spire.rotation.y = Math.PI / 4;
-    spentGroup.add(spire);
-    spentGroup.add(mesh(new THREE.SphereGeometry(0.13, 10, 10), M_GOLD, 0, 6.28, -0.10));
-
-    packRigidModel(spentGroup);
-    const spentProxy = hitProxy(4.2, 4.4, 3.2);
-    spentProxy.position.z = 0.1;
-    spentProxy.userData = { id: "finance_bank", district: "civic", name: "עיריית SPENT", amount: 0, trend: "מרכז העיר והממשל", shell: spentGroup };
-    spentGroup.add(spentProxy);
-    interactiveBuildings.push(spentProxy);
-    buildingRoots["finance_bank"] = spentGroup;
+    function applyCityHallProgress(value) {
+      const progress = Number.isFinite(value) ? clamp(value, 0, 1) : 0;
+      const stage = progress < 0.15 ? 0 : progress < 0.40 ? 1 : progress < 0.75 ? 2 : 3;
+      hallStages.forEach(function (g, i) { g.visible = i === stage; });
+    }
+    applyCityHallProgress(0);
+    addBenchAt(10.7, -7.9, 0);
 
     // Plaza life: trees, benches, bins, a busker and pigeons
-    [[-3.2, 3.2], [3.2, 3.2], [-3.3, -0.4], [3.3, -0.4], [-3.2, -3.3], [3.2, -3.3]].forEach(function (p) {
-      const h = new THREE.Group(); h.position.set(p[0], Y_WALK, p[1]); root.add(h);
-      planterBox(h, 0, 0, "tree");
-    });
-    addBenchAt(-2.2, 3.1, 0.7);
-    addBenchAt(2.2, 3.1, -0.7);
     const ambientBench = addBenchAt(3.0, 1.0, -Math.PI / 2);
     (function () { const h = new THREE.Group(); h.position.set(1.9, Y_WALK, 3.8); root.add(h); trashBin(h, 0, 0); })();
 
@@ -3283,21 +3268,21 @@
 
     makeBuilding({
       id: "health_pharmacy", district: "civic", name: "בית מרקחת", trend: "תרופות, פארם ובריאות",
-      kind: "shop", x: -2.85, z: 9.2, w: 2.20, d: 2.10, maxTier: 3,
+      kind: "shop", x: -3.3, z: 9.2, w: 1.8, d: 2.10, maxTier: 3,
       body: 0xF5EBDD, roof: 0x5AA568, accent: 0x86C989, glass: 0xC5DFEC, roofStyle: "deck", vent: true,
       sign: { text: "PHARMA", bg: "#438B55", fg: "#FFFDF7", size: 24 },
       props: [{ type: "planter", x: -1.24, z: 1.38, kind: "shrub", from: 2 }]
     });
     makeBuilding({
       id: "museum_curiosities", district: "civic", name: "שונות", trend: "מתנות, תרומות ושונות",
-      kind: "shop", x: 0.0, z: 9.35, w: 2.10, d: 2.20, maxTier: 3,
+      kind: "shop", x: -1.1, z: 9.35, w: 1.8, d: 2.20, maxTier: 3,
       body: 0xE6D2B4, roof: 0x4A6077, accent: 0xA87550, glass: 0xF1DDB8, roofStyle: "pitch", chimney: true,
       sign: { text: "MISC", bg: "#496B92", fg: "#FFF0D6", size: 28 },
       props: [{ type: "aframe", x: 1.16, z: 1.38, rotY: -0.4, from: 2 }]
     });
     makeBuilding({
       id: "city_sorting_hub", minTier: 1, district: "civic", name: "עסקאות שמחכות לסיווג", trend: "הוצאות שעוד לא סווגו",
-      kind: "shop", x: 2.85, z: 9.1, w: 2.10, d: 2.00, maxTier: 2,
+      kind: "shop", x: 1.1, z: 9.1, w: 1.8, d: 2.00, maxTier: 2,
       body: 0xF0D2C6, roof: 0x4B6076, accent: 0xD46A5C, glass: 0xF0DDBF, roofStyle: "pitch",
       sign: { text: "POST", bg: "#B75B54", fg: "#FFFDF7", size: 30 },
       props: [{ type: "bollards", x: 0, z: 1.42, from: 2 }]
@@ -3412,14 +3397,14 @@
     // ────────────────────────────────────────────────────────────────
     // 🌿 10. NATURE RESERVE: LAKE, BRIDGE & WOODS (Hero Reference)
     // ────────────────────────────────────────────────────────────────
-    // x=9.1, not 8.2: at 8.2 the lake spilled across the eastern road corridor.
-    const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.4, Y_GROUND, -9.4); root.add(reserveGroup);
+    // Seven-unit garden within the existing central block; perimeter stays walkable.
+    const reserveGroup = new THREE.Group(); reserveGroup.position.set(0, Y_WALK, 0); root.add(reserveGroup);
 
     // Dedicated Reserve Meadow Ground Patch (distinct from the rest of the city)
     const M_PARK_MEADOW = mat(0x66B63E, 0.90);
-    const meadowGeo = new THREE.CylinderGeometry(4.2, 4.35, 0.05, 32);
-    meadowGeo.scale(0.95, 1, 0.90);
-    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, -0.15, Y_GRASS + 0.004, 0.1, false, true);
+    const meadowGeo = roundedBox(7.0, 0.05, 7.0, 0.65);
+
+    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, 0, Y_GRASS + 0.004, 0, false, true);
     reserveGroup.add(reserveMeadowMesh);
 
     // Sandy shore so the water reads as a basin in the ground, not a slab laid on the grass
@@ -3452,6 +3437,10 @@
     lakeRipple.position.set(-0.2, Y_GRASS + 0.01, 0);
     reserveGroup.add(lakeRipple);
     animObjects.push({ type: "lake_ripple", ring: lakeRipple, mat: lakeRippleMat });
+
+    // Low timber approaches meet both shores; the arch rises above this continuous path.
+    const bridgeApproach = mesh(new THREE.BoxGeometry(0.78, 0.08, 4.6), M_WOOD, -0.2, Y_GRASS + 0.08, 0);
+    bridgeApproach.rotation.y = Math.PI / 5; reserveGroup.add(bridgeApproach);
 
     // Arched Wooden Footbridge
     const bridge = new THREE.Group(); bridge.position.set(-0.2, Y_GRASS + 0.10, 0); bridge.rotation.y = Math.PI / 5; reserveGroup.add(bridge);
@@ -3498,20 +3487,20 @@
 // Non-interactive authored spots, with alternatives that preserve old decorations.
 const COMPANION_LOCATIONS = [
   { id: "pet_cat_rooftop", x: -11.85, z: 2.6, y: Y_WALK, fallback: [-11.85, 3.85] },
-  { id: "pet_golden_dog", x: 12.15, z: -9.4, y: Y_GRASS, fallback: [12.1, -11.2] },
-  { id: "resident_artist", x: -2.55, z: 1.0, y: Y_WALK, fallback: [-11.85, 1.3] },
+  { id: "pet_golden_dog", x: 2.75, z: 0, y: Y_WALK, fallback: [2.9, 1.8] },
+  { id: "resident_artist", x: -3.0, z: 1.4, y: Y_WALK, fallback: [-11.85, 1.3] },
   { id: "resident_skater", x: -11.85, z: -1.3, y: Y_WALK },
   { id: "resident_musician", x: 11.85, z: -1.65, y: Y_WALK },
   { id: "resident_balloon", x: 11.85, z: 2.6, y: Y_WALK }
 ];
 const SLOT_DEFS = [
-  { id: "slot_tree_sakura", x: 7.4, z: -12.2, y: Y_GRASS, district: "savings" },
-  { id: "slot_pet_golden_dog", x: 12.15, z: -9.4, y: Y_GRASS, district: "savings" },
-  { id: "slot_repair_bench", x: 7.6, z: -7.25, y: Y_GRASS, district: "savings" },
-  { id: "slot_park_bridge", x: 9.2, z: -9.4, y: Y_GRASS, district: "savings", rot: Math.PI / 5, scale: 1.7, radius: 1.1 },
-  { id: "slot_fountain_marble", x: 0, z: 1.3, y: Y_WALK, district: "city", scale: 2.2, radius: 1.35 },
+  { id: "slot_tree_sakura", x: -2.0, z: -2.8, y: Y_WALK, district: "savings" },
+  { id: "slot_pet_golden_dog", x: 2.75, z: 0, y: Y_WALK, district: "savings" },
+  { id: "slot_repair_bench", x: -1.8, z: 2.15, y: Y_WALK, district: "savings" },
+  { id: "slot_park_bridge", x: -0.2, z: 0, y: Y_WALK + Y_GRASS, district: "savings", rot: Math.PI / 5, scale: 1.7, radius: 1.1 },
+  { id: "slot_fountain_marble", x: 2.65, z: -2.65, y: Y_WALK, district: "city", scale: 1.14, radius: 0.71 },
   { id: "slot_cafe_stand", x: 11.85, z: 0, y: Y_WALK, district: "food" },
-  { id: "slot_resident_artist", x: -2.55, z: 1.0, y: Y_WALK, district: "city" },
+  { id: "slot_resident_artist", x: -3.0, z: 1.4, y: Y_WALK, district: "city" },
   { id: "slot_repair_lamp", x: 11.85, z: -3.3, y: Y_WALK, district: "food" },
   { id: "slot_pet_cat_rooftop", x: -11.85, z: 2.6, y: Y_WALK, district: "shopping" },
   { id: "slot_bike_station", x: -11.85, z: -2.6, y: Y_WALK, district: "shopping" },
@@ -3693,14 +3682,14 @@ function normalizedSlotPlacements(input) {
     // The reserve's own stand is the identity of the place, so it holds the lowest ranks and
     // remains in every seasonal state.
     addPine(-2.8, -2.4, 1.2, null, 0.00);
-    addPine( 2.6, -2.4, 1.1, null, 0.00);
+    addPine( 1.6, -2.6, 0.8, null, 0.00);
     addPine( 2.8,  2.2, 1.0, null, 0.10);
     addDecid(-2.8, 2.4, 1.0, null, 0.00);
     addDecid( 0.4, 2.6, 0.9, null, 0.18);
     addPine(-1.4, -3.0, 0.9, null, 0.34);
     addDecid( 2.0,  3.1, 0.8, null, 0.46);
     addPine( 0.9, -3.2, 0.8, null, 0.62);
-    addDecid(-3.4, -0.6, 0.9, null, 0.80);
+    addDecid(-2.9, -0.6, 0.7, null, 0.80);
 
     // ────────────────────────────────────────────────────────────────
     // 🌳 10b. CITY GREENERY, LAMPS & BENCHES
@@ -3723,7 +3712,7 @@ function normalizedSlotPlacements(input) {
         if (x > b.x0 - 0.9 && x < b.x1 + 0.9 && z > b.z0 - 0.9 && z < b.z1 + 0.9) return false;
       }
       // The nature reserve plants itself
-      if (Math.hypot(x - 9.4, z + 9.4) < 4.2) return false;
+      if (Math.hypot(x, z) < 4.2) return false;
       return true;
     }
 
@@ -3944,10 +3933,10 @@ function normalizedSlotPlacements(input) {
           g.add(mesh(new THREE.SphereGeometry(0.012 * s, 4, 4), stemM, mx + d[0], 0.12 * s, mz + d[1], false, false));
         });
       });
-      root.add(g);
+      reserveGroup.add(g);
     }
-    createMushroomCluster(10.2, -10.8);
-    createMushroomCluster( 8.4, -11.6);
+    createMushroomCluster(0.8, -2.4);
+    createMushroomCluster(-1.0, -2.2);
 
     // 10. Picnic Spot in Nature Reserve
     function createPicnicSpot(x, z, ry) {
@@ -3965,9 +3954,9 @@ function normalizedSlotPlacements(input) {
       g.add(basket);
       const melon = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.025, 10, 1, false, 0, Math.PI), mat(0xEF4444, 0.6), 0.14, 0.42, -0.04);
       melon.rotation.x = Math.PI / 2; g.add(melon);
-      root.add(g);
+      reserveGroup.add(g);
     }
-    createPicnicSpot(11.2, -7.6, 0.35);
+    createPicnicSpot(1.4, 2.6, 0.35);
 
     // 11. High-Detail Park Squirrel Sitting on the Bench
     function createParkSquirrel(x, y, z, ry) {
@@ -3992,7 +3981,7 @@ function normalizedSlotPlacements(input) {
     createParkSquirrel(-6.4, Y_GRASS + 0.26, 10.9, 0.2);
 
     // 12. Animated Fluttering Butterflies
-    function createButterfly(colorHex, orbitRadius, cx, cz, cy) {
+    function createButterfly(colorHex, orbitRadius, cx, cz, cy, parent) {
       const g = new THREE.Group(); g.position.set(cx, cy, cz);
       const wingMat = new THREE.MeshStandardMaterial({
         color: colorHex,
@@ -4005,7 +3994,7 @@ function normalizedSlotPlacements(input) {
       wingL.rotation.y = 0.3; g.add(wingL);
       const wingR = mesh(new THREE.CircleGeometry(0.045, 6), wingMat, 0.04, 0, 0);
       wingR.rotation.y = -0.3; g.add(wingR);
-      root.add(g);
+      (parent || root).add(g);
       animObjects.push({
         type: "butterfly_orbit",
         ref: g,
@@ -4020,8 +4009,8 @@ function normalizedSlotPlacements(input) {
       });
     }
     createButterfly(0x38BDF8, 1.3,  1.8,   0.8, Y_WALK + 0.8);
-    createButterfly(0xF472B6, 1.5,  8.2,  -8.0, Y_GRASS + 0.9);
-    createButterfly(0xFACC15, 1.2, 10.5,  -6.5, Y_GRASS + 1.0);
+    createButterfly(0xF472B6, 0.7, -1.2, 1.4, Y_GRASS + 0.9, reserveGroup);
+    createButterfly(0xFACC15, 0.7, 1.1, 2.5, Y_GRASS + 1.0, reserveGroup);
     createButterfly(0x4ADE80, 1.3, -3.2,   1.8, Y_WALK + 0.8);
 
     // 13. Graceful Birds Circling in the Sky
@@ -4264,90 +4253,40 @@ function normalizedSlotPlacements(input) {
       return g;
     }
 
-    function tagLeisureCitizen(figure, priority, role) {
-      const c = walkingCitizens.find(function (w) { return w.obj === figure; });
-      if (c) {
-        c.populationRole = "leisure";
-        c.leisurePriority = priority;
-        c.leisureId = c.appearanceKey;
-        c.mode = role || "walking";
-      }
-      return figure;
-    }
-
-    // Citizens walking lively around plazas, crosswalks, nature reserve and shops (Leisure Pool Walkers):
-    // 1. Central Plaza & Fountain stroller
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: -1.9, z: 0.8},
-      {x: -1.9, z: 1.7},
-      {x: -1.4, z: 2.3},
-      {x: -0.7, z: 2.8},
-      {x:  0.0, z: 2.9},
-      {x:  0.7, z: 2.8},
-      {x:  1.4, z: 2.3},
-      {x:  1.9, z: 1.7},
-      {x:  1.9, z: 0.8},
-      {x:  2.4, z: 1.4},
-      {x:  2.3, z: 2.5},
-      {x:  1.2, z: 3.4},
-      {x:  0.0, z: 3.6},
-      {x: -1.2, z: 3.4},
-      {x: -2.4, z: 2.5},
-      {x: -2.4, z: 1.4}
-    ], ["איזה כיף להסתובב ליד המזרקה ⛲", "העיר הזו נראית מעולה! 🏙️"], ["Lovely stroll around the fountain ⛲", "This city looks amazing! 🏙️"], false, 0.35, 'city:plaza:stroller'), 1, "walking");
+    // Citizens walking lively around plazas, crosswalks, nature reserve and shops:
+    // 1. Park stroller follows the dry southern shore.
+    addCitizen(null, null, null, [
+      {x:-2.8,z:1.8}, {x:-2.4,z:2.6}, {x:0,z:3.2}, {x:2.4,z:2.6}, {x:2.8,z:1.8}
+    ], ["טיול נעים בפארק 🌿"], ["A lovely stroll through the park 🌿"], false, 0.35, 'city:plaza:stroller');
 
     // 2. Crosswalk Pedestrian crossing the street
-    tagLeisureCitizen(addCitizen(null, null, null, [
+    addCitizen(null, null, null, [
       {x: -ROAD_AT, z: -3.2}, {x: -ROAD_AT, z: -1.0}, {x: -ROAD_AT, z: 1.0}, {x: -ROAD_AT, z: -3.2}
-    ], ["חוצה בזהירות במעבר חצייה 🚶", "העיר תוססת היום! ✨"], ["Crossing at the zebra walk 🚶", "Lively city today! ✨"], false, 0.38, 'city:crosswalk:ped'), 1, "walking");
+    ], ["חוצה בזהירות במעבר חצייה 🚶", "העיר תוססת היום! ✨"], ["Crossing at the zebra walk 🚶", "Lively city today! ✨"], false, 0.38, 'city:crosswalk:ped');
 
     // 3. Nature Reserve Bridge & Trail Walker
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: 8.6, z: -9.8}, {x: 9.3, z: -9.4}, {x: 10.0, z: -9.0}, {x: 9.3, z: -9.4}
-    ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30, 'city:park:trail'), 1, "walking");
+    addCitizen(null, null, null, [
+      {x:-1.552,z:-1.861}, {x:-0.847,z:-0.890}, {x:-0.2,z:0}, {x:0.447,z:0.890}, {x:1.152,z:1.861}, {x:2.6,z:2.1}, {x:2.9,z:0}, {x:2.4,z:-2.1}, {x:0,z:-2.3}
+    ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30, 'city:park:trail');
 
     // 4. Active Jogger doing laps with athletic stride
-    tagLeisureCitizen(addCitizen(null, null, null, [
+    addCitizen(null, null, null, [
       {x: -3.6, z: -3.6}, {x: 3.6, z: -3.6}, {x: 3.6, z: 3.6}, {x: -3.6, z: 3.6}
-    ], ["ריצת בוקר מסביב למרכז 🏃‍♂️", "כושר גופני וכושר פיננסי 💪"], ["Morning 5k jog 🏃‍♂️", "Fit body, fit finances 💪"], false, 0.65, 'city:jogger'), 1, "walking");
+    ], ["ריצת בוקר מסביב למרכז 🏃‍♂️", "כושר גופני וכושר פיננסי 💪"], ["Morning 5k jog 🏃‍♂️", "Fit body, fit finances 💪"], false, 0.65, 'city:jogger');
 
     // 5. Dog Walker near park
-    tagLeisureCitizen(addCitizen(null, null, null, [
+    addCitizen(null, null, null, [
       {x: -3.2, z: -7.4}, {x: 3.2, z: -7.4}, {x: 3.2, z: -11.0}, {x: -3.2, z: -11.0}
-    ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34, 'city:dogwalk'), 2, "dog");
+    ], ["טיול עם הכלב בפארק 🐕", "השכונה שקטה ונעימה 🌳"], ["Walking the dog in the park 🐕", "Peaceful neighbourhood 🌳"], true, 0.34, 'city:dogwalk');
 
-    // 6-7. Two park neighbours use the same actor pool and authored court-side paths.
+    // ────────────────────────────────────────────────────────────────
+    // Two park neighbours use the same actor pool and authored court-side paths.
     ['city:park:nbr:0', 'city:park:nbr:1'].forEach(function (aKey, i) {
-      tagLeisureCitizen(addCitizen(null, null, null, [
+      addCitizen(null, null, null, [
         {x:-10.0+i*0.7,z:9.6}, {x:-9.5+i*0.7,z:9.6},
         {x:-9.5+i*0.7,z:9.9}, {x:-10.0+i*0.7,z:9.9}
-      ], [], [], false, 0.24, aKey), i === 0 ? 2 : 3, "walking");
+      ], [], [], false, 0.24, aKey);
     });
-
-    // 8. Nature Reserve Lake & Shore Walker
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: 10.8, z: -8.0}, {x: 11.2, z: -9.5}, {x: 10.5, z: -11.0}, {x: 9.0, z: -11.2}, {x: 8.5, z: -10.0}, {x: 10.8, z: -8.0}
-    ], ["טיול מרגיע סביב האגם 🦆", "הטבע בעיר פשוט יפה 🌿"], ["Calm stroll by the lake 🦆", "Nature is lovely today 🌿"], false, 0.28, 'city:reserve:lake'), 2, "walking");
-
-    // 9. Basketball Court Shooter
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: -9.2, z: 9.4}, {x: -8.7, z: 9.0}, {x: -9.2, z: 8.4}, {x: -9.7, z: 9.0}, {x: -9.2, z: 9.4}
-    ], ["אימון קליעות לסל 🏀", "רק רשת! ✨"], ["Shooting some hoops 🏀", "Nothing but net! ✨"], false, 0.32, 'city:court:shooter'), 1, "court");
-
-    // 10. South Park to Housing Promenade Walker
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: -6.5, z: 7.5}, {x: -4.5, z: 7.5}, {x: -3.0, z: 6.0}, {x: -4.5, z: 7.5}, {x: -6.5, z: 7.5}
-    ], ["שכונה נעימה להליכה 🌳", "הולך ברגל ושומר על הסביבה 🚶"], ["Pleasant walk in the neighborhood 🌳", "Walking everywhere 🚶"], false, 0.30, 'city:park:promenade'), 3, "walking");
-
-    // 11. Plaza Outer Promenade Stroller
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: 2.0, z: -2.5}, {x: 3.5, z: 0.0}, {x: 2.5, z: 2.5}, {x: 1.0, z: 1.0}, {x: 2.0, z: -2.5}
-    ], ["מסתובב בנחת בעיר 🏙️", "שקט ורוגע במרכז ✨"], ["Relaxed city stroll 🏙️", "Peaceful vibes downtown ✨"], false, 0.32, 'city:plaza:outer'), 4, "walking");
-
-    // 12. Park Grove Wanderer
-    tagLeisureCitizen(addCitizen(null, null, null, [
-      {x: -11.0, z: 10.5}, {x: -11.5, z: 11.8}, {x: -10.2, z: 12.2}, {x: -9.0, z: 11.8}, {x: -11.0, z: 10.5}
-    ], ["אוהב את השקט בין העצים 🍃", "פינה שקטה לקרוא ספר 📖"], ["Love the quiet under the trees 🍃", "Great spot to read a book 📖"], false, 0.26, 'city:park:wanderer'), 4, "walking");
 
     // Derived frontages are not rewards or a second financial ledger.
     // Inlined into the scene closure by build_diorama.js. No extra network or bundle resource.
@@ -4595,7 +4534,6 @@ function applyCityLife(data) {
   });
   venueActors.forEach(function (actor) { actor.obj.visible = venueActivity(actor.venue) >= actor.threshold; });
   applyVenueCrowds();
-  if (typeof applyLeisurePopulation === "function") applyLeisurePopulation();
   // Smoke belongs to the coffee anchor, not an arbitrary always-on point in space.
   coffeeSmoke.visible = venueActivity("food_coffee") > 0.12 && cityBuildings.food_coffee.tier > 1;
   coffeeSmoke.position.y = Y_WALK + FLOOR_H * Math.max(1, cityBuildings.food_coffee.tier - 1) + 0.72;
@@ -4921,174 +4859,6 @@ function applyVenueCrowds() {
   });
 }
 
-// ================================================================
-// 🏙️ LEISURE POPULATION CONTROLLER
-// Manages and extends the city's baseline population.
-// Guarantees the city is alive from the start (~30 unique visible leisure
-// residents when commercial activity is low, gracefully tapering to 9 core
-// residents at peak commercial activity).
-// Avoids double counting, preserves stable IDs without reshuffling,
-// respects authored seat heights, and introduces no avoidable per-frame allocations.
-// ================================================================
-
-const LEISURE_MAX = 30;
-const LEISURE_MIN = 9;
-const COMMERCIAL_WEIGHTED_PEAK = CROWD_LIMITS.walkers + CROWD_LIMITS.waiting * 0.55; // 24 + 48*0.55 = 50.4
-
-const LEISURE_ANCHORS = {
-  freePark: { x: -9.2, y: Y_GRASS, z: 8.8 },
-  basketballCourt: { x: -9.2, y: Y_GRASS, z: 8.8 },
-  picnicTable: { x: -9.6, y: Y_GRASS, z: 11.4, rot: 0.4, seatHeight: 0.29 },
-  parkBench1: { x: -6.4, y: Y_GRASS, z: 10.9, rot: -0.5, seatHeight: 0.33 },
-  parkBench2: { x: -11.9, y: Y_GRASS, z: 7.6, rot: 1.4, seatHeight: 0.33 },
-  fountain: { x: 0, y: Y_WALK, z: 1.3, seatHeight: 0.22 },
-  plazaBenchWest: { x: -2.2, y: Y_WALK, z: 3.1, rot: 0.7, seatHeight: 0.33 },
-  plazaBenchAmbient: { x: 3.0, y: Y_WALK, z: 1.0, rot: -Math.PI / 2, seatHeight: 0.33 },
-  buskerPlaza: { x: -1.8, y: Y_WALK, z: 2.5 },
-  natureReserveBridge: { x: 9.2, y: Y_GRASS + 0.10, z: -9.4 },
-  natureReserveBench: { x: 7.6, y: Y_GRASS, z: -7.25, rot: 0.2, seatHeight: 0.33 },
-  natureReserveShore: { x: 10.6, y: Y_GRASS, z: -8.6 }
-};
-
-const LEISURE_IDLE_DEFS = [
-  // Free Park (picnic table, benches, court sidelines)
-  { id: 'picnic_bench_south', x: -9.78, y: Y_GRASS, z: 10.99, yaw: 0.4, seated: true, seatHeight: 0.29, seatedPose: 'leanForward', priority: 1 },
-  { id: 'picnic_bench_north', x: -9.42, y: Y_GRASS, z: 11.81, yaw: 0.4 + Math.PI, seated: true, seatHeight: 0.29, seatedPose: 'turnedSlightly', priority: 2 },
-  { id: 'picnic_friend_standing', x: -10.3, y: Y_GRASS, z: 11.4, yaw: 1.6, seated: false, mode: 'visitor', priority: 3 },
-  { id: 'park_bench1_a', x: -6.59, y: Y_GRASS, z: 10.79, yaw: -0.5, seated: true, seatHeight: 0.33, seatedPose: 'neutral', priority: 1 },
-  { id: 'park_bench1_b', x: -6.21, y: Y_GRASS, z: 11.01, yaw: -0.75, seated: true, seatHeight: 0.33, seatedPose: 'turnedSlightly', priority: 2 },
-  { id: 'park_bench2_courtside', x: -11.9, y: Y_GRASS, z: 7.6, yaw: 1.4, seated: true, seatHeight: 0.33, seatedPose: 'leanBack', priority: 2 },
-  { id: 'court_player_partner', x: -9.2, y: Y_GRASS + 0.03, z: 7.9, yaw: 0, seated: false, mode: 'visitor', priority: 2 },
-  { id: 'court_spectator', x: -7.7, y: Y_GRASS, z: 8.8, yaw: -Math.PI / 2, seated: false, mode: 'visitor', priority: 3 },
-
-  // Central Plaza & Fountain (fountain rim, benches, busker listeners)
-  { id: 'fountain_rim_east', x: 1.05, y: Y_WALK, z: 1.3, yaw: -Math.PI / 2, seated: true, seatHeight: 0.22, seatedPose: 'neutral', priority: 1 },
-  { id: 'fountain_rim_south', x: 0.0, y: Y_WALK, z: 2.35, yaw: 0, seated: true, seatHeight: 0.22, seatedPose: 'leanForward', priority: 2 },
-  { id: 'fountain_chat_standing', x: 0.75, y: Y_WALK, z: 2.1, yaw: 2.4, seated: false, mode: 'visitor', priority: 3 },
-  { id: 'plaza_bench_ambient', x: 3.0, y: Y_WALK, z: 1.0, yaw: -Math.PI / 2, seated: true, seatHeight: 0.33, seatedPose: 'turnedSlightly', priority: 2 },
-  { id: 'plaza_bench_west', x: -2.2, y: Y_WALK, z: 3.1, yaw: 0.7, seated: true, seatHeight: 0.33, seatedPose: 'leanBack', priority: 4 },
-  { id: 'busker_listener_1', x: -1.2, y: Y_WALK, z: 2.7, yaw: -2.2, seated: false, mode: 'visitor', priority: 2 },
-  { id: 'busker_listener_2', x: -1.4, y: Y_WALK, z: 3.1, yaw: -1.9, seated: false, mode: 'visitor', priority: 4 },
-
-  // Nature Reserve (wooden bridge, meadow bench, shore)
-  { id: 'reserve_bridge_lookout', x: 9.2, y: Y_GRASS + 0.25, z: -9.3, yaw: 2.2, seated: false, mode: 'visitor', priority: 1 },
-  { id: 'reserve_bench', x: 7.6, y: Y_GRASS, z: -7.25, yaw: 0.2, seated: true, seatHeight: 0.33, seatedPose: 'turnedSlightly', priority: 3 },
-  { id: 'reserve_meadow_rest', x: 10.6, y: Y_GRASS, z: -8.6, yaw: -1.8, seated: false, mode: 'visitor', priority: 4 }
-];
-
-const leisureIdles = [];
-let leisureResidentsRoster = null; // Deterministically sorted array of all 30 unique leisure residents
-
-function ensureLeisurePopulation() {
-  if (leisureResidentsRoster) return;
-
-  // 1. Instantiate the 18 static/seated figures once
-  LEISURE_IDLE_DEFS.forEach(function (def, i) {
-    const appearanceKey = 'city:idle:' + def.id;
-    const appearance = buildAppearanceProfile(appearanceKey);
-    const fig = makeFigure({
-      seated: !!def.seated,
-      seatHeight: def.seatHeight,
-      appearance: appearance
-    });
-    if (def.seated && def.seatedPose) {
-      applySeatedPoseVariant(fig, def.seatedPose);
-    }
-    fig.position.set(def.x, def.y, def.z);
-    fig.rotation.y = def.yaw;
-    fig.userData.lifeActor = true;
-    fig.userData.leisureId = def.id;
-    fig.userData.leisurePriority = def.priority;
-    fig.visible = false;
-    root.add(fig);
-
-    if (typeof registerCharacterIdle === "function") {
-      registerCharacterIdle({
-        mode: def.mode || (def.seated ? "seated" : "visitor"),
-        ref: fig,
-        subType: i,
-        phase: hashCitizenKey(appearanceKey) % 1000
-      });
-    }
-
-    leisureIdles.push({
-      id: def.id,
-      obj: fig,
-      priority: def.priority,
-      kind: 'idle',
-      def: def
-    });
-  });
-
-  // 2. Collect the 12 full leisure actors tagged in walkingCitizens
-  const actors = walkingCitizens.filter(function (c) {
-    return c.populationRole === "leisure";
-  }).map(function (c) {
-    return {
-      id: c.leisureId || c.appearanceKey,
-      obj: c.obj,
-      priority: c.leisurePriority || 1,
-      kind: 'actor',
-      c: c
-    };
-  });
-
-  // 3. Build unified deterministic roster (30 total unique people)
-  // Sorted strictly by priority ascending (1 first, then 2, 3, 4), tie-broken by ID.
-  leisureResidentsRoster = actors.concat(leisureIdles).sort(function (a, b) {
-    if (a.priority !== b.priority) return a.priority - b.priority;
-    return String(a.id).localeCompare(String(b.id));
-  });
-}
-
-function calculateCommercialLoad() {
-  let wCount = 0, qCount = 0;
-  if (Array.isArray(crowdSnapshot)) {
-    crowdSnapshot.forEach(function (e) {
-      wCount += (e.walkers || 0);
-      qCount += (e.waiting || 0);
-    });
-  }
-  const weighted = wCount + qCount * 0.55;
-  return Math.max(0, Math.min(1.0, weighted / COMMERCIAL_WEIGHTED_PEAK));
-}
-
-function calculateLeisurePopulation(commercialLoad) {
-  return Math.round(LEISURE_MIN + (LEISURE_MAX - LEISURE_MIN) * Math.pow(1.0 - Math.pow(commercialLoad, 1.4), 1.2));
-}
-
-function applyLeisureSceneWeights(commercialLoad) {
-  if (typeof CityLifeScenes === "undefined" || !Array.isArray(CityLifeScenes)) return;
-  const leisureFactor = Math.max(0.35, 1.0 - commercialLoad * 0.65);
-  const commercialFactor = 0.4 + commercialLoad * 1.1;
-
-  CityLifeScenes.forEach(function (scene) {
-    if (!scene.baseWeight) scene.baseWeight = scene.weight;
-    if (scene.id === 'building' || scene.id === 'taxi') {
-      scene.weight = scene.baseWeight * commercialFactor;
-    } else {
-      scene.weight = scene.baseWeight * leisureFactor;
-    }
-  });
-}
-
-function applyLeisurePopulation() {
-  ensureLeisurePopulation();
-  const load = calculateCommercialLoad();
-  const targetCount = Math.max(LEISURE_MIN, Math.min(LEISURE_MAX, calculateLeisurePopulation(load)));
-
-  for (let i = 0; i < leisureResidentsRoster.length; i++) {
-    const item = leisureResidentsRoster[i];
-    const shouldBeVisible = (i < targetCount);
-    item.obj.visible = shouldBeVisible;
-    if (item.c && item.c.dog) {
-      item.c.dog.visible = shouldBeVisible;
-    }
-  }
-
-  applyLeisureSceneWeights(load);
-}
-
     // CityAmbientEventSystem: authored paths, borrowed actors, and the existing render
 // clock. Population controls eligibility; transaction amounts never choose events.
 const cityEncounters = [];
@@ -5293,19 +5063,14 @@ function cityLifeRandom() {
   return s.seed / 4294967296;
 }
 const CityLifeScenes = [
-  { id: 'bench', anchor: 'bench', actors: 1, duration: 6, cooldown: 55, weight: 1, baseWeight: 1, hero: false, variants: ['rest', 'look'] },
-  { id: 'building', anchor: 'boutique', actors: 1, duration: 9, cooldown: 70, weight: 1, baseWeight: 1, hero: false, variants: ['visit'] },
-  { id: 'together', anchor: 'promenade', actors: 2, duration: 6, cooldown: 45, weight: 1.2, baseWeight: 1.2, hero: false, variants: ['greet', 'chat'] },
-  { id: 'taxi', anchor: 'taxi', actors: 1, duration: 90, cooldown: 180, weight: 0.5, baseWeight: 0.5, hero: true, variants: ['pickup'] },
-  { id: 'basketball', anchor: 'court', actors: 2, duration: 22, cooldown: 65, weight: 1.3, baseWeight: 1.3, hero: true, variants: ['solo', 'shootaround', 'pass'] },
-  { id: 'musician_listener', anchor: 'resident_musician', actors: 1, duration: 9, cooldown: 65, weight: 1, baseWeight: 1, hero: false, variants: ['listen', 'linger'] },
-  { id: 'artist_working', anchor: 'resident_artist', actors: 1, duration: 8, cooldown: 65, weight: 1, baseWeight: 1, hero: false, variants: ['watch'] },
-  { id: 'dog_walk', anchor: 'pet_golden_dog', actors: 1, duration: 12, cooldown: 65, weight: 1, baseWeight: 1, hero: false, variants: ['stroll'] },
-  { id: 'park_chat', anchor: 'park_chat', actors: 2, duration: 8, cooldown: 40, weight: 1.5, baseWeight: 1.5, hero: false, variants: ['chat_pair', 'hangout'] },
-  { id: 'walking_pair', anchor: 'park_trail', actors: 2, duration: 9, cooldown: 45, weight: 1.4, baseWeight: 1.4, hero: false, variants: ['stroll_together'] },
-  { id: 'watch_game', anchor: 'court_sideline', actors: 1, duration: 11, cooldown: 48, weight: 1.3, baseWeight: 1.3, hero: false, variants: ['cheer', 'observe'] },
-  { id: 'fountain_meet', anchor: 'fountain_meet', actors: 2, duration: 8, cooldown: 45, weight: 1.3, baseWeight: 1.3, hero: false, variants: ['greet', 'chat'] },
-  { id: 'musician_small_crowd', anchor: 'plaza_busker', actors: 2, duration: 11, cooldown: 55, weight: 1.2, baseWeight: 1.2, hero: false, variants: ['listen', 'groove'] }
+  { id: 'bench', anchor: 'bench', actors: 1, duration: 6, cooldown: 55, weight: 1, hero: false, variants: ['rest', 'look'] },
+  { id: 'building', anchor: 'boutique', actors: 1, duration: 9, cooldown: 70, weight: 1, hero: false, variants: ['visit'] },
+  { id: 'together', anchor: 'promenade', actors: 2, duration: 6, cooldown: 45, weight: 1.2, hero: false, variants: ['greet', 'chat'] },
+  { id: 'taxi', anchor: 'taxi', actors: 1, duration: 90, cooldown: 180, weight: 0.5, hero: true, variants: ['pickup'] },
+  { id: 'basketball', anchor: 'court', actors: 2, duration: 22, cooldown: 65, weight: 1.3, hero: true, variants: ['solo', 'shootaround', 'pass'] },
+  { id: 'musician_listener', anchor: 'resident_musician', actors: 1, duration: 9, cooldown: 65, weight: 1, hero: false, variants: ['listen', 'linger'] },
+  { id: 'artist_working', anchor: 'resident_artist', actors: 1, duration: 8, cooldown: 65, weight: 1, hero: false, variants: ['watch'] },
+  { id: 'dog_walk', anchor: 'pet_golden_dog', actors: 1, duration: 12, cooldown: 65, weight: 1, hero: false, variants: ['stroll'] }
 ];
 function sceneCandidate(scene, available) {
   const system = CityAmbientEventSystem;
@@ -5335,33 +5100,6 @@ function sceneCandidate(scene, available) {
     const variant = scene.variants[(system.variants[scene.id] || 0) % scene.variants.length];
     if (variant === 'pass' && people.length < 2) return null;
     return { people: variant === 'pass' ? people : people.slice(0,1), anchor: anchor };
-  } else if (scene.id === 'park_chat') {
-    anchor = { point: [-8.5, 9.8], kind: 'park_chat' };
-    people = available.filter(function (c) { return Math.hypot(c.obj.position.x - (-8.5), c.obj.position.z - 9.8) < 4.8; }).slice(0, 2);
-    if (people.length < 2) return null;
-    return { people: people, anchor: anchor };
-  } else if (scene.id === 'fountain_meet') {
-    anchor = { point: [0.2, 2.6], kind: 'fountain_meet' };
-    people = available.filter(function (c) { return Math.hypot(c.obj.position.x - 0.2, c.obj.position.z - 2.6) < 3.8; }).slice(0, 2);
-    if (people.length < 2) return null;
-    return { people: people, anchor: anchor };
-  } else if (scene.id === 'musician_small_crowd') {
-    anchor = { point: [-1.8, 2.5], kind: 'musician_small_crowd' };
-    people = available.filter(function (c) { return Math.hypot(c.obj.position.x - (-1.8), c.obj.position.z - 2.5) < 3.8; }).slice(0, 2);
-    if (people.length < 2) return null;
-    return { people: people, anchor: anchor };
-  } else if (scene.id === 'watch_game') {
-    anchor = { point: [-7.7, 8.8], kind: 'watch_game' };
-    people = available.filter(function (c) { return Math.hypot(c.obj.position.x - (-7.7), c.obj.position.z - 8.8) < 4.0; }).slice(0, 1);
-    if (!people.length) return null;
-    return { people: people, anchor: anchor };
-  } else if (scene.id === 'walking_pair') {
-    for (const a of available) for (const b of available) {
-      if (a === b || a.pIdx !== b.pIdx || !a.path || a.path !== b.path) continue;
-      const gap = a.obj.position.distanceTo(b.obj.position);
-      if (gap >= 0.35 && gap <= 1.2) return { people: [a, b], remaining: 3.0, anchor: { point: [a.obj.position.x, a.obj.position.z], kind: 'walking_pair' } };
-    }
-    return null;
   } else {
     const companion = companionInstances.get(scene.anchor);
     if (!companion || !companion.group.visible || companion.encounter) return null;
@@ -5392,44 +5130,13 @@ function chooseAmbientEvent() {
   s.bag=[];
 }
 function prepareLifeScene(e) {
-  if (e.kind === 'park_chat') {
-    const center = e.anchor.point;
-    const n = e.people.length;
-    e.routes = e.people.map(function (saved, i) {
-      const angle = i * (Math.PI * 2 / n) + 0.35;
-      const tx = center[0] + Math.cos(angle) * 0.45;
-      const tz = center[1] + Math.sin(angle) * 0.45;
-      return ambientRoute([saved.position.clone(), ambientPoint([tx, tz])]);
-    });
-    e.travel = Math.max.apply(null, e.routes.map(function (r) { return r.length; })) / 0.42;
-  } else if (e.kind === 'musician_small_crowd') {
-    const buskerPos = [-1.8, 2.5];
-    e.routes = e.people.map(function (saved, i) {
-      const angle = -1.2 + i * 0.65;
-      const tx = buskerPos[0] + Math.cos(angle) * 0.90;
-      const tz = buskerPos[1] + Math.sin(angle) * 0.90;
-      return ambientRoute([saved.position.clone(), ambientPoint([tx, tz])]);
-    });
-    e.travel = Math.max.apply(null, e.routes.map(function (r) { return r.length; })) / 0.42;
-  } else if (e.kind === 'fountain_meet') {
-    const center = e.anchor.point;
-    e.routes = e.people.map(function (saved, i) {
-      const offset = (i === 0 ? -0.40 : 0.40);
-      return ambientRoute([saved.position.clone(), ambientPoint([center[0] + offset, center[1]])]);
-    });
-    e.travel = Math.max.apply(null, e.routes.map(function (r) { return r.length; })) / 0.42;
-  } else if (e.kind === 'watch_game') {
-    e.routes = [ambientRoute([e.people[0].position.clone(), ambientPoint(e.anchor.point)])];
-    e.travel = e.routes[0].length / 0.42;
-  } else {
-    e.routes = e.people.map((saved,i)=>ambientRoute([saved.position.clone(),ambientPoint([e.anchor.point[0]+i*0.65,e.anchor.point[1]])]));
-    e.travel = Math.max(...e.routes.map(r=>r.length))/0.42;
-  }
-  if (e.anchor.companion) e.anchor.companion.encounter = e;
-  if (e.kind === 'basketball') {
-    e.ball = mesh(new THREE.SphereGeometry(0.075,10,8),M_WOOD,0,0,0); root.add(e.ball);
-    e.shot = new THREE.Vector3(courtGroup.position.x,courtGroup.position.y+1.10,courtGroup.position.z-0.93);
-    e.release = new THREE.Vector3(); e.landing = new THREE.Vector3();
+  e.routes=e.people.map((saved,i)=>ambientRoute([saved.position.clone(),ambientPoint([e.anchor.point[0]+i*0.65,e.anchor.point[1]])]));
+  e.travel=Math.max(...e.routes.map(r=>r.length))/0.42;
+  if(e.anchor.companion)e.anchor.companion.encounter=e;
+  if(e.kind==='basketball') {
+    e.ball=mesh(new THREE.SphereGeometry(0.075,10,8),M_WOOD,0,0,0); root.add(e.ball);
+    e.shot=new THREE.Vector3(courtGroup.position.x,courtGroup.position.y+1.10,courtGroup.position.z-0.93);
+    e.release=new THREE.Vector3(); e.landing=new THREE.Vector3();
   }
 }
 function stepLifeScene(e,dt) {
@@ -5442,33 +5149,8 @@ function stepLifeScene(e,dt) {
     } else {
       c.obj.position.copy(route.points[route.points.length-1]);
       ambientPose(c,e.age,false);
-      if (e.kind === 'park_chat') {
-        const center = e.anchor.point;
-        ambientTurn(c.obj, Math.atan2(center[0] - c.obj.position.x, center[1] - c.obj.position.z), dt);
-        const speakerIdx = Math.floor(t * 0.5) % e.people.length;
-        if (i === speakerIdx) {
-          if (c.armR) c.armR.rotation.x = -0.40 - Math.sin(t * 4.0) * 0.15;
-          if (c.torso) c.torso.rotation.y = Math.sin(t * 2.5) * 0.12;
-        } else {
-          if (c.armR) c.armR.rotation.x = -0.15;
-          if (c.torso) c.torso.rotation.y = 0;
-        }
-      } else if (e.kind === 'musician_small_crowd') {
-        ambientTurn(c.obj, Math.atan2(-1.8 - c.obj.position.x, 2.5 - c.obj.position.z), dt);
-        if (c.armR) c.armR.rotation.x = -0.15;
-        if (c.torso) c.torso.rotation.x = 0.04 + Math.sin(t * 3.75 + i) * 0.03;
-      } else if (e.kind === 'fountain_meet') {
-        const other = e.people[1 - i].c;
-        ambientTurn(c.obj, Math.atan2(other.obj.position.x - c.obj.position.x, other.obj.position.z - c.obj.position.z), dt);
-        if (c.armR) c.armR.rotation.x = -0.30 - Math.sin(t * 2.5 + i) * 0.12;
-      } else if (e.kind === 'watch_game') {
-        ambientTurn(c.obj, Math.atan2(-9.2 - c.obj.position.x, (8.8 - 0.93) - c.obj.position.z), dt);
-        if (c.armR) c.armR.rotation.x = -0.35 + Math.sin(t * 3.0) * 0.1;
-        if (c.armL) c.armL.rotation.x = -0.35 + Math.sin(t * 3.0) * 0.1;
-      } else {
-        const target=e.shot || (e.anchor.companion && e.anchor.companion.group.position);
-        if(target)ambientTurn(c.obj,Math.atan2(target.x-c.obj.position.x,target.z-c.obj.position.z),dt);
-      }
+      const target=e.shot || (e.anchor.companion && e.anchor.companion.group.position);
+      if(target)ambientTurn(c.obj,Math.atan2(target.x-c.obj.position.x,target.z-c.obj.position.z),dt);
     }
   });
   if(e.ball) {
@@ -6410,7 +6092,7 @@ window.dioramaEnergyState = function () {
     // follow the app's language rather than being frozen in Hebrew at build time.
     // ────────────────────────────────────────────────────────────────
     const I18N_BUILDINGS = {
-      finance_bank:       { he: ["עיריית SPENT", "מרכז העיר והממשל"],   en: ["SPENT City Hall", "Civic centre"] },
+      finance_bank:       { he: ["עמלות ובנקים", "עמלות, בנקים וריביות"],   en: ["Banking & Fees", "Fees, banking and interest"] },
       house_tower:        { he: ["מגורים ושכירות", "שכר דירה או משכנתא"], en: ["Housing & rent", "Rent or mortgage"] },
       house_util:         { he: ["חשבונות בית", "חשמל, מים, גז וארנונה"], en: ["Utilities", "Power, water, gas, council tax"] },
       house_subs:         { he: ["מנויים וסטרימינג", "שירותים דיגיטליים"], en: ["Subscriptions", "Digital services"] },
@@ -6930,6 +6612,7 @@ window.dioramaEnergyState = function () {
         syncBuilding("museum_curiosities", data.museumAmount || 0);
         syncBuilding("health_pharmacy", data.healthAmount || 0);
         syncBuilding("finance_bank", data.financeAmount || 0);
+        applyCityHallProgress(data.cityHallProgress);
         syncBuilding("trans_station", data.transport || 0);
         syncBuilding("savings_sanctuary", data.savings || 0);
         applyBuildingActivity();
@@ -7199,6 +6882,19 @@ window.dioramaEnergyState = function () {
           c.obj.position.x = p1.x + (p2.x - p1.x) * frac;
           c.obj.position.z = p1.z + (p2.z - p1.z) * frac;
           c.obj.rotation.y = Math.atan2(p2.x - p1.x, p2.z - p1.z);
+        }
+        if (c.appearanceKey === 'city:park:trail') {
+          const dx = c.obj.position.x + 0.2, dz = c.obj.position.z;
+          const along = dx * Math.sin(Math.PI / 5) + dz * Math.cos(Math.PI / 5);
+          const across = dx * Math.cos(Math.PI / 5) - dz * Math.sin(Math.PI / 5);
+          c.baseY = Y_WALK + Y_GRASS;
+          if (Math.abs(across) < 0.40 && Math.abs(along) <= 2.3) {
+            const t = Math.abs(along);
+            const arch = bridge.visible
+              ? 0.10 + 0.12 + 0.15 * (1 - Math.pow(Math.min(t, 1.1) / 1.2, 2)) + 0.0325
+              : 1.7 * (0.12 + Math.cos(Math.min(t / 1.7, 0.66) / 0.72 * Math.PI / 2) * 0.16 + 0.0225);
+            c.baseY += t <= 1.1 ? arch : 0.12 + (arch - 0.12) * Math.max(0, (1.7 - t) / 0.6);
+          }
         }
         const cadence   = c.motion ? c.motion.cadence : 1;
         const swingAmt  = c.motion ? c.motion.swing   : 1;
@@ -7687,7 +7383,6 @@ window.dioramaEnergyState = function () {
 
     window.addEventListener("resize", resize);
     placeCam(); resize();
-    if (typeof applyLeisurePopulation === "function") applyLeisurePopulation();
     startLoop();
 
     if (window._initialDataPayload) {
@@ -7720,6 +7415,7 @@ window.dioramaEnergyState = function () {
       park: { setHealth: applyParkHealth, step: stepPlantings, owns: belongsToReserve,
         reserve: reserveGroup, lake: lakeMesh, meadow: M_PARK_MEADOW,
         previewValues: [1, 0.8, 0.6, 0.4, 0.2] },
+      cityHall: { root: cityHall, stages: hallStages, setProgress: applyCityHallProgress },
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,

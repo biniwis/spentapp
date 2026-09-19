@@ -5,11 +5,12 @@ public enum OnboardingStep: Int, CaseIterable {
     case mayor = 2
     case spendingTarget = 3
     case automation = 4
-    case finalReveal = 5
+    case mapSelection = 5
+    case finalReveal = 6
 
     var posterBackground: Color {
         switch self {
-        case .concept: return .warmCream
+        case .concept, .mapSelection: return .warmCream
         case .mayor: return .neonLime
         case .spendingTarget: return .babyBlue
         case .automation: return .white
@@ -113,7 +114,7 @@ public struct OnboardingCityScene: View {
 
     @ViewBuilder private var lettering: some View {
         switch step {
-        case .concept:
+        case .concept, .mapSelection:
             illustrationLabel("SPENT", in: IllustrationTextSlot.conceptStoreSign, fontSize: 13)
         case .mayor:
             let boardRect = rtlSafeRect(IllustrationTextSlot.mayorBillboard)
@@ -220,7 +221,7 @@ private struct CityPosterDrawing: View {
     var body: some View {
         Canvas { context, _ in
             switch step {
-            case .concept: concept(&context)
+            case .concept, .mapSelection: concept(&context)
             case .mayor: personalization(&context)
             case .spendingTarget: target(&context)
             case .automation: automation(&context)

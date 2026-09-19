@@ -13,6 +13,13 @@ public struct OnboardingWizardView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var headlineSize: CGFloat = 48
     @ScaledMetric(relativeTo: .title) private var inputSize: CGFloat = 34
 
+    @AppStorage("spent.onboarding.mapStyle") private var draftMapStyle = CityMapStyle.urban.rawValue
+    @AppStorage(CityMapSelection.preferenceKey) private var mapSelection = ""
+
+    private var selectedMapStyle: CityMapStyle {
+        CityMapStyle(rawValue: draftMapStyle) ?? .urban
+    }
+
     @AppStorage("userName") private var storedUserName: String = ""
     @AppStorage("monthly_budget") private var storedMonthlyBudget: Double = 0
 
@@ -136,6 +143,10 @@ public struct OnboardingWizardView: View {
                             stepTitleSection
                                 .padding(.horizontal, 26)
 
+                            if currentStep == 5 || currentStep == 6 {
+                                mapPreview
+                                    .padding(.horizontal, 12)
+                            } else {
                             OnboardingCityScene(
                                 step: activeOnboardingStep,
                                 mayorName: userNameInput,
@@ -146,6 +157,8 @@ public struct OnboardingWizardView: View {
                             )
                             .environment(\.layoutDirection, .leftToRight)
                             .padding(.horizontal, 12)
+
+                            }
 
                             VStack(alignment: .leading, spacing: 18) {
                                 Text(stepSubtitleText)
@@ -247,7 +260,7 @@ public struct OnboardingWizardView: View {
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
 
-    private var posterInk: Color { currentStep == 5 ? .white : .jetBlack }
+    private var posterInk: Color { currentStep == 6 ? .white : .jetBlack }
     private var pageAnimation: Animation {
         reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.3)
     }
@@ -320,14 +333,14 @@ public struct OnboardingWizardView: View {
 
     private var stepProgressIndicator: some View {
         HStack(spacing: 7) {
-            ForEach(1...5, id: \.self) { stepNumber in
+            ForEach(1...6, id: \.self) { stepNumber in
                 Rectangle()
                     .fill(posterInk.opacity(stepNumber == currentStep ? 1 : 0.22))
                     .frame(height: 2)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(isHebrew ? "שלב \(currentStep) מתוך 5" : "Step \(currentStep) of 5")
+        .accessibilityLabel(isHebrew ? "שלב \(currentStep) מתוך 6" : "Step \(currentStep) of 6")
     }
 
     // MARK: - Step 1 Language Selector
@@ -396,6 +409,8 @@ public struct OnboardingWizardView: View {
             // Guide (step4B) is now a fullScreenCover (AutomaticCaptureSetupGuide).
             // Step 4 always shows the intro reassurance.
             step4AIntroContent
+        case 5:
+            mapSelectionContent
         default:
             step5LaunchSummary
         }
@@ -525,6 +540,66 @@ public struct OnboardingWizardView: View {
     }
 
 
+    private var mapPreview: some View {
+        VStack(spacing: 10) {
+            ZStack {
+            // Only one WebGL renderer is mounted at a time, so the test screen shows
+            // the actual selected world without initializing both maps together.
+            ThreeDioramaView(
+                    mapStyle: selectedMapStyle,
+                    totalSpent: 0,
+                    totalSavings: 0,
+                    categoryTotals: [:],
+                    selectedDistrict: "food",
+                    language: isHebrew ? "he" : "en",
+                    isPaused: false,
+                    onSelectDistrict: { _ in },
+                    onBuildingSelected: { _ in }
+                )
+                .id(selectedMapStyle)
+                .frame(height: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 24))
+            .gesture(DragGesture(minimumDistance: 24).onEnded { value in
+                guard abs(value.translation.width) > 30 else { return }
+                let next: CityMapStyle = value.translation.width < 0 ? .medieval : .urban
+                withAnimation(.easeInOut(duration: 0.2)) { draftMapStyle = next.rawValue }
+                Haptics.selection()
+            })
+            .accessibilityLabel(selectedMapStyle.title(isHebrew: isHebrew))
+            }
+
+            Text(isHebrew ? "החלק ימינה או שמאלה כדי לדפדף" : "Swipe left or right to browse")
+                .font(.system(.footnote, design: .rounded, weight: .medium))
+                .foregroundStyle(posterInk.opacity(0.65))
+        }
+    }
+
+    private var mapSelectionContent: some View {
+        VStack(spacing: 10) {
+            ForEach(CityMapStyle.allCases) { style in
+                Button {
+                    draftMapStyle = style.rawValue
+                    Haptics.selection()
+                } label: {
+                    HStack(spacing: 14) {
+                        Image(systemName: style == .urban ? "building.2" : "building.columns")
+                            .font(.title2)
+                        Text(style.title(isHebrew: isHebrew))
+                            .font(.system(.body, design: .rounded, weight: .semibold))
+                        Spacer()
+                        Image(systemName: selectedMapStyle == style ? "checkmark.circle.fill" : "circle")
+                    }
+                    .foregroundStyle(Color.jetBlack)
+                    .padding(18)
+                    .background(selectedMapStyle == style ? Color.neonLime : Color.white,
+                                in: RoundedRectangle(cornerRadius: 18))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selectedMapStyle == style ? .isSelected : [])
+            }
+        }
+    }
+
     // MARK: Step 5 - Final City Reveal (Cinematic city payoff, minimal copy)
     private var step5LaunchSummary: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -580,6 +655,10 @@ public struct OnboardingWizardView: View {
             }
         case 4:
             step4AActionButtons
+        case 5:
+            primaryActionButton(title: isHebrew ? "זו העיר שלי" : "This is my city") {
+                nextStep()
+            }
         default:
             primaryActionButton(title: isHebrew ? "כניסה לעיר" : "Enter City") {
                 Haptics.notify(.success)
@@ -625,13 +704,13 @@ public struct OnboardingWizardView: View {
         }) {
             Text(title)
                 .font(.system(.body, design: .rounded, weight: .semibold))
-                .foregroundColor(currentStep == 5 ? .jetBlack : .white)
+                .foregroundColor(currentStep == 6 ? .jetBlack : .white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 17)
                 .frame(minHeight: 56)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(currentStep == 5 ? Color.neonLime : Color.jetBlack)
+                        .fill(currentStep == 6 ? Color.neonLime : Color.jetBlack)
                 )
                 .opacity(isEnabled ? 1.0 : 0.38)
         }
@@ -670,6 +749,7 @@ public struct OnboardingWizardView: View {
         if !isPreview {
             saveMayor()
             saveBudget()
+            CityMapSelection.saveInitial(selectedMapStyle)
             if !canDismiss {
                 storedCurrentStep = 1
                 storedShortcutPhase = "intro"
@@ -694,6 +774,8 @@ public struct OnboardingWizardView: View {
             } else {
                 return isHebrew ? "ההוצאות יכולות\nלהיכנס לבד" : "Expenses can\nshow up automatically"
             }
+        case 5:
+            return isHebrew ? "איזו עיר\nתהיה שלך?" : "Which city\nis yours?"
         default:
             return isHebrew ? "העיר שלך\nמוכנה" : "Your city\nis ready."
         }
@@ -723,6 +805,10 @@ public struct OnboardingWizardView: View {
                     ? "אחרי תשלום, האייפון יכול להעביר ל-SPENT כמה שילמת ואיפה — וההוצאה נכנסת לבד."
                     : "After a payment, your iPhone can pass SPENT the amount and merchant so the expense can be added automatically."
             }
+        case 5:
+            return isHebrew
+                ? "שני עולמות, אותן הוצאות. המפה שתבחר תלווה אותך לאורך כל החודש ותישאר כברירת המחדל לחודשים הבאים."
+                : "Two worlds, the same spending. Your choice stays for the whole month and becomes the default for future months."
         default:
             return isHebrew
                 ? "מכאן היא תשתנה יחד עם החודש שלך."
@@ -763,7 +849,13 @@ public struct OnboardingWizardView: View {
 }
 
 #Preview("Onboarding • Reveal") {
-    OnboardingWizardView(initialStep: 5, onComplete: {}, onTriggerSampleTransaction: {})
+    OnboardingWizardView(initialStep: 6, onComplete: {}, onTriggerSampleTransaction: {})
+        .environmentObject(LocalizationManager())
+        .modelContainer(for: IncomeSource.self, inMemory: true)
+}
+
+#Preview("Map selection") {
+    OnboardingWizardView(initialStep: 5, isPreview: true, onComplete: {}, onTriggerSampleTransaction: {})
         .environmentObject(LocalizationManager())
         .modelContainer(for: IncomeSource.self, inMemory: true)
 }

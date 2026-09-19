@@ -39,3 +39,30 @@ final class CityDistrictStateTests: XCTestCase {
         XCTAssertEqual(food?.prominence, .dominant)
     }
 }
+
+final class CitySimulationEngineTests: XCTestCase {
+    func testCityHallProgressUsesBudgetThenHistoryAndExcludesSavings() {
+        let date = Date()
+        let transactions = [
+            Transaction(amount: 1_000, merchant: "Food", category: .food, timestamp: date),
+            Transaction(amount: 9_000, merchant: "Savings", category: .savings, timestamp: date)
+        ]
+        func progress(budget: Double, history: Double) -> Double {
+            CitySimulationEngine.shared.generateCity(for: date, transactions: transactions,
+                estimatedMonthlyBudget: budget, typicalMonthlySpend: history).cityHallProgress
+        }
+        XCTAssertEqual(progress(budget: 4_000, history: 20_000), 0.25)
+        XCTAssertEqual(progress(budget: 0, history: 2_000), 0.5)
+        XCTAssertEqual(progress(budget: 0, history: 0), 0)
+    }
+
+    func testCityHallProgressBoundariesAndRefunds() {
+        let date = Date()
+        for (amount, expected) in [(0.0, 0.0), (600, 0.15), (1_600, 0.4), (3_000, 0.75), (8_000, 1), (-100, 0)] {
+            let city = CitySimulationEngine.shared.generateCity(for: date,
+                transactions: [Transaction(amount: amount, merchant: "Food", category: .food, timestamp: date)],
+                estimatedMonthlyBudget: 4_000)
+            XCTAssertEqual(city.cityHallProgress, expected, accuracy: 0.000001)
+        }
+    }
+}

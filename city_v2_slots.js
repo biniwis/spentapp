@@ -2,20 +2,20 @@
 // Non-interactive authored spots, with alternatives that preserve old decorations.
 const COMPANION_LOCATIONS = [
   { id: "pet_cat_rooftop", x: -11.85, z: 2.6, y: Y_WALK, fallback: [-11.85, 3.85] },
-  { id: "pet_golden_dog", x: 12.15, z: -9.4, y: Y_GRASS, fallback: [12.1, -11.2] },
-  { id: "resident_artist", x: -2.55, z: 1.0, y: Y_WALK, fallback: [-11.85, 1.3] },
+  { id: "pet_golden_dog", x: 2.75, z: 0, y: Y_WALK, fallback: [2.9, 1.8] },
+  { id: "resident_artist", x: -3.0, z: 1.4, y: Y_WALK, fallback: [-11.85, 1.3] },
   { id: "resident_skater", x: -11.85, z: -1.3, y: Y_WALK },
   { id: "resident_musician", x: 11.85, z: -1.65, y: Y_WALK },
   { id: "resident_balloon", x: 11.85, z: 2.6, y: Y_WALK }
 ];
 const SLOT_DEFS = [
-  { id: "slot_tree_sakura", x: 7.4, z: -12.2, y: Y_GRASS, district: "savings" },
-  { id: "slot_pet_golden_dog", x: 12.15, z: -9.4, y: Y_GRASS, district: "savings" },
-  { id: "slot_repair_bench", x: 7.6, z: -7.25, y: Y_GRASS, district: "savings" },
-  { id: "slot_park_bridge", x: 9.2, z: -9.4, y: Y_GRASS, district: "savings", rot: Math.PI / 5, scale: 1.7, radius: 1.1 },
-  { id: "slot_fountain_marble", x: 0, z: 1.3, y: Y_WALK, district: "city", scale: 2.2, radius: 1.35 },
+  { id: "slot_tree_sakura", x: -2.0, z: -2.8, y: Y_WALK, district: "savings" },
+  { id: "slot_pet_golden_dog", x: 2.75, z: 0, y: Y_WALK, district: "savings" },
+  { id: "slot_repair_bench", x: -1.8, z: 2.15, y: Y_WALK, district: "savings" },
+  { id: "slot_park_bridge", x: -0.2, z: 0, y: Y_WALK + Y_GRASS, district: "savings", rot: Math.PI / 5, scale: 1.7, radius: 1.1 },
+  { id: "slot_fountain_marble", x: 2.65, z: -2.65, y: Y_WALK, district: "city", scale: 1.14, radius: 0.71 },
   { id: "slot_cafe_stand", x: 11.85, z: 0, y: Y_WALK, district: "food" },
-  { id: "slot_resident_artist", x: -2.55, z: 1.0, y: Y_WALK, district: "city" },
+  { id: "slot_resident_artist", x: -3.0, z: 1.4, y: Y_WALK, district: "city" },
   { id: "slot_repair_lamp", x: 11.85, z: -3.3, y: Y_WALK, district: "food" },
   { id: "slot_pet_cat_rooftop", x: -11.85, z: 2.6, y: Y_WALK, district: "shopping" },
   { id: "slot_bike_station", x: -11.85, z: -2.6, y: Y_WALK, district: "shopping" },

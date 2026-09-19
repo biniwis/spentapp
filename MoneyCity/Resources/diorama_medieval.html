@@ -1572,19 +1572,26 @@
       grp.add(body);
       rig.body = body;
       /* torso: broad barrel plus chest & croup spheres — reads as a single animal, not boxes */
-      body.add(mesh(roundedBox(0.62, 0.50, 1.62, 0.20), base, 0, 0, 0, true, true));
+      const barrel = mesh(new THREE.SphereGeometry(1, 12, 9), base, 0, 0, 0, true, true);
+      barrel.scale.set(.31,.29,.78);
+      body.add(barrel);
       body.add(mesh(new THREE.SphereGeometry(0.33, 12, 10), base, 0, 0.03, 0.55, true, true));
       body.add(mesh(new THREE.SphereGeometry(0.31, 12, 10), base, 0, -0.02, -0.56, true, true));
       /* dark back mane running the whole spine into the neck crest */
-      body.add(mesh(roundedBox(0.12, 0.15, 1.58, 0.05), dark, 0, 0.31, -0.05, true, true));
+      // Horses have a neck mane, not a dark ridge running down the back.
       /* neck: thick crest rising up from the chest to lift the head above the body */
       const neck = new THREE.Group();
       neck.position.set(0, 0.24, 0.58);
       neck.rotation.x = -0.58;
       body.add(neck);
       rig.neck = neck;
-      neck.add(mesh(roundedBox(0.34, 0.44, 0.64, 0.10), base, 0, 0.14, 0, true, true));
-      neck.add(mesh(roundedBox(0.13, 0.32, 0.70, 0.05), dark, 0, 0.36, -0.02, true, true));
+      const neckMass = mesh(new THREE.CylinderGeometry(.14,.24,.65,9),base,0,.18,.02,true,true);
+      neckMass.rotation.x=.26;
+      neck.add(neckMass);
+      for(let i=0;i<6;i++) {
+        const lock=mesh(new THREE.SphereGeometry(1,7,5),dark,0,-.04+i*.095,-.17+i*.025,true,true);
+        lock.scale.set(.075,.11,.10);neck.add(lock);
+      }
       /* head: skull + muzzle as one long wedge, jaw below, ears slightly oversized */
       const head = new THREE.Group();
       head.position.set(0, 0.46, 0.18);
@@ -1593,26 +1600,26 @@
       rig.head = head;
       head.add(mesh(roundedBox(0.28, 0.23, 0.30, 0.08), base, 0, 0.05, 0.02, true, true));
       head.add(mesh(roundedBox(0.19, 0.15, 0.44, 0.05), light, 0, -0.04, 0.34, true, true));
-      head.add(mesh(roundedBox(0.17, 0.10, 0.38, 0.035), dark, 0, -0.09, 0.14, false, false));
+      head.add(mesh(roundedBox(0.17, 0.10, 0.38, 0.035), base, 0, -0.09, 0.14, false, false));
+      head.add(mesh(roundedBox(.065,.025,.31,.012),mat(0xE8D9BD,.96),0,.085,.20,false,false));
       head.add(mesh(roundedBox(0.10, 0.15, 0.28, 0.04), dark, 0, 0.16, -0.10, true, true));
       [-1, 1].forEach(function (s) {
         const ear = mesh(new THREE.ConeGeometry(0.045, 0.18, 5), light, s * 0.11, 0.27, 0.02, false, false);
         ear.rotation.x = -0.08;
         head.add(ear);
-        head.add(mesh(new THREE.SphereGeometry(0.028, 6, 5), dark, s * 0.12, 0.18, 0.05, false, false));
-        head.add(mesh(new THREE.SphereGeometry(0.028, 6, 5), mat(0x131009, 0.5), s * 0.06, 0.03, 0.36, false, false));
+        head.add(mesh(new THREE.SphereGeometry(0.025, 7, 5), dark, s * 0.14, 0.10, 0.10, false, false));
+        head.add(mesh(new THREE.SphereGeometry(0.009, 5, 4), light, s * 0.16, 0.11, 0.115, false, false));
+        head.add(mesh(new THREE.SphereGeometry(0.023, 6, 5), hoof, s * 0.088, -0.035, 0.49, false, false));
       });
-      head.add(mesh(new THREE.SphereGeometry(0.024, 6, 5), mat(0x1B140F, 0.6), 0, -0.14, 0.62, false, false));
       /* tail: strong dark dock sweeping down behind the croup */
       const tail = new THREE.Group();
       tail.position.set(0, 0.12, -0.66);
       tail.rotation.x = 0.26;
       body.add(tail);
       rig.tail = tail;
-      tail.add(mesh(new THREE.CylinderGeometry(0.11, 0.05, 0.74, 7), dark, 0, -0.37, 0, false, false));
-      tail.add(mesh(new THREE.SphereGeometry(0.075, 7, 6), dark, 0, -0.75, 0, false, false));
-      tail.add(mesh(new THREE.CylinderGeometry(0.055, 0.028, 0.36, 6), dark, 0, -0.95, -0.05, false, false));
-      tail.add(mesh(new THREE.SphereGeometry(0.048, 6, 5), dark, 0, -1.14, -0.07, false, false));
+      tail.add(mesh(new THREE.CylinderGeometry(0.055, 0.09, 0.52, 7), dark, 0, -0.26, 0, false, false));
+      tail.add(mesh(new THREE.ConeGeometry(.09,.22,7),dark,0,-.61,0,false,false));
+      tail.children[1].rotation.z=Math.PI;
       /* legs: four one-piece tapered limbs hung from the front-chest & rear-hip corners;
          single continuous shape (shoulder→knee→pastern→hoof) with NO visible joints,
          hooves planted on the ground */
@@ -1620,8 +1627,11 @@
         const lp = new THREE.Group();
         lp.position.set(x, -0.25, z);
         body.add(lp);
-        lp.add(mesh(new THREE.CylinderGeometry(0.10, 0.055, 0.56, 8), base, 0, -0.28, 0, false, false));
-        lp.add(mesh(roundedBox(0.15, 0.07, 0.19, 0.02), hoof, 0, -0.525, 0, false, false));
+        lp.add(mesh(new THREE.CylinderGeometry(.105,.065,.28,8),base,0,-.14,0,false,false));
+        lp.add(mesh(new THREE.SphereGeometry(.068,8,6),base,0,-.28,0,false,false));
+        lp.add(mesh(new THREE.CylinderGeometry(.047,.040,.21,7),base,0,-.385,0,false,false));
+        lp.add(mesh(new THREE.CylinderGeometry(.042,.049,.08,7),light,0,-.455,0,false,false));
+        lp.add(mesh(roundedBox(.13,.07,.17,.02),hoof,0,-.515,.018,false,false));
         return { lp: lp };
       }
       const legs = [
@@ -1632,6 +1642,14 @@
       ];
       rig.legFL = legs[0].lp; rig.legFR = legs[1].lp; rig.legRL = legs[2].lp; rig.legRR = legs[3].lp;
       if (o.harness) {
+        const leather=mat(0x463027,.95), brass=mat(0xAC8950,.65,.25);
+        head.add(mesh(roundedBox(.215,.038,.06,.012),leather,0,-.005,.40,false,false));
+        [-1,1].forEach(function(s){
+          const strap=mesh(new THREE.BoxGeometry(.022,.035,.41),leather,s*.145,.015,.19,false,false);
+          strap.rotation.x=.16;head.add(strap);
+          const ring=mesh(new THREE.TorusGeometry(.036,.009,5,10),brass,s*.15,-.035,.36,false,false);
+          ring.rotation.y=Math.PI/2;head.add(ring);
+        });
         body.add(mesh(roundedBox(0.56, 0.34, 0.07, 0.025), mat(0x5B3D24, 0.9), 0, 0.0, 0.60, false, false));
         body.add(mesh(roundedBox(0.34, 0.15, 0.13, 0.025), mat(0x5B3D24, 0.9), 0, 0.24, 0.70, false, false));
         [-0.24, 0.24].forEach(function (hx) {
@@ -1707,18 +1725,22 @@
         hd.rotation.x = Math.PI / 2 + 0.28;
         cart.add(hd);
       });
-      cart.add(mesh(roundedBox(0.34, 0.20, 0.26, 0.04), MD_SACK, -0.18, 0.42, -0.08, false, false));
-      cart.add(mesh(roundedBox(0.26, 0.17, 0.22, 0.04), mat(color || 0xB8452E, 0.8), 0.16, 0.40, 0.0, false, false));
-      cart.add(mesh(new THREE.SphereGeometry(0.07, 6, 5), mat(0xD9A05B, 0.85), 0.30, 0.32, -0.18, false, false));
       /* This is the moving-cart layer used by the current Medieval map's
          road traffic. Keep the courier joke on the shared cart itself so it
          remains visible even when the dedicated delivery pool is quiet. */
       const courierBag = new THREE.Group();
-      courierBag.position.set(0.08, 0.55, -0.08);
+      courierBag.position.set(0, 0.56, -0.04);
       cart.add(courierBag);
-      courierBag.add(mesh(roundedBox(0.34, 0.24, 0.24, 0.045), mat(0x1289E0, 0.98), 0, 0, 0, false, true));
-      courierBag.add(mesh(new THREE.BoxGeometry(0.38, 0.028, 0.03), MD_TIMBER_LT, 0, 0.08, -0.135, false, false));
-      courierBag.add(mesh(new THREE.BoxGeometry(0.05, 0.11, 0.02), M_WHITE, 0, 0.01, 0.125, false, false));
+      const deliveryCanvas=mat(0x27B9CB,.96);
+      courierBag.add(mesh(roundedBox(.60,.42,.40,.045),deliveryCanvas,0,0,0,false,true));
+      courierBag.add(mesh(roundedBox(.64,.055,.44,.025),deliveryCanvas,0,.23,0,false,true));
+      [-.21,.21].forEach(function(s){
+        courierBag.add(mesh(new THREE.BoxGeometry(.035,.43,.414),MD_TIMBER_DOOR,s,0,0,false,false));
+        courierBag.add(mesh(new THREE.BoxGeometry(.055,.065,.018),MD_LANTERN_BR,s,.09,.218,false,false));
+      });
+      if(!mdHandCartUnit.deliveryMark)mdHandCartUnit.deliveryMark=new THREE.MeshStandardMaterial({map:signTex('Wolt','#27B9CB','#FFFFFF',49),roughness:1});
+      const frontMark=mesh(new THREE.PlaneGeometry(.35,.14),mdHandCartUnit.deliveryMark,0,.01,.211,false,false);courierBag.add(frontMark);
+      [-1,1].forEach(function(s){const mark=frontMark.clone();mark.position.set(s*.306,.02,0);mark.rotation.y=s*Math.PI/2;courierBag.add(mark);});
       var appearance = buildAppearanceProfile("handcart-pusher:" + ((color || 0xB8452E).toString(16)));
       var pusher = makeFigure({ appearance: appearance });
       var ud = pusher.userData;
@@ -1950,16 +1972,18 @@
       g.position.y = y;
       parent.add(g);
       mdRoofSlope(g, run, spanHalf, h, m, 0);
-      /* Solid triangular gable core. The previous implementation only drew
-         two end triangles, leaving the roof volume open from the camera angle.
-         This prism is the actual upper wall, so every gable is a closed mass. */
+      /* Closed gable volume.  The old version extruded an X/Y triangle along
+         Z, while the roof slopes were built in Y/Z.  That left half-walls and
+         floating roof planes when the camera rotated.  Build the triangle in
+         Z/Y and extrude along X so the ridge, walls and eaves share one axis. */
       const gableShape = new THREE.Shape();
-      gableShape.moveTo(-run / 2, 0);
-      gableShape.lineTo(run / 2, 0);
-      gableShape.lineTo(0, h);
+      gableShape.moveTo(-spanHalf + 0.04, 0);
+      gableShape.lineTo(spanHalf - 0.04, 0);
+      gableShape.lineTo(0, h - 0.02);
       gableShape.closePath();
-      const gableGeo = new THREE.ExtrudeGeometry(gableShape, { depth: spanHalf * 2 - 0.08, bevelEnabled: false });
-      gableGeo.translate(0, 0, -spanHalf + 0.04);
+      const gableGeo = new THREE.ExtrudeGeometry(gableShape, { depth: run - 0.08, bevelEnabled: false });
+      gableGeo.rotateY(Math.PI / 2);
+      gableGeo.translate(-(run - 0.08) / 2, 0, 0);
       g.add(mesh(gableGeo, opts.gableMat || MD_STONE, 0, 0, 0, false, true));
       /* Broad timber eaves make the roof read as seated on the walls at phone scale. */
       const eaveMat = (opts.eaveMat || MD_TIMBER_LT);
@@ -1983,9 +2007,6 @@
             g.add(mesh(new THREE.BoxGeometry(ww, 0.12, 0.07), m, 0, yy, zs * spanHalf, false, false));
           });
         }
-      } else {
-        mdGableEnd(g, run, h, m, spanHalf, 0);
-        mdGableEnd(g, run, h, m, -spanHalf, 0);
       }
       g.add(mesh(new THREE.BoxGeometry(run + 0.05, 0.07, 0.10), m, 0, h, 0, true, false));
       g.add(mesh(new THREE.BoxGeometry(run + 0.09, 0.05, 0.13), MD_TIMBER, 0, h + 0.035, 0, false, false));
@@ -2023,11 +2044,14 @@
         g.add(mesh(new THREE.BoxGeometry(run + 0.10, 0.10, 0.13), eaveMat, 0, 0.02, s * span / 2, true, true));
         g.add(mesh(new THREE.BoxGeometry(0.13, 0.10, span + 0.10), eaveMat, s * run / 2, 0.02, 0, true, true));
       });
-      const apexH = h, base = span;
-      mdTriPanel(g, -run / 2, [[0, -span / 2], [0, span / 2], [apexH, 0]], m);
-      mdTriPanel(g, run / 2, [[0, span / 2], [0, -span / 2], [apexH, 0]], m);
-      mdTriPanel(g, -span / 2, [[-run / 2, 0], [run / 2, 0], [0, apexH]], m);
-      mdTriPanel(g, span / 2, [[run / 2, 0], [-run / 2, 0], [0, apexH]], m);
+      /* One closed four-sided roof keeps the hip seated on all four walls. */
+      const hip = new THREE.Mesh(new THREE.ConeGeometry(1, h, 4, 1, false), m);
+      hip.position.y = h / 2;
+      hip.rotation.y = Math.PI / 4;
+      hip.scale.set(run / 2, 1, span / 2);
+      hip.castShadow = true;
+      hip.receiveShadow = true;
+      g.add(hip);
       [-1, 1].forEach(function (s) {
         g.add(mesh(new THREE.BoxGeometry(run, 0.05, 0.06), m, 0, 0.03, s * span / 2, true, true));
       });
@@ -3041,7 +3065,7 @@
       if (tiered) {
         for (var ti = 0; ti < tierFns.length; ti++) {
           var tg = new THREE.Group();
-          tg.visible = (ti === 0);
+          tg.visible = true;
           shell.add(tg);
           tierFns[ti](tg, w, d, cfg, ti);
           /* Keep tier profiles self-contained; optional identity dressing is
@@ -3068,7 +3092,7 @@
         }
       }
       var dressing = [];
-      (cfg.props || []).forEach(function(pr) {
+      (tiered ? [] : (cfg.props || [])).forEach(function(pr) {
         var holder = new THREE.Group();
         g.add(holder);
         if (pr.type === "planter") mdWindowBox(holder, pr.x, pr.z, pr.kind);
@@ -3079,7 +3103,7 @@
         else if (pr.type === "bollards") { for (var bi = -1; bi <= 1; bi++) mdLanternPost(holder, pr.x + bi * 0.55, pr.z); }
         dressing.push({ obj: holder, from: pr.from === undefined ? 2 : pr.from });
       });
-      mdDress(g, w, d, cfg, ground);
+      if (!tiered) mdDress(g, w, d, cfg, ground);
       [stall, ground].concat(tierGroups.map(function(tg){ return tg.group; }), floors, roofs, dressing.map(function(p){ return p.obj; }))
         .forEach(packRigidModel);
       var proxy = hitProxy(w + 0.2, FLOOR_H * 3.4, d + 0.2);
@@ -3126,7 +3150,287 @@
    finance_bank       treasury              : compact thick stone + tall stepped gable + crest             (fort)
    trans_station      stable compound       : long stable + open gate bays around a central yard (U)      (courtyard)
    ------------------------------------------------------------------ */
+/* Complete architectural models, rather than overlapping historical additions.
+   Each venue retains its construction language and function at all four tiers. */
 function mdTierLookup(id) {
+  const supported = ['house_tower','house_util','house_subs','food_super','food_bistro','food_coffee','food_wolt','shop_boutique','shop_tech','shop_travel','shop_arcade','health_pharmacy','museum_curiosities','city_sorting_hub','finance_bank','trans_station'];
+  if (!supported.includes(id)) return null;
+  const timber=MD_TIMBER, plaster=MD_PLASTER, stone=MD_STONE, slate=MD_TILE_SLATE;
+  const ink=mat(0x292E30,.95), brick=mat(0x985E47,.95), sage=mat(0x71826A,.95), gold=mat(0xBDA05C,.8);
+  function box(g,w,h,d,m,x,y,z) { const o=mesh(new THREE.BoxGeometry(w,h,d),m,x||0,y||0,z||0); g.add(o); return o; }
+  function beam(g,a,b,r,m) {const v=new THREE.Vector3(...a),q=new THREE.Vector3(...b),o=mesh(new THREE.CylinderGeometry(r,r,v.distanceTo(q),5),m||timber);o.position.copy(v.clone().add(q).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),q.sub(v).normalize());g.add(o);}
+  function roof(g,w,d,h,y,m) {
+    // Closed triangular prism, with ridge along Z and fully supported gables.
+    const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(w/2,0);s.lineTo(0,h);s.closePath();
+    const geo=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:false});geo.translate(0,y,-d/2);g.add(mesh(geo,plaster));
+    const angle=Math.atan2(h,w/2),length=Math.hypot(h,w/2);
+    [-1,1].forEach(side=>{const p=box(g,length+.12,.07,d+.16,m,side*w/4,y+h/2,0);p.rotation.z=-side*angle;
+      for(let row=1;row<6;row++){const t=row/6;box(g,.025,.026,d+.17,timber,side*w/2*t,y+h*(1-t)+.05,0);}
+      beam(g,[side*w/2,y+.03,-d/2-.09],[0,y+h+.03,-d/2-.09],.035);
+      beam(g,[side*w/2,y+.03,d/2+.09],[0,y+h+.03,d/2+.09],.035);
+    });box(g,.09,.09,d+.24,timber,0,y+h+.04,0);
+  }
+  function windowAt(g,x,y,z,color) {box(g,.31,.40,.045,timber,x,y,z);box(g,.23,.31,.05,ink,x,y,z+.026);[-1,1].forEach(s=>box(g,.105,.37,.045,color||sage,x+s*.21,y,z));box(g,.58,.045,.13,stone,x,y-.22,z+.025);}
+  function hall(g,x,z,w,d,h,m,r,pitch,frame) {
+    const b=new THREE.Group();b.position.set(x,0,z);g.add(b);
+    box(b,w+.09,.16,d+.09,stone,0,.08,0);box(b,w,h-.16,d,m,0,(h+.16)/2,0);
+    [-1,1].forEach(side=>{box(b,w+.04,.07,.075,timber,0,.22,side*d/2);box(b,w+.04,.075,.075,timber,0,h-.03,side*d/2);
+      if(frame!==false){for(let n=0;n<4;n++)box(b,.065,h,.07,timber,-w/2+n*w/3,h/2,side*(d/2+.018));
+      if(h>1.3)box(b,w,.075,.08,timber,0,h*.54,side*d/2);}
+      for(let n=0;n<Math.max(1,Math.floor(w/.6));n++){const xx=(n-(Math.max(1,Math.floor(w/.6))-1)/2)*.55;windowAt(b,xx,h>.95?h*.72:.62,side*(d/2+.035),r);}
+    });
+    box(b,.34,.65,.065,timber,0,.4,d/2+.06);box(b,.42,.055,.20,stone,0,.105,d/2+.12);
+    roof(b,w,d,pitch,h,r);return b;
+  }
+  function canopy(g,x,z,w,d,m) {for(const a of [-1,1])for(const b of [-1,1])box(g,.055,.86,.055,timber,x+a*w/2,.43,z+b*d/2);const top=box(g,w+.1,.045,d+.1,m,x,.88,z);top.rotation.x=.10;box(g,w,.08,.30,timber,x,.43,z);}
+  function cargo(g,x,z,n) {for(let k=0;k<n;k++){box(g,.22,.22,.22,MD_TIMBER_LT,x+(k%2)*.24,.11+Math.floor(k/2)*.23,z);box(g,.24,.035,.24,timber,x+(k%2)*.24,.16+Math.floor(k/2)*.23,z);}}
+  function outdoorTable(g,x,z,banquet) {
+    const width=banquet?.78:.45;
+    // Separate boards, supported legs and simple period seating.
+    for(let p=0;p<3;p++)box(g,width,.045,.105,MD_TIMBER_LT,x,.43,z+(p-1)*.115);
+    for(const a of [-1,1])for(const b of [-1,1])box(g,.045,.39,.045,timber,x+a*(width/2-.065),.215,z+b*.105);
+    for(const side of [-1,1]){
+      if(banquet){box(g,width,.05,.14,MD_TIMBER_LT,x,.25,z+side*.28);for(const a of [-1,1])box(g,.055,.21,.09,timber,x+a*(width/2-.10),.13,z+side*.28);}
+      else {g.add(mesh(new THREE.CylinderGeometry(.10,.10,.045,8),MD_TIMBER_LT,x,.25,z+side*.28));for(const a of [-1,1])box(g,.04,.21,.04,timber,x+a*.055,.13,z+side*.28);}
+    }
+    const plate=mesh(new THREE.CylinderGeometry(.095,.085,.022,10),MD_LINEN_CR,x-.09,.468,z);g.add(plate);
+    const loaf=mesh(new THREE.SphereGeometry(1,8,5),gold,x-.09,.501,z);loaf.scale.set(.07,.034,.045);g.add(loaf);
+    g.add(mesh(new THREE.CylinderGeometry(.034,.030,.09,8),brick,x+.13,.505,z+.07));
+  }
+  function chimney(g,x,z,h) {box(g,.29,h,.29,brick,x,h/2,z);box(g,.37,.09,.37,stone,x,h-.05,z);box(g,.23,.012,.23,ink,x,h+.002,z);}
+  function tower(g,x,z,h) {box(g,.48,h,.48,stone,x,h/2,z);const c=mesh(new THREE.ConeGeometry(.42,.66,4),slate,x,h+.33,z);c.rotation.y=Math.PI/4;g.add(c);}
+  return [1,2,3,4].map(t=>function(parent,w,d){
+    const g=new THREE.Group();parent.add(g);
+    // Each complete stage grows within the same parcel. Horizontal trades
+    // gain working area; residential towers keep their footprint and rise.
+    const tall=['house_tower','house_subs','shop_boutique'].includes(id);
+    const footprint=(tall?[.83,.90,.96,1]:[.66,.78,.90,1])[t-1];
+    g.scale.set(w/2.5*footprint,1,d/2.2*footprint);
+    parent.userData.completeMedievalTier=true;
+    const h=1.02+t*.20;
+    box(g,2.44,.045,2.14,MD_STONE_TAN,0,.025,0);
+    switch(id){
+      case 'house_tower':
+        hall(g,-.25,-.15,1.4,1.45,h+.25,plaster,MD_TILE_TERRA,.58,true);
+        tower(g,.78,-.58,1.45+t*.30);
+        if(t>1)hall(g,.68,.48,.78,.86,1.02,plaster,MD_TILE_TERRA,.38,true);
+        box(g,1.3,.24,.10,stone,-.35,.12,.98);break;
+      case 'house_util':
+        hall(g,-.25,-.15,1.55,1.35,.85+t*.06,MD_PLASTER_OX,MD_TILE_MOSS,.47,true);
+        chimney(g,-.75,-.4,1.75);canopy(g,.75,.5,.58,.66,MD_TILE_MOSS);cargo(g,.65,.48,t);break;
+      case 'house_subs':
+        hall(g,-.18,-.22,.94,1.34,1.3+t*.32,plaster,slate,.65,true);
+        box(g,.70,.09,.30,timber,-.18,.62,.63);
+        for(let k=0;k<t+2;k++)box(g,.085,.18,.12,k%2?MD_LINEN_RD:gold,-.45+k*.10,.75,.65);break;
+      case 'food_super':
+        for(let k=0;k<t;k++){const x=k%2? .58:-.58,z=k<2?-.48:.53;canopy(g,x,z,.92,.65,k%2?MD_LINEN_CR:sage);
+          for(let j=0;j<4;j++)g.add(mesh(new THREE.SphereGeometry(.075,6,4),j%2?MD_LINEN_RD:gold,x-.30+j*.20,.54,z));}
+        cargo(g,-1,.7,2);break;
+      case 'food_bistro':
+        hall(g,-.35,-.52,1.35,.92,h+.30,MD_PLASTER_OX,slate,.67,true);
+        if(t>=2)hall(g,.64,-.42,.74,.92,1.0+t*.15,MD_PLASTER_OX,slate,.48,true);
+        // Raised inn balcony, wine-red cloth and a deep stone hearth.
+        box(g,1.18,.09,.29,timber,-.35,h*.68,.05);
+        box(g,1.18,.045,.045,timber,-.35,h*.68+.28,.18);
+        for(let k=0;k<6;k++)box(g,.035,.28,.035,timber,-.88+k*.21,h*.68+.14,.18);
+        box(g,.36,.38,.035,MD_LINEN_RD,-.35,h*.68+.10,.208);
+        outdoorTable(g,-.62,.66,true);outdoorTable(g,.62,.66,true);
+        chimney(g,-.7,-.65,h+1.02);break;
+      case 'food_coffee':
+        hall(g,.32,-.48,1.17,.96,.75+t*.07,plaster,MD_TILE_HONEY,.25,false);
+        // Low bakery shopfront with an open serving hatch and striped canvas.
+        box(g,.79,.29,.045,ink,.32,.56,.018);
+        box(g,.88,.055,.25,MD_TIMBER_LT,.32,.39,.12);
+        for(let k=0;k<7;k++){
+          const cloth=box(g,.135,.035,.39,k%2?MD_LINEN_CR:MD_TILE_HONEY,-.085+k*.135,.84,.15);cloth.rotation.x=.18;
+          box(g,.135,.09,.025,k%2?MD_LINEN_CR:MD_TILE_HONEY,-.085+k*.135,.765,.34);
+        }
+        g.add(mesh(new THREE.SphereGeometry(.43,12,8,0,Math.PI*2,0,Math.PI/2),brick,-.66,.48,-.45));
+        box(g,.85,.48,.80,brick,-.66,.24,-.45);box(g,.33,.28,.04,ink,-.66,.22,-.03);chimney(g,-.73,-.65,1.85+t*.08);
+        outdoorTable(g,-.65,.64,false);outdoorTable(g,.73,.64,false);break;
+      case 'food_wolt':
+        hall(g,-.53,-.33,.98,1.10,.97+t*.08,plaster,MD_TILE_MOSS,.35,true);
+        if(t>=2)canopy(g,.55,-.25,.87,1.02,sage);cargo(g,.31,-.38,t+1);
+        box(g,1.95,.08,.08,timber,0,.51,.90);for(let k=0;k<3;k++)box(g,.07,.52,.07,timber,-.85+k*.85,.26,.90);break;
+      case 'shop_boutique':
+        hall(g,-.16,-.20,1.08,1.26,1.22+t*.26,MD_PLASTER_PK,slate,.65,true);
+        canopy(g,-.16,.68,1.15,.48,MD_LINEN_BL);
+        for(let k=0;k<3;k++)box(g,.19,.58,.12,[MD_LINEN_RD,gold,MD_LINEN_BL][k],-.62+k*.48,.48,.97);break;
+      case 'shop_tech':
+        hall(g,-.42,-.23,1.24,1.38,.85+t*.045,MD_STONE_DK,slate,.24,false);
+        chimney(g,-.78,-.57,1.85+t*.1);canopy(g,.67,-.07,.70,1.27,timber);
+        box(g,.29,.32,.28,timber,.66,.16,.37);box(g,.49,.13,.22,ink,.66,.385,.37);cargo(g,.55,-.5,2);break;
+      case 'shop_travel':
+        hall(g,0,-.61,2.10,.66,.9+t*.09,plaster,MD_TILE_HONEY,.30,true);
+        if(t>=2)canopy(g,-.8,.22,.40,.84,MD_TILE_HONEY);if(t>=3)canopy(g,.8,.22,.40,.84,MD_TILE_HONEY);
+        box(g,1.55,.07,.08,timber,0,.65,.85);cargo(g,-.75,.65,t);break;
+      case 'shop_arcade':
+        box(g,1.10,.20,.72,timber,0,.10,-.53);
+        for(let k=0;k<Math.min(3,t);k++){const x=-.77+k*.77,z=k===1?-.53:.40;
+          box(g,.52,.53,.52,k%2?MD_LINEN_CR:MD_LINEN_RD,x,.265,z);
+          const c=mesh(new THREE.ConeGeometry(.48,.72,8),k%2?MD_LINEN_BL:MD_LINEN_RD,x,.89,z);g.add(c);beam(g,[x,1.23,z],[x,1.48,z],.018);box(g,.20,.12,.018,gold,x+.10,1.4,z);}
+        break;
+      case 'health_pharmacy':
+        hall(g,-.33,-.10,1.12,1.37,1.05+t*.17,MD_PLASTER_BL,MD_TILE_MOSS,.70,true);
+        tower(g,.65,-.56,1.22+t*.23);
+        for(let k=0;k<4;k++){const x=-.9+k*.51;box(g,.36,.14,.26,timber,x,.13,.88);g.add(mesh(new THREE.SphereGeometry(.15,7,5),sage,x,.30,.88));}break;
+      case 'museum_curiosities':
+        hall(g,0,-.20,1.92,1.30,1.13+t*.13,stone,slate,.30,false);
+        for(let k=0;k<4;k++)box(g,.13,1.02,.17,MD_STONE_TAN,-.76+k*.5,.51,.56);
+        tower(g,0,-.22,1.65+t*.13);box(g,1.5,.10,.42,stone,0,.09,.82);break;
+      case 'city_sorting_hub':
+        hall(g,0,-.35,2.06,1.10,.86+t*.045,MD_TIMBER_LT,MD_TILE_HONEY,.28,true);
+        canopy(g,0,.54,1.95,.58,timber);for(let k=0;k<3;k++)cargo(g,-.78+k*.58,.43,Math.min(t+1,4));break;
+      case 'finance_bank':
+        hall(g,0,-.12,1.80,1.42,1.12+t*.16,stone,slate,.57,false);
+        if(t>=2)tower(g,-.91,-.6,1.35+t*.16);if(t>=3)tower(g,.91,-.6,1.35+t*.16);
+        box(g,.52,.75,.11,timber,0,.48,.65);box(g,.22,.31,.07,gold,0,1.26,.64);break;
+      case 'trans_station':
+        hall(g,0,-.53,2.18,.78,.80+t*.08,plaster,MD_TILE_TERRA,.42,true);
+        if(t>=2)hall(g,-.88,.25,.42,.94,.83,MD_TIMBER_LT,MD_TILE_TERRA,.25,true);
+        if(t>=3)hall(g,.88,.25,.42,.94,.83,MD_TIMBER_LT,MD_TILE_TERRA,.25,true);
+        if(t===4)canopy(g,0,.60,1.22,.50,MD_TILE_TERRA);break;
+    }
+    // Large, physical trade emblems remain readable at the city camera scale.
+    // They are present from tier one, not earned as decorative higher tiers.
+    const emblem=new THREE.Group();g.add(emblem);emblem.position.set(0,0,0);
+    function oval(x,y,z,sx,sy,sz,m){const o=mesh(new THREE.SphereGeometry(1,10,7),m,x,y,z);o.scale.set(sx,sy,sz);emblem.add(o);return o;}
+    function wheel(x,y,z,r){const o=mesh(new THREE.TorusGeometry(r,.045,6,18),timber,x,y,z);emblem.add(o);for(let k=0;k<6;k++){const a=k*Math.PI/3;beam(emblem,[x,y,z],[x+Math.cos(a)*r,y+Math.sin(a)*r,z],.018);} }
+    switch(id){
+      case 'food_coffee':
+        oval(.32,1.48+t*.10,.15,.47,.18,.23,gold);
+        for(let k=0;k<3;k++){const slash=box(emblem,.045,.05,.32,plaster,.10+k*.2,1.63+t*.10,.15);slash.rotation.y=-.35;}break;
+      case 'shop_tech':
+        box(emblem,.27,.28,.30,ink,.10,1.35,0);box(emblem,.79,.15,.34,ink,.10,1.56,0);
+        {const horn=mesh(new THREE.ConeGeometry(.16,.42,6),ink,.65,1.55,0);horn.rotation.z=-Math.PI/2;emblem.add(horn);}break;
+      case 'food_bistro':
+        box(emblem,.12,.75,.12,timber,.86,1.4,.72);box(emblem,.58,.08,.10,timber,.65,1.78,.72);
+        emblem.add(mesh(new THREE.CylinderGeometry(.18,.21,.39,10),gold,.44,1.47,.74));
+        {const handle=mesh(new THREE.TorusGeometry(.13,.04,6,12),gold,.68,1.48,.74);emblem.add(handle);}break;
+      case 'shop_boutique':
+        for(let k=0;k<3;k++){const roll=mesh(new THREE.CylinderGeometry(.14,.14,.74,10),[MD_LINEN_RD,MD_LINEN_BL,gold][k],-.63+k*.40,.48,.88);roll.rotation.z=.12*(k-1);emblem.add(roll);}break;
+      case 'health_pharmacy':
+        oval(-.34,1.95+t*.17,-.08,.29,.32,.24,sage);box(emblem,.18,.28,.17,sage,-.34,2.27+t*.17,-.08);box(emblem,.22,.08,.21,timber,-.34,2.43+t*.17,-.08);break;
+      case 'shop_travel':
+        wheel(0,1.57+t*.09,-.25,.34);box(emblem,.06,.58,.06,timber,0,1.25+t*.09,-.25);break;
+      case 'food_wolt':
+        box(emblem,.69,.10,.48,timber,.56,.22,.72);wheel(.19,.19,.89,.17);wheel(.92,.19,.89,.17);
+        box(emblem,.39,.29,.31,plaster,.57,.40,.72);box(emblem,.42,.045,.33,MD_LINEN_RD,.57,.44,.72);break;
+      case 'food_super':
+        box(emblem,.10,.95,.10,timber,1.03,.475,0);
+        box(emblem,.60,.10,.10,timber,.77,.97,0);
+        oval(.59,.77,0,.20,.20,.18,MD_LINEN_RD);oval(.68,1.0,0,.10,.035,.045,sage);break;
+      case 'house_subs':
+        box(emblem,.60,.43,.09,plaster,-.18,1.03,.52);box(emblem,.028,.43,.12,timber,-.18,1.03,.58);
+        for(const side of [-1,1])box(emblem,.31,.055,.12,timber,-.18+side*.16,.80,.55);break;
+      case 'house_util':
+        emblem.add(mesh(new THREE.CylinderGeometry(.28,.28,.52,12),MD_TIMBER_LT,.78,.26,-.57));
+        for(const y of [.12,.40]){const band=mesh(new THREE.TorusGeometry(.28,.028,5,14),ink,.78,y,-.57);band.rotation.x=Math.PI/2;emblem.add(band);}break;
+      case 'house_tower':
+        box(emblem,.055,.68,.055,timber,.78,2.40+t*.30,-.58);
+        box(emblem,.39,.24,.035,MD_LINEN_RD,.96,2.57+t*.30,-.58);break;
+      case 'museum_curiosities':
+        {const globe=mesh(new THREE.TorusGeometry(.32,.035,6,20),gold,0,2.10+t*.13,-.22);emblem.add(globe);const orbit=globe.clone();orbit.rotation.y=Math.PI/2;emblem.add(orbit);oval(0,2.10+t*.13,-.22,.18,.18,.18,slate);}break;
+      case 'city_sorting_hub':
+        beam(emblem,[.95,0,.20],[.95,1.70,.20],.065);beam(emblem,[.95,1.70,.20],[.95,1.70,.85],.055);
+        beam(emblem,[.95,1.68,.85],[.95,.74,.85],.012,ink);box(emblem,.37,.34,.33,MD_TIMBER_LT,.95,.56,.85);break;
+      case 'trans_station':
+        {const shoe=mesh(new THREE.TorusGeometry(.22,.055,6,18,Math.PI*1.55),gold,0,1.2,-.10);shoe.rotation.z=-Math.PI*.275;emblem.add(shoe);}break;
+      case 'finance_bank':
+        box(emblem,.70,.48,.08,MD_LINEN_RD,0,1.26,.72);
+        for(let k=0;k<3;k++)box(emblem,.14,.20+(k===1?.09:0),.10,gold,-.19+k*.19,1.29,.78);
+        for(let k=0;k<3;k++)emblem.add(mesh(new THREE.CylinderGeometry(.13,.13,.07*(k+1),10),gold,-.7+k*.28,.10+.035*(k+1),.91));break;
+    }
+    // Functional courtyard objects replace text boards. Keep entrances open.
+    function rack(x,z,width){
+      for(const s of [-1,1])box(g,.045,.62,.045,timber,x+s*(width/2-.03),.34,z);
+      for(const y of [.22,.59])box(g,width,.045,.26,MD_TIMBER_LT,x,y,z);
+    }
+    switch(id){
+      case 'food_coffee':
+        rack(-.66,.12,.68);
+        for(let k=0;k<3;k++){oval(-.88+k*.21,.67,.12,.085,.055,.13,gold);oval(-.88+k*.21,.30,.12,.075,.055,.10,gold);}
+        box(g,.035,.65,.035,timber,-1.07,.40,-.10);box(g,.19,.03,.23,MD_TIMBER_LT,-1.07,.73,-.10);break;
+      case 'food_bistro':
+        mdBarrel(g,1.04,-.79);
+        box(g,.16,.045,.16,timber,1.04,.45,-.53);
+        for(const x of [-.7,.68]){box(g,.035,.28,.035,ink,x,.74,.98);box(g,.12,.16,.10,gold,x,.63,.98);}break;
+      case 'food_super':
+        for(let k=0;k<3;k++){const x=-.88+k*.30;box(g,.25,.17,.26,timber,x,.12,.94);for(let j=0;j<3;j++)oval(x-.07+j*.07,.24,.94,.045,.05,.045,k%2?sage:MD_LINEN_RD);}break;
+      case 'health_pharmacy':
+        rack(.92,.30,.42);
+        for(let k=0;k<3;k++){
+          g.add(mesh(new THREE.CylinderGeometry(.043,.055,.13,8),k%2?sage:brick,.79+k*.13,.68,.30));
+          box(g,.045,.045,.045,timber,.79+k*.13,.765,.30);
+        }
+        box(g,.50,.05,.05,timber,-.34,1.0,.64);
+        for(let k=0;k<3;k++){beam(g,[-.51+k*.17,1,.64],[-.51+k*.17,.83,.64],.012);oval(-.51+k*.17,.77,.64,.075,.12,.06,sage);}break;
+      case 'shop_tech':
+        for(let k=0;k<3;k++)box(g,.24,.055,.10,ink,.68,.09+k*.055,-.75);
+        box(g,.04,.24,.04,timber,.65,.56,.37);box(g,.19,.08,.09,ink,.65,.70,.37);break;
+      case 'shop_boutique':
+        for(let k=0;k<3;k++)box(g,.30,.05,.22,[MD_LINEN_CR,MD_LINEN_BL,MD_LINEN_RD][k],-.83,.12+k*.055,.73);break;
+      case 'house_util':
+        for(let k=0;k<5;k++){const log=mesh(new THREE.CylinderGeometry(.055,.055,.36,7),MD_TIMBER_LT,-.89+(k%3)*.12,.10+Math.floor(k/3)*.12,.81);log.rotation.x=Math.PI/2;g.add(log);}break;
+      case 'house_subs':
+        rack(-.88,.70,.40);for(let k=0;k<4;k++)box(g,.06,.23,.14,k%2?MD_LINEN_RD:MD_LINEN_BL,-1+k*.08,.355,.70);break;
+      case 'food_wolt':
+      case 'city_sorting_hub':
+        box(g,.35,.24,.28,MD_LINEN_CR,-.92,.15,.87);box(g,.035,.25,.29,timber,-.92,.15,.87);box(g,.36,.025,.29,timber,-.92,.18,.87);break;
+      case 'trans_station':
+        box(g,.62,.22,.30,timber,-.38,.14,.79);box(g,.55,.06,.24,gold,-.38,.28,.79);
+        for(let k=0;k<5;k++)box(g,.018,.055,.23,MD_LINEN_CR,-.59+k*.10,.325,.79);break;
+      case 'museum_curiosities':
+        box(g,.25,.28,.25,stone,-.94,.17,.85);oval(-.94,.44,.85,.12,.13,.12,gold);break;
+      case 'house_tower':
+        for(const x of [-.88,.25]){g.add(mesh(new THREE.CylinderGeometry(.13,.10,.22,8),brick,x,.15,.75));oval(x,.36,.75,.17,.19,.17,sage);}break;
+      case 'shop_arcade':
+        box(g,.62,.08,.32,timber,0,.45,.82);for(let k=0;k<3;k++)g.add(mesh(new THREE.CylinderGeometry(.05,.05,.11,8),gold,-.17+k*.17,.54,.82));break;
+      case 'shop_travel':
+        wheel(-.91,.24,.77,.20);break;
+      case 'finance_bank':
+        box(g,.38,.25,.30,timber,.73,.18,.90);for(const x of [.62,.84])box(g,.04,.27,.32,ink,x,.18,.90);break;
+    }
+    if(id==='shop_boutique'){
+      // A dressmaker's display bust, rather than just coloured rectangular rolls.
+      const stand=new THREE.Group();stand.position.set(.91,0,.67);g.add(stand);
+      box(stand,.045,.60,.045,timber,0,.30,0);
+      stand.add(mesh(new THREE.ConeGeometry(.17,.32,8),MD_LINEN_RD,0,.46,0));
+      stand.add(mesh(new THREE.SphereGeometry(.12,8,6),MD_LINEN_RD,0,.65,0));
+      box(stand,.31,.06,.17,timber,0,.05,0);
+    }
+    if(id==='shop_tech'){
+      // Long-handled tools on the open workshop's outer wall.
+      for(let k=0;k<3;k++){box(g,.035,.53,.035,MD_TIMBER_LT,.99,.60,-.44+k*.23);box(g,.16,.07,.09,ink,.99,.88,-.44+k*.23);}
+    }
+    if(id==='house_subs'){
+      // Recurring deliveries of scrolls visually link this house to subscriptions.
+      for(let k=0;k<3;k++)g.add(mesh(new THREE.CylinderGeometry(.06,.06,.37,8),MD_LINEN_CR,.55+k*.14,.29,.82));
+      box(g,.53,.19,.29,timber,.69,.10,.82);
+    }
+    if(id==='shop_travel'){
+      box(g,.47,.27,.28,MD_TIMBER_LT,.62,.18,.78);
+      box(g,.49,.045,.30,timber,.62,.25,.78);
+      const handle=mesh(new THREE.TorusGeometry(.065,.016,5,10,Math.PI),ink,.62,.37,.78);g.add(handle);
+    }
+  });
+}
+// Dedicated civic/transport roots retain their existing hit proxies and rigs,
+// but use the same tier selection as every expense-driven building.
+function mdMountTieredArchitecture(parent,id,w,d) {
+  const shell=new THREE.Group();parent.add(shell);
+  const groups=mdTierLookup(id).map(function(build,i){
+    const group=new THREE.Group();shell.add(group);build(group,w,d);
+    packRigidModel(group);return {visibleAt:i+1,group:group};
+  });
+  const plot=new THREE.Group(),stall=new THREE.Group();
+  parent.add(plot,stall);
+  const rec={id:id,group:parent,shell:shell,plot:plot,stall:stall,
+    tierGroups:groups,dressing:[],floors:[],roofs:[],minTier:1,maxTier:4,tier:-1};
+  cityBuildings[id]=rec;setBuildingTier(rec,1);
+  return rec;
+}
+function mdLegacyTierLookup(id) {
   const P = {};
   const STONE = MD_STONE, DK = MD_STONE_DK, TIMB = MD_TIMBER, TIML = MD_TIMBER_LT,
         PLAS = MD_PLASTER, POX = MD_PLASTER_OX, PPK = MD_PLASTER_PK, PBL = MD_PLASTER_BL,
@@ -4008,10 +4312,11 @@ function mdTierLookup(id) {
              a pile of intersecting roofs at higher tiers.  Keep the original
              base mass and show only the current extension for the stable;
              other profiles retain their existing growth behavior. */
-          const compactGrowth = rec.id === "trans_station" || rec.id === "food_super" || rec.id === "food_bistro" || rec.id === "shop_arcade"
-          const want = compactGrowth
-            ? (tg.visibleAt === 1 || tg.visibleAt === tier)
-            : tier >= tg.visibleAt;
+          /* Every Medieval profile is composed as a clean base building plus
+             one intentional extension.  Showing every historical tier at
+             once made the renderer stack unrelated roofs, chimneys and
+             wings into an unreadable silhouette. */
+          const want = tg.visibleAt === tier;
           if (want && !tg.group.visible && previous >= 0) raise(tg.group);
           tg.group.visible = want;
         });
@@ -5742,13 +6047,12 @@ const CHARACTER = {
     
     addSidewalkBlock(0, 0, 8.6, 8.6);
     addKerb(0, 0, 8.6, 8.6);
-    const plazaInlay = mesh(new THREE.CylinderGeometry(2.75, 2.75, 0.03, 36), mat(0xA99B86, 0.92), 0, Y_WALK + 0.01, 1.3, false, true);
-    root.add(plazaInlay);
-    const plazaRim = mesh(new THREE.TorusGeometry(2.75, 0.07, 6, 44), MD_STONE, 0, Y_WALK + 0.02, 1.3, false, false);
-    plazaRim.rotation.x = -Math.PI / 2;
-    root.add(plazaRim);
+    // The old circular civic paving and stone ring do not belong beneath the garden.
     const fountainGroup = new THREE.Group();
-    fountainGroup.position.set(0, Y_WALK, 1.3);
+    /* Match Urban's corrected civic-water anchor so the pond stays clear of
+       the centered reserve and remains on the same plaza corner. */
+    fountainGroup.position.set(2.65, Y_WALK, -2.65);
+    fountainGroup.scale.setScalar(0.52);
     root.add(fountainGroup);
     /* Medieval civic water garden: a low fish pond was more believable here
        than a tall ornamental fountain, while keeping the same animated water
@@ -5787,8 +6091,12 @@ const CHARACTER = {
     fRipple.position.set(0, 0.40, 0);
     fountainGroup.add(fRipple);
     animObjects.push({ type: "fountain_ripple", ring: fRipple, mat: fRippleMat });
+    /* Urban's corrected civic landmark anchor. Keep Medieval's stone hall
+       design, but place the city hall at the same north-east civic parcel. */
+    addSidewalkBlock(9.4, -9.4, 4.6, 4.3);
+    addKerb(9.4, -9.4, 4.6, 4.3);
     const spentGroup = new THREE.Group();
-    spentGroup.position.set(0, Y_WALK, -1.9);
+    spentGroup.position.set(9.4, Y_WALK, -9.4);
     root.add(spentGroup);
     spentGroup.add(mesh(roundedBox(4.3, 0.16, 3.2, 0.08), MD_STONE, 0, 0.08, 0.10, false, true));
     spentGroup.add(mesh(roundedBox(4.0, 0.12, 2.9, 0.06), MD_STONE_DK, 0, 0.20, 0.06, false, true));
@@ -5867,7 +6175,9 @@ const CHARACTER = {
     bellTower.add(mesh(new THREE.SphereGeometry(0.12, 8, 8), mat(0xD4AF37, 0.4, 0.7), 0, 4.55, 0, false, false));
     mdLanternPost(spentGroup, -1.9, 1.35);
     mdLanternPost(spentGroup, 1.9, 1.35);
-    packRigidModel(spentGroup);
+    // Replace the prototype hall with the same authored stone architecture.
+    spentGroup.clear();
+    mdMountTieredArchitecture(spentGroup, 'finance_bank', 3.7, 3.0);
     const spentProxy = hitProxy(4.2, 4.4, 3.2);
     spentProxy.position.z = 0.1;
     spentProxy.userData = { id: "finance_bank", district: "civic", name: "עיריית SPENT", amount: 0, trend: "מרכז העיר והממשל", shell: spentGroup };
@@ -5875,16 +6185,17 @@ const CHARACTER = {
     interactiveBuildings.push(spentProxy);
     buildingRoots["finance_bank"] = spentGroup;
     
-    [[-3.2, 3.2], [3.2, 3.2], [-3.3, -0.4], [3.3, -0.4], [-3.2, -3.3], [3.2, -3.3]].forEach(function (p) {
+    /* Trees belong to the reserve planting pass; old plaza beds overlapped it. */
+    [].forEach(function (p) {
       const h = new THREE.Group();
  h.position.set(p[0], Y_WALK, p[1]);
  root.add(h);
       mdTreeBed(h, 0, 0, "tree");
     }
 );
-    mdTimberBenchAt(root, -2.2, 3.1, 0.7, Y_WALK);
-    mdTimberBenchAt(root, 2.2, 3.1, -0.7, Y_WALK);
-    const ambientBench = mdTimberBenchAt(root, 3.0, 1.0, -Math.PI / 2, Y_WALK);
+    mdTimberBenchAt(root, -2.2, 3.8, 0, Y_WALK);
+    mdTimberBenchAt(root, 2.2, 3.8, 0, Y_WALK);
+    const ambientBench = mdTimberBenchAt(root, 3.8, 1.0, -Math.PI / 2, Y_WALK);
     (function () {
  const h = new THREE.Group();
  h.position.set(1.9, Y_WALK, 3.8);
@@ -5896,7 +6207,7 @@ const CHARACTER = {
     const busker = makeFigure({
  appearance: buildAppearanceProfile('city:busker:plaza') }
 );
-    busker.position.set(-1.8, Y_WALK, 2.5);
+    busker.position.set(-3.8, Y_WALK, 2.5);
     busker.rotation.y = 0.9;
     root.add(busker);
     (function () {
@@ -6106,6 +6417,12 @@ const CHARACTER = {
     mdLeadedWindow(barnBox, 0.42, -1.3, 1.0, 1.76, 0);
     const barnRoof = mdTentRoof(transportYard, 7.2, 3.9, 1.3, MD_TILE_TERRA, 1.62, { dormer: true });
     barnRoof.position.x = -0.1;
+    // A courtyard stable keeps the horses visible and gives the compound a
+    // recognisable U-shaped footprint, instead of one oversized roof slab.
+    transportYard.remove(barnBox, barnRoof);
+    const stableArchitecture = new THREE.Group();
+    transportYard.add(stableArchitecture);
+    mdMountTieredArchitecture(stableArchitecture, 'trans_station', 4.6, 3.2);
     const barnSignMat = new THREE.MeshStandardMaterial({ map: signTex("STABLES", "#5B3D24", "#F5D88A", 26), roughness: 0.6 });
     transportYard.add(mesh(roundedBox(0.8, 0.34, 0.06, 0.03), barnSignMat, 0, 1.85, -1.1, false, false));
     mdBarrel(transportYard, -1.7, 1.85);
@@ -6129,7 +6446,9 @@ const CHARACTER = {
       /* Park the coach inside the right side of the stable compound.  Its horse
          extends forward from the wagon, so the old x=3.3 anchor put that horse
          beyond the yard edge and made it appear to float outside the map. */
-      coach.position.set(2.0, 0, 0.55);
+      // The horse extends another ~3.5 units along +X after this rotation.
+      // Anchor the entire team inside the parcel, not just the wagon body.
+      coach.position.set(-1.0, 0, 0.55);
       coach.rotation.y = Math.PI / 2;
       coach.scale.setScalar(1.0);
       transportYard.add(coach);
@@ -6217,14 +6536,48 @@ const CHARACTER = {
     
     
     const reserveGroup = new THREE.Group();
- reserveGroup.position.set(9.4, Y_GROUND, -9.4);
+ /* Keep the reserve in the same central block as Urban. The old Medieval
+    override left the garden in the north-east corner, detached from the
+    plaza and outside the corrected camera framing. */
+ reserveGroup.position.set(0, Y_WALK, 0);
  root.add(reserveGroup);
     
     const M_PARK_MEADOW = mat(0x66B63E, 0.90);
-    const meadowGeo = new THREE.CylinderGeometry(4.2, 4.35, 0.05, 32);
-    meadowGeo.scale(0.95, 1, 0.90);
-    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, -0.15, Y_GRASS + 0.004, 0.1, false, true);
+    /* Use the corrected Urban garden footprint: a walkable rounded block,
+       rather than the old oversized ellipse that pushed trees and the shore
+       outside the intended city tile. */
+    const meadowGeo = roundedBox(7.0, 0.05, 7.0, 0.65);
+    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, 0, Y_GRASS + 0.004, 0, false, true);
     reserveGroup.add(reserveMeadowMesh);
+    // A village herb garden: continuous earth paths, low woven enclosures,
+    // and cultivated beds rather than another layer of civic monuments.
+    const gardenEarth = mat(0xAD9471, 1);
+    const gardenSoil = mat(0x65513C, 1);
+    const gardenHerb = mat(0x68794D, 1);
+    const gardenPathY = Y_GRASS + 0.038;
+    [-1, 1].forEach(function(side) {
+      reserveGroup.add(mesh(new THREE.BoxGeometry(6.5, .032, .42), gardenEarth, 0, gardenPathY, side*3.12, false, true));
+      reserveGroup.add(mesh(new THREE.BoxGeometry(.42, .032, 6.5), gardenEarth, side*3.12, gardenPathY, 0, false, true));
+    });
+    // This path is aligned with the existing bridge and reaches the perimeter.
+    [-1,1].forEach(function(side){
+      const distance=side*3.02, angle=Math.PI/5;
+      const approach=mesh(new THREE.BoxGeometry(.78,.032,1.5),gardenEarth,-.2+Math.sin(angle)*distance,gardenPathY,Math.cos(angle)*distance,false,true);
+      approach.rotation.y=angle;reserveGroup.add(approach);
+    });
+    [[-1.0,2.48],[.35,2.48]].forEach(function(p) {
+      reserveGroup.add(mesh(new THREE.BoxGeometry(.90,.07,.42),gardenSoil,p[0],Y_GRASS+.045,p[1],false,true));
+      [-1,1].forEach(function(s){reserveGroup.add(mesh(new THREE.BoxGeometry(.96,.10,.055),MD_TIMBER_LT,p[0],Y_GRASS+.08,p[1]+s*.235,false,true));});
+      for(let n=0;n<4;n++){
+        const herb=mesh(new THREE.SphereGeometry(.11,7,5),gardenHerb,p[0]-.31+n*.21,Y_GRASS+.17,p[1],false,true);
+        herb.scale.y=.8;reserveGroup.add(herb);
+      }
+    });
+    // Short fence runs leave wide entrances and the pond corner unobstructed.
+    [[-3.43,-1.5],[-3.43,1.2],[3.43,.35]].forEach(function(p){
+      for(let i=0;i<4;i++)reserveGroup.add(mesh(new THREE.CylinderGeometry(.026,.035,.38,5),MD_TIMBER,p[0],Y_GRASS+.19,p[1]+i*.32,false,true));
+      for(let row=0;row<3;row++)reserveGroup.add(mesh(new THREE.BoxGeometry(.04,.032,1.02),MD_TIMBER_LT,p[0],Y_GRASS+.09+row*.10,p[1]+.48,false,true));
+    });
     
     const shoreGeo = new THREE.CylinderGeometry(3.05, 3.15, 0.10, 26);
     shoreGeo.scale(0.92, 1, 0.68);
@@ -6259,6 +6612,9 @@ const CHARACTER = {
  type: "lake_ripple", ring: lakeRipple, mat: lakeRippleMat }
 );
     
+    const bridgeApproach = mesh(new THREE.BoxGeometry(0.78, 0.08, 4.6), M_WOOD, -0.2, Y_GRASS + 0.08, 0);
+    bridgeApproach.rotation.y = Math.PI / 5;
+    reserveGroup.add(bridgeApproach);
     const bridge = new THREE.Group();
  bridge.position.set(-0.2, Y_GRASS + 0.10, 0);
  bridge.rotation.y = Math.PI / 5;
@@ -6303,25 +6659,11 @@ const CHARACTER = {
       reserveGroup.add(b);
       interactiveBuildings.push(b);
     }
-    addStone(-2.5,  0.4, 1.2);
-    addStone(-1.8,  1.4, 0.9);
-    addStone( 1.6,  0.8, 1.3);
-        addStone( 1.4, -1.0, 1.0);
-        var mdLakeRim = mesh(new THREE.TorusGeometry(2.75, 0.10, 6, 32), MD_STONE, -0.2, Y_GRASS + 0.02, 0, false, true);
-        mdLakeRim.rotation.x = -Math.PI / 2;
-        reserveGroup.add(mdLakeRim);
-        [[2.6, 2.2], [-2.4, 2.4], [-1.0, -2.6], [2.4, -1.6]].forEach(function (p, i) {
-          var bush = mesh(new THREE.SphereGeometry(0.34, 8, 7), mat(i % 2 ? 0x2F874D : 0x3C9450, 0.88), p[0], Y_GRASS + 0.20, p[1], true, true);
-          reserveGroup.add(bush);
-          reserveGroup.add(mesh(new THREE.SphereGeometry(0.05, 5, 4), mat([0xD9533F, 0x9B4A8F, 0xD9B55C, 0xE0633F][i], 0.8), p[0] + 0.12, Y_GRASS + 0.30, p[1], false, false));
-        });
-        var mdWillow = new THREE.Group();
-        mdWillow.position.set(1.1, Y_GRASS, 1.05);
-        reserveGroup.add(mdWillow);
-        mdWillow.add(mesh(new THREE.CylinderGeometry(0.05, 0.09, 0.7, 7), MD_TIMBER, 0, 0.35, 0, true, true));
-        for (var mi = 0; mi < 5; mi++) {
-          mdWillow.add(mesh(new THREE.SphereGeometry(0.42 - mi * 0.06, 8, 7), mat(mi % 2 ? 0x4F9B46 : 0x3C9450, 0.88), -0.5 + mi * 0.25, 0.9, (mi % 2 ? 0.3 : -0.25), true, true));
-        }
+    /* Keep the Urban reserve composition legible: the basin edge remains
+       open and the authored planting pass owns the perimeter. */
+        /* The Urban planting pass already owns this shoreline. Do not add a
+           second Medieval willow on top of it; that was the source of the
+           dense overlapping clump in the centre of the park. */
     
 
 const COMPANION_LOCATIONS = [  {
@@ -6344,9 +6686,9 @@ const SLOT_DEFS = [  {
 ,  {
  id: "slot_repair_bench", x: 7.6, z: -7.25, y: Y_GRASS, district: "savings" }
 ,  {
- id: "slot_park_bridge", x: 9.2, z: -9.4, y: Y_GRASS, district: "savings", rot: Math.PI / 5, scale: 1.7, radius: 1.1 }
+ id: "slot_park_bridge", x: -0.2, z: 0, y: Y_GRASS, district: "savings", rot: Math.PI / 5, scale: 1.7, radius: 1.1 }
 ,  {
- id: "slot_fountain_marble", x: 0, z: 1.3, y: Y_WALK, district: "city", scale: 2.2, radius: 1.35 }
+ id: "slot_fountain_marble", x: 2.65, z: -2.65, y: Y_WALK, district: "city", scale: 1.14, radius: 0.71 }
 ,  {
  id: "slot_cafe_stand", x: 11.85, z: 0, y: Y_WALK, district: "food" }
 ,  {
@@ -6594,15 +6936,12 @@ function normalizedSlotPlacements(input) {
     }
     
     
-    addPine(-2.8, -2.4, 1.2, null, 0.00);
-    addPine( 2.6, -2.4, 1.1, null, 0.00);
-    addPine( 2.8,  2.2, 1.0, null, 0.10);
-    addDecid(-2.8, 2.4, 1.0, null, 0.00);
-    addDecid( 0.4, 2.6, 0.9, null, 0.18);
-    addPine(-1.4, -3.0, 0.9, null, 0.34);
-    addDecid( 2.0,  3.1, 0.8, null, 0.46);
-    addPine( 0.9, -3.2, 0.8, null, 0.62);
-    addDecid(-3.4, -0.6, 0.9, null, 0.80);
+    // A small orchard on the north bank; keep the bridge and south bank open.
+    addDecid(-2.7, -2.55, .68, null, 0.00);
+    addDecid(-1.3, -2.85, .60, null, 0.18);
+    addDecid(0.15, -2.95, .63, null, 0.34);
+    addDecid(-2.95, .75, .58, null, 0.46);
+    addDecid(2.9, 1.6, .58, null, 0.62);
     
     
     
@@ -6612,6 +6951,7 @@ function normalizedSlotPlacements(input) {
     const ISLAND_HALF = 12.2;
     function isOpenGround(x, z) {
       if (Math.max(Math.abs(x), Math.abs(z)) > ISLAND_HALF) return false;
+      if (Math.abs(x) < 4.2 && Math.abs(z) < 4.2) return false;
       if (SLOT_DEFS.some(function (s) {
  return Math.hypot(x - s.x, z - s.z) < (s.radius || 0.65) + 0.65;
  }
@@ -7048,6 +7388,11 @@ function normalizedSlotPlacements(input) {
  flowerDensity = 0.40;
  lowScale = 0.82;
       }
+      // Retain the health gradient, with the quieter ochre/olive palette of this world.
+      targetMeadow.lerp(C(0x9B9A69), .60);
+      targetPine.lerp(C(0x53634A), .40);
+      targetLeaf.lerp(C(0x6C7950), .45);
+      targetLeafLight.lerp(C(0x9A9E68), .45);
       M_PARK_MEADOW.color.copy(targetMeadow);
       M_PARK_PINE.color.copy(targetPine);
       M_PARK_LEAF.color.copy(targetLeaf);

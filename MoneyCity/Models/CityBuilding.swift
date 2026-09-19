@@ -321,6 +321,9 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 set.insert(b.id)
             }
         }
+        // Visual landmark; it is selectable for the monthly overview but never
+        // participates in transaction categorization or finance totals.
+        set.insert("city_hall")
         return set
     }()
 }
@@ -361,4 +364,3 @@ public struct CityBuildingFocusRequest: Equatable, Identifiable, Sendable {
         self.source = source
     }
 }
-

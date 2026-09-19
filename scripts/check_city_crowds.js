@@ -18,6 +18,7 @@ for (const name of ['C', 'mat', 'mesh', 'roundedBox', 'mergeStaticScenery', 'pac
 }
 const materials = new Set((productionFunction('makeFigure') + productionFunction('cafeTableSet')).match(/\bM_[A-Z0-9_]+\b/g));
 for (const name of materials) scope[name] = scope.mat(0xAABBCC, 0.8);
+vm.runInContext(builder.slice(builder.indexOf('    function hashCitizenKey'), builder.indexOf('    function makeFigure')), scope);
 vm.runInContext(read('city_v2_life.js').split('function makeLifePlace(')[0], scope);
 vm.runInContext(source + '\nthis.inspect = () => ({fronts:CROWD_FRONTAGES, limits:CROWD_LIMITS, snapshot:crowdSnapshot, walkers:crowdWalkers, batches:crowdBatches, states:venueStates});', scope);
 function apply(raw) {
@@ -106,7 +107,7 @@ vm.runInContext(read('city_v2_companions.js') + '\nthis.friendBuilders = COMPANI
 vm.runInContext(builder.match(/    const ENRICHMENT_PROPS = \{[^]*?\n    \};/)[0] + '\nthis.props = ENRICHMENT_PROPS;', scope);
 const rewardBounds = [];
 for (const slot of scope.slotDefs) {
-  if (slot.x < 11) continue;
+  // Include central park rewards as well as storefront additions.
   for (const [id, make] of Object.entries(scope.props)) {
     if (!scope.slotAccepts(slot.id, id)) continue;
     const g = new THREE.Group(); make(g); g.position.set(slot.x, slot.y, slot.z); g.rotation.y = slot.rot || 0; g.scale.setScalar(slot.scale || 1);

@@ -243,9 +243,9 @@ ${threeMinJs}
       shopping: { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
       shop:     { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: -9.2, lookY: 0.6, lookZ: 0 },
       housing:  { az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 0,    lookY: 0.6, lookZ: -9.2 },
-      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 9.4,  lookY: 0.4, lookZ: -9.4 },
+      savings:  { az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 0,    lookY: 0.4, lookZ: 0 },
       transport:{ az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 9.2, lookY: 0.6, lookZ: 9.2 },
-      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: -0.4 }
+      civic:    { az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: 9.2 }
     };
 
     let currentMode = "city";
@@ -3042,13 +3042,9 @@ ${threeMinJs}
     addSidewalkBlock(0, 0, 8.6, 8.6);
     addKerb(0, 0, 8.6, 8.6);
 
-    const plazaInlay = mesh(new THREE.CylinderGeometry(2.75, 2.75, 0.03, 36), mat(0xEFE7D8, 0.9), 0, Y_WALK + 0.01, 1.3, false, true);
-    root.add(plazaInlay);
-    const plazaRim = mesh(new THREE.TorusGeometry(2.75, 0.06, 6, 44), M_WARM_STONE, 0, Y_WALK + 0.02, 1.3, false, false);
-    plazaRim.rotation.x = -Math.PI / 2; root.add(plazaRim);
-
     const fountainGroup = new THREE.Group();
-    fountainGroup.position.set(0, Y_WALK, 1.3);
+    fountainGroup.position.set(2.65, Y_WALK, -2.65);
+    fountainGroup.scale.setScalar(0.52);
     root.add(fountainGroup);
     fountainGroup.add(mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.22, 24), mat(0xE7E1D2, 0.55), 0, 0.11, 0));
     const fountRim = mesh(new THREE.TorusGeometry(1.27, 0.06, 6, 28), M_WARM_STONE, 0, 0.22, 0, false, false);
@@ -3066,62 +3062,51 @@ ${threeMinJs}
     fountainGroup.add(fRipple);
     animObjects.push({ type: "fountain_ripple", ring: fRipple, mat: fRippleMat });
 
-    const spentGroup = new THREE.Group();
-    spentGroup.position.set(0, Y_WALK, -1.9);
-    root.add(spentGroup);
-
-    spentGroup.add(mesh(roundedBox(3.8, 2.1, 2.7, 0.12), M_CREAM, 0, 1.05, 0));
-    spentGroup.add(mesh(roundedBox(4.3, 0.16, 3.2, 0.08), M_WARM_STONE, 0, 0.08, 0.10, false, true));
-    spentGroup.add(mesh(roundedBox(4.0, 0.12, 2.9, 0.06), M_WARM_STONE, 0, 0.20, 0.06, false, true));
-    for (let i = -2; i <= 2; i++) {
-      spentGroup.add(mesh(new THREE.CylinderGeometry(0.11, 0.12, 1.52, 12), M_WHITE, i * 0.55, 1.02, 1.58));
-      spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.10, 12), M_WHITE, i * 0.55, 0.31, 1.58, false, false));
-      spentGroup.add(mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.08, 12), M_WHITE, i * 0.55, 1.80, 1.58, false, false));
+    // Monthly volume landmark: deliberately non-selectable and separate from banking.
+    addSidewalkBlock(9.4, -9.4, 4.6, 4.3);
+    addKerb(9.4, -9.4, 4.6, 4.3);
+    const cityHall = new THREE.Group(); cityHall.name = "city_hall";
+    cityHall.position.set(9.4, Y_WALK, -9.4); root.add(cityHall);
+    const cityHallHit = hitProxy(3.2, 3.0, 2.8);
+    cityHallHit.position.set(0, 1.5, 0);
+    cityHallHit.userData = { id: "city_hall", district: "civic", name: "עיריית SPENT", amount: 0, trend: "נפח ההוצאות החודשי", shell: cityHall };
+    cityHall.add(cityHallHit);
+    interactiveBuildings.push(cityHallHit);
+    buildingRoots.city_hall = cityHall;
+    const hallStages = [];
+    const hallGlass = glassMaterial(0x9FC7F0); registerGlass(hallGlass);
+    for (let stage = 0; stage < 4; stage++) {
+      const g = new THREE.Group(); cityHall.add(g); hallStages.push(g);
+      const w = stage === 0 ? 1.85 : 2.9, d = stage === 0 ? 1.7 : 2.35;
+      const h = stage < 2 ? 1.35 : 2.65;
+      g.add(mesh(roundedBox(w, h, d, 0.09), M_CREAM, 0, h / 2, 0));
+      g.add(mesh(roundedBox(w + 0.18, 0.14, d + 0.18, 0.06), M_WARM_STONE, 0, 0.07, 0));
+      g.add(mesh(roundedBox(w + 0.15, 0.16, d + 0.15, 0.05), mat(0x397E70, 0.8), 0, h + 0.08, 0));
+      g.add(mesh(new THREE.BoxGeometry(0.46, 0.8, 0.05), hallGlass, 0, 0.47, d / 2 + 0.03));
+      const sign = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#344B48", "#FFF4DB", 32) });
+      g.add(mesh(new THREE.BoxGeometry(0.95, 0.22, 0.05), sign, 0, 1.09, d / 2 + 0.04));
+      [-1, 1].forEach(function (side) {
+        g.add(mesh(new THREE.BoxGeometry(0.36, 0.52, 0.04), hallGlass, side * w * 0.33, 0.72, d / 2 + 0.03));
+        if (stage >= 1) g.add(mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.05, 8), M_WHITE, side * 0.62, 0.65, d / 2 + 0.19));
+        if (stage >= 2) g.add(mesh(new THREE.BoxGeometry(0.48, 0.65, 0.04), hallGlass, side * 0.74, 2.01, d / 2 + 0.03));
+      });
+      if (stage >= 1) g.add(mesh(roundedBox(1.5, 0.12, 0.55, 0.04), M_WARM_STONE, 0, 1.23, d / 2 + 0.15));
+      if (stage === 3) {
+        g.add(mesh(roundedBox(0.88, 1.22, 0.88, 0.06), M_CREAM, 0, 3.34, -0.18));
+        g.add(mesh(roundedBox(1.03, 0.17, 1.03, 0.05), M_WARM_STONE, 0, 4.03, -0.18));
+        g.add(mesh(new THREE.PlaneGeometry(0.60, 0.60), new THREE.MeshBasicMaterial({ map: clockTex() }), 0, 3.43, 0.27));
+      }
+      packRigidModel(g);
     }
-    spentGroup.add(mesh(new THREE.BoxGeometry(2.24, 0.20, 0.50), M_WHITE, 0, 1.88, 1.58));
-    (function () {
-      const sh = new THREE.Shape();
-      sh.moveTo(-1.16, 0); sh.lineTo(1.16, 0); sh.lineTo(0, 0.54); sh.closePath();
-      const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.30, bevelEnabled: false });
-      geo.translate(0, 0, -0.15);
-      spentGroup.add(mesh(geo, M_CREAM, 0, 1.98, 1.58));
-    })();
-    const spentSignMat = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#1E293B", "#F59E0B", 38) });
-    spentGroup.add(mesh(new THREE.BoxGeometry(1.5, 0.30, 0.05), spentSignMat, 0, 1.62, 1.36, false, false));
-    const civicGlass = glassMaterial(0x9FC7F0); registerGlass(civicGlass);
-    [-1.35, 1.35].forEach(function (x) {
-      spentGroup.add(mesh(new THREE.BoxGeometry(0.52, 0.78, 0.05), civicGlass, x, 1.05, 1.36, false, false));
-      spentGroup.add(mesh(new THREE.BoxGeometry(0.06, 0.82, 0.06), M_MULLION, x, 1.05, 1.38, false, false));
-    });
-    roofDeck(spentGroup, 3.8, 2.7, 2.1, { ac: true, vent: true, tank: false });
-
-    const tower = mesh(roundedBox(1.35, 2.3, 1.35, 0.10), M_CREAM, 0, 3.25, -0.10);
-    spentGroup.add(tower);
-    spentGroup.add(mesh(roundedBox(1.55, 0.14, 1.55, 0.06), M_WARM_STONE, 0, 4.45, -0.10, false, false));
-    const clockM = new THREE.MeshBasicMaterial({ map: clockTex() });
-    spentGroup.add(mesh(new THREE.PlaneGeometry(0.72, 0.72), clockM, 0, 3.85, 0.59, false, false));
-    const clockBack = mesh(new THREE.PlaneGeometry(0.72, 0.72), clockM, 0, 3.85, -0.79, false, false);
-    clockBack.rotation.y = Math.PI; spentGroup.add(clockBack);
-    const spire = mesh(new THREE.ConeGeometry(1.05, 1.7, 4), mat(0x2FA88A, 0.55), 0, 5.35, -0.10);
-    spire.rotation.y = Math.PI / 4;
-    spentGroup.add(spire);
-    spentGroup.add(mesh(new THREE.SphereGeometry(0.13, 10, 10), M_GOLD, 0, 6.28, -0.10));
-
-    packRigidModel(spentGroup);
-    const spentProxy = hitProxy(4.2, 4.4, 3.2);
-    spentProxy.position.z = 0.1;
-    spentProxy.userData = { id: "finance_bank", district: "civic", name: "עיריית SPENT", amount: 0, trend: "מרכז העיר והממשל", shell: spentGroup };
-    spentGroup.add(spentProxy);
-    interactiveBuildings.push(spentProxy);
-    buildingRoots["finance_bank"] = spentGroup;
+    function applyCityHallProgress(value) {
+      const progress = Number.isFinite(value) ? clamp(value, 0, 1) : 0;
+      const stage = progress < 0.15 ? 0 : progress < 0.40 ? 1 : progress < 0.75 ? 2 : 3;
+      hallStages.forEach(function (g, i) { g.visible = i === stage; });
+    }
+    applyCityHallProgress(0);
+    addBenchAt(10.7, -7.9, 0);
 
     // Plaza life: trees, benches, bins, a busker and pigeons
-    [[-3.2, 3.2], [3.2, 3.2], [-3.3, -0.4], [3.3, -0.4], [-3.2, -3.3], [3.2, -3.3]].forEach(function (p) {
-      const h = new THREE.Group(); h.position.set(p[0], Y_WALK, p[1]); root.add(h);
-      planterBox(h, 0, 0, "tree");
-    });
-    addBenchAt(-2.2, 3.1, 0.7);
-    addBenchAt(2.2, 3.1, -0.7);
     const ambientBench = addBenchAt(3.0, 1.0, -Math.PI / 2);
     (function () { const h = new THREE.Group(); h.position.set(1.9, Y_WALK, 3.8); root.add(h); trashBin(h, 0, 0); })();
 
@@ -3291,21 +3276,21 @@ ${threeMinJs}
 
     makeBuilding({
       id: "health_pharmacy", district: "civic", name: "בית מרקחת", trend: "תרופות, פארם ובריאות",
-      kind: "shop", x: -2.85, z: 9.2, w: 2.20, d: 2.10, maxTier: 3,
+      kind: "shop", x: -3.3, z: 9.2, w: 1.8, d: 2.10, maxTier: 3,
       body: 0xF5EBDD, roof: 0x5AA568, accent: 0x86C989, glass: 0xC5DFEC, roofStyle: "deck", vent: true,
       sign: { text: "PHARMA", bg: "#438B55", fg: "#FFFDF7", size: 24 },
       props: [{ type: "planter", x: -1.24, z: 1.38, kind: "shrub", from: 2 }]
     });
     makeBuilding({
       id: "museum_curiosities", district: "civic", name: "שונות", trend: "מתנות, תרומות ושונות",
-      kind: "shop", x: 0.0, z: 9.35, w: 2.10, d: 2.20, maxTier: 3,
+      kind: "shop", x: -1.1, z: 9.35, w: 1.8, d: 2.20, maxTier: 3,
       body: 0xE6D2B4, roof: 0x4A6077, accent: 0xA87550, glass: 0xF1DDB8, roofStyle: "pitch", chimney: true,
       sign: { text: "MISC", bg: "#496B92", fg: "#FFF0D6", size: 28 },
       props: [{ type: "aframe", x: 1.16, z: 1.38, rotY: -0.4, from: 2 }]
     });
     makeBuilding({
       id: "city_sorting_hub", minTier: 1, district: "civic", name: "עסקאות שמחכות לסיווג", trend: "הוצאות שעוד לא סווגו",
-      kind: "shop", x: 2.85, z: 9.1, w: 2.10, d: 2.00, maxTier: 2,
+      kind: "shop", x: 1.1, z: 9.1, w: 1.8, d: 2.00, maxTier: 2,
       body: 0xF0D2C6, roof: 0x4B6076, accent: 0xD46A5C, glass: 0xF0DDBF, roofStyle: "pitch",
       sign: { text: "POST", bg: "#B75B54", fg: "#FFFDF7", size: 30 },
       props: [{ type: "bollards", x: 0, z: 1.42, from: 2 }]
@@ -3420,14 +3405,14 @@ ${threeMinJs}
     // ────────────────────────────────────────────────────────────────
     // 🌿 10. NATURE RESERVE: LAKE, BRIDGE & WOODS (Hero Reference)
     // ────────────────────────────────────────────────────────────────
-    // x=9.1, not 8.2: at 8.2 the lake spilled across the eastern road corridor.
-    const reserveGroup = new THREE.Group(); reserveGroup.position.set(9.4, Y_GROUND, -9.4); root.add(reserveGroup);
+    // Seven-unit garden within the existing central block; perimeter stays walkable.
+    const reserveGroup = new THREE.Group(); reserveGroup.position.set(0, Y_WALK, 0); root.add(reserveGroup);
 
     // Dedicated Reserve Meadow Ground Patch (distinct from the rest of the city)
     const M_PARK_MEADOW = mat(0x66B63E, 0.90);
-    const meadowGeo = new THREE.CylinderGeometry(4.2, 4.35, 0.05, 32);
-    meadowGeo.scale(0.95, 1, 0.90);
-    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, -0.15, Y_GRASS + 0.004, 0.1, false, true);
+    const meadowGeo = roundedBox(7.0, 0.05, 7.0, 0.65);
+
+    const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, 0, Y_GRASS + 0.004, 0, false, true);
     reserveGroup.add(reserveMeadowMesh);
 
     // Sandy shore so the water reads as a basin in the ground, not a slab laid on the grass
@@ -3460,6 +3445,10 @@ ${threeMinJs}
     lakeRipple.position.set(-0.2, Y_GRASS + 0.01, 0);
     reserveGroup.add(lakeRipple);
     animObjects.push({ type: "lake_ripple", ring: lakeRipple, mat: lakeRippleMat });
+
+    // Low timber approaches meet both shores; the arch rises above this continuous path.
+    const bridgeApproach = mesh(new THREE.BoxGeometry(0.78, 0.08, 4.6), M_WOOD, -0.2, Y_GRASS + 0.08, 0);
+    bridgeApproach.rotation.y = Math.PI / 5; reserveGroup.add(bridgeApproach);
 
     // Arched Wooden Footbridge
     const bridge = new THREE.Group(); bridge.position.set(-0.2, Y_GRASS + 0.10, 0); bridge.rotation.y = Math.PI / 5; reserveGroup.add(bridge);
@@ -3648,14 +3637,14 @@ ${threeMinJs}
     // The reserve's own stand is the identity of the place, so it holds the lowest ranks and
     // remains in every seasonal state.
     addPine(-2.8, -2.4, 1.2, null, 0.00);
-    addPine( 2.6, -2.4, 1.1, null, 0.00);
+    addPine( 1.6, -2.6, 0.8, null, 0.00);
     addPine( 2.8,  2.2, 1.0, null, 0.10);
     addDecid(-2.8, 2.4, 1.0, null, 0.00);
     addDecid( 0.4, 2.6, 0.9, null, 0.18);
     addPine(-1.4, -3.0, 0.9, null, 0.34);
     addDecid( 2.0,  3.1, 0.8, null, 0.46);
     addPine( 0.9, -3.2, 0.8, null, 0.62);
-    addDecid(-3.4, -0.6, 0.9, null, 0.80);
+    addDecid(-2.9, -0.6, 0.7, null, 0.80);
 
     // ────────────────────────────────────────────────────────────────
     // 🌳 10b. CITY GREENERY, LAMPS & BENCHES
@@ -3678,7 +3667,7 @@ ${threeMinJs}
         if (x > b.x0 - 0.9 && x < b.x1 + 0.9 && z > b.z0 - 0.9 && z < b.z1 + 0.9) return false;
       }
       // The nature reserve plants itself
-      if (Math.hypot(x - 9.4, z + 9.4) < 4.2) return false;
+      if (Math.hypot(x, z) < 4.2) return false;
       return true;
     }
 
@@ -3899,10 +3888,10 @@ ${threeMinJs}
           g.add(mesh(new THREE.SphereGeometry(0.012 * s, 4, 4), stemM, mx + d[0], 0.12 * s, mz + d[1], false, false));
         });
       });
-      root.add(g);
+      reserveGroup.add(g);
     }
-    createMushroomCluster(10.2, -10.8);
-    createMushroomCluster( 8.4, -11.6);
+    createMushroomCluster(0.8, -2.4);
+    createMushroomCluster(-1.0, -2.2);
 
     // 10. Picnic Spot in Nature Reserve
     function createPicnicSpot(x, z, ry) {
@@ -3920,9 +3909,9 @@ ${threeMinJs}
       g.add(basket);
       const melon = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.025, 10, 1, false, 0, Math.PI), mat(0xEF4444, 0.6), 0.14, 0.42, -0.04);
       melon.rotation.x = Math.PI / 2; g.add(melon);
-      root.add(g);
+      reserveGroup.add(g);
     }
-    createPicnicSpot(11.2, -7.6, 0.35);
+    createPicnicSpot(1.4, 2.6, 0.35);
 
     // 11. High-Detail Park Squirrel Sitting on the Bench
     function createParkSquirrel(x, y, z, ry) {
@@ -3947,7 +3936,7 @@ ${threeMinJs}
     createParkSquirrel(-6.4, Y_GRASS + 0.26, 10.9, 0.2);
 
     // 12. Animated Fluttering Butterflies
-    function createButterfly(colorHex, orbitRadius, cx, cz, cy) {
+    function createButterfly(colorHex, orbitRadius, cx, cz, cy, parent) {
       const g = new THREE.Group(); g.position.set(cx, cy, cz);
       const wingMat = new THREE.MeshStandardMaterial({
         color: colorHex,
@@ -3960,7 +3949,7 @@ ${threeMinJs}
       wingL.rotation.y = 0.3; g.add(wingL);
       const wingR = mesh(new THREE.CircleGeometry(0.045, 6), wingMat, 0.04, 0, 0);
       wingR.rotation.y = -0.3; g.add(wingR);
-      root.add(g);
+      (parent || root).add(g);
       animObjects.push({
         type: "butterfly_orbit",
         ref: g,
@@ -3975,8 +3964,8 @@ ${threeMinJs}
       });
     }
     createButterfly(0x38BDF8, 1.3,  1.8,   0.8, Y_WALK + 0.8);
-    createButterfly(0xF472B6, 1.5,  8.2,  -8.0, Y_GRASS + 0.9);
-    createButterfly(0xFACC15, 1.2, 10.5,  -6.5, Y_GRASS + 1.0);
+    createButterfly(0xF472B6, 0.7, -1.2, 1.4, Y_GRASS + 0.9, reserveGroup);
+    createButterfly(0xFACC15, 0.7, 1.1, 2.5, Y_GRASS + 1.0, reserveGroup);
     createButterfly(0x4ADE80, 1.3, -3.2,   1.8, Y_WALK + 0.8);
 
     // 13. Graceful Birds Circling in the Sky
@@ -4220,25 +4209,10 @@ ${threeMinJs}
     }
 
     // Citizens walking lively around plazas, crosswalks, nature reserve and shops:
-    // 1. Central Plaza & Fountain stroller
+    // 1. Park stroller follows the dry southern shore.
     addCitizen(null, null, null, [
-      {x: -1.9, z: 0.8},
-      {x: -1.9, z: 1.7},
-      {x: -1.4, z: 2.3},
-      {x: -0.7, z: 2.8},
-      {x:  0.0, z: 2.9},
-      {x:  0.7, z: 2.8},
-      {x:  1.4, z: 2.3},
-      {x:  1.9, z: 1.7},
-      {x:  1.9, z: 0.8},
-      {x:  2.4, z: 1.4},
-      {x:  2.3, z: 2.5},
-      {x:  1.2, z: 3.4},
-      {x:  0.0, z: 3.6},
-      {x: -1.2, z: 3.4},
-      {x: -2.4, z: 2.5},
-      {x: -2.4, z: 1.4}
-    ], ["איזה כיף להסתובב ליד המזרקה ⛲", "העיר הזו נראית מעולה! 🏙️"], ["Lovely stroll around the fountain ⛲", "This city looks amazing! 🏙️"], false, 0.35, 'city:plaza:stroller');
+      {x:-2.8,z:1.8}, {x:-2.4,z:2.6}, {x:0,z:3.2}, {x:2.4,z:2.6}, {x:2.8,z:1.8}
+    ], ["טיול נעים בפארק 🌿"], ["A lovely stroll through the park 🌿"], false, 0.35, 'city:plaza:stroller');
 
     // 2. Crosswalk Pedestrian crossing the street
     addCitizen(null, null, null, [
@@ -4247,7 +4221,7 @@ ${threeMinJs}
 
     // 3. Nature Reserve Bridge & Trail Walker
     addCitizen(null, null, null, [
-      {x: 8.6, z: -9.8}, {x: 9.3, z: -9.4}, {x: 10.0, z: -9.0}, {x: 9.3, z: -9.4}
+      {x:-1.552,z:-1.861}, {x:-0.847,z:-0.890}, {x:-0.2,z:0}, {x:0.447,z:0.890}, {x:1.152,z:1.861}, {x:2.6,z:2.1}, {x:2.9,z:0}, {x:2.4,z:-2.1}, {x:0,z:-2.3}
     ], ["האוויר כאן בפארק פשוט נקי 🌲", "שומר על החסכונות שלי 💚"], ["The air is so clean here in the park 🌲", "Growing my savings 💚"], false, 0.30, 'city:park:trail');
 
     // 4. Active Jogger doing laps with athletic stride
@@ -4752,7 +4726,7 @@ ${threeMinJs}
     // follow the app's language rather than being frozen in Hebrew at build time.
     // ────────────────────────────────────────────────────────────────
     const I18N_BUILDINGS = {
-      finance_bank:       { he: ["עיריית SPENT", "מרכז העיר והממשל"],   en: ["SPENT City Hall", "Civic centre"] },
+      finance_bank:       { he: ["עמלות ובנקים", "עמלות, בנקים וריביות"],   en: ["Banking & Fees", "Fees, banking and interest"] },
       house_tower:        { he: ["מגורים ושכירות", "שכר דירה או משכנתא"], en: ["Housing & rent", "Rent or mortgage"] },
       house_util:         { he: ["חשבונות בית", "חשמל, מים, גז וארנונה"], en: ["Utilities", "Power, water, gas, council tax"] },
       house_subs:         { he: ["מנויים וסטרימינג", "שירותים דיגיטליים"], en: ["Subscriptions", "Digital services"] },
@@ -5272,6 +5246,7 @@ ${threeMinJs}
         syncBuilding("museum_curiosities", data.museumAmount || 0);
         syncBuilding("health_pharmacy", data.healthAmount || 0);
         syncBuilding("finance_bank", data.financeAmount || 0);
+        applyCityHallProgress(data.cityHallProgress);
         syncBuilding("trans_station", data.transport || 0);
         syncBuilding("savings_sanctuary", data.savings || 0);
         applyBuildingActivity();
@@ -5541,6 +5516,19 @@ ${threeMinJs}
           c.obj.position.x = p1.x + (p2.x - p1.x) * frac;
           c.obj.position.z = p1.z + (p2.z - p1.z) * frac;
           c.obj.rotation.y = Math.atan2(p2.x - p1.x, p2.z - p1.z);
+        }
+        if (c.appearanceKey === 'city:park:trail') {
+          const dx = c.obj.position.x + 0.2, dz = c.obj.position.z;
+          const along = dx * Math.sin(Math.PI / 5) + dz * Math.cos(Math.PI / 5);
+          const across = dx * Math.cos(Math.PI / 5) - dz * Math.sin(Math.PI / 5);
+          c.baseY = Y_WALK + Y_GRASS;
+          if (Math.abs(across) < 0.40 && Math.abs(along) <= 2.3) {
+            const t = Math.abs(along);
+            const arch = bridge.visible
+              ? 0.10 + 0.12 + 0.15 * (1 - Math.pow(Math.min(t, 1.1) / 1.2, 2)) + 0.0325
+              : 1.7 * (0.12 + Math.cos(Math.min(t / 1.7, 0.66) / 0.72 * Math.PI / 2) * 0.16 + 0.0225);
+            c.baseY += t <= 1.1 ? arch : 0.12 + (arch - 0.12) * Math.max(0, (1.7 - t) / 0.6);
+          }
         }
         const cadence   = c.motion ? c.motion.cadence : 1;
         const swingAmt  = c.motion ? c.motion.swing   : 1;
@@ -6061,6 +6049,7 @@ ${threeMinJs}
       park: { setHealth: applyParkHealth, step: stepPlantings, owns: belongsToReserve,
         reserve: reserveGroup, lake: lakeMesh, meadow: M_PARK_MEADOW,
         previewValues: [1, 0.8, 0.6, 0.4, 0.2] },
+      cityHall: { root: cityHall, stages: hallStages, setProgress: applyCityHallProgress },
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,

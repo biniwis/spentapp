@@ -130,3 +130,23 @@ assert(main.includes('onSlotTapped: nil'));
 const catalog = read('MoneyCity/Services/CityProgressEngine.swift').split('public let legacyCatalogOptions')[0];
 assert.deepEqual([...catalog.matchAll(/ProgressRewardOption\(id: "([^"]+)"/g)].map(m => m[1]).sort(), ids.sort());
 console.log('PASS: six earned companions, no free spawns, no interactive rewards, stable caching, old decoration coexistence and welcome camera lifecycle');
+
+// Central reserve contract: saved reward IDs move, and hall stages do not depend on fees.
+{
+  const layout = vm.runInNewContext(slotsSourceForLayout() + '\n({slots:SLOT_DEFS, friends:COMPANION_LOCATIONS})', {Y_WALK:0.14,Y_GRASS:0.03});
+  for (const id of ['slot_tree_sakura','slot_pet_golden_dog','slot_repair_bench','slot_park_bridge']) {
+    const slot = layout.slots.find(s => s.id === id);
+    assert(Math.abs(slot.x) < 3.5 && Math.abs(slot.z) < 3.5, id + ' stays in the central park');
+  }
+  const stages = Array.from({length:4}, () => ({visible:false}));
+  const context = {hallStages:stages, clamp:(x,a,b)=>Math.max(a,Math.min(b,x))};
+  vm.runInNewContext(builder.match(/    function applyCityHallProgress\([^]*?\n    \}/)[0] + '\nthis.apply = applyCityHallProgress;', context);
+  for (const [progress, expected] of [[0,0],[.149,0],[.15,1],[.4,2],[.75,3],[2,3],[-1,0],[NaN,0]]) {
+    context.apply(progress);
+    assert.equal(stages.filter(s=>s.visible).length,1);
+    assert(stages[expected].visible);
+  }
+  assert(!builder.includes('id: "finance_bank", district: "civic", name: "עיריית SPENT"'));
+  console.log('PASS: central park rewards and city hall stage boundaries / malformed payload');
+}
+function slotsSourceForLayout() { return require('fs').readFileSync(require('path').join(__dirname, '../city_v2_slots.js'), 'utf8'); }

@@ -846,7 +846,7 @@ public struct ProfileView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(isHe ? "עולם העיר" : "City World")
+                    Text(isHe ? "סגנון המפה" : "Map Style")
                         .font(.system(size: 15, weight: .semibold, design: .default))
                         .foregroundColor(Color.deepNavy)
 

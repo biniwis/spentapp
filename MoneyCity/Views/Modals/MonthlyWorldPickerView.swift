@@ -50,7 +50,7 @@ public struct MonthlyWorldPickerView: View {
         VStack(spacing: 0) {
             // Header
             VStack(alignment: .leading, spacing: 4) {
-                Text(isHebrew ? (isCurrentMonthTarget ? "העיר של החודש" : "העיר של חודש הבא") : (isCurrentMonthTarget ? "This Month's City" : "Next Month's City"))
+                Text(isHebrew ? (isCurrentMonthTarget ? "מפת החודש" : "מפת החודש הבא") : (isCurrentMonthTarget ? "This Month's Map" : "Next Month's Map"))
                     .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(MoneyCityTheme.jetBlack)
 
@@ -199,7 +199,7 @@ public struct MonthlyWorldPickerView: View {
                 Haptics.impact(.medium)
                 onConfirm(draft)
             } label: {
-                Text(isHebrew ? "בחירת עולם" : "Confirm World")
+                Text(isHebrew ? "בחירת מפה" : "Confirm Map")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)

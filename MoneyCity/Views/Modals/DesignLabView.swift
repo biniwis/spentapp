@@ -1368,8 +1368,8 @@ public struct DesignLabView: View {
                         }
 
                         Text(isHe
-                            ? "הדמיית הדיורמה התלת-ממדית עם שליטה מיידית בצפיפות, מבנים, פארק ותנועה"
-                            : "Interactive WebGL 3D diorama with live controls for density, buildings, park & traffic")
+                            ? "בדיקת כל סגנון מפה (מודרנית, ימי הביניים, קרח, ישראלית) בכל שלבי הבנייה והצפיפות"
+                            : "Test any map style (Modern, Medieval, Arctic, Israeli) across all build & density stages")
                             .font(.system(size: 12, weight: .regular, design: .default))
                             .foregroundColor(Color.textSecondary)
                     }
@@ -1511,6 +1511,7 @@ public struct CityDensityLabSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
 
+    @State private var selectedMapStyle: CityMapStyle = .urban
     @State private var selectedPresetIndex: Int = 2 // Start at Thriving City
     @State private var viewResetToken: Int = 0
     @State private var isTimeOverrideActive: Bool = false
@@ -1782,6 +1783,7 @@ public struct CityDensityLabSheet: View {
         ZStack {
             // Real 3D Diorama View
             DioramaReadyWrapper(
+                mapStyle: selectedMapStyle,
                 totalSpent: currentPreset.totalSpent,
                 totalSavings: currentPreset.totalSavings,
                 savingsTarget: currentPreset.savingsTarget,
@@ -1807,51 +1809,91 @@ public struct CityDensityLabSheet: View {
                 onSlotTapped: nil,
                 onCameraOffsetChanged: nil
             )
+            .id("\(selectedMapStyle.rawValue)_\(selectedPresetIndex)")
             .ignoresSafeArea()
 
             // Overlaid Controls & Preset Switcher
             VStack(spacing: 0) {
                 // Top Header Pill Bar
-                HStack {
-                    Button {
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 6) {
-                            MoneyIcon(isHe ? .chevronRight : .chevronLeft, size: 14)
-                            Text(isHe ? "חזרה" : "Back")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                VStack(spacing: 8) {
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 6) {
+                                MoneyIcon(isHe ? .chevronRight : .chevronLeft, size: 14)
+                                Text(isHe ? "חזרה" : "Back")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                            }
+                            .foregroundColor(Color.deepNavy)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.92))
+                            .clipShape(Capsule())
+                            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 2)
                         }
-                        .foregroundColor(Color.deepNavy)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .buttonStyle(.plain)
+
+                        Spacer()
+
+                        HStack(spacing: 8) {
+                            Text("\(currentPreset.emoji) \(isHe ? currentPreset.nameHe : currentPreset.nameEn)")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+
+                            Button {
+                                Haptics.impact(.light)
+                                viewResetToken &+= 1
+                            } label: {
+                                MoneyIcon(.refresh, size: 14, color: Color.deepNavy)
+                                    .padding(7)
+                                    .background(Color(red: 243/255, green: 244/255, blue: 246/255))
+                                    .clipShape(Circle())
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
                         .background(Color.white.opacity(0.92))
                         .clipShape(Capsule())
                         .shadow(color: Color.black.opacity(0.08), radius: 8, y: 2)
                     }
-                    .buttonStyle(.plain)
 
-                    Spacer()
-
-                    HStack(spacing: 8) {
-                        Text("\(currentPreset.emoji) \(isHe ? currentPreset.nameHe : currentPreset.nameEn)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-
-                        Button {
-                            Haptics.impact(.light)
-                            viewResetToken &+= 1
-                        } label: {
-                            MoneyIcon(.refresh, size: 14, color: Color.deepNavy)
-                                .padding(7)
-                                .background(Color(red: 243/255, green: 244/255, blue: 246/255))
-                                .clipShape(Circle())
+                    // Map Style Selector (All 4 available worlds: Urban, Medieval, Arctic, Israel)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(CityMapSelection.pickerWorlds) { style in
+                                let isSelected = (selectedMapStyle == style)
+                                Button {
+                                    Haptics.selection()
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                        selectedMapStyle = style
+                                        viewResetToken &+= 1
+                                    }
+                                } label: {
+                                    HStack(spacing: 5) {
+                                        Circle()
+                                            .fill(isSelected ? MoneyCityTheme.luckyGreen : Color.clear)
+                                            .frame(width: 6, height: 6)
+                                        Text(style.title(isHebrew: isHe))
+                                            .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
+                                    }
+                                    .foregroundColor(isSelected ? MoneyCityTheme.jetBlack : Color.textSecondary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(isSelected ? Color.white : Color.white.opacity(0.8))
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(isSelected ? MoneyCityTheme.jetBlack : MoneyCityTheme.borderSubtle, lineWidth: isSelected ? 1.5 : 1)
+                                    )
+                                    .shadow(color: Color.black.opacity(isSelected ? 0.08 : 0.03), radius: 4, y: 1)
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 2)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.white.opacity(0.92))
-                    .clipShape(Capsule())
-                    .shadow(color: Color.black.opacity(0.08), radius: 8, y: 2)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 14)

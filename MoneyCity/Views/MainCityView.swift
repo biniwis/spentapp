@@ -123,6 +123,8 @@ public struct MainCityView: View {
     // ── Monthly World Selection ──
     @State private var showMonthlyWorldPicker = false
     @State private var monthlyWorldDraft: CityMapStyle = .urban
+    /// The month the picker is currently selecting a world for.
+    @State private var monthlyWorldTargetMonth: Date = Date()
 
     // ── Remote Config & Announcement ──
     @ObservedObject private var remoteConfig = RemoteConfigService.shared
@@ -623,7 +625,8 @@ public struct MainCityView: View {
             checkNewMonthTransition()
             checkCityTapHint()
             checkRecurringCoachmark()
-            checkMonthlyWorldSelection()
+            evaluateMonthlyWorldPresentation()
+            scheduleMidnightRolloverCheck()
             
             // Check if app was cold-launched or opened via payment notification tap
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -647,7 +650,13 @@ public struct MainCityView: View {
         }
         .onChange(of: isAnyModalPresented) { _, presented in
             if !presented {
-                checkMonthlyWorldSelection()
+                evaluateMonthlyWorldPresentation()
+            }
+        }
+        // Brand Splash bug fix: picker was skipped while splash showed and never re-checked.
+        .onChange(of: showBrandSplash) { _, splashVisible in
+            if !splashVisible {
+                evaluateMonthlyWorldPresentation()
             }
         }
         .onChange(of: activeTab) { _, _ in
@@ -780,7 +789,7 @@ public struct MainCityView: View {
                 refreshPendingWalletItems()
                 checkNewMonthTransition()
                 checkCityTapHint()
-                checkMonthlyWorldSelection()
+                evaluateMonthlyWorldPresentation()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     consumeQueuedConfirmationsIfNeeded()
                 }
@@ -793,15 +802,16 @@ public struct MainCityView: View {
         // should appear — the user may stay in the app without triggering a foreground event.
         .onChange(of: activeNewMonthRecap) { _, recap in
             if recap == nil {
-                checkMonthlyWorldSelection()
+                evaluateMonthlyWorldPresentation()
             }
         }
         .sheet(isPresented: $showMonthlyWorldPicker) {
             MonthlyWorldPickerView(
+                targetMonth: monthlyWorldTargetMonth,
                 draft: $monthlyWorldDraft,
                 isHebrew: l10n.language == .hebrew,
                 onConfirm: { chosenStyle in
-                    CityMapSelection.save(chosenStyle, for: Date())
+                    CityMapSelection.confirmWorldChoice(chosenStyle, for: monthlyWorldTargetMonth)
                     mapSelectionRevision += 1
                     showMonthlyWorldPicker = false
                 }
@@ -1250,18 +1260,69 @@ public struct MainCityView: View {
         }
     }
 
-    /// Shows the monthly world picker if the current month has no saved selection.
-    /// Guards: must have completed onboarding, must not be in snapshot mode, and must not
-    /// conflict with any active modal sheet or full-screen cover.
-    private func checkMonthlyWorldSelection() {
+    /// Central coordinator for monthly world presentation.
+    ///
+    /// Decides whether to show the world picker for the current month.
+    /// Guards: onboarding must be complete, not in snapshot mode, splash must be down,
+    /// no conflicting modal, city tab must be active.
+    ///
+    /// On first call in a new month: calls `ensureAssignedStyle` to inherit the previous
+    /// month's style (so the picker opens showing the right default, not always `.urban`),
+    /// bumps the revision so the diorama reflects the inherited style immediately,
+    /// then shows the picker after a short delay to let any transitions settle.
+    private func evaluateMonthlyWorldPresentation() {
         guard hasCompletedOnboarding,
               !isSnapshotMode,
-              !isAnyModalPresented
+              !showBrandSplash,
+              !isAnyModalPresented,
+              activeTab == "city"
         else { return }
+
         let now = Date()
-        guard !CityMapSelection.hasSelection(for: now) else { return }
-        monthlyWorldDraft = CityMapStyle.allCases.first ?? .urban
-        showMonthlyWorldPicker = true
+
+        // Inherit previous month's style for this month if not yet assigned.
+        // This also ensures the diorama shows the inherited style before the picker appears.
+        let inherited = CityMapSelection.ensureAssignedStyle(for: now)
+        if mapSelectionRevision == 0 || inherited != currentMapStyle {
+            mapSelectionRevision += 1
+        }
+
+        // If already confirmed, nothing to show.
+        guard CityMapSelection.isWorldChoicePending(for: now) else { return }
+
+        // Snapshot the target month so even if Date() rolls at midnight before
+        // the user taps "Choose", we confirm against the right month key.
+        let targetMonth = now
+        monthlyWorldTargetMonth = targetMonth
+        monthlyWorldDraft = inherited
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            // Re-check guards in case something appeared in the meantime
+            guard !showBrandSplash,
+                  !isAnyModalPresented,
+                  !showMonthlyWorldPicker,
+                  CityMapSelection.isWorldChoicePending(for: targetMonth)
+            else { return }
+            showMonthlyWorldPicker = true
+        }
+    }
+
+    /// Schedules a one-shot timer that fires just after midnight so the app detects
+    /// a month rollover without requiring a foreground/background cycle.
+    private func scheduleMidnightRolloverCheck() {
+        let cal = Calendar.current
+        guard let tomorrow = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: Date())) else { return }
+        let delay = tomorrow.timeIntervalSinceNow + 5 // 5-second buffer past midnight
+        guard delay > 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [self] in
+            // Update currentDate so month-sensitive views refresh
+            if monthSnapshot == nil {
+                currentDate = Date()
+            }
+            evaluateMonthlyWorldPresentation()
+            // Schedule next midnight check
+            scheduleMidnightRolloverCheck()
+        }
     }
 
     private var recurringExpensesCoachmark: some View {

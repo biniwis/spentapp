@@ -3,6 +3,8 @@ import SwiftUI
 /// Lightweight monthly world selection sheet presented at the start of a new month.
 /// Uses the same swipe carousel as the onboarding Step 5 preview.
 public struct MonthlyWorldPickerView: View {
+    /// The month this picker is selecting a world for. Used for the display name only.
+    public let targetMonth: Date
     @Binding public var draft: CityMapStyle
     public let isHebrew: Bool
     public let onConfirm: (CityMapStyle) -> Void
@@ -14,8 +16,12 @@ public struct MonthlyWorldPickerView: View {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
         formatter.dateFormat = "LLLL"
-        return formatter.string(from: Date())
+        return formatter.string(from: targetMonth)
     }
+
+    /// The worlds shown in this picker — always uses the product-controlled list
+    /// so `.future` (and any other unreleased world) is never surfaced here.
+    private let worlds = CityMapSelection.pickerWorlds
 
     public var body: some View {
         VStack(spacing: 0) {
@@ -61,13 +67,13 @@ public struct MonthlyWorldPickerView: View {
                     .highPriorityGesture(
                         DragGesture(minimumDistance: 10)
                             .onEnded { value in
-                                guard abs(value.translation.width) > abs(value.translation.height) && abs(value.translation.width) > 20 else { return }
-                                let cases = CityMapStyle.allCases
-                                guard let idx = cases.firstIndex(of: draft) else { return }
+                                guard abs(value.translation.width) > abs(value.translation.height),
+                                      abs(value.translation.width) > 20 else { return }
+                                guard let idx = worlds.firstIndex(of: draft) else { return }
                                 let delta = isHebrew
                                     ? (value.translation.width > 0 ? 1 : -1)
                                     : (value.translation.width < 0 ? 1 : -1)
-                                let next = cases[(idx + delta + cases.count) % cases.count]
+                                let next = worlds[(idx + delta + worlds.count) % worlds.count]
                                 withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.25)) {
                                     draft = next
                                 }
@@ -76,13 +82,12 @@ public struct MonthlyWorldPickerView: View {
                     )
             }
             .accessibilityAdjustableAction { direction in
-                let cases = CityMapStyle.allCases
-                guard let idx = cases.firstIndex(of: draft) else { return }
+                guard let idx = worlds.firstIndex(of: draft) else { return }
                 switch direction {
                 case .increment:
-                    draft = cases[(idx + 1) % cases.count]
+                    draft = worlds[(idx + 1) % worlds.count]
                 case .decrement:
-                    draft = cases[(idx - 1 + cases.count) % cases.count]
+                    draft = worlds[(idx - 1 + worlds.count) % worlds.count]
                 @unknown default: break
                 }
             }
@@ -90,7 +95,7 @@ public struct MonthlyWorldPickerView: View {
 
             // Page dots — tappable
             HStack(spacing: 8) {
-                ForEach(CityMapStyle.allCases) { style in
+                ForEach(worlds) { style in
                     Button {
                         withAnimation(reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.25)) {
                             draft = style
@@ -150,6 +155,7 @@ public struct MonthlyWorldPickerView: View {
 
 #Preview("Monthly World Picker") {
     MonthlyWorldPickerView(
+        targetMonth: Date(),
         draft: .constant(.urban),
         isHebrew: true,
         onConfirm: { _ in }

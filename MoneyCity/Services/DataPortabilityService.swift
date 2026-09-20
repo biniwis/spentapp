@@ -1,5 +1,8 @@
 import Foundation
 import SwiftData
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 /// Reads and writes the whole database as one JSON file.
 ///
@@ -16,12 +19,105 @@ public enum DataPortabilityService {
     /// Bumped only when the shape changes in a way an older reader could not handle. The
     /// reader checks it so a future file fails loudly here rather than importing half of
     /// itself and leaving the user to discover which half.
-    public static let formatVersion = 1
+    public static let formatVersion = 2
     public static let formatIdentifier = "moneycity.backup"
 
     // MARK: - The file
 
-    public struct Envelope: Codable {
+    public struct RecapSnapshotDTO: Codable, Equatable {
+        public var monthId: String
+        public var payloadJSON: String
+        public var frozenAt: Date
+
+        public init(monthId: String, payloadJSON: String, frozenAt: Date) {
+            self.monthId = monthId
+            self.payloadJSON = payloadJSON
+            self.frozenAt = frozenAt
+        }
+    }
+
+    public struct AppPreferencesDTO: Codable, Equatable {
+        public var userName: String?
+        public var monthlyBudget: Double?
+        public var hasCompletedOnboarding: Bool?
+        public var hasStartedOnboardingV2: Bool?
+        public var trackingActiveDays: [String]?
+        public var monthlyMapSelections: [String: CityMapSelection.MonthEntry]?
+        public var cityRewardStateData: Data?
+        public var cityCompanionsStartedAt: Double?
+        public var firstAppLaunchDate: Date?
+        public var lastAcknowledgedMonth: String?
+        public var onboardingMapStyle: String?
+        public var appLanguage: String?
+        public var appCurrency: String?
+        public var autoConvertFX: Bool?
+        public var hapticsEnabled: Bool?
+        public var statsExcludeHousing: Bool?
+        public var notificationsEnabled: Bool?
+        public var captureNotificationsEnabled: Bool?
+        public var autoCaptureSetupCompletedAt: Double?
+        public var autoCaptureLastDetectedAt: Double?
+        public var didMigrateLegacyMonthlyTargetIncome: Bool?
+
+        public init(
+            userName: String? = nil,
+            monthlyBudget: Double? = nil,
+            hasCompletedOnboarding: Bool? = nil,
+            hasStartedOnboardingV2: Bool? = nil,
+            trackingActiveDays: [String]? = nil,
+            monthlyMapSelections: [String: CityMapSelection.MonthEntry]? = nil,
+            cityRewardStateData: Data? = nil,
+            cityCompanionsStartedAt: Double? = nil,
+            firstAppLaunchDate: Date? = nil,
+            lastAcknowledgedMonth: String? = nil,
+            onboardingMapStyle: String? = nil,
+            appLanguage: String? = nil,
+            appCurrency: String? = nil,
+            autoConvertFX: Bool? = nil,
+            hapticsEnabled: Bool? = nil,
+            statsExcludeHousing: Bool? = nil,
+            notificationsEnabled: Bool? = nil,
+            captureNotificationsEnabled: Bool? = nil,
+            autoCaptureSetupCompletedAt: Double? = nil,
+            autoCaptureLastDetectedAt: Double? = nil,
+            didMigrateLegacyMonthlyTargetIncome: Bool? = nil
+        ) {
+            self.userName = userName
+            self.monthlyBudget = monthlyBudget
+            self.hasCompletedOnboarding = hasCompletedOnboarding
+            self.hasStartedOnboardingV2 = hasStartedOnboardingV2
+            self.trackingActiveDays = trackingActiveDays
+            self.monthlyMapSelections = monthlyMapSelections
+            self.cityRewardStateData = cityRewardStateData
+            self.cityCompanionsStartedAt = cityCompanionsStartedAt
+            self.firstAppLaunchDate = firstAppLaunchDate
+            self.lastAcknowledgedMonth = lastAcknowledgedMonth
+            self.onboardingMapStyle = onboardingMapStyle
+            self.appLanguage = appLanguage
+            self.appCurrency = appCurrency
+            self.autoConvertFX = autoConvertFX
+            self.hapticsEnabled = hapticsEnabled
+            self.statsExcludeHousing = statsExcludeHousing
+            self.notificationsEnabled = notificationsEnabled
+            self.captureNotificationsEnabled = captureNotificationsEnabled
+            self.autoCaptureSetupCompletedAt = autoCaptureSetupCompletedAt
+            self.autoCaptureLastDetectedAt = autoCaptureLastDetectedAt
+            self.didMigrateLegacyMonthlyTargetIncome = didMigrateLegacyMonthlyTargetIncome
+        }
+    }
+
+    // MARK: - Versioned Backup Schemas
+
+    public struct BackupHeader: Decodable {
+        public let format: String
+        public let formatVersion: Int
+        public let appVersion: String?
+        public let appBuild: String?
+        public let exportedAt: Date?
+    }
+
+    /// Historical V1 Backup Envelope (pre-cloud version in the wild).
+    public struct EnvelopeV1: Decodable {
         public var format: String
         public var formatVersion: Int
         public var appVersion: String
@@ -37,9 +133,133 @@ public enum DataPortabilityService {
         public var savingsGoals: [SavingsGoalDTO]
         public var enrichments: [EnrichmentDTO]
 
+        /// Deterministic migration from V1 to V2:
+        /// Missing collections (recaps, preferences) default safely without fabricating non-existent history.
+        public func migrateToV2() -> EnvelopeV2 {
+            EnvelopeV2(
+                format: format,
+                formatVersion: 2,
+                appVersion: appVersion,
+                appBuild: appBuild,
+                exportedAt: exportedAt,
+                transactions: transactions,
+                recurring: recurring,
+                income: income,
+                budgets: budgets,
+                merchantRules: merchantRules,
+                installments: installments,
+                savingsGoals: savingsGoals,
+                enrichments: enrichments,
+                recaps: [],
+                preferences: nil
+            )
+        }
+    }
+
+    /// Canonical V2 Backup Envelope (current format with recaps and durable preferences).
+    public struct EnvelopeV2: Codable {
+        public var format: String
+        public var formatVersion: Int
+        public var appVersion: String
+        public var appBuild: String
+        public var exportedAt: Date
+
+        public var transactions: [TransactionDTO]
+        public var recurring: [RecurringDTO]
+        public var income: [IncomeDTO]
+        public var budgets: [BudgetDTO]
+        public var merchantRules: [MerchantRuleDTO]
+        public var installments: [InstallmentDTO]
+        public var savingsGoals: [SavingsGoalDTO]
+        public var enrichments: [EnrichmentDTO]
+        public var recaps: [RecapSnapshotDTO]
+        public var preferences: AppPreferencesDTO?
+
         public var totalRecords: Int {
             transactions.count + recurring.count + income.count + budgets.count
                 + merchantRules.count + installments.count + savingsGoals.count + enrichments.count
+                + recaps.count
+        }
+
+        public init(
+            format: String = DataPortabilityService.formatIdentifier,
+            formatVersion: Int = DataPortabilityService.formatVersion,
+            appVersion: String,
+            appBuild: String,
+            exportedAt: Date,
+            transactions: [TransactionDTO],
+            recurring: [RecurringDTO],
+            income: [IncomeDTO],
+            budgets: [BudgetDTO],
+            merchantRules: [MerchantRuleDTO],
+            installments: [InstallmentDTO],
+            savingsGoals: [SavingsGoalDTO],
+            enrichments: [EnrichmentDTO],
+            recaps: [RecapSnapshotDTO] = [],
+            preferences: AppPreferencesDTO? = nil
+        ) {
+            self.format = format
+            self.formatVersion = formatVersion
+            self.appVersion = appVersion
+            self.appBuild = appBuild
+            self.exportedAt = exportedAt
+            self.transactions = transactions
+            self.recurring = recurring
+            self.income = income
+            self.budgets = budgets
+            self.merchantRules = merchantRules
+            self.installments = installments
+            self.savingsGoals = savingsGoals
+            self.enrichments = enrichments
+            self.recaps = recaps
+            self.preferences = preferences
+        }
+    }
+
+    public typealias Envelope = EnvelopeV2
+
+    /// Version-aware decoder that dispatches to historical schema models and migrates forward deterministically.
+    public enum BackupMigrator {
+        public static func decodeAndMigrate(_ data: Data) throws -> Envelope {
+            guard data.count <= DataPortabilityService.maxBackupFileSize else {
+                throw DataPortabilityService.ImportError.fileTooLarge
+            }
+
+            let header: BackupHeader
+            do {
+                header = try DataPortabilityService.makeDecoder().decode(BackupHeader.self, from: data)
+            } catch {
+                throw DataPortabilityService.ImportError.notABackup
+            }
+
+            guard header.format == DataPortabilityService.formatIdentifier else {
+                throw DataPortabilityService.ImportError.notABackup
+            }
+
+            guard header.formatVersion <= DataPortabilityService.formatVersion else {
+                throw DataPortabilityService.ImportError.futureFormat(header.formatVersion)
+            }
+
+            guard header.formatVersion >= 1 else {
+                throw DataPortabilityService.ImportError.notABackup
+            }
+
+            let envelope: Envelope
+            switch header.formatVersion {
+            case 1:
+                let v1 = try DataPortabilityService.makeDecoder().decode(EnvelopeV1.self, from: data)
+                envelope = v1.migrateToV2()
+            case 2:
+                envelope = try DataPortabilityService.makeDecoder().decode(EnvelopeV2.self, from: data)
+            default:
+                throw DataPortabilityService.ImportError.futureFormat(header.formatVersion)
+            }
+
+            guard envelope.totalRecords <= DataPortabilityService.maxRecordCount else {
+                throw DataPortabilityService.ImportError.tooManyRecords
+            }
+
+            return envelope
         }
     }
 
@@ -223,10 +443,141 @@ public enum DataPortabilityService {
         return d
     }
 
+    // MARK: - Preferences Mapping
+
+    public static func buildPreferencesDTO(
+        defaults: UserDefaults = .standard,
+        groupDefaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+    ) -> AppPreferencesDTO {
+        let activeDays = TrackingActivityService(defaults: defaults).activeDays()
+        let mapSelections = CityMapSelection.allEntries(defaults: defaults)
+        let rewardData = defaults.data(forKey: CityRewardEngine.storageKey)
+        let companionsStarted = defaults.object(forKey: "cityCompanionsStartedAt") as? Double
+        let firstLaunch = defaults.object(forKey: "firstAppLaunchDate") as? Date
+        let lastAckMonth = defaults.string(forKey: "last_acknowledged_month")
+        let onboardingMap = defaults.string(forKey: "spent.onboarding.mapStyle")
+        let userName = defaults.string(forKey: "userName") ?? defaults.string(forKey: "user_name")
+        let monthlyBudget = defaults.object(forKey: "monthly_budget") as? Double
+        let hasCompletedOnboarding = defaults.object(forKey: "hasCompletedOnboarding") as? Bool
+        let hasStartedOnboardingV2 = defaults.object(forKey: "hasStartedOnboardingV2") as? Bool
+        let appLang = defaults.string(forKey: "app_language_pref")
+        let appCur = defaults.string(forKey: "app_currency_pref")
+        let autoFX = defaults.object(forKey: "auto_convert_fx") as? Bool
+        let haptics = defaults.object(forKey: "haptics_enabled") as? Bool
+        let statsHousing = defaults.object(forKey: "stats_exclude_housing") as? Bool
+        let notifs = groupDefaults.object(forKey: "notifications_enabled") as? Bool
+        let captureNotifs = groupDefaults.object(forKey: "expense_capture_notifications_enabled") as? Bool
+        let captureSetupAt = defaults.object(forKey: AutomaticCaptureStateStore.Key.setupCompletedAt) as? Double
+        let captureLastDetectedAt = defaults.object(forKey: AutomaticCaptureStateStore.Key.lastDetectedAt) as? Double
+        let migratedLegacyIncome = defaults.object(forKey: "didMigrateLegacyMonthlyTargetIncome") as? Bool
+
+        return AppPreferencesDTO(
+            userName: userName,
+            monthlyBudget: monthlyBudget,
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            hasStartedOnboardingV2: hasStartedOnboardingV2,
+            trackingActiveDays: activeDays.isEmpty ? nil : activeDays,
+            monthlyMapSelections: mapSelections.isEmpty ? nil : mapSelections,
+            cityRewardStateData: rewardData,
+            cityCompanionsStartedAt: companionsStarted,
+            firstAppLaunchDate: firstLaunch,
+            lastAcknowledgedMonth: lastAckMonth,
+            onboardingMapStyle: onboardingMap,
+            appLanguage: appLang,
+            appCurrency: appCur,
+            autoConvertFX: autoFX,
+            hapticsEnabled: haptics,
+            statsExcludeHousing: statsHousing,
+            notificationsEnabled: notifs,
+            captureNotificationsEnabled: captureNotifs,
+            autoCaptureSetupCompletedAt: captureSetupAt,
+            autoCaptureLastDetectedAt: captureLastDetectedAt,
+            didMigrateLegacyMonthlyTargetIncome: migratedLegacyIncome
+        )
+    }
+
+    public static func restorePreferences(
+        _ prefs: AppPreferencesDTO,
+        defaults: UserDefaults = .standard,
+        groupDefaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+    ) {
+        if let name = prefs.userName {
+            let clean = InputSanitizer.sanitizeSingleLine(name, maxLength: InputSanitizer.maxMerchantLength)
+            defaults.set(clean, forKey: "userName")
+            defaults.set(clean, forKey: "user_name")
+        }
+        if let budget = prefs.monthlyBudget, budget.isFinite, budget >= 0 {
+            defaults.set(budget, forKey: "monthly_budget")
+        }
+        if let completed = prefs.hasCompletedOnboarding {
+            defaults.set(completed, forKey: "hasCompletedOnboarding")
+        }
+        if let startedV2 = prefs.hasStartedOnboardingV2 {
+            defaults.set(startedV2, forKey: "hasStartedOnboardingV2")
+        }
+        if let days = prefs.trackingActiveDays {
+            TrackingActivityService(defaults: defaults).setActiveDays(days)
+        }
+        if let maps = prefs.monthlyMapSelections {
+            CityMapSelection.setAllEntries(maps, defaults: defaults)
+        }
+        if let rewardData = prefs.cityRewardStateData {
+            defaults.set(rewardData, forKey: CityRewardEngine.storageKey)
+        }
+        if let comp = prefs.cityCompanionsStartedAt, comp > 0 {
+            defaults.set(comp, forKey: "cityCompanionsStartedAt")
+        }
+        if let first = prefs.firstAppLaunchDate {
+            defaults.set(first, forKey: "firstAppLaunchDate")
+        }
+        if let ack = prefs.lastAcknowledgedMonth {
+            defaults.set(ack, forKey: "last_acknowledged_month")
+        }
+        if let mapStyle = prefs.onboardingMapStyle {
+            defaults.set(mapStyle, forKey: "spent.onboarding.mapStyle")
+        }
+        if let lang = prefs.appLanguage {
+            defaults.set(lang, forKey: "app_language_pref")
+        }
+        if let cur = prefs.appCurrency {
+            defaults.set(cur, forKey: "app_currency_pref")
+        }
+        if let fx = prefs.autoConvertFX {
+            defaults.set(fx, forKey: "auto_convert_fx")
+        }
+        if let haptics = prefs.hapticsEnabled {
+            defaults.set(haptics, forKey: "haptics_enabled")
+        }
+        if let housing = prefs.statsExcludeHousing {
+            defaults.set(housing, forKey: "stats_exclude_housing")
+        }
+        if let notifs = prefs.notificationsEnabled {
+            groupDefaults.set(notifs, forKey: "notifications_enabled")
+        }
+        if let capNotifs = prefs.captureNotificationsEnabled {
+            groupDefaults.set(capNotifs, forKey: "expense_capture_notifications_enabled")
+        }
+        if let setupAt = prefs.autoCaptureSetupCompletedAt, setupAt > 0 {
+            defaults.set(setupAt, forKey: AutomaticCaptureStateStore.Key.setupCompletedAt)
+        }
+        if let detectedAt = prefs.autoCaptureLastDetectedAt, detectedAt > 0 {
+            defaults.set(detectedAt, forKey: AutomaticCaptureStateStore.Key.lastDetectedAt)
+        }
+        if let migrated = prefs.didMigrateLegacyMonthlyTargetIncome {
+            defaults.set(migrated, forKey: "didMigrateLegacyMonthlyTargetIncome")
+        }
+    }
+
     // MARK: - Export
 
     @MainActor
-    public static func buildEnvelope(context: ModelContext, now: Date = Date()) throws -> Envelope {
+    public static func buildEnvelope(
+        context: ModelContext,
+        defaults: UserDefaults = .standard,
+        groupDefaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard,
+        includePreferences: Bool = true,
+        now: Date = Date()
+    ) throws -> Envelope {
         func all<T: PersistentModel>(_ type: T.Type) throws -> [T] {
             try context.fetch(FetchDescriptor<T>())
         }
@@ -302,13 +653,33 @@ public enum DataPortabilityService {
                     districtId: $0.districtId, isApplied: $0.isApplied,
                     placedSlotId: $0.placedSlotId
                 )
-            }
+            },
+            recaps: try all(RecapSnapshot.self).map {
+                RecapSnapshotDTO(
+                    monthId: $0.monthId,
+                    payloadJSON: $0.payloadJSON,
+                    frozenAt: $0.frozenAt
+                )
+            },
+            preferences: includePreferences ? buildPreferencesDTO(defaults: defaults, groupDefaults: groupDefaults) : nil
         )
     }
 
     @MainActor
-    public static func exportData(context: ModelContext, now: Date = Date()) throws -> Data {
-        try makeEncoder().encode(try buildEnvelope(context: context, now: now))
+    public static func exportData(
+        context: ModelContext,
+        defaults: UserDefaults = .standard,
+        groupDefaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard,
+        includePreferences: Bool = true,
+        now: Date = Date()
+    ) throws -> Data {
+        try makeEncoder().encode(try buildEnvelope(
+            context: context,
+            defaults: defaults,
+            groupDefaults: groupDefaults,
+            includePreferences: includePreferences,
+            now: now
+        ))
     }
 
     /// `MoneyCity-2026-09-01-1432.json` — sorts chronologically in Files, and says what it is
@@ -365,24 +736,20 @@ public enum DataPortabilityService {
         return year >= 2000 && year <= refYear + 10
     }
 
+    public static func validateBackupData(_ data: Data) throws -> Envelope {
+        try BackupMigrator.decodeAndMigrate(data)
+    }
+
     @MainActor
     public static func importData(
         _ data: Data,
         into context: ModelContext,
-        mode: ImportMode = .merge
+        defaults: UserDefaults = .standard,
+        groupDefaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard,
+        mode: ImportMode = .merge,
+        restorePreferences: Bool = true
     ) throws -> ImportSummary {
-        guard data.count <= maxBackupFileSize else {
-            throw ImportError.fileTooLarge
-        }
-
-        let envelope = try makeDecoder().decode(Envelope.self, from: data)
-        guard envelope.format == formatIdentifier else { throw ImportError.notABackup }
-        guard envelope.formatVersion <= formatVersion else {
-            throw ImportError.futureFormat(envelope.formatVersion)
-        }
-        guard envelope.totalRecords <= maxRecordCount else {
-            throw ImportError.tooManyRecords
-        }
+        let envelope = try validateBackupData(data)
 
         var summary = ImportSummary()
         summary.exportedAt = envelope.exportedAt
@@ -399,7 +766,7 @@ public enum DataPortabilityService {
         if mode == .replace {
             try wipe(Transaction.self); try wipe(RecurringExpense.self); try wipe(IncomeSource.self)
             try wipe(CategoryBudget.self); try wipe(MerchantRule.self); try wipe(InstallmentPlan.self)
-            try wipe(SavingsGoal.self); try wipe(CityEnrichment.self)
+            try wipe(SavingsGoal.self); try wipe(CityEnrichment.self); try wipe(RecapSnapshot.self)
         }
 
         var txIds = mode == .replace ? Set<UUID>() : (try existingIds(Transaction.self) { $0.id })
@@ -633,6 +1000,26 @@ public enum DataPortabilityService {
             summary.added += 1
         }
 
+        var recapIds = mode == .replace ? Set<String>() : Set((try context.fetch(FetchDescriptor<RecapSnapshot>())).map { $0.monthId })
+        for dto in envelope.recaps {
+            guard !recapIds.contains(dto.monthId) else { summary.skipped += 1; continue }
+            let cleanMonthId = InputSanitizer.sanitizeIdentifier(dto.monthId, maxLength: 32)
+            guard !cleanMonthId.isEmpty else { continue }
+            let date = isPlausibleDate(dto.frozenAt) ? dto.frozenAt : Date()
+
+            let s = RecapSnapshot(
+                monthId: cleanMonthId,
+                payloadJSON: dto.payloadJSON,
+                frozenAt: date
+            )
+            context.insert(s)
+            recapIds.insert(cleanMonthId)
+            summary.added += 1
+        }
+
+        // Reconcile goal math with restored transactions
+        SavingsGoalService.reconcileAll(context: context)
+
         do {
             try context.save()
         } catch {
@@ -641,6 +1028,30 @@ public enum DataPortabilityService {
             context.rollback()
             throw error
         }
+
+        if restorePreferences, let prefs = envelope.preferences {
+            Self.restorePreferences(prefs, defaults: defaults, groupDefaults: groupDefaults)
+            Self.postRestoreRefresh()
+        }
+
         return summary
+    }
+
+    /// Refreshes runtime singletons and external system services after restoring user preferences.
+    @MainActor
+    public static func postRestoreRefresh() {
+        // 1. Refresh Localization & Currency
+        LocalizationManager.shared.refresh()
+
+        // 2. Resynchronize scheduled notifications with restored preferences & language
+        NotificationService.sync(
+            enabled: NotificationService.isEnabled,
+            isHebrew: LocalizationManager.shared.isHebrew
+        )
+
+        // 3. Reload Widget timelines to reflect restored balances and settings
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
     }
 }

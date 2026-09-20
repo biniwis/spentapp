@@ -191,22 +191,27 @@ public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
 ///   Old format was `[String: String]`. `loadEntries` reads both formats and
 ///   treats any pre-existing String entry as confirmed (the user already chose it).
 ///   `.future` is never shown in the picker but is a valid `CityMapStyle` case.
-enum CityMapSelection {
+public enum CityMapSelection {
 
     // MARK: - Constants
 
-    static let preferenceKey       = "spent.city.monthlyMapSelections.v2"
-    static let legacyPreferenceKey = "spent.city.mapSelection"
+    public static let preferenceKey       = "spent.city.monthlyMapSelections.v2"
+    public static let legacyPreferenceKey = "spent.city.mapSelection"
 
     /// Worlds presented in the monthly picker. `.future` is kept as a Swift case
     /// but withheld from the picker until it is ready for release.
-    static let pickerWorlds: [CityMapStyle] = [.urban, .medieval, .arctic, .israel]
+    public static let pickerWorlds: [CityMapStyle] = [.urban, .medieval, .arctic, .israel]
 
     // MARK: - Internal entry type
 
-    private struct MonthEntry: Codable {
-        var style: String
-        var confirmed: Bool
+    public struct MonthEntry: Codable, Equatable {
+        public var style: String
+        public var confirmed: Bool
+
+        public init(style: String, confirmed: Bool) {
+            self.style = style
+            self.confirmed = confirmed
+        }
     }
 
     // MARK: - Month ID
@@ -245,6 +250,14 @@ enum CityMapSelection {
     private static func saveEntries(_ entries: [String: MonthEntry], defaults: UserDefaults) {
         guard let data = try? JSONEncoder().encode(entries) else { return }
         defaults.set(data, forKey: preferenceKey)
+    }
+
+    public static func allEntries(defaults: UserDefaults = .standard) -> [String: MonthEntry] {
+        loadEntries(defaults: defaults)
+    }
+
+    public static func setAllEntries(_ entries: [String: MonthEntry], defaults: UserDefaults = .standard) {
+        saveEntries(entries, defaults: defaults)
     }
 
     // MARK: - Read (backward-compatible surface)

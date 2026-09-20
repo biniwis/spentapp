@@ -425,7 +425,7 @@ public struct OnboardingWizardView: View {
 
     // MARK: Step 1 — one quiet supporting fact
     private var step1ConceptBody: some View {
-        Label(isHebrew ? "המידע נשאר על המכשיר" : "Your data stays on your device",
+        Label(isHebrew ? "המידע נשאר אצלך ומגובה ב־iCloud" : "Your data stays private & backed up in iCloud",
               systemImage: "lock")
             .font(.system(.footnote, design: .rounded))
             .foregroundStyle(posterInk.opacity(0.7))

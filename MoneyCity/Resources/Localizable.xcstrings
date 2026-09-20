@@ -629,7 +629,7 @@
     "Assign to 3D Building" : {
 
     },
-    "At SPENT, your expenses, budgets, and city data are processed and stored locally on your device." : {
+    "At SPENT, your expenses, budgets, and city data are processed locally and stored on your device with private backup to your personal iCloud." : {
 
     },
     "Automatic Capture" : {
@@ -642,6 +642,9 @@
 
     },
     "Automatic Currency Conversion" : {
+
+    },
+    "Automatic iCloud Backup" : {
 
     },
     "Avg per transaction" : {
@@ -665,7 +668,13 @@
     "Back to Today" : {
 
     },
+    "Backing up now…" : {
+
+    },
     "Backup & Restore" : {
+
+    },
+    "Backup status" : {
 
     },
     "Base Currency" : {
@@ -747,7 +756,13 @@
     "Change currency" : {
 
     },
+    "Charged on day" : {
+
+    },
     "Check state when all 6 additions have already joined the city" : {
+
+    },
+    "Checking for iCloud backup…" : {
 
     },
     "Choose \"New Shortcut\" or \"New Blank Automation\", tap Add Action, search for SPENT and pick \"Record Apple Pay Transaction\"." : {
@@ -798,7 +813,13 @@
     "Consistent tracking unlocks small gifts that bring more life to your city." : {
 
     },
+    "Contains %lld records, settings, goals, and city progress saved in your iCloud." : {
+
+    },
     "Continue Setup" : {
+
+    },
+    "Continue without restore" : {
 
     },
     "Could not extract receipt" : {
@@ -832,6 +853,9 @@
           }
         }
       }
+    },
+    "Current" : {
+
     },
     "Current spending exceeds planned income. Nature Reserve growth slows down." : {
 
@@ -1037,6 +1061,9 @@
 
     },
     "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling." : {
+
+    },
+    "From %@" : {
 
     },
     "Full journey from city concept to reveal, with all transitions" : {
@@ -1352,6 +1379,9 @@
     "Night" : {
 
     },
+    "No backup yet" : {
+
+    },
     "No expenses recorded this month" : {
 
     },
@@ -1460,9 +1490,6 @@
 
     },
     "Postcards (Mock)" : {
-
-    },
-    "Pre-select your city style. At the start of next month, your full city will reveal in this world." : {
 
     },
     "Preview" : {
@@ -1635,10 +1662,31 @@
     "Restore" : {
 
     },
+    "Restore Data" : {
+
+    },
+    "Restore Failed" : {
+
+    },
+    "Restore from iCloud" : {
+
+    },
+    "Restore My Data" : {
+
+    },
     "Restore this snapshot?" : {
 
     },
+    "Restore will replace your current data with the latest backup from your iCloud account. You may want to export a local copy first." : {
+
+    },
+    "Restoring now…" : {
+
+    },
     "Resume" : {
+
+    },
+    "Retry" : {
 
     },
     "Return to this month to continue your city's story." : {
@@ -1736,6 +1784,9 @@
     "Select Category" : {
 
     },
+    "Selected" : {
+
+    },
     "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
 
     },
@@ -1826,6 +1877,9 @@
         }
       }
     },
+    "SPENT Backup Found" : {
+
+    },
     "SPENT City" : {
 
     },
@@ -1842,6 +1896,9 @@
 
     },
     "SPENT מחכה לקליטה הראשונה מהפעולה האוטומטית. אחרי התשלום הבא נדע שהכול מחובר." : {
+
+    },
+    "Start Fresh" : {
 
     },
     "Status:" : {
@@ -1913,9 +1970,6 @@
 
     },
     "This is a sample of the food district. Choose a style to reveal the full city. You can choose again at the start of each month." : {
-
-    },
-    "This is a sample of the food district. Confirming will set your full city style for this month." : {
 
     },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
@@ -2189,7 +2243,7 @@
     "Your companion wasn’t added" : {
 
     },
-    "Your data stays on your device" : {
+    "Your data stays private & backed up in iCloud" : {
 
     },
     "Your financial data stays on your device" : {
@@ -2321,7 +2375,7 @@
     "אשר את הסיווג" : {
 
     },
-    "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד." : {
+    "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד עם גיבוי פרטי ב-iCloud האישי שלך." : {
 
     },
     "ב׳קיצורים׳ לא תמיד יש כפתור ברור של הוספה. פשוט השתמש בשדה החיפוש שמופיע למטה, חפש ׳הקלטת עסקת Apple Pay׳ ולחץ על התוצאה. היא תתווסף למסך." : {
@@ -2345,6 +2399,9 @@
     "בוא לראות איך החודש קיבל צורה בעיר" : {
 
     },
+    "בודק גיבויים ב־iCloud…" : {
+
+    },
     "בחירה לחודש הבא" : {
 
     },
@@ -2352,9 +2409,6 @@
 
     },
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
-
-    },
-    "בחר את מראה העיר מראש. בתחילת החודש הבא העיר המלאה תיפתח בסגנון זה." : {
 
     },
     "בחר קטגוריה" : {
@@ -2395,6 +2449,9 @@
 
     },
     "ברוכים הבאים לעיר של" : {
+
+    },
+    "גיבוי אוטומטי ל־iCloud" : {
 
     },
     "גיבוי ושחזור" : {
@@ -2449,6 +2506,9 @@
 
     },
     "הגדרת תקציב" : {
+
+    },
+    "הגיבוי מכיל %lld רשומות, הגדרות, יעדים והיסטוריית עיר שנשמרו ב־iCloud שלך." : {
 
     },
     "הדמיה" : {
@@ -2523,6 +2583,9 @@
     "החבר עדיין לא נוסף" : {
 
     },
+    "החודש" : {
+
+    },
     "החודש: %@" : {
 
     },
@@ -2571,7 +2634,7 @@
     "המידע הפיננסי נשמר במכשיר שלך" : {
 
     },
-    "המידע נשאר על המכשיר" : {
+    "המידע נשאר אצלך ומגובה ב־iCloud" : {
 
     },
     "המסגרת של החודש" : {
@@ -2584,6 +2647,9 @@
 
     },
     "המשך הגדרה" : {
+
+    },
+    "המשך ללא שחזור" : {
 
     },
     "הסיכום החודשי הראשון שלך יופיע בסיום החודש" : {
@@ -2697,10 +2763,16 @@
     "השוואה חצי שנתית" : {
 
     },
+    "השחזור יחליף את הנתונים הנוכחיים בגיבוי העדכני ביותר מחשבון ה־iCloud שלך. מומלץ לוודא ששמרת עותק גיבוי מקומי קודם." : {
+
+    },
     "השם שלך" : {
 
     },
     "השמירה לא הצליחה או שהבחירה כבר אינה זמינה. אפשר לנסות שוב." : {
+
+    },
+    "התחל מחדש" : {
 
     },
     "התמונה לא נוצרה" : {
@@ -2732,9 +2804,6 @@
 
     },
     "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור." : {
-
-    },
-    "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה עבור החודש." : {
 
     },
     "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה. בתחילת כל חודש אפשר לבחור סגנון מחדש." : {
@@ -2794,6 +2863,9 @@
     "טקס תוספת שבועית לעיר" : {
 
     },
+    "טרם בוצע גיבוי" : {
+
+    },
     "טרם הגדרת יעדי חיסכון" : {
 
     },
@@ -2801,6 +2873,9 @@
 
     },
     "יאללה, נגדיר" : {
+
+    },
+    "יום החיוב בחודש" : {
 
     },
     "יעד הוצאה חודשי" : {
@@ -2885,6 +2960,12 @@
 
     },
     "לשחזר את הגיבוי הזה?" : {
+
+    },
+    "מ־%@" : {
+
+    },
+    "מגבה כעת…" : {
 
     },
     "מגדירים פעם אחת.\nאחר כך זה קורה לבד." : {
@@ -2983,6 +3064,12 @@
     "מפת החודש הבא" : {
 
     },
+    "מצאנו גיבוי של SPENT" : {
+
+    },
+    "מצב גיבוי" : {
+
+    },
     "מצב סיום: כל התוספות כבר בעיר" : {
 
     },
@@ -3004,6 +3091,9 @@
     "משוב במגע" : {
 
     },
+    "משחזר כעת…" : {
+
+    },
     "משכורת" : {
 
     },
@@ -3014,6 +3104,9 @@
 
     },
     "נא להזין סכום תקין" : {
+
+    },
+    "נבחר" : {
 
     },
     "נגדיר לאייפון להעביר ל-SPENT את סכום העסקה ואת בית העסק אחרי כל תשלום ב-Apple Pay." : {
@@ -3290,6 +3383,9 @@
     "רצף: פתיחה + סה״כ + פעילות + רובע + דינמי⁽≤4⁾ + הבחנות + דיוקן" : {
 
     },
+    "שגיאה בשחזור" : {
+
+    },
     "שגרת העיר" : {
 
     },
@@ -3303,7 +3399,16 @@
         }
       }
     },
+    "שחזור מ־iCloud" : {
+
+    },
     "שחזר" : {
+
+    },
+    "שחזר את הנתונים שלי" : {
+
+    },
+    "שחזר נתונים" : {
 
     },
     "שיוך לבניין בעיר" : {

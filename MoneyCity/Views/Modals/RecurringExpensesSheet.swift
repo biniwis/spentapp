@@ -269,15 +269,7 @@ struct RecurringExpenseEditor: View {
                             }
                             .id("amountRow")
 
-                            field(title: isHebrew ? "יום החיוב בחודש" : "Charged on day") {
-                                Picker("", selection: $dayOfMonth) {
-                                    ForEach(1...31, id: \.self) { day in
-                                        Text("\(day)").tag(day)
-                                    }
-                                }
-                                .pickerStyle(.menu)
-                                .tint(Color.primaryBlue)
-                            }
+                            dayOfMonthPicker
 
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(isHebrew ? "קטגוריה" : "Category")
@@ -447,6 +439,102 @@ struct RecurringExpenseEditor: View {
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
+        }
+    }
+
+    private var dayOfMonthPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(isHebrew ? "יום החיוב בחודש" : "Charged on day")
+                    .font(.system(size: 12, weight: .black, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+
+                Spacer()
+
+                Text(isHebrew ? "כל \(dayOfMonth) בחודש" : "Day \(dayOfMonth) each month")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.primaryBlue)
+            }
+
+            HStack(spacing: 8) {
+                Button {
+                    if dayOfMonth > 1 {
+                        Haptics.selection()
+                        withAnimation(.spring(response: 0.25)) {
+                            dayOfMonth -= 1
+                        }
+                    }
+                } label: {
+                    Image(systemName: "minus")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(dayOfMonth > 1 ? Color.deepNavy : Color.textMuted.opacity(0.4))
+                        .frame(width: 32, height: 32)
+                        .background(Color(red: 243/255, green: 245/255, blue: 248/255))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(dayOfMonth <= 1)
+
+                ScrollViewReader { dayProxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(1...31, id: \.self) { day in
+                                let isSelected = (dayOfMonth == day)
+                                Button {
+                                    Haptics.selection()
+                                    withAnimation(.spring(response: 0.25)) {
+                                        dayOfMonth = day
+                                    }
+                                } label: {
+                                    Text("\(day)")
+                                        .font(.system(size: 14, weight: isSelected ? .bold : .medium, design: .rounded))
+                                        .foregroundColor(isSelected ? .white : Color.deepNavy)
+                                        .frame(width: 36, height: 36)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .fill(isSelected ? Color.primaryBlue : Color(red: 243/255, green: 245/255, blue: 248/255))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .id(day)
+                            }
+                        }
+                        .padding(.horizontal, 2)
+                        .padding(.vertical, 2)
+                    }
+                    .onAppear {
+                        dayProxy.scrollTo(dayOfMonth, anchor: .center)
+                    }
+                    .onChange(of: dayOfMonth) { _, newDay in
+                        withAnimation(.spring(response: 0.3)) {
+                            dayProxy.scrollTo(newDay, anchor: .center)
+                        }
+                    }
+                }
+
+                Button {
+                    if dayOfMonth < 31 {
+                        Haptics.selection()
+                        withAnimation(.spring(response: 0.25)) {
+                            dayOfMonth += 1
+                        }
+                    }
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(dayOfMonth < 31 ? Color.deepNavy : Color.textMuted.opacity(0.4))
+                        .frame(width: 32, height: 32)
+                        .background(Color(red: 243/255, green: 245/255, blue: 248/255))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(dayOfMonth >= 31)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
         }
     }
 

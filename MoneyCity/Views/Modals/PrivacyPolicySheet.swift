@@ -26,8 +26,8 @@ public struct PrivacyPolicySheet: View {
                             .foregroundColor(Color.deepNavy)
                             .multilineTextAlignment(.center)
 
-                        Text(isHebrew ? "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד."
-                                      : "At SPENT, your expenses, budgets, and city data are processed and stored locally on your device.")
+                        Text(isHebrew ? "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד עם גיבוי פרטי ב-iCloud האישי שלך."
+                                      : "At SPENT, your expenses, budgets, and city data are processed locally and stored on your device with private backup to your personal iCloud.")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(Color.textMuted)
                             .multilineTextAlignment(.center)
@@ -43,8 +43,8 @@ public struct PrivacyPolicySheet: View {
                     policyCard(
                         icon: .lock,
                         title: isHebrew ? "עיבוד ושמירה מקומיים" : "Local Storage & Processing",
-                        body: isHebrew ? "ההוצאות, התקציבים ונתוני העיר נשמרים מקומית במכשיר באמצעות SwiftData. SPENT אינה מפעילה חשבון משתמש או בסיס נתונים בענן עבור המידע הפיננסי שלך."
-                                       : "Your expenses, budgets, and city data are stored locally on your device using SwiftData. SPENT does not operate user accounts or cloud databases for your financial data."
+                        body: isHebrew ? "ההוצאות, התקציבים ונתוני העיר נשמרים מקומית במכשיר באמצעות SwiftData. בנוסף, נשמר עותק גיבוי פרטי במיכל ה-iCloud של חשבון ה-Apple ID שלך (המוגן תחת אבטחת חשבון Apple). SPENT אינה מפעילה שרתים, חשבונות משתמשים או בסיס נתונים בענן עבור המידע הפיננסי שלך."
+                                       : "Your expenses, budgets, and city data are stored locally on your device using SwiftData, with private backup in your personal Apple ID iCloud container (protected under your Apple account). SPENT does not operate servers, user accounts, or cloud databases for your financial data."
                     )
 
                     policyCard(
@@ -71,8 +71,8 @@ public struct PrivacyPolicySheet: View {
                     policyCard(
                         icon: .trash,
                         title: isHebrew ? "שליטה, ייצוא ומחיקה" : "Control, Export & Deletion",
-                        body: isHebrew ? "אפשר לייצא גיבוי מקומי ולמחוק את נתוני SPENT מהמכשיר דרך ההגדרות. קבצי גיבוי שייצאת בעצמך נשארים בשליטתך ויש למחוק אותם בנפרד."
-                                       : "You can export a local backup and delete SPENT data from your device through Settings. Backup files you exported yourself remain under your control and must be deleted separately."
+                        body: isHebrew ? "אפשר לייצא גיבוי מקומי, לנהל גיבוי ב-iCloud, ולמחוק את נתוני SPENT מהמכשיר דרך ההגדרות. קבצי גיבוי שייצאת בעצמך נשארים בשליטתך ויש למחוק אותם בנפרד."
+                                       : "You can export a local backup, manage private iCloud backups, and delete SPENT data from your device through Settings. Backup files you exported yourself remain under your control and must be deleted separately."
                     )
 
                     Spacer(minLength: 24)

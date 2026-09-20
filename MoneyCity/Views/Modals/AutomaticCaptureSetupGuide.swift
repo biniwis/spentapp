@@ -133,19 +133,22 @@ public struct SetupScreenshotCard: View {
     public let tapRelativeY: CGFloat?
     public let aspectRatio: CGFloat
     public let accessibilityDescription: String?
+    public var maxHeight: CGFloat
 
     public init(
         imageName: String,
         tapRelativeX: CGFloat? = nil,
         tapRelativeY: CGFloat? = nil,
         aspectRatio: CGFloat,
-        accessibilityDescription: String? = nil
+        accessibilityDescription: String? = nil,
+        maxHeight: CGFloat = 460
     ) {
         self.imageName = imageName
         self.tapRelativeX = tapRelativeX
         self.tapRelativeY = tapRelativeY
         self.aspectRatio = aspectRatio
         self.accessibilityDescription = accessibilityDescription
+        self.maxHeight = maxHeight
     }
 
     public var body: some View {
@@ -171,7 +174,7 @@ public struct SetupScreenshotCard: View {
         }
         .environment(\.layoutDirection, .leftToRight) // Fixed LTR coordinates aligned with image pixels
         .aspectRatio(aspectRatio, contentMode: .fit)
-        .frame(maxHeight: 460)
+        .frame(maxHeight: maxHeight)
         .frame(maxWidth: .infinity, alignment: .center)
     }
 }
@@ -718,7 +721,8 @@ public struct IOS27CaptureSetupGuideView: View {
             tapRelativeX: step.tapRelativeX,
             tapRelativeY: step.tapRelativeY,
             aspectRatio: 1206.0 / 2622.0,
-            accessibilityDescription: isHebrew ? step.a11yHintHe : step.a11yHintEn
+            accessibilityDescription: isHebrew ? step.a11yHintHe : step.a11yHintEn,
+            maxHeight: step.id == 1 ? 340 : 450
         )
     }
 
@@ -1446,14 +1450,15 @@ public struct LegacyCaptureSetupGuideView: View {
             imageName: step.imageName,
             tapRelativeX: step.tapRelativeX,
             tapRelativeY: step.tapRelativeY,
-            aspectRatio: 259.0 / 520.0
+            aspectRatio: 259.0 / 520.0,
+            maxHeight: step.id == 1 ? 335 : 430
         )
     }
 
     // MARK: - Bottom Bar
     @ViewBuilder
     private var bottomBar: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             if currentStep == 0 {
                 // Intro CTAs
                 Button(action: advance) {
@@ -1486,15 +1491,15 @@ public struct LegacyCaptureSetupGuideView: View {
                 Button(action: openShortcutsApp) {
                     HStack(spacing: 8) {
                         Image(systemName: "arrow.up.forward.app")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 14, weight: .semibold))
                         Text(isHebrew ? "פתח את אפליקציית קיצורים" : "Open Shortcuts App")
-                            .font(.system(size: 16, weight: .semibold, design: .rounded))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
                     }
                     .foregroundColor(Color.jetBlack)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
+                    .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(Color.jetBlack.opacity(0.06))
                     )
                 }
@@ -1506,9 +1511,9 @@ public struct LegacyCaptureSetupGuideView: View {
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                        .padding(.vertical, 14)
                         .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(Color.luckyGreen)
                         )
                 }

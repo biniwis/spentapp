@@ -141,6 +141,7 @@
 		9095A40677534DF69D421342 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 89D03BDB0DD743D1AA3D1FF7; };
 		E1BAEEAAA59142CABD4C8F84 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 394E605D6BC84270BF983A00; };
 		8C4F83DBFF494AFFB4802C82 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 690E29F7F0014916B6CFB608; };
+		CB2026092100000000000001 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = CB2026092100000000000002; };
 		79BDAD61041747388BF16430 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 80863B686D814B22AD600668; };
 		243B4F422FA541E1B5F87024 /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = 07C76012ECAA441998803CA4; };
 		DA2931CA116F4FF09E80D26C /* Sources in MoneyCity */ = {isa = PBXBuildFile; fileRef = B529218FBCCF493BB82A03D5; };
@@ -346,6 +347,7 @@
 		89D03BDB0DD743D1AA3D1FF7 /* RecurringExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "RecurringExpenseService.swift"; path = "MoneyCity/Services/RecurringExpenseService.swift"; sourceTree = "<group>"; };
 		394E605D6BC84270BF983A00 /* SavingsGoalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "SavingsGoalService.swift"; path = "MoneyCity/Services/SavingsGoalService.swift"; sourceTree = "<group>"; };
 		690E29F7F0014916B6CFB608 /* StoreSnapshotService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "StoreSnapshotService.swift"; path = "MoneyCity/Services/StoreSnapshotService.swift"; sourceTree = "<group>"; };
+		CB2026092100000000000002 /* CloudBackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CloudBackupService.swift"; path = "MoneyCity/Services/CloudBackupService.swift"; sourceTree = "<group>"; };
 		80863B686D814B22AD600668 /* TransactionIngest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "TransactionIngest.swift"; path = "MoneyCity/Services/TransactionIngest.swift"; sourceTree = "<group>"; };
 		07C76012ECAA441998803CA4 /* WalletIngestCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "WalletIngestCoordinator.swift"; path = "MoneyCity/Services/WalletIngestCoordinator.swift"; sourceTree = "<group>"; };
 		B529218FBCCF493BB82A03D5 /* AppleVisionDocumentExtractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AppleVisionDocumentExtractor.swift"; path = "MoneyCity/Services/VisionAI/AppleVisionDocumentExtractor.swift"; sourceTree = "<group>"; };
@@ -533,6 +535,7 @@
 				89D03BDB0DD743D1AA3D1FF7 /* RecurringExpenseService.swift */,
 				394E605D6BC84270BF983A00 /* SavingsGoalService.swift */,
 				690E29F7F0014916B6CFB608 /* StoreSnapshotService.swift */,
+				CB2026092100000000000002 /* CloudBackupService.swift */,
 				80863B686D814B22AD600668 /* TransactionIngest.swift */,
 				07C76012ECAA441998803CA4 /* WalletIngestCoordinator.swift */,
 				CA2026091600000000000001 /* AutomaticCaptureStateStore.swift */,
@@ -765,6 +768,7 @@
 				9095A40677534DF69D421342 /* Sources */,
 				E1BAEEAAA59142CABD4C8F84 /* Sources */,
 				8C4F83DBFF494AFFB4802C82 /* Sources */,
+				CB2026092100000000000001 /* Sources */,
 				79BDAD61041747388BF16430 /* Sources */,
 				243B4F422FA541E1B5F87024 /* Sources */,
 				DA2931CA116F4FF09E80D26C /* Sources */,

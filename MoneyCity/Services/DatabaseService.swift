@@ -59,7 +59,7 @@ public final class DatabaseService {
             outcome = Self.openContainer(schema: schema)
         } catch {
             MoneyCityLog.error("store preparation failed; originals preserved: \(error)")
-            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
             do {
                 outcome = (try ModelContainer(for: schema, configurations: [config]), .memoryOnly, String(describing: error))
             } catch {
@@ -133,7 +133,7 @@ public final class DatabaseService {
 
         // 1. The ordinary path: standard automatic lightweight migration
         do {
-            let config = ModelConfiguration(schema: schema, url: storeURL)
+            let config = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
             let container = try ModelContainer(
                 for: schema,
                 migrationPlan: MoneyCityMigrationPlan.self,
@@ -158,7 +158,7 @@ public final class DatabaseService {
                     IngestLogEntry.self,
                     RecapSnapshot.self
                 ])
-                let config = ModelConfiguration(schema: bareSchema, url: storeURL)
+                let config = ModelConfiguration(schema: bareSchema, url: storeURL, cloudKitDatabase: .none)
                 let container = try ModelContainer(for: bareSchema, configurations: [config])
                 return (container, .persistent, nil)
             } catch {
@@ -169,7 +169,7 @@ public final class DatabaseService {
             if let backup = quarantineExistingStore() {
                 MoneyCityLog.error("previous store moved to \(backup); retrying on disk")
                 do {
-                    let config = ModelConfiguration(schema: schema, url: storeURL)
+                    let config = ModelConfiguration(schema: schema, url: storeURL, cloudKitDatabase: .none)
                     let container = try ModelContainer(
                         for: schema,
                         migrationPlan: MoneyCityMigrationPlan.self,
@@ -183,7 +183,7 @@ public final class DatabaseService {
 
             // 3. Last resort. The app opens; the banner tells the user not to trust it.
             do {
-                let memoryConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                let memoryConfig = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
                 let container = try ModelContainer(for: schema, configurations: [memoryConfig])
                 return (container, .memoryOnly, firstFailure)
             } catch {
@@ -231,6 +231,7 @@ public final class DatabaseService {
     public func save(transaction: Transaction) async throws {
         context.insert(transaction)
         try context.save()
+        CloudBackupService.shared.markDirty()
     }
     
     public func save(transactions: [Transaction]) async throws {
@@ -238,12 +239,14 @@ public final class DatabaseService {
             context.insert(t)
         }
         try context.save()
+        CloudBackupService.shared.markDirty()
     }
     
     public func delete(transaction: Transaction) async throws {
         let hadGoal = transaction.savingsGoalId != nil
         context.delete(transaction)
         try context.save()
+        CloudBackupService.shared.markDirty()
         if hadGoal {
             _ = await MainActor.run {
                 SavingsGoalService.reconcileAll(context: context)
@@ -257,6 +260,7 @@ public final class DatabaseService {
             context.delete(t)
         }
         try context.save()
+        CloudBackupService.shared.markDirty()
         if hadGoal {
             _ = await MainActor.run {
                 SavingsGoalService.reconcileAll(context: context)
@@ -511,6 +515,7 @@ public final class DatabaseService {
         guard context.hasChanges else { return true }
         do {
             try context.save()
+            CloudBackupService.shared.markDirty()
             return true
         } catch {
             MoneyCityLog.error("[DatabaseService.safeSave] Failed in \(caller): \(error)")

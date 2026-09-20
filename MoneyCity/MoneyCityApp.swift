@@ -18,15 +18,139 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 }
 
 /// Root route states for top-level application presentation
-enum RootRoute {
+enum RootRoute: Equatable {
     case resolving
+    case checkingCloud
+    case restorePrompt(CloudBackupDescriptor)
     case onboarding
     case main
 }
 
+struct CloudCheckingView: View {
+    let onContinueWithoutRestore: () -> Void
+    @EnvironmentObject private var l10n: LocalizationManager
+    private var isHebrew: Bool { l10n.language == .hebrew }
+
+    var body: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 16) {
+                ProgressView()
+                    .scaleEffect(1.2)
+                    .tint(Color.primaryBlue)
+                    .padding(.bottom, 8)
+
+                Text(isHebrew ? "בודק גיבויים ב־iCloud…" : "Checking for iCloud backup…")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(MoneyCityTheme.textSecondary)
+
+                Button(action: onContinueWithoutRestore) {
+                    Text(isHebrew ? "המשך ללא שחזור" : "Continue without restore")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(Color.primaryBlue)
+                        .padding(.top, 12)
+                }
+            }
+            .padding(24)
+        }
+    }
+}
+
+struct CloudRestorePromptView: View {
+    let descriptor: CloudBackupDescriptor
+    let isRestoring: Bool
+    let onRestore: () -> Void
+    let onStartFresh: () -> Void
+
+    @EnvironmentObject private var l10n: LocalizationManager
+    private var isHebrew: Bool { l10n.language == .hebrew }
+
+    var body: some View {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
+            VStack(spacing: 24) {
+                Spacer()
+
+                VStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.primaryBlue.opacity(0.12))
+                            .frame(width: 76, height: 76)
+                        Image(systemName: "icloud.and.arrow.down.fill")
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundColor(Color.primaryBlue)
+                    }
+
+                    VStack(spacing: 8) {
+                        Text(isHebrew ? "מצאנו גיבוי של SPENT" : "SPENT Backup Found")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(MoneyCityTheme.textPrimary)
+
+                        Text(isHebrew ? "מ־\(descriptor.displayDate)" : "From \(descriptor.displayDate)")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(Color.primaryBlue)
+
+                        Text(isHebrew
+                             ? "הגיבוי מכיל \(descriptor.recordCount) רשומות, הגדרות, יעדים והיסטוריית עיר שנשמרו ב־iCloud שלך."
+                             : "Contains \(descriptor.recordCount) records, settings, goals, and city progress saved in your iCloud.")
+                            .font(.system(size: 13))
+                            .foregroundColor(MoneyCityTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 16)
+                    }
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color.white)
+                        .shadow(color: Color.black.opacity(0.04), radius: 12, y: 4)
+                )
+                .padding(.horizontal, 20)
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    Button(action: onRestore) {
+                        HStack(spacing: 8) {
+                            if isRestoring {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                            Text(isHebrew ? "שחזר את הנתונים שלי" : "Restore My Data")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 15)
+                        .foregroundColor(.white)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color.primaryBlue)
+                        )
+                    }
+                    .disabled(isRestoring)
+
+                    Button(action: onStartFresh) {
+                        Text(isHebrew ? "התחל מחדש" : "Start Fresh")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(MoneyCityTheme.textSecondary)
+                            .padding(.vertical, 10)
+                    }
+                    .disabled(isRestoring)
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+        }
+    }
+}
+
 /// Root view determining top-level application presentation:
 /// - Latched explicit route state resolved once on app startup
-/// - New user: Full-screen OnboardingWizardView
+/// - New user with iCloud backup: Guided restore offer
+/// - Clean install without backup: Full-screen OnboardingWizardView
 /// - Returning / legacy user: MainCityView
 struct AppRootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
@@ -34,14 +158,19 @@ struct AppRootView: View {
     @AppStorage("didMigrateLegacyMonthlyTargetIncome") private var didMigrateLegacyMonthlyTargetIncome: Bool = false
     @Environment(\.modelContext) private var modelContext
     @Query private var allTransactions: [Transaction]
+    @EnvironmentObject private var l10n: LocalizationManager
 
     @State private var route: RootRoute = .resolving
     @State private var justCompletedOnboarding: Bool = false
+    @State private var isRestoringFromCloud: Bool = false
+    @State private var restoreErrorMessage: String? = nil
 
     #if DEBUG
     @State private var qaRecap: MonthlyRecap? = nil
     @State private var qaShowDesignLab = false
     #endif
+
+    private var isHebrew: Bool { l10n.language == .hebrew }
 
     var body: some View {
         ZStack {
@@ -49,6 +178,50 @@ struct AppRootView: View {
             case .resolving:
                 Color.appBackground
                     .ignoresSafeArea()
+
+            case .checkingCloud:
+                CloudCheckingView(onContinueWithoutRestore: {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        hasStartedOnboardingV2 = true
+                        route = .onboarding
+                    }
+                })
+                .transition(.opacity)
+
+            case .restorePrompt(let descriptor):
+                CloudRestorePromptView(
+                    descriptor: descriptor,
+                    isRestoring: isRestoringFromCloud,
+                    onRestore: handleRestoreFromCloud,
+                    onStartFresh: {
+                        // CRITICAL SAFETY GUARANTEE: "Start Fresh" NEVER deletes the existing iCloud backup.
+                        // The previous backup remains safely preserved in the user's private iCloud container
+                        // so that if tapped by mistake, the user can still manually restore it at any time
+                        // from Settings -> Backup.
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            hasStartedOnboardingV2 = true
+                            route = .onboarding
+                        }
+                    }
+                )
+                .transition(.opacity)
+                .alert(
+                    isHebrew ? "שגיאה בשחזור" : "Restore Failed",
+                    isPresented: Binding(
+                        get: { restoreErrorMessage != nil },
+                        set: { if !$0 { restoreErrorMessage = nil } }
+                    ),
+                    actions: {
+                        Button(isHebrew ? "נסה שוב" : "Retry", action: handleRestoreFromCloud)
+                        Button(isHebrew ? "התחל מחדש" : "Start Fresh", role: .cancel) {
+                            hasStartedOnboardingV2 = true
+                            route = .onboarding
+                        }
+                    },
+                    message: {
+                        Text(restoreErrorMessage ?? "")
+                    }
+                )
 
             case .onboarding:
                 OnboardingWizardView(
@@ -112,22 +285,65 @@ struct AppRootView: View {
     }
     #endif
 
+    private func checkIsCleanInstall() -> Bool {
+        !CloudBackupService.hasMeaningfulLocalState(
+            context: modelContext,
+            defaults: .standard,
+            groupDefaults: UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
+        )
+    }
+
     private func resolveInitialRoute() {
         guard route == .resolving else { return }
 
-        if hasCompletedOnboarding {
-            route = .main
-        } else if hasStartedOnboardingV2 {
-            // Once Onboarding V2 has started, background transactions must never cause it to be skipped as a legacy user
-            route = .onboarding
-        } else if !allTransactions.isEmpty {
-            // Legacy user from older version before Onboarding V2 existed
-            hasCompletedOnboarding = true
-            route = .main
-        } else {
-            // New user starting Onboarding V2
-            hasStartedOnboardingV2 = true
-            route = .onboarding
+        if !checkIsCleanInstall() {
+            // Existing user installation: NEVER wipe or force restore
+            if hasCompletedOnboarding {
+                route = .main
+            } else if hasStartedOnboardingV2 {
+                route = .onboarding
+            } else {
+                // User has existing data (transactions, goals, streak, maps, username, or budget)
+                // Mark onboarding completed and route straight to main
+                hasCompletedOnboarding = true
+                route = .main
+            }
+            Task {
+                await CloudBackupService.shared.bootstrapFirstBackupIfNeeded(context: DatabaseService.shared.context)
+            }
+            return
+        }
+
+        // Clean installation: Check private iCloud container
+        route = .checkingCloud
+        Task {
+            if let descriptor = await CloudBackupService.shared.discoverCleanInstallBackup() {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    route = .restorePrompt(descriptor)
+                }
+            } else {
+                hasStartedOnboardingV2 = true
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    route = .onboarding
+                }
+            }
+        }
+    }
+
+    private func handleRestoreFromCloud() {
+        isRestoringFromCloud = true
+        Task {
+            do {
+                _ = try await CloudBackupService.shared.restoreLatestBackup(context: modelContext)
+                hasCompletedOnboarding = true
+                isRestoringFromCloud = false
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    route = .main
+                }
+            } catch {
+                isRestoringFromCloud = false
+                restoreErrorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -182,6 +398,10 @@ struct MoneyCityApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         performAppMaintenance()
+                    } else if newPhase == .background {
+                        Task {
+                            _ = try? await CloudBackupService.shared.performBackupIfNeeded(context: DatabaseService.shared.context, force: false)
+                        }
                     }
                 }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in
@@ -229,6 +449,11 @@ struct MoneyCityApp: App {
         }
         Task {
             await RemoteConfigService.shared.refreshIfNeeded()
+        }
+        Task {
+            await CloudBackupService.shared.refreshStatus()
+            await CloudBackupService.shared.bootstrapFirstBackupIfNeeded(context: DatabaseService.shared.context)
+            _ = try? await CloudBackupService.shared.performBackupIfNeeded(context: DatabaseService.shared.context)
         }
     }
     

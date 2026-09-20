@@ -11,6 +11,7 @@ public struct BackupSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
+    @ObservedObject private var cloudBackup = CloudBackupService.shared
 
     @State private var exportURL: URL? = nil
     @State private var exportError: String? = nil
@@ -20,6 +21,8 @@ public struct BackupSheet: View {
     @State private var snapshots: [StoreSnapshotService.Snapshot] = []
     @State private var restoreTarget: StoreSnapshotService.Snapshot? = nil
     @State private var restoreArmed = false
+    @State private var cloudBackupMessage: String? = nil
+    @State private var showCloudRestoreAlert = false
 
     private let sheetBg = Color(red: 248/255, green: 250/255, blue: 252/255)
 
@@ -33,6 +36,7 @@ public struct BackupSheet: View {
                 sheetBg.ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
+                        iCloudCard
                         exportCard
                         importCard
                         snapshotCard
@@ -55,6 +59,9 @@ public struct BackupSheet: View {
             .onAppear {
                 snapshots = StoreSnapshotService.available()
                 prepareExport()
+                Task {
+                    await cloudBackup.refreshStatus()
+                }
             }
             .fileImporter(
                 isPresented: $showImporter,
@@ -81,7 +88,131 @@ public struct BackupSheet: View {
                      : "The current state is snapshotted first, so this can be undone.")
                     + Text("\n\(snapshot.displayDate)")
             }
+            .alert(
+                isHebrew ? "שחזור מ־iCloud" : "Restore from iCloud",
+                isPresented: $showCloudRestoreAlert
+            ) {
+                Button(isHebrew ? "שחזר נתונים" : "Restore Data", role: .destructive) {
+                    Task {
+                        do {
+                            cloudBackupMessage = nil
+
+                            // 1. Safety first: take a local snapshot of current data before replacing
+                            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+                            _ = StoreSnapshotService.takeSnapshot(build: build)
+                            snapshots = StoreSnapshotService.available()
+
+                            // 2. Perform restore from iCloud
+                            let summary = try await cloudBackup.restoreLatestBackup(context: modelContext)
+                            cloudBackupMessage = isHebrew
+                                ? "שוחזרו בהצלחה \(summary.added) פריטים מ־iCloud! נוצר תצלום שחזור מקומי של המצב הקודם."
+                                : "Successfully restored \(summary.added) items from iCloud! A local snapshot of prior state was saved."
+                            prepareExport()
+                        } catch {
+                            cloudBackupMessage = isHebrew
+                                ? "השחזור נכשל: \(error.localizedDescription)"
+                                : "Restore failed: \(error.localizedDescription)"
+                        }
+                    }
+                }
+                Button(l10n.text(for: "cancel"), role: .cancel) {}
+            } message: {
+                Text(isHebrew
+                     ? "השחזור יחליף את הנתונים הנוכחיים בגיבוי העדכני ביותר מחשבון ה־iCloud שלך.\n\nלפני השחזור, ייווצר באופן אוטומטי תצלום שחזור מקומי של הנתונים הקיימים, כך שתוכל לחזור אליהם בכל עת מתחת ל'תצלומי שחזור מקומיים'."
+                     : "Restore will replace your current data with the latest backup from iCloud.\n\nA local recovery snapshot of your current state will be created first, so you can always roll back if needed.")
+            }
         }
+    }
+
+    // MARK: - iCloud Backup
+
+    private var iCloudCard: some View {
+        card(icon: .cloud, tint: Color.primaryBlue,
+             title: isHebrew ? "גיבוי פרטי ב־iCloud" : "Private iCloud Backup",
+             body: isHebrew
+                ? "שומר עותק גיבוי פרטי במיכל ה־iCloud של חשבון ה־Apple ID שלך. מגן על הנתונים במקרה של מחיקת האפליקציה או מעבר מכשיר."
+                : "Keeps a private backup copy in your personal Apple ID iCloud storage. Protects your data if the app is deleted or you switch devices.") {
+            VStack(spacing: 12) {
+                Toggle(isHebrew ? "גיבוי אוטומטי ל־iCloud" : "Automatic iCloud Backup", isOn: $cloudBackup.isBackupEnabled)
+                    .tint(Color.primaryBlue)
+
+                Divider()
+
+                HStack {
+                    VStack(alignment: isHebrew ? .trailing : .leading, spacing: 2) {
+                        Text(isHebrew ? "מצב גיבוי" : "Backup status")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(MoneyCityTheme.textPrimary)
+
+                        if cloudBackup.isBackingUp {
+                            Text(isHebrew ? "מגבה כעת…" : "Backing up now…")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.primaryBlue)
+                        } else if cloudBackup.isRestoring {
+                            Text(isHebrew ? "משחזר כעת…" : "Restoring now…")
+                                .font(.system(size: 11))
+                                .foregroundColor(MoneyCityTheme.mint)
+                        } else if let lastDate = cloudBackup.lastBackupDate {
+                            Text(lastBackupFormatted(lastDate))
+                                .font(.system(size: 11))
+                                .foregroundColor(MoneyCityTheme.textMuted)
+                        } else {
+                            Text(isHebrew ? "טרם בוצע גיבוי" : "No backup yet")
+                                .font(.system(size: 11))
+                                .foregroundColor(MoneyCityTheme.textMuted)
+                        }
+                    }
+                    Spacer(minLength: 0)
+
+                    if cloudBackup.isBackingUp || cloudBackup.isRestoring {
+                        ProgressView()
+                            .scaleEffect(0.9)
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    Button {
+                        Task {
+                            do {
+                                cloudBackupMessage = nil
+                                _ = try await cloudBackup.performBackupIfNeeded(context: modelContext, force: true)
+                                cloudBackupMessage = isHebrew ? "הגיבוי הושלם בהצלחה!" : "Backup completed successfully!"
+                                prepareExport()
+                            } catch {
+                                cloudBackupMessage = isHebrew ? "שגיאה בגיבוי: \(error.localizedDescription)" : "Backup failed: \(error.localizedDescription)"
+                            }
+                        }
+                    } label: {
+                        actionLabel(isHebrew ? "גבה עכשיו" : "Back Up Now", filled: true)
+                    }
+                    .disabled(cloudBackup.isBackingUp || cloudBackup.isRestoring)
+
+                    Button {
+                        showCloudRestoreAlert = true
+                    } label: {
+                        actionLabel(isHebrew ? "שחזר מ־iCloud" : "Restore from iCloud", filled: false)
+                    }
+                    .disabled(cloudBackup.isBackingUp || cloudBackup.isRestoring)
+                }
+
+                if let msg = cloudBackupMessage {
+                    Text(msg)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(msg.contains("נכשל") || msg.contains("failed") || msg.contains("שגיאה") ? MoneyCityTheme.orange : MoneyCityTheme.mint)
+                        .multilineTextAlignment(isHebrew ? .trailing : .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private func lastBackupFormatted(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale.current
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        let str = f.string(from: date)
+        return isHebrew ? "גיבוי אחרון: \(str)" : "Last backup: \(str)"
     }
 
     // MARK: - Export
@@ -204,10 +335,10 @@ public struct BackupSheet: View {
 
     private var snapshotCard: some View {
         card(icon: .refresh, tint: MoneyCityTheme.lavender,
-             title: isHebrew ? "תצלומים אוטומטיים" : "Automatic snapshots",
+             title: isHebrew ? "תצלומי שחזור מקומיים" : "Local recovery snapshots",
              body: isHebrew
-                ? "עותק של מסד הנתונים נשמר לפני כל בנייה חדשה — הרגע היחיד שבו מבנה הנתונים יכול להישבר. נשמרים שלושה אחרונים."
-                : "A copy of the database is kept before every new build — the only moment its shape can break. The last three are kept.") {
+                ? "תצלומים שנשמרים על המכשיר בלבד לפני כל שדרוג גרסה, להגנה מתקלות שדרוג. שימו לב: תצלומים אלו אינם שורדים מחיקה של האפליקציה."
+                : "Snapshots kept on this device only before version upgrades, protecting against upgrade issues. Note: these snapshots do not survive deleting the app.") {
             if snapshots.isEmpty {
                 Text(isHebrew ? "אין עדיין תצלומים." : "No snapshots yet.")
                     .font(.system(size: 12))

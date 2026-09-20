@@ -80,4 +80,19 @@ public final class TrackingActivityService: @unchecked Sendable {
 
         return streak
     }
+
+    /// Returns the complete array of recorded active days.
+    public func activeDays() -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        return defaults.stringArray(forKey: storageKey) ?? []
+    }
+
+    /// Replaces the active days array with a validated list (used by backup/restore).
+    public func setActiveDays(_ days: [String]) {
+        lock.lock()
+        defer { lock.unlock() }
+        let validDays = Array(Set(days.filter { $0.count == 10 && $0.contains("-") })).sorted()
+        defaults.set(validDays, forKey: storageKey)
+    }
 }

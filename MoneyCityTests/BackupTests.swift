@@ -1,4 +1,5 @@
 import XCTest
+import SwiftData
 @testable import MoneyCity
 
 /// Snapshots are the app's rollback for the one failure that actually happens — a new build
@@ -215,3 +216,622 @@ final class BackupEnvelopeTests: XCTestCase {
         XCTAssertEqual(decoded.installments[0].buildingId, "shop_tech")
     }
 }
+
+// MARK: - Persistence & Cloud Backup V2 Tests
+
+@MainActor
+final class PersistenceAndCloudBackupTests: XCTestCase {
+
+    private func makeInMemoryContext() -> ModelContext {
+        let schema = Schema(MoneyCitySchemaV2.models)
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+        let container = try! ModelContainer(for: schema, configurations: [config])
+        return ModelContext(container)
+    }
+
+    func testV2BackupRoundTripWithPreferencesAndRecaps() throws {
+        let now = Date(timeIntervalSince1970: 1_788_000_000)
+        let recap = DataPortabilityService.RecapSnapshotDTO(
+            monthId: "2026-08",
+            payloadJSON: "{\"totalSpent\": 2450.0}",
+            frozenAt: now
+        )
+        let prefs = DataPortabilityService.AppPreferencesDTO(
+            userName: "Bini",
+            monthlyBudget: 5000.0,
+            hasCompletedOnboarding: true,
+            hasStartedOnboardingV2: true,
+            trackingActiveDays: ["2026-09-18", "2026-09-19", "2026-09-20"],
+            monthlyMapSelections: ["2026-09": CityMapSelection.MonthEntry(style: "urban", confirmed: true)],
+            appLanguage: "he",
+            appCurrency: "ILS",
+            autoConvertFX: true,
+            hapticsEnabled: true,
+            notificationsEnabled: true
+        )
+        let goal = DataPortabilityService.SavingsGoalDTO(
+            id: UUID(),
+            name: "Emergency Fund",
+            icon: "🛡️",
+            targetAmount: 10000.0,
+            savedAmount: 2500.0,
+            currency: "ILS",
+            targetDate: nil,
+            createdAt: now,
+            completedAt: nil,
+            unlinkedBaseline: 2500.0,
+            baselineCaptured: true
+        )
+
+        let envelope = DataPortabilityService.Envelope(
+            format: DataPortabilityService.formatIdentifier,
+            formatVersion: 2,
+            appVersion: "1.0",
+            appBuild: "47",
+            exportedAt: now,
+            transactions: [],
+            recurring: [],
+            income: [],
+            budgets: [],
+            merchantRules: [],
+            installments: [],
+            savingsGoals: [goal],
+            enrichments: [],
+            recaps: [recap],
+            preferences: prefs
+        )
+
+        let encoded = try DataPortabilityService.makeEncoder().encode(envelope)
+        let decoded = try DataPortabilityService.validateBackupData(encoded)
+
+        XCTAssertEqual(decoded.formatVersion, 2)
+        XCTAssertEqual(decoded.recaps.count, 1)
+        XCTAssertEqual(decoded.recaps[0].monthId, "2026-08")
+        XCTAssertEqual(decoded.recaps[0].payloadJSON, "{\"totalSpent\": 2450.0}")
+        XCTAssertEqual(decoded.preferences?.userName, "Bini")
+        XCTAssertEqual(decoded.preferences?.monthlyBudget, 5000.0)
+        XCTAssertEqual(decoded.preferences?.trackingActiveDays, ["2026-09-18", "2026-09-19", "2026-09-20"])
+        XCTAssertEqual(decoded.preferences?.monthlyMapSelections?["2026-09"]?.style, "urban")
+        XCTAssertEqual(decoded.preferences?.monthlyMapSelections?["2026-09"]?.confirmed, true)
+        XCTAssertEqual(decoded.preferences?.appCurrency, "ILS")
+        XCTAssertEqual(decoded.preferences?.hasCompletedOnboarding, true)
+        XCTAssertEqual(decoded.savingsGoals[0].unlinkedBaseline, 2500.0)
+        XCTAssertEqual(decoded.savingsGoals[0].baselineCaptured, true)
+        XCTAssertEqual(decoded.totalRecords, 2) // 1 goal + 1 recap
+    }
+
+    func testV1BackupBackwardCompatibility() throws {
+        // A real V1 JSON fixture without recaps or preferences
+        let v1JSON = """
+        {
+          "format": "moneycity.backup",
+          "formatVersion": 1,
+          "appVersion": "1.0",
+          "appBuild": "42",
+          "exportedAt": "2026-09-01T10:00:00Z",
+          "transactions": [],
+          "recurring": [],
+          "income": [],
+          "budgets": [],
+          "merchantRules": [],
+          "installments": [],
+          "savingsGoals": [],
+          "enrichments": []
+        }
+        """
+        let data = v1JSON.data(using: .utf8)!
+        let envelope = try DataPortabilityService.validateBackupData(data)
+
+        XCTAssertEqual(envelope.format, "moneycity.backup")
+        XCTAssertEqual(envelope.formatVersion, 2) // Migrated to current portable envelope format
+        XCTAssertTrue(envelope.recaps.isEmpty)
+        XCTAssertNil(envelope.preferences)
+    }
+
+    func testDataLossAndCorruptionSafety() throws {
+        // Truncated data
+        let truncated = "{\"format\":\"moneycity.backup\",\"formatVersion\":2".data(using: .utf8)!
+        XCTAssertThrowsError(try DataPortabilityService.validateBackupData(truncated))
+
+        // Invalid format identifier
+        let wrongFormat = "{\"format\":\"invalid.backup\",\"formatVersion\":2}".data(using: .utf8)!
+        XCTAssertThrowsError(try DataPortabilityService.validateBackupData(wrongFormat))
+
+        // Unsupported future format version
+        let futureVersion = "{\"format\":\"moneycity.backup\",\"formatVersion\":999,\"appVersion\":\"1.0\",\"appBuild\":\"1\",\"exportedAt\":\"2026-09-01T10:00:00Z\",\"transactions\":[],\"recurring\":[],\"income\":[],\"budgets\":[],\"merchantRules\":[],\"installments\":[],\"savingsGoals\":[],\"enrichments\":[]}".data(using: .utf8)!
+        XCTAssertThrowsError(try DataPortabilityService.validateBackupData(futureVersion))
+    }
+
+    func testStreakTrackingDaysSurvivesRoundTrip() throws {
+        let testDefaults = UserDefaults(suiteName: "test_streak_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        let trackingService = TrackingActivityService(defaults: testDefaults)
+        let originalDays = ["2026-09-18", "2026-09-19", "2026-09-20"]
+        trackingService.setActiveDays(originalDays)
+        XCTAssertEqual(trackingService.activeDays(), originalDays)
+
+        let context = makeInMemoryContext()
+        let data = try DataPortabilityService.exportData(
+            context: context,
+            defaults: testDefaults,
+            groupDefaults: testDefaults,
+            includePreferences: true
+        )
+
+        // Clear tracking days
+        trackingService.setActiveDays([])
+        XCTAssertTrue(trackingService.activeDays().isEmpty)
+
+        // Restore
+        _ = try DataPortabilityService.importData(
+            data,
+            into: context,
+            defaults: testDefaults,
+            groupDefaults: testDefaults,
+            mode: .replace,
+            restorePreferences: true
+        )
+
+        XCTAssertEqual(trackingService.activeDays(), originalDays)
+        XCTAssertEqual(trackingService.currentStreakDays(), 3)
+    }
+
+    func testMonthlyMapSelectionsSurvivesRoundTrip() throws {
+        let testDefaults = UserDefaults(suiteName: "test_maps_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        let sampleEntries: [String: CityMapSelection.MonthEntry] = [
+            "2026-07": CityMapSelection.MonthEntry(style: "medieval", confirmed: true),
+            "2026-08": CityMapSelection.MonthEntry(style: "arctic", confirmed: false)
+        ]
+        CityMapSelection.setAllEntries(sampleEntries, defaults: testDefaults)
+        XCTAssertEqual(CityMapSelection.allEntries(defaults: testDefaults), sampleEntries)
+
+        let context = makeInMemoryContext()
+        let data = try DataPortabilityService.exportData(
+            context: context,
+            defaults: testDefaults,
+            groupDefaults: testDefaults,
+            includePreferences: true
+        )
+
+        // Clear entries
+        CityMapSelection.setAllEntries([:], defaults: testDefaults)
+        XCTAssertTrue(CityMapSelection.allEntries(defaults: testDefaults).isEmpty)
+
+        // Restore
+        _ = try DataPortabilityService.importData(
+            data,
+            into: context,
+            defaults: testDefaults,
+            groupDefaults: testDefaults,
+            mode: .replace,
+            restorePreferences: true
+        )
+
+        XCTAssertEqual(CityMapSelection.allEntries(defaults: testDefaults), sampleEntries)
+    }
+
+    func testSavingsGoalsReconciliationNoDoubleCounting() throws {
+        let context = makeInMemoryContext()
+
+        let goalId = UUID()
+        let goal = SavingsGoal(
+            name: "Vacation",
+            icon: "✈️",
+            targetAmount: 5000.0,
+            savedAmount: 1000.0,
+            currency: "ILS",
+            unlinkedBaseline: 1000.0,
+            baselineCaptured: true
+        )
+        goal.id = goalId
+        context.insert(goal)
+
+        let tx = Transaction(
+            amount: 500.0,
+            merchant: "Flight Deposit",
+            category: .savings,
+            savingsGoalId: goalId
+        )
+        context.insert(tx)
+        try context.save()
+
+        // First reconciliation: 1000 baseline + 500 transaction = 1500
+        SavingsGoalService.reconcileAll(context: context)
+        XCTAssertEqual(goal.savedAmount, 1500.0)
+
+        // Second reconciliation: should remain 1500.0, NEVER double count baseline or transaction
+        SavingsGoalService.reconcileAll(context: context)
+        XCTAssertEqual(goal.savedAmount, 1500.0)
+    }
+
+    func testCloudBackupStorageWorkerGenerationsAndPruning() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CloudTest_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let worker = CloudBackupStorageWorker(customContainerURL: tempDir)
+
+        let context = makeInMemoryContext()
+
+        // Write 5 backups sequentially with distinct timestamps
+        let baseTime = Date(timeIntervalSince1970: 1_788_000_000)
+        for i in 1...5 {
+            let writeTime = baseTime.addingTimeInterval(Double(i * 60))
+            let data = try DataPortabilityService.exportData(context: context, now: writeTime)
+            _ = try await worker.writeBackupData(data, exportedAt: writeTime)
+        }
+
+        // Must keep exactly the newest 3 generations
+        let backups = try await worker.availableBackups()
+        XCTAssertEqual(backups.count, 3)
+
+        // The newest must be the 5th write
+        XCTAssertEqual(backups.first?.exportedAt.timeIntervalSince1970, baseTime.addingTimeInterval(300).timeIntervalSince1970)
+        // The oldest of the 3 must be the 3rd write
+        XCTAssertEqual(backups.last?.exportedAt.timeIntervalSince1970, baseTime.addingTimeInterval(180).timeIntervalSince1970)
+    }
+
+    func testCleanInstallDiscoveryWithEmptyOrCorruptedContainer() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CleanInstallTest_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let worker = CloudBackupStorageWorker(customContainerURL: tempDir)
+
+        // 1. Empty container -> no backups
+        let emptyBackups = try await worker.availableBackups()
+        XCTAssertTrue(emptyBackups.isEmpty)
+
+        // 2. Corrupted file in container -> safely ignored
+        let backupsDir = try await worker.resolveBackupDirectory()
+        let corruptURL = backupsDir.appendingPathComponent("SPENT-backup-2026-09-20-120000.json")
+        try "CORRUPTED_JSON_DATA".data(using: .utf8)!.write(to: corruptURL)
+
+        let backupsAfterCorrupt = try await worker.availableBackups()
+        XCTAssertTrue(backupsAfterCorrupt.isEmpty)
+
+        // 3. Add valid backup -> safely discovered
+        let context = makeInMemoryContext()
+        let data = try DataPortabilityService.exportData(context: context)
+        let validDesc = try await worker.writeBackupData(data, exportedAt: Date())
+
+        let discovered = try await worker.availableBackups()
+        XCTAssertEqual(discovered.count, 1)
+        XCTAssertEqual(discovered.first?.id, validDesc.id)
+    }
+
+    func testVersionedBackupMigrationFromV1ToCurrent() throws {
+        // Real V1 format in the wild
+        let v1JSON = """
+        {
+          "format": "moneycity.backup",
+          "formatVersion": 1,
+          "appVersion": "1.0",
+          "appBuild": "42",
+          "exportedAt": "2026-08-15T12:00:00Z",
+          "transactions": [
+            {
+              "id": "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+              "amount": 89.90,
+              "currency": "₪",
+              "merchant": "Aroma",
+              "category": "food",
+              "timestamp": "2026-08-15T11:30:00Z",
+              "confidenceScore": 1.0,
+              "isManual": true,
+              "isConfirmed": true
+            }
+          ],
+          "recurring": [],
+          "income": [],
+          "budgets": [],
+          "merchantRules": [],
+          "installments": [],
+          "savingsGoals": [],
+          "enrichments": []
+        }
+        """
+        let data = v1JSON.data(using: .utf8)!
+        let migrated = try DataPortabilityService.validateBackupData(data)
+
+        XCTAssertEqual(migrated.format, "moneycity.backup")
+        XCTAssertEqual(migrated.formatVersion, 2)
+        XCTAssertEqual(migrated.transactions.count, 1)
+        XCTAssertEqual(migrated.transactions[0].merchant, "Aroma")
+        XCTAssertEqual(migrated.transactions[0].amount, 89.90)
+        // Must NOT invent fabricated preferences or recaps
+        XCTAssertTrue(migrated.recaps.isEmpty)
+        XCTAssertNil(migrated.preferences)
+    }
+
+    func testFutureBackupFormatRejectedSafely() throws {
+        let futureJSON = """
+        {
+          "format": "moneycity.backup",
+          "formatVersion": 3,
+          "appVersion": "2.0",
+          "appBuild": "100",
+          "exportedAt": "2026-10-01T12:00:00Z",
+          "transactions": []
+        }
+        """
+        let data = futureJSON.data(using: .utf8)!
+        XCTAssertThrowsError(try DataPortabilityService.validateBackupData(data)) { error in
+            guard case DataPortabilityService.ImportError.futureFormat(let v) = error else {
+                XCTFail("Expected futureFormat error, got: \(error)")
+                return
+            }
+            XCTAssertEqual(v, 3)
+        }
+    }
+
+    func testExistingUserUpgradeAndBootstrapFirstCloudBackupLifecycle() async throws {
+        let tempCloudDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("BootstrapTest_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempCloudDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempCloudDir) }
+
+        let testDefaults = UserDefaults(suiteName: "test_bootstrap_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        // 1. Seed state matching pre-cloud build:
+        let context = makeInMemoryContext()
+        let tx = Transaction(
+            amount: 120.0,
+            merchant: "Supermarket",
+            category: .groceries
+        )
+        context.insert(tx)
+
+        let goalId = UUID()
+        let goal = SavingsGoal(
+            name: "Emergency Fund",
+            icon: "🛡️",
+            targetAmount: 5000.0,
+            savedAmount: 1000.0,
+            currency: "ILS",
+            unlinkedBaseline: 1000.0,
+            baselineCaptured: true
+        )
+        goal.id = goalId
+        context.insert(goal)
+        try context.save()
+
+        testDefaults.set("Bini", forKey: "userName")
+        testDefaults.set(4500.0, forKey: "monthly_budget")
+        testDefaults.set(true, forKey: "hasCompletedOnboarding")
+        let activeDays = ["2026-09-18", "2026-09-19", "2026-09-20"]
+        TrackingActivityService(defaults: testDefaults).setActiveDays(activeDays)
+        let mapEntries = ["2026-09": CityMapSelection.MonthEntry(style: "urban", confirmed: true)]
+        CityMapSelection.setAllEntries(mapEntries, defaults: testDefaults)
+
+        // Verify pre-cloud state: NO cloud backup exists anywhere
+        let worker = CloudBackupStorageWorker(customContainerURL: tempCloudDir)
+        let preCloudBackups = try await worker.availableBackups()
+        XCTAssertTrue(preCloudBackups.isEmpty)
+        XCTAssertNil(testDefaults.object(forKey: CloudBackupService.lastBackupDateKey))
+
+        // 2. User updates to new version with CloudBackupService:
+        let service = CloudBackupService(defaults: testDefaults, groupDefaults: testDefaults, worker: worker)
+
+        // 3. System runs bootstrapFirstBackupIfNeeded:
+        await service.bootstrapFirstBackupIfNeeded(context: context)
+
+        // 4. Verify bootstrap succeeded:
+        let postBootstrapBackups = try await worker.availableBackups()
+        XCTAssertEqual(postBootstrapBackups.count, 1)
+        let firstBackup = postBootstrapBackups.first!
+        XCTAssertTrue(firstBackup.id.hasPrefix("SPENT-backup-"))
+        XCTAssertNotNil(service.lastBackupDate)
+        XCTAssertNotNil(testDefaults.object(forKey: CloudBackupService.lastBackupDateKey))
+
+        // 5. Verify local data was NOT touched:
+        let currentTxs = try context.fetch(FetchDescriptor<Transaction>())
+        XCTAssertEqual(currentTxs.count, 1)
+        XCTAssertEqual(currentTxs[0].merchant, "Supermarket")
+        XCTAssertEqual(testDefaults.string(forKey: "userName"), "Bini")
+
+        // 6. SIMULATE APP DELETION:
+        // Wipe in-memory context and clear all defaults
+        for t in currentTxs { context.delete(t) }
+        let currentGoals = try context.fetch(FetchDescriptor<SavingsGoal>())
+        for g in currentGoals { context.delete(g) }
+        try context.save()
+
+        testDefaults.removeObject(forKey: "userName")
+        testDefaults.removeObject(forKey: "monthly_budget")
+        testDefaults.removeObject(forKey: "hasCompletedOnboarding")
+        testDefaults.removeObject(forKey: "spent_tracking_active_days")
+        testDefaults.removeObject(forKey: CityMapSelection.preferenceKey)
+        testDefaults.removeObject(forKey: CloudBackupService.lastBackupDateKey)
+
+        // 7. SIMULATE REINSTALL:
+        // A fresh service instance against the same iCloud container
+        let freshInstallService = CloudBackupService(defaults: testDefaults, groupDefaults: testDefaults, worker: worker)
+        let cleanInstallBackup = await freshInstallService.discoverCleanInstallBackup()
+        XCTAssertNotNil(cleanInstallBackup)
+        XCTAssertEqual(cleanInstallBackup?.id, firstBackup.id)
+
+        // 8. Restore from that cloud backup:
+        let restoreSummary = try await freshInstallService.restoreLatestBackup(context: context)
+        XCTAssertGreaterThan(restoreSummary.added, 0)
+
+        // 9. Verify complete state is 100% recovered:
+        let recoveredTxs = try context.fetch(FetchDescriptor<Transaction>())
+        XCTAssertEqual(recoveredTxs.count, 1)
+        XCTAssertEqual(recoveredTxs[0].merchant, "Supermarket")
+
+        let recoveredGoals = try context.fetch(FetchDescriptor<SavingsGoal>())
+        XCTAssertEqual(recoveredGoals.count, 1)
+        XCTAssertEqual(recoveredGoals[0].name, "Emergency Fund")
+        XCTAssertEqual(recoveredGoals[0].savedAmount, 1000.0)
+
+        XCTAssertEqual(testDefaults.string(forKey: "userName"), "Bini")
+        XCTAssertEqual(testDefaults.double(forKey: "monthly_budget"), 4500.0)
+        XCTAssertEqual(testDefaults.bool(forKey: "hasCompletedOnboarding"), true)
+        XCTAssertEqual(TrackingActivityService(defaults: testDefaults).activeDays(), activeDays)
+        XCTAssertEqual(CityMapSelection.allEntries(defaults: testDefaults)["2026-09"]?.style, "urban")
+    }
+
+    func testHasMeaningfulLocalStateEvaluatesWithOrLogic() throws {
+        let context = makeInMemoryContext()
+        let testDefaults = UserDefaults(suiteName: "test_or_logic_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        // Completely clean state
+        XCTAssertFalse(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+
+        // Scenario 1: ONLY onboarding is completed, 0 transactions, 0 goals, 0 budget
+        testDefaults.set(true, forKey: "hasCompletedOnboarding")
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        testDefaults.removeObject(forKey: "hasCompletedOnboarding")
+
+        // Scenario 2: ONLY username is set
+        testDefaults.set("Sarah", forKey: "userName")
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        testDefaults.removeObject(forKey: "userName")
+
+        // Scenario 3: ONLY monthly budget is set
+        testDefaults.set(3000.0, forKey: "monthly_budget")
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        testDefaults.removeObject(forKey: "monthly_budget")
+
+        // Scenario 4: ONLY tracking active days (streak) exist
+        testDefaults.set(["2026-09-20"], forKey: "spent_tracking_active_days")
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        testDefaults.removeObject(forKey: "spent_tracking_active_days")
+
+        // Scenario 5: ONLY map selection exists
+        let mapEntries = ["2026-09": CityMapSelection.MonthEntry(style: "coastal", confirmed: true)]
+        CityMapSelection.setAllEntries(mapEntries, defaults: testDefaults)
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        testDefaults.removeObject(forKey: CityMapSelection.preferenceKey)
+
+        // Scenario 6: ONLY a savings goal exists in database (0 transactions)
+        let goal = SavingsGoal(name: "Trip", icon: "✈️", targetAmount: 2000.0, savedAmount: 500.0)
+        context.insert(goal)
+        try context.save()
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        context.delete(goal)
+        try context.save()
+
+        // Scenario 7: ONLY a recap snapshot exists in database
+        let recap = RecapSnapshot(monthId: "2026-08", payloadJSON: "{}", frozenAt: Date())
+        context.insert(recap)
+        try context.save()
+        XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+        context.delete(recap)
+        try context.save()
+
+        // Back to clean state
+        XCTAssertFalse(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
+    }
+
+    func testStartFreshDoesNotDeleteOrCorruptCloudBackups() async throws {
+        let tempCloudDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("StartFreshTest_\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempCloudDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempCloudDir) }
+
+        let testDefaults = UserDefaults(suiteName: "test_start_fresh_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        // Seed a cloud backup in worker
+        let worker = CloudBackupStorageWorker(customContainerURL: tempCloudDir)
+        let envelope = DataPortabilityService.EnvelopeV2(
+            format: "moneycity.backup",
+            formatVersion: 2,
+            appVersion: "2.0",
+            appBuild: "1",
+            exportedAt: Date(),
+            transactions: [],
+            recurring: [],
+            income: [],
+            budgets: [],
+            merchantRules: [],
+            installments: [],
+            savingsGoals: [DataPortabilityService.SavingsGoalDTO(
+                id: UUID(), name: "Dream Car", icon: "🏎️",
+                targetAmount: 50000.0, savedAmount: 10000.0, currency: "ILS",
+                targetDate: nil, createdAt: Date(), completedAt: nil,
+                unlinkedBaseline: 10000.0, baselineCaptured: true
+            )],
+            enrichments: [],
+            recaps: [],
+            preferences: nil
+        )
+        let data = try DataPortabilityService.makeEncoder().encode(envelope)
+        let descriptor = try await worker.writeBackupData(data)
+
+        // Verify cloud backup exists
+        var available = try await worker.availableBackups()
+        XCTAssertEqual(available.count, 1)
+        XCTAssertEqual(available.first?.id, descriptor.id)
+
+        // Simulating "Start Fresh": user chooses to start onboarding fresh instead of restoring
+        testDefaults.set(true, forKey: "hasStartedOnboardingV2")
+
+        // Assert: iCloud backups are completely intact!
+        available = try await worker.availableBackups()
+        XCTAssertEqual(available.count, 1)
+        XCTAssertEqual(available.first?.id, descriptor.id)
+
+        // Assert: It can still be discovered and restored manually later
+        let freshService = CloudBackupService(defaults: testDefaults, groupDefaults: testDefaults, worker: worker)
+        let discovered = await freshService.discoverCleanInstallBackup()
+        XCTAssertNotNil(discovered)
+        XCTAssertEqual(discovered?.id, descriptor.id)
+    }
+
+    func testPostRestoreRefreshUpdatesLocalizationAndPreferences() throws {
+        let context = makeInMemoryContext()
+        let testDefaults = UserDefaults(suiteName: "test_refresh_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        var prefs = DataPortabilityService.AppPreferencesDTO()
+        prefs.appLanguage = "en"
+        prefs.appCurrency = "USD"
+        prefs.userName = "Alice"
+        prefs.monthlyBudget = 7500.0
+
+        let envelope = DataPortabilityService.EnvelopeV2(
+            format: "moneycity.backup",
+            formatVersion: 2,
+            appVersion: "2.0",
+            appBuild: "1",
+            exportedAt: Date(),
+            transactions: [],
+            recurring: [],
+            income: [],
+            budgets: [],
+            merchantRules: [],
+            installments: [],
+            savingsGoals: [],
+            enrichments: [],
+            recaps: [],
+            preferences: prefs
+        )
+        let data = try DataPortabilityService.makeEncoder().encode(envelope)
+
+        // Import into context and restore preferences
+        let summary = try DataPortabilityService.importData(
+            data,
+            into: context,
+            defaults: testDefaults,
+            groupDefaults: testDefaults,
+            mode: .replace,
+            restorePreferences: true
+        )
+        XCTAssertEqual(summary.added, 0)
+        XCTAssertEqual(testDefaults.string(forKey: "app_language_pref"), "en")
+        XCTAssertEqual(testDefaults.string(forKey: "app_currency_pref"), "USD")
+        XCTAssertEqual(testDefaults.string(forKey: "userName"), "Alice")
+        XCTAssertEqual(testDefaults.double(forKey: "monthly_budget"), 7500.0)
+    }
+}
+

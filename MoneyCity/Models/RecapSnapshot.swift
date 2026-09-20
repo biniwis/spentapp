@@ -11,14 +11,14 @@ import SwiftData
 @Model
 public final class RecapSnapshot {
     /// e.g. "2026-08" — the same id `MonthlyRecap.monthId` uses.
-    public var monthId: String
+    public var monthId: String = ""
     /// A `RecapStorySnapshot` encoded with `RecapSnapshotService`'s stable ISO-8601 coder,
     /// stored as its UTF-8 string representation.
-    public var payloadJSON: String
+    public var payloadJSON: String = ""
     /// When the story was first frozen. Written once; later openings never overwrite it.
-    public var frozenAt: Date
+    public var frozenAt: Date = Date()
 
-    public init(monthId: String, payloadJSON: String, frozenAt: Date) {
+    public init(monthId: String = "", payloadJSON: String = "", frozenAt: Date = Date()) {
         self.monthId = monthId
         self.payloadJSON = payloadJSON
         self.frozenAt = frozenAt

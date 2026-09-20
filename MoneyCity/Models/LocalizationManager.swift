@@ -129,6 +129,18 @@ public final class LocalizationManager: ObservableObject {
         didSet { objectWillChange.send() }
     }
 
+    /// Reloads language and currency properties from UserDefaults after a data restore.
+    public func refresh() {
+        let lang = UserDefaults.standard.string(forKey: "app_language_pref") ?? AppLanguage.deviceDefault.rawValue
+        let curr = UserDefaults.standard.string(forKey: "app_currency_pref") ?? CurrencyType.ils.rawValue
+        let fx = UserDefaults.standard.object(forKey: "auto_convert_fx") as? Bool ?? true
+        self.currentLanguageRaw = lang
+        self.baseCurrencyRaw = curr
+        self.autoConvertForeign = fx
+        UserDefaults(suiteName: "group.com.moneycity.app")?.set(baseCurrency.symbol, forKey: "widget_currency_symbol")
+        objectWillChange.send()
+    }
+
     nonisolated public var language: AppLanguage {
         get {
             let raw = UserDefaults.standard.string(forKey: "app_language_pref") ?? AppLanguage.deviceDefault.rawValue
@@ -276,7 +288,7 @@ public final class LocalizationManager: ObservableObject {
         case "recurring_expenses_hint": return isHebrew ? "שכר דירה, ארנונה, מנויים — הגדרה אחת, נרשמות לבד כל חודש." : "Rent, bills, subscriptions — set once, posted automatically every month."
         case "export_csv": return isHebrew ? "ייצוא עסקאות לקובץ CSV / Excel" : "Export Transactions to CSV / Excel"
         case "reset_city": return isHebrew ? "איפוס כל נתוני העיר וההוצאות" : "Reset All City & Expense Data"
-        case "privacy_note": return isHebrew ? "כל הנתונים הכספיים נשמרים מקומית על המכשיר שלך בלבד ומאובטחים לחלוטין." : "All financial data is strictly stored locally on your device with SwiftData and is 100% private."
+        case "privacy_note": return isHebrew ? "כל הנתונים נשמרים מקומית על המכשיר שלך עם גיבוי פרטי ב־iCloud האישי שלך. אין שרתים או חשבונות של SPENT." : "All data is stored locally on your device with private backup to your personal iCloud. No SPENT servers or accounts."
         case "nature_reserve": return natureReserveName
 
         default:

@@ -571,7 +571,7 @@ public struct OnboardingWizardView: View {
 
     private var previewDiorama: some View {
         GeometryReader { geometry in
-            let styles = CityMapStyle.allCases
+            let styles = CityMapSelection.pickerWorlds
             let selectedIndex = styles.firstIndex(of: selectedMapStyle) ?? 0
             let direction: CGFloat = isHebrew ? -1 : 1
             ZStack {
@@ -623,7 +623,7 @@ public struct OnboardingWizardView: View {
         VStack(spacing: 12) {
             previewDiorama
                 .accessibilityAdjustableAction { direction in
-                    let cases = CityMapStyle.allCases
+                    let cases = CityMapSelection.pickerWorlds
                     guard let idx = cases.firstIndex(of: selectedMapStyle) else { return }
                     switch direction {
                     case .increment: draftMapStyle = cases[(idx + 1) % cases.count].rawValue
@@ -650,9 +650,9 @@ public struct OnboardingWizardView: View {
             .offset(y: mapTextVisible || reduceMotion ? 0 : 10)
 
             if isSelectionMode {
-                // Page dots — generic over allCases, tappable
+                // Page dots — generic over pickerWorlds, tappable
                 HStack(spacing: 8) {
-                    ForEach(CityMapStyle.allCases) { style in
+                    ForEach(CityMapSelection.pickerWorlds) { style in
                         Button {
                             withAnimation(.easeInOut(duration: 0.25)) {
                                 draftMapStyle = style.rawValue

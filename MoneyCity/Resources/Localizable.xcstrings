@@ -235,9 +235,6 @@
         }
       }
     },
-    "%@:" : {
-
-    },
     "%@. %@" : {
       "localizations" : {
         "en" : {
@@ -388,13 +385,7 @@
     "• ↩️ זיכוי" : {
 
     },
-    "• Pending" : {
-
-    },
     "• unverified" : {
-
-    },
-    "• טרם נבחר" : {
 
     },
     "• סיווג לא ודאי" : {
@@ -783,12 +774,6 @@
     "City routine" : {
 
     },
-    "City World" : {
-
-    },
-    "City World Selection" : {
-
-    },
     "City Worlds" : {
 
     },
@@ -801,10 +786,10 @@
     "Confirm category" : {
 
     },
-    "Confirm City World" : {
+    "Confirm Deposit" : {
 
     },
-    "Confirm Deposit" : {
+    "Confirm Map" : {
 
     },
     "Confirming will deduct this amount from your monthly spending" : {
@@ -848,13 +833,7 @@
         }
       }
     },
-    "Current" : {
-
-    },
     "Current spending exceeds planned income. Nature Reserve growth slows down." : {
-
-    },
-    "Current:" : {
 
     },
     "Date and Time" : {
@@ -1225,9 +1204,6 @@
     "Instant Purchase Alerts" : {
 
     },
-    "Interactive WebGL 3D diorama with live controls for density, buildings, park & traffic" : {
-
-    },
     "Interface Language" : {
 
     },
@@ -1268,6 +1244,9 @@
 
     },
     "Manual Setup Guide" : {
+
+    },
+    "Map Style" : {
 
     },
     "Maybe later" : {
@@ -1364,10 +1343,10 @@
     "Next" : {
 
     },
-    "Next Month" : {
+    "Next Month's Map" : {
 
     },
-    "Next:" : {
+    "Next: %@" : {
 
     },
     "Night" : {
@@ -1483,7 +1462,7 @@
     "Postcards (Mock)" : {
 
     },
-    "Pre-select city style for next month (%@)" : {
+    "Pre-select your city style. At the start of next month, your full city will reveal in this world." : {
 
     },
     "Preview" : {
@@ -1763,9 +1742,6 @@
     "Set a goal for emergencies, vacation, or investments — and watch the Nature Reserve grow." : {
 
     },
-    "Set city style for current month (%@)" : {
-
-    },
     "Set Goal" : {
 
     },
@@ -1910,6 +1886,9 @@
     "Target amount" : {
 
     },
+    "Test any map style (Modern, Medieval, Arctic, Israeli) across all build & density stages" : {
+
+    },
     "The amount you paid" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1936,10 +1915,16 @@
     "This is a sample of the food district. Choose a style to reveal the full city. You can choose again at the start of each month." : {
 
     },
+    "This is a sample of the food district. Confirming will set your full city style for this month." : {
+
+    },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
 
     },
     "This month: %@" : {
+
+    },
+    "This Month's Map" : {
 
     },
     "THIS MONTH’S TARGET" : {
@@ -2291,9 +2276,6 @@
     "אישור" : {
 
     },
-    "אישור ובחירת עולם" : {
-
-    },
     "אישור מיידי על כל רכישה" : {
 
     },
@@ -2351,6 +2333,9 @@
     "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
 
     },
+    "בדיקת כל סגנון מפה (מודרנית, ימי הביניים, קרח, ישראלית) בכל שלבי הבנייה והצפיפות" : {
+
+    },
     "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 התוספות בעיר" : {
 
     },
@@ -2363,10 +2348,13 @@
     "בחירה לחודש הבא" : {
 
     },
-    "בחירת עולם לעיר" : {
+    "בחירת מפה" : {
 
     },
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
+
+    },
+    "בחר את מראה העיר מראש. בתחילת החודש הבא העיר המלאה תיפתח בסגנון זה." : {
 
     },
     "בחר קטגוריה" : {
@@ -2436,6 +2424,9 @@
     "הבא" : {
 
     },
+    "הבא: %@" : {
+
+    },
     "הגדר יעד" : {
 
     },
@@ -2457,19 +2448,10 @@
     "הגדרת יעד חיסכון חדש" : {
 
     },
-    "הגדרת סגנון העיר לחודש הנוכחי (%@)" : {
-
-    },
-    "הגדרת סגנון העיר מראש לחודש הבא (%@)" : {
-
-    },
     "הגדרת תקציב" : {
 
     },
     "הדמיה" : {
-
-    },
-    "הדמיית הדיורמה התלת-ממדית עם שליטה מיידית בצפיפות, מבנים, פארק ותנועה" : {
 
     },
     "הדמיית התקדמות שבועית חיובית (₪480 חיסכון), בחירה אינטראקטיבית ואנימציית הצטרפות" : {
@@ -2539,12 +2521,6 @@
 
     },
     "החבר עדיין לא נוסף" : {
-
-    },
-    "החודש" : {
-
-    },
-    "החודש:" : {
 
     },
     "החודש: %@" : {
@@ -2756,6 +2732,9 @@
 
     },
     "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור." : {
+
+    },
+    "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה עבור החודש." : {
 
     },
     "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה. בתחילת כל חודש אפשר לבחור סגנון מחדש." : {
@@ -2998,6 +2977,12 @@
     "מפקח מועמדויות (Candidate Inspector)" : {
 
     },
+    "מפת החודש" : {
+
+    },
+    "מפת החודש הבא" : {
+
+    },
     "מצב סיום: כל התוספות כבר בעיר" : {
 
     },
@@ -3029,9 +3014,6 @@
 
     },
     "נא להזין סכום תקין" : {
-
-    },
-    "נבחר לחודש הבא" : {
 
     },
     "נגדיר לאייפון להעביר ל-SPENT את סכום העסקה ואת בית העסק אחרי כל תשלום ב-Apple Pay." : {
@@ -3092,6 +3074,9 @@
     "סגירה" : {
 
     },
+    "סגנון המפה" : {
+
+    },
     "סה״כ" : {
 
     },
@@ -3147,9 +3132,6 @@
 
     },
     "סקירת 12 חודשים" : {
-
-    },
-    "עולם העיר" : {
 
     },
     "עזרה" : {

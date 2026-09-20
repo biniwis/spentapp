@@ -10,6 +10,18 @@ public struct MonthlyWorldPickerView: View {
     public let isHebrew: Bool
     public let onConfirm: (CityMapStyle) -> Void
 
+    public init(
+        targetMonth: Date,
+        draft: Binding<CityMapStyle>,
+        isHebrew: Bool,
+        onConfirm: @escaping (CityMapStyle) -> Void
+    ) {
+        self.targetMonth = targetMonth
+        self._draft = draft
+        self.isHebrew = isHebrew
+        self.onConfirm = onConfirm
+    }
+
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 

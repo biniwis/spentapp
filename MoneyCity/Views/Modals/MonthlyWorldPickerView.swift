@@ -58,134 +58,140 @@ public struct MonthlyWorldPickerView: View {
         return formatter.string(from: targetMonth)
     }
 
-    @GestureState private var mapDrag: CGFloat = 0
-
     public var body: some View {
         VStack(spacing: 0) {
             // Header
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(isHebrew ? (isCurrentMonthTarget ? "מפת החודש" : "מפת החודש הבא") : (isCurrentMonthTarget ? "This Month's Map" : "Next Month's Map"))
-                    .font(.system(.largeTitle, design: .rounded, weight: .heavy))
-                    .tracking(-1)
-                    .foregroundStyle(Color.jetBlack)
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(MoneyCityTheme.jetBlack)
 
                 Text(headerSubtitleText)
-                    .font(.system(.body, design: .rounded))
-                    .foregroundStyle(Color.jetBlack.opacity(0.65))
+                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                    .foregroundColor(MoneyCityTheme.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 24)
             .padding(.top, 28)
-            .padding(.bottom, 12)
+            .padding(.bottom, 16)
 
-            // ── Floating 3D Diorama (Pure on Canvas, No Card/Border) ──
-            GeometryReader { geometry in
-                let selectedIndex = worlds.firstIndex(of: draft) ?? 0
-                let direction: CGFloat = isHebrew ? -1 : 1
-
-                ZStack {
-                    ForEach(Array(worlds.enumerated()), id: \.element.id) { index, style in
-                        ThreeDioramaView(
-                            mapStyle: style,
-                            isDistrictSample: true,
-                            totalSpent: 0,
-                            totalSavings: 0,
-                            categoryTotals: [:],
-                            selectedDistrict: nil,
-                            language: isHebrew ? "he" : "en",
-                            isPaused: false,
-                            timeOfDayOverride: 12,
-                            onSelectDistrict: { _ in },
-                            onBuildingSelected: { _ in }
-                        )
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(style != draft)
-                        .offset(x: CGFloat(index - selectedIndex) * geometry.size.width * direction + mapDrag)
-                    }
-                }
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 10)
-                        .updating($mapDrag) { value, state, _ in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            state = value.translation.width
-                        }
-                        .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            let travel = value.predictedEndTranslation.width * direction
-                            guard abs(travel) > geometry.size.width * 0.15 else { return }
-                            let next = min(max(selectedIndex + (travel < 0 ? 1 : -1), 0), worlds.count - 1)
-                            if next != selectedIndex {
-                                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) {
-                                    draft = worlds[next]
-                                }
-                                Haptics.selection()
-                            }
-                        }
+            // ── Fixed Top Preview: Shopping District Sample (No stroke) ──
+            ZStack(alignment: .bottomLeading) {
+                ThreeDioramaView(
+                    mapStyle: draft,
+                    isDistrictSample: true,
+                    totalSpent: 0,
+                    totalSavings: 0,
+                    categoryTotals: [:],
+                    selectedDistrict: nil,
+                    language: isHebrew ? "he" : "en",
+                    isPaused: false,
+                    timeOfDayOverride: 12,
+                    onSelectDistrict: { _ in },
+                    onBuildingSelected: { _ in }
                 )
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: draft)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: mapDrag == 0)
+                .allowsHitTesting(false)
+                .id(draft.rawValue)
+                .frame(height: 190)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                // Quiet minimalist badge on the preview
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(MoneyCityTheme.luckyGreen)
+                        .frame(width: 6, height: 6)
+                    Text(draft.title(isHebrew: isHebrew))
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(MoneyCityTheme.jetBlack)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.white.opacity(0.92))
+                .clipShape(Capsule())
+                .shadow(color: Color.deepNavy.opacity(0.04), radius: 6, y: 2)
+                .padding(12)
             }
-            .frame(height: 250)
-            .clipped()
+            .padding(.horizontal, 24)
+            .padding(.bottom, 20)
 
-            // ── Style Title and Context ──
-            VStack(spacing: 6) {
-                Text(draft.title(isHebrew: isHebrew))
-                    .font(.system(.title3, design: .rounded, weight: .bold))
-                    .foregroundStyle(Color.jetBlack)
-                    .id(draft)
-                    .transition(.opacity.combined(with: .offset(y: reduceMotion ? 0 : 5)))
+            // ── Minimalist Inset Grouped World List (No stroke) ──
+            VStack(spacing: 0) {
+                ForEach(Array(worlds.enumerated()), id: \.element.id) { index, style in
+                    let isSelected = (style == draft)
+                    let currentMonthSelection = CityMapSelection.resolvedStyle(for: Date())
+                    let nextMonthSelection = CityMapSelection.selectedStyle(for: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date())
+                    let isCurrentMonthActive = (style == currentMonthSelection)
+                    let isNextMonthChosen = (style == nextMonthSelection)
 
-                Text(isHebrew ? "החלק לבחירת סגנון" : "Swipe to choose a style")
-                    .font(.system(.subheadline, design: .rounded))
-                    .foregroundStyle(Color.jetBlack.opacity(0.6))
-            }
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 12)
-
-            // ── Native Page Dots ──
-            HStack(spacing: 8) {
-                ForEach(worlds) { style in
                     Button {
-                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.82)) {
                             draft = style
                         }
                         Haptics.selection()
                     } label: {
-                        Circle()
-                            .fill(style == draft ? Color.jetBlack : Color.jetBlack.opacity(0.2))
-                            .frame(width: 7, height: 7)
+                        HStack(spacing: 14) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 8) {
+                                    Text(style.title(isHebrew: isHebrew))
+                                        .font(.system(size: 15, weight: isSelected ? .bold : .semibold, design: .rounded))
+                                        .foregroundColor(MoneyCityTheme.jetBlack)
+
+                                    if isCurrentMonthActive {
+                                        Text(isHebrew ? "החודש" : "Current")
+                                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                                            .foregroundColor(MoneyCityTheme.violetBlue)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(MoneyCityTheme.babyBlue.opacity(0.55))
+                                            .clipShape(Capsule())
+                                    }
+
+                                    if isNextMonthChosen && !isCurrentMonthTarget {
+                                        Text(isHebrew ? "נבחר" : "Selected")
+                                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                                            .foregroundColor(MoneyCityTheme.luckyGreen)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(MoneyCityTheme.luckyGreen.opacity(0.12))
+                                            .clipShape(Capsule())
+                                    }
+                                }
+
+                                Text(style.subtitle(isHebrew: isHebrew))
+                                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                                    .foregroundColor(MoneyCityTheme.textSecondary)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer()
+
+                            // Native checkmark indicator (no stroke)
+                            if isSelected {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(MoneyCityTheme.jetBlack)
+                                    .frame(width: 20, height: 20)
+                            } else {
+                                Color.clear
+                                    .frame(width: 20, height: 20)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(style.title(isHebrew: isHebrew))
+
+                    if index < worlds.count - 1 {
+                        Divider()
+                            .padding(.horizontal, 16)
+                    }
                 }
             }
-            .padding(.top, 10)
-            .padding(.bottom, 16)
-
-            // ── Clean Description directly on canvas ──
-            VStack(alignment: .leading, spacing: 6) {
-                Text(isHebrew ? "רובע קטן. הצצה לעיר שלך." : "One district. A glimpse of your city.")
-                    .font(.system(.body, design: .rounded, weight: .semibold))
-                    .foregroundStyle(Color.jetBlack)
-
-                Text(isHebrew
-                    ? (isCurrentMonthTarget
-                        ? "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה עבור החודש."
-                        : "בחר את מראה העיר מראש. בתחילת החודש הבא העיר המלאה תיפתח בסגנון זה.")
-                    : (isCurrentMonthTarget
-                        ? "This is a sample of the food district. Confirming will set your full city style for this month."
-                        : "Pre-select your city style. At the start of next month, your full city will reveal in this world."))
-                    .font(.system(.body, design: .rounded))
-                    .foregroundStyle(Color.jetBlack.opacity(0.7))
-                    .lineSpacing(3)
-            }
-            .multilineTextAlignment(.leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 26)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: Color.deepNavy.opacity(0.03), radius: 8, y: 2)
+            .padding(.horizontal, 24)
 
             Spacer(minLength: 20)
 
@@ -195,22 +201,21 @@ public struct MonthlyWorldPickerView: View {
                 onConfirm(draft)
             } label: {
                 Text(isHebrew ? "בחירת מפה" : "Confirm Map")
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 17)
-                    .frame(minHeight: 56)
+                    .padding(.vertical, 16)
                     .background(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color.jetBlack)
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(MoneyCityTheme.jetBlack)
                     )
             }
             .buttonStyle(.plain)
-            .bouncyPress(scale: reduceMotion ? 1 : 0.97)
+            .bouncyPress(scale: reduceMotion ? 1 : 0.98)
             .padding(.horizontal, 24)
-            .padding(.bottom, 28)
+            .padding(.bottom, 24)
         }
-        .background(Color.warmCream.ignoresSafeArea())
+        .background(Color(red: 250/255, green: 250/255, blue: 248/255).ignoresSafeArea())
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
     }
 }

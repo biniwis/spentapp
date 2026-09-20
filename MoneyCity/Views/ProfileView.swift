@@ -833,7 +833,6 @@ public struct ProfileView: View {
 
         Button(action: {
             Haptics.impact(.light)
-            // If current month pending → let user choose now; otherwise → choose next month
             let target = isPendingThisMonth ? Date() : nextMonthDate
             cityWorldPickerTargetMonth = target
             cityWorldDraft = isPendingThisMonth
@@ -842,13 +841,11 @@ public struct ProfileView: View {
             showCityWorldPicker = true
         }) {
             HStack(spacing: 14) {
-                // Icon
                 ZStack {
                     Circle()
-                        .fill(Color(red: 219/255, green: 234/255, blue: 254/255))
+                        .fill(MoneyCityTheme.babyBlue.opacity(0.6))
                         .frame(width: 42, height: 42)
-                    Text("🌍")
-                        .font(.system(size: 20))
+                    MoneyIcon(.globe, size: 22, color: MoneyCityTheme.violetBlue)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -856,35 +853,36 @@ public struct ProfileView: View {
                         .font(.system(size: 15, weight: .semibold, design: .default))
                         .foregroundColor(Color.deepNavy)
 
-                    // Current month
-                    HStack(spacing: 4) {
-                        Text(isHe ? currentMonthName + ":" : currentMonthName + ":")
-                            .font(.system(size: 12, weight: .regular))
+                    HStack(spacing: 6) {
+                        Text(isHe ? "החודש:" : "Current:")
+                            .font(.system(size: 12, weight: .regular, design: .default))
                             .foregroundColor(Color.textSecondary)
+
                         Text(currentMonthStyle.title(isHebrew: isHe))
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(isPendingThisMonth ? MoneyCityTheme.brandSecondary : Color.textSecondary)
+                            .font(.system(size: 12, weight: .semibold, design: .default))
+                            .foregroundColor(Color.deepNavy)
+
                         if isPendingThisMonth {
-                            Text(isHe ? "• טרם נבחר" : "• pending")
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(MoneyCityTheme.brandSecondary)
+                            Text(isHe ? "• טרם נבחר" : "• Pending")
+                                .font(.system(size: 11, weight: .medium, design: .default))
+                                .foregroundColor(MoneyCityTheme.orangeRed)
                         }
                     }
 
-                    // Next month
                     if !isPendingThisMonth {
-                        HStack(spacing: 4) {
-                            Text(isHe ? nextMonthName + ":" : nextMonthName + ":")
-                                .font(.system(size: 12, weight: .regular))
-                                .foregroundColor(Color.textMuted)
+                        HStack(spacing: 6) {
+                            Text(isHe ? "\(nextMonthName):" : "Next:")
+                                .font(.system(size: 12, weight: .regular, design: .default))
+                                .foregroundColor(Color.textSecondary)
+
                             if let next = nextMonthStyle {
                                 Text(next.title(isHebrew: isHe))
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Color.textMuted)
+                                    .font(.system(size: 12, weight: .semibold, design: .default))
+                                    .foregroundColor(MoneyCityTheme.violetBlue)
                             } else {
-                                Text(isHe ? "בחר עכשיו ↗" : "Choose now ↗")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(MoneyCityTheme.brandPrimary)
+                                Text(isHe ? "בחירה לחודש הבא" : "Choose for next month")
+                                    .font(.system(size: 12, weight: .medium, design: .default))
+                                    .foregroundColor(MoneyCityTheme.luckyGreen)
                             }
                         }
                     }
@@ -892,7 +890,7 @@ public struct ProfileView: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
+                Image(systemName: isHe ? "chevron.left" : "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color.textMuted)
             }

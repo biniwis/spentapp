@@ -159,6 +159,16 @@ public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
         case .future: return isHebrew ? "עיר העתיד" : "Future city"
         }
     }
+
+    public func subtitle(isHebrew: Bool) -> String {
+        switch self {
+        case .urban: return isHebrew ? "גורדי שחקים, שדרות וחיים אורבניים שוקקים" : "Skyscrapers, avenues, and vibrant urban life"
+        case .medieval: return isHebrew ? "טירות אבן, שווקים עתיקים וסמטאות היסטוריות" : "Stone castles, ancient markets, and historic alleys"
+        case .arctic: return isHebrew ? "כיפות קרח, גשרי שלג ואורות קוטב זוהרים" : "Ice domes, snow bridges, and glowing northern lights"
+        case .israel: return isHebrew ? "בנייני באוהאוס, עצי דקל ושדרות חמימות" : "Bauhaus buildings, palm trees, and warm boulevards"
+        case .future: return isHebrew ? "מגדלים מרחפים, רכבות מגנטיות ואורות ניאון" : "Floating towers, maglev transit, and neon lights"
+        }
+    }
 }
 
 // MARK: - Per-month world storage

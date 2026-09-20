@@ -235,6 +235,9 @@
         }
       }
     },
+    "%@:" : {
+
+    },
     "%@. %@" : {
       "localizations" : {
         "en" : {
@@ -385,7 +388,13 @@
     "• ↩️ זיכוי" : {
 
     },
+    "• Pending" : {
+
+    },
     "• unverified" : {
+
+    },
+    "• טרם נבחר" : {
 
     },
     "• סיווג לא ודאי" : {
@@ -750,16 +759,13 @@
     "Check state when all 6 additions have already joined the city" : {
 
     },
-    "Choose" : {
-
-    },
     "Choose \"New Shortcut\" or \"New Blank Automation\", tap Add Action, search for SPENT and pick \"Record Apple Pay Transaction\"." : {
 
     },
     "Choose a Category" : {
 
     },
-    "Choose your world for %@." : {
+    "Choose for next month" : {
 
     },
     "City" : {
@@ -777,6 +783,12 @@
     "City routine" : {
 
     },
+    "City World" : {
+
+    },
+    "City World Selection" : {
+
+    },
     "City Worlds" : {
 
     },
@@ -787,6 +799,9 @@
 
     },
     "Confirm category" : {
+
+    },
+    "Confirm City World" : {
 
     },
     "Confirm Deposit" : {
@@ -833,7 +848,13 @@
         }
       }
     },
+    "Current" : {
+
+    },
     "Current spending exceeds planned income. Nature Reserve growth slows down." : {
+
+    },
+    "Current:" : {
 
     },
     "Date and Time" : {
@@ -1340,10 +1361,13 @@
     "New Goal" : {
 
     },
-    "New month, new city." : {
+    "Next" : {
 
     },
-    "Next" : {
+    "Next Month" : {
+
+    },
+    "Next:" : {
 
     },
     "Night" : {
@@ -1457,6 +1481,9 @@
 
     },
     "Postcards (Mock)" : {
+
+    },
+    "Pre-select city style for next month (%@)" : {
 
     },
     "Preview" : {
@@ -1736,6 +1763,9 @@
     "Set a goal for emergencies, vacation, or investments — and watch the Nature Reserve grow." : {
 
     },
+    "Set city style for current month (%@)" : {
+
+    },
     "Set Goal" : {
 
     },
@@ -1845,9 +1875,6 @@
 
     },
     "Swipe to choose a style" : {
-
-    },
-    "Swipe to switch" : {
 
     },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
@@ -2264,6 +2291,9 @@
     "אישור" : {
 
     },
+    "אישור ובחירת עולם" : {
+
+    },
     "אישור מיידי על כל רכישה" : {
 
     },
@@ -2330,16 +2360,16 @@
     "בוא לראות איך החודש קיבל צורה בעיר" : {
 
     },
+    "בחירה לחודש הבא" : {
+
+    },
+    "בחירת עולם לעיר" : {
+
+    },
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
 
     },
-    "בחר את העולם של %@." : {
-
-    },
     "בחר קטגוריה" : {
-
-    },
-    "בחרתי" : {
 
     },
     "בטל" : {
@@ -2427,6 +2457,12 @@
     "הגדרת יעד חיסכון חדש" : {
 
     },
+    "הגדרת סגנון העיר לחודש הנוכחי (%@)" : {
+
+    },
+    "הגדרת סגנון העיר מראש לחודש הבא (%@)" : {
+
+    },
     "הגדרת תקציב" : {
 
     },
@@ -2505,6 +2541,12 @@
     "החבר עדיין לא נוסף" : {
 
     },
+    "החודש" : {
+
+    },
+    "החודש:" : {
+
+    },
     "החודש: %@" : {
 
     },
@@ -2518,9 +2560,6 @@
 
     },
     "החלפה מוחקת את כל מה שיש כאן. תצלום אוטומטי נשמר בכל בנייה, אבל לא לפני ייבוא — ייצא עותק קודם." : {
-
-    },
-    "החלק כדי להחליף" : {
 
     },
     "החלק לבחירת סגנון" : {
@@ -2741,9 +2780,6 @@
 
     },
     "חודש חדש בעיר" : {
-
-    },
-    "חודש חדש, עיר חדשה." : {
 
     },
     "חזרה" : {
@@ -2995,6 +3031,9 @@
     "נא להזין סכום תקין" : {
 
     },
+    "נבחר לחודש הבא" : {
+
+    },
     "נגדיר לאייפון להעביר ל-SPENT את סכום העסקה ואת בית העסק אחרי כל תשלום ב-Apple Pay." : {
 
     },
@@ -3108,6 +3147,9 @@
 
     },
     "סקירת 12 חודשים" : {
+
+    },
+    "עולם העיר" : {
 
     },
     "עזרה" : {

@@ -829,15 +829,12 @@ public struct ProfileView: View {
     @ViewBuilder
     private var cityWorldMenuRow: some View {
         let isHe = l10n.language == .hebrew
-        let isPendingThisMonth = CityMapSelection.isWorldChoicePending(for: Date())
 
         Button(action: {
             Haptics.impact(.light)
-            let target = isPendingThisMonth ? Date() : nextMonthDate
-            cityWorldPickerTargetMonth = target
-            cityWorldDraft = isPendingThisMonth
-                ? CityMapSelection.assignedStyle(for: Date())
-                : (CityMapSelection.selectedStyle(for: nextMonthDate) ?? CityMapSelection.resolvedStyle(for: Date()))
+            // Profile menu row is specifically for choosing/previewing the next month's city
+            cityWorldPickerTargetMonth = nextMonthDate
+            cityWorldDraft = CityMapSelection.selectedStyle(for: nextMonthDate) ?? CityMapSelection.resolvedStyle(for: Date())
             showCityWorldPicker = true
         }) {
             HStack(spacing: 14) {
@@ -854,36 +851,22 @@ public struct ProfileView: View {
                         .foregroundColor(Color.deepNavy)
 
                     HStack(spacing: 6) {
-                        Text(isHe ? "החודש:" : "Current:")
+                        Text(isHe ? "החודש: \(currentMonthStyle.title(isHebrew: isHe))" : "This month: \(currentMonthStyle.title(isHebrew: isHe))")
                             .font(.system(size: 12, weight: .regular, design: .default))
                             .foregroundColor(Color.textSecondary)
 
-                        Text(currentMonthStyle.title(isHebrew: isHe))
-                            .font(.system(size: 12, weight: .semibold, design: .default))
-                            .foregroundColor(Color.deepNavy)
+                        Text("•")
+                            .font(.system(size: 10))
+                            .foregroundColor(Color.textMuted)
 
-                        if isPendingThisMonth {
-                            Text(isHe ? "• טרם נבחר" : "• Pending")
-                                .font(.system(size: 11, weight: .medium, design: .default))
-                                .foregroundColor(MoneyCityTheme.orangeRed)
-                        }
-                    }
-
-                    if !isPendingThisMonth {
-                        HStack(spacing: 6) {
-                            Text(isHe ? "\(nextMonthName):" : "Next:")
-                                .font(.system(size: 12, weight: .regular, design: .default))
-                                .foregroundColor(Color.textSecondary)
-
-                            if let next = nextMonthStyle {
-                                Text(next.title(isHebrew: isHe))
-                                    .font(.system(size: 12, weight: .semibold, design: .default))
-                                    .foregroundColor(MoneyCityTheme.violetBlue)
-                            } else {
-                                Text(isHe ? "בחירה לחודש הבא" : "Choose for next month")
-                                    .font(.system(size: 12, weight: .medium, design: .default))
-                                    .foregroundColor(MoneyCityTheme.luckyGreen)
-                            }
+                        if let next = nextMonthStyle {
+                            Text(isHe ? "הבא: \(next.title(isHebrew: isHe))" : "Next: \(next.title(isHebrew: isHe))")
+                                .font(.system(size: 12, weight: .semibold, design: .default))
+                                .foregroundColor(MoneyCityTheme.violetBlue)
+                        } else {
+                            Text(isHe ? "בחירה לחודש הבא" : "Choose for next month")
+                                .font(.system(size: 12, weight: .medium, design: .default))
+                                .foregroundColor(MoneyCityTheme.luckyGreen)
                         }
                     }
                 }

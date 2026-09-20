@@ -35,6 +35,10 @@ public struct ProfileView: View {
     @State private var showDetailedStreak = false
     @State private var showDetailedBudget = false
     @State private var activeRecapForSheet: MonthlyRecap? = nil
+    @State private var showCityWorldPicker = false
+    @State private var cityWorldPickerTargetMonth: Date = Date()
+    @State private var cityWorldDraft: CityMapStyle = .urban
+    @State private var cityWorldRevision: Int = 0
     #if DEBUG
     @State private var showDesignLab = false
     #endif
@@ -274,6 +278,20 @@ public struct ProfileView: View {
         .sheet(isPresented: $showBackupSheet) {
             BackupSheet()
                 .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showCityWorldPicker) {
+            MonthlyWorldPickerView(
+                targetMonth: cityWorldPickerTargetMonth,
+                draft: $cityWorldDraft,
+                isHebrew: l10n.language == .hebrew,
+                onConfirm: { chosenStyle in
+                    CityMapSelection.confirmWorldChoice(chosenStyle, for: cityWorldPickerTargetMonth)
+                    cityWorldRevision += 1
+                    showCityWorldPicker = false
+                }
+            )
+            .interactiveDismissDisabled()
+            .environmentObject(l10n)
         }
         .onAppear {
             bootstrapAutomaticCaptureIfNeeded()
@@ -778,6 +796,113 @@ public struct ProfileView: View {
 
     // MARK: - Management Menu Card (Inset Grouped)
 
+    // MARK: - City World Menu Row
+
+    private var nextMonthDate: Date {
+        Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
+    }
+
+    private var currentMonthStyle: CityMapStyle {
+        _ = cityWorldRevision
+        return CityMapSelection.resolvedStyle(for: Date())
+    }
+
+    private var nextMonthStyle: CityMapStyle? {
+        _ = cityWorldRevision
+        return CityMapSelection.selectedStyle(for: nextMonthDate)
+    }
+
+    private var nextMonthName: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+        f.dateFormat = "LLLL"
+        return f.string(from: nextMonthDate)
+    }
+
+    private var currentMonthName: String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+        f.dateFormat = "LLLL"
+        return f.string(from: Date())
+    }
+
+    @ViewBuilder
+    private var cityWorldMenuRow: some View {
+        let isHe = l10n.language == .hebrew
+        let isPendingThisMonth = CityMapSelection.isWorldChoicePending(for: Date())
+
+        Button(action: {
+            Haptics.impact(.light)
+            // If current month pending → let user choose now; otherwise → choose next month
+            let target = isPendingThisMonth ? Date() : nextMonthDate
+            cityWorldPickerTargetMonth = target
+            cityWorldDraft = isPendingThisMonth
+                ? CityMapSelection.assignedStyle(for: Date())
+                : (CityMapSelection.selectedStyle(for: nextMonthDate) ?? CityMapSelection.resolvedStyle(for: Date()))
+            showCityWorldPicker = true
+        }) {
+            HStack(spacing: 14) {
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 219/255, green: 234/255, blue: 254/255))
+                        .frame(width: 42, height: 42)
+                    Text("🌍")
+                        .font(.system(size: 20))
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isHe ? "עולם העיר" : "City World")
+                        .font(.system(size: 15, weight: .semibold, design: .default))
+                        .foregroundColor(Color.deepNavy)
+
+                    // Current month
+                    HStack(spacing: 4) {
+                        Text(isHe ? currentMonthName + ":" : currentMonthName + ":")
+                            .font(.system(size: 12, weight: .regular))
+                            .foregroundColor(Color.textSecondary)
+                        Text(currentMonthStyle.title(isHebrew: isHe))
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(isPendingThisMonth ? MoneyCityTheme.brandSecondary : Color.textSecondary)
+                        if isPendingThisMonth {
+                            Text(isHe ? "• טרם נבחר" : "• pending")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(MoneyCityTheme.brandSecondary)
+                        }
+                    }
+
+                    // Next month
+                    if !isPendingThisMonth {
+                        HStack(spacing: 4) {
+                            Text(isHe ? nextMonthName + ":" : nextMonthName + ":")
+                                .font(.system(size: 12, weight: .regular))
+                                .foregroundColor(Color.textMuted)
+                            if let next = nextMonthStyle {
+                                Text(next.title(isHebrew: isHe))
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(Color.textMuted)
+                            } else {
+                                Text(isHe ? "בחר עכשיו ↗" : "Choose now ↗")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(MoneyCityTheme.brandPrimary)
+                            }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.textMuted)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     private var managementMenuCard: some View {
         VStack(spacing: 0) {
             menuRow(
@@ -789,6 +914,10 @@ public struct ProfileView: View {
             } action: {
                 showRecapArchive = true
             }
+
+            Divider().background(Color.borderSubtle).padding(.leading, 68)
+
+            cityWorldMenuRow
 
             Divider().background(Color.borderSubtle).padding(.leading, 68)
 

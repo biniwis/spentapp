@@ -41,28 +41,34 @@ final class CityDistrictStateTests: XCTestCase {
 }
 
 final class CitySimulationEngineTests: XCTestCase {
-    func testCityHallProgressUsesBudgetThenHistoryAndExcludesSavings() {
+    func testFinanceSpendingIsTrackedInBuildingTotalsAndNotAsCityHall() {
         let date = Date()
         let transactions = [
-            Transaction(amount: 1_000, merchant: "Food", category: .food, timestamp: date),
-            Transaction(amount: 9_000, merchant: "Savings", category: .savings, timestamp: date)
+            Transaction(amount: 450, merchant: "עמלות בנק", category: .finance, timestamp: date),
+            Transaction(amount: 1_200, merchant: "סופר", category: .food, timestamp: date)
         ]
-        func progress(budget: Double, history: Double) -> Double {
-            CitySimulationEngine.shared.generateCity(for: date, transactions: transactions,
-                estimatedMonthlyBudget: budget, typicalMonthlySpend: history).cityHallProgress
-        }
-        XCTAssertEqual(progress(budget: 4_000, history: 20_000), 0.25)
-        XCTAssertEqual(progress(budget: 0, history: 2_000), 0.5)
-        XCTAssertEqual(progress(budget: 0, history: 0), 0)
+        let city = CitySimulationEngine.shared.generateCity(
+            for: date,
+            transactions: transactions,
+            estimatedMonthlyBudget: 4_000
+        )
+        
+        XCTAssertEqual(city.buildingTotals["finance_bank"], 450)
+        XCTAssertNil(city.buildingTotals["city_hall"])
     }
 
-    func testCityHallProgressBoundariesAndRefunds() {
+    func testFinanceBuildingDoesNotGrowFromUnrelatedCategories() {
         let date = Date()
-        for (amount, expected) in [(0.0, 0.0), (600, 0.15), (1_600, 0.4), (3_000, 0.75), (8_000, 1), (-100, 0)] {
-            let city = CitySimulationEngine.shared.generateCity(for: date,
-                transactions: [Transaction(amount: amount, merchant: "Food", category: .food, timestamp: date)],
-                estimatedMonthlyBudget: 4_000)
-            XCTAssertEqual(city.cityHallProgress, expected, accuracy: 0.000001)
-        }
+        let transactions = [
+            Transaction(amount: 2_000, merchant: "שכירות", category: .housing, timestamp: date),
+            Transaction(amount: 800, merchant: "קניות", category: .shopping, timestamp: date)
+        ]
+        let city = CitySimulationEngine.shared.generateCity(
+            for: date,
+            transactions: transactions,
+            estimatedMonthlyBudget: 4_000
+        )
+        
+        XCTAssertEqual(city.buildingTotals["finance_bank"] ?? 0, 0)
     }
 }

@@ -11,8 +11,15 @@ public struct MainCityView: View {
     @Query(sort: \CityEnrichment.unlockedDate, order: .reverse) private var allEnrichments: [CityEnrichment]
     
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
-    @AppStorage(CityMapSelection.preferenceKey) private var mapSelection = ""
+    /// Bumped whenever a month selection is saved; reading it inside currentMapStyle
+    /// makes SwiftUI re-evaluate the computed property after every write.
+    @State private var mapSelectionRevision: Int = 0
     @AppStorage("userName") private var userName = ""
+
+    private var currentMapStyle: CityMapStyle {
+        _ = mapSelectionRevision // explicit read — SwiftUI sees this dependency
+        return CityMapSelection.resolvedStyle(for: currentDate)
+    }
 
     @Query private var categoryBudgets: [CategoryBudget]
 
@@ -113,6 +120,10 @@ public struct MainCityView: View {
     @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
     @State private var showBrandSplash: Bool
 
+    // ── Monthly World Selection ──
+    @State private var showMonthlyWorldPicker = false
+    @State private var monthlyWorldDraft: CityMapStyle = .urban
+
     // ── Remote Config & Announcement ──
     @ObservedObject private var remoteConfig = RemoteConfigService.shared
     @State private var showApplePayGuideSheet: Bool = false
@@ -156,10 +167,9 @@ public struct MainCityView: View {
     }
     /// Single source of truth for pausing the WebGL 3D living diorama.
     /// Never burn GPU/CPU cycles when another tab, sheet, full-screen cover, or modal overlay hides the city.
-    private var shouldPauseDiorama: Bool {
-        activeTab != "city"
-            || companionScenePhase != .active
-            || showBrandSplash
+    /// Indicates if any modal sheet or full-screen overlay is actively presented.
+    private var isAnyModalPresented: Bool {
+        showBrandSplash
             || showQuickAdd
             || showFeed
             || showProgressSheet
@@ -167,9 +177,18 @@ public struct MainCityView: View {
             || showReserveSanctuarySheet
             || showBudgetSheet
             || showRecurringExpensesSheet
+            || showApplePayGuideSheet
             || resolvingPendingItem != nil
             || activeNewMonthRecap != nil
+            || pendingRecapForNewMonth != nil
             || (isQuickActionActive && quickActionBuilding != nil)
+    }
+
+    private var shouldPauseDiorama: Bool {
+        activeTab != "city"
+            || companionScenePhase != .active
+            || isAnyModalPresented
+            || showMonthlyWorldPicker
     }
 
     private var canPresentCityLesson: Bool {
@@ -308,11 +327,10 @@ public struct MainCityView: View {
             ZStack(alignment: .top) {
                 // 1. 3D Living Diorama Island (Edge-to-edge full canvas)
                 DioramaReadyWrapper(
-                    mapStyle: CityMapSelection.style(for: currentDate, selection: mapSelection),
+                    mapStyle: currentMapStyle,
                     totalSpent: currentCity.totalSpent,
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
-                    cityHallProgress: currentCity.cityHallProgress,
                     parkHealth: currentCity.parkHealth,
                     viewResetToken: cityViewResetToken,
                     isOverview: isSnapshotMode,
@@ -592,6 +610,7 @@ public struct MainCityView: View {
         }
 
         .onAppear {
+            CityMapSelection.migrateLegacyIfNeeded()
             TrackingActivityService.shared.recordActiveToday()
             if companionsStartedAt == 0 {
                 let previousStart = UserDefaults.standard.object(forKey: "firstAppLaunchDate") as? Date
@@ -604,6 +623,7 @@ public struct MainCityView: View {
             checkNewMonthTransition()
             checkCityTapHint()
             checkRecurringCoachmark()
+            checkMonthlyWorldSelection()
             
             // Check if app was cold-launched or opened via payment notification tap
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -623,6 +643,11 @@ public struct MainCityView: View {
             if canPresent {
                 checkCityTapHint()
                 checkRecurringCoachmark()
+            }
+        }
+        .onChange(of: isAnyModalPresented) { _, presented in
+            if !presented {
+                checkMonthlyWorldSelection()
             }
         }
         .onChange(of: activeTab) { _, _ in
@@ -755,6 +780,7 @@ public struct MainCityView: View {
                 refreshPendingWalletItems()
                 checkNewMonthTransition()
                 checkCityTapHint()
+                checkMonthlyWorldSelection()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     consumeQueuedConfirmationsIfNeeded()
                 }
@@ -762,6 +788,26 @@ public struct MainCityView: View {
                 CityNarrativeEngine.shared.onAppForeground()
                 #endif
             }
+        }
+        // When the monthly Recap sheet closes, check immediately whether a world picker
+        // should appear — the user may stay in the app without triggering a foreground event.
+        .onChange(of: activeNewMonthRecap) { _, recap in
+            if recap == nil {
+                checkMonthlyWorldSelection()
+            }
+        }
+        .sheet(isPresented: $showMonthlyWorldPicker) {
+            MonthlyWorldPickerView(
+                draft: $monthlyWorldDraft,
+                isHebrew: l10n.language == .hebrew,
+                onConfirm: { chosenStyle in
+                    CityMapSelection.save(chosenStyle, for: Date())
+                    mapSelectionRevision += 1
+                    showMonthlyWorldPicker = false
+                }
+            )
+            .interactiveDismissDisabled()
+            .environmentObject(l10n)
         }
         .sheet(isPresented: $showProgressSheet, onDismiss: {
             rewardEngine.dismiss()
@@ -1106,14 +1152,7 @@ public struct MainCityView: View {
         // were authored as design placeholders and nothing ever updates them, so tapping the
         // coffee shop always claimed "12 עסקאות • ‎+20%" whatever the user actually spent.
         // Everything shown here is recomputed from the user's own transactions.
-        let real = building.id == "city_hall" ? DistrictBuildingInfo(
-            id: "city_hall", districtId: "civic",
-            name: l10n.language == .hebrew ? "עיריית SPENT" : "SPENT City Hall",
-            amount: currentCity.totalSpent, visitCount: 0,
-            trendText: l10n.language == .hebrew
-                ? "\(Int((currentCity.cityHallProgress * 100).rounded()))% מהחודש נבנה · עמלות ובנקים כלולים"
-                : "\(Int((currentCity.cityHallProgress * 100).rounded()))% of the month built · banking included"
-        ) : liveBuildingInfo(for: building)
+        let real = liveBuildingInfo(for: building)
         // Selecting a different building only changed the numbers inside a card that was
         // already on screen, so SwiftUI reused the same view: no transition ran, nothing moved,
         // and the tap felt like it had missed. The `.id` on the card below makes a swap a real
@@ -1209,6 +1248,20 @@ public struct MainCityView: View {
                 showRecurringCoachmark = true
             }
         }
+    }
+
+    /// Shows the monthly world picker if the current month has no saved selection.
+    /// Guards: must have completed onboarding, must not be in snapshot mode, and must not
+    /// conflict with any active modal sheet or full-screen cover.
+    private func checkMonthlyWorldSelection() {
+        guard hasCompletedOnboarding,
+              !isSnapshotMode,
+              !isAnyModalPresented
+        else { return }
+        let now = Date()
+        guard !CityMapSelection.hasSelection(for: now) else { return }
+        monthlyWorldDraft = CityMapStyle.allCases.first ?? .urban
+        showMonthlyWorldPicker = true
     }
 
     private var recurringExpensesCoachmark: some View {
@@ -1691,8 +1744,14 @@ public struct MainCityView: View {
                 case "housing": return tx.category == .housing || tx.category == .subscriptions
                 case "savings": return tx.category == .savings
                 case "transport": return tx.category == .transport
-                case "civic":
-                    return tx.category == .health || tx.category == .finance || tx.category == .miscellaneous || tx.category == .misc || tx.needsCategorization || tx.buildingId == "health_pharmacy" || tx.buildingId == "finance_bank" || tx.buildingId == "museum_curiosities" || tx.buildingId == "city_sorting_hub"
+                case "finance":
+                    return tx.category == .finance || tx.buildingId == "finance_bank"
+                case "health":
+                    return tx.category == .health || tx.buildingId == "health_pharmacy"
+                case "miscellaneous":
+                    return tx.category == .miscellaneous || tx.category == .misc || tx.buildingId == "museum_curiosities"
+                case "other":
+                    return tx.needsCategorization || tx.buildingId == "city_sorting_hub"
                 default: return true
                 }
             }

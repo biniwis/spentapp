@@ -750,10 +750,16 @@
     "Check state when all 6 additions have already joined the city" : {
 
     },
+    "Choose" : {
+
+    },
     "Choose \"New Shortcut\" or \"New Blank Automation\", tap Add Action, search for SPENT and pick \"Record Apple Pay Transaction\"." : {
 
     },
     "Choose a Category" : {
+
+    },
+    "Choose your world for %@." : {
 
     },
     "City" : {
@@ -1204,7 +1210,7 @@
     "Interface Language" : {
 
     },
-    "Internal lab · Same demo data in both worlds · Selection is not saved" : {
+    "Internal lab · Same demo data in every world · Selection is not saved" : {
 
     },
     "Isolated Preview Sandbox" : {
@@ -1334,6 +1340,9 @@
     "New Goal" : {
 
     },
+    "New month, new city." : {
+
+    },
     "Next" : {
 
     },
@@ -1389,6 +1398,9 @@
 
     },
     "One demo city, two worlds. Rotate, zoom and inspect in live 3D." : {
+
+    },
+    "One district. A glimpse of your city." : {
 
     },
     "Open 3D ↗" : {
@@ -1832,7 +1844,10 @@
     "Step %lld of 6" : {
 
     },
-    "Swipe left or right to browse" : {
+    "Swipe to choose a style" : {
+
+    },
+    "Swipe to switch" : {
 
     },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
@@ -1889,6 +1904,9 @@
 
     },
     "The Nature Reserve changes with your budget and savings." : {
+
+    },
+    "This is a sample of the food district. Choose a style to reveal the full city. You can choose again at the start of each month." : {
 
     },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
@@ -2315,7 +2333,13 @@
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
 
     },
+    "בחר את העולם של %@." : {
+
+    },
     "בחר קטגוריה" : {
+
+    },
+    "בחרתי" : {
 
     },
     "בטל" : {
@@ -2496,7 +2520,10 @@
     "החלפה מוחקת את כל מה שיש כאן. תצלום אוטומטי נשמר בכל בנייה, אבל לא לפני ייבוא — ייצא עותק קודם." : {
 
     },
-    "החלק ימינה או שמאלה כדי לדפדף" : {
+    "החלק כדי להחליף" : {
+
+    },
+    "החלק לבחירת סגנון" : {
 
     },
     "היי, ברוך הבא" : {
@@ -2692,6 +2719,9 @@
     "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור." : {
 
     },
+    "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה. בתחילת כל חודש אפשר לבחור סגנון מחדש." : {
+
+    },
     "זוהה זיכוי / החזר מ-Apple Pay" : {
 
     },
@@ -2711,6 +2741,9 @@
 
     },
     "חודש חדש בעיר" : {
+
+    },
+    "חודש חדש, עיר חדשה." : {
 
     },
     "חזרה" : {
@@ -2908,7 +2941,7 @@
     "מנוע + אוצר ↗" : {
 
     },
-    "מעבדה פנימית בלבד · אותם נתוני דוגמה בשני העולמות · הבחירה לא נשמרת" : {
+    "מעבדה פנימית בלבד · אותם נתוני דוגמה בכל העולמות · הבחירה לא נשמרת" : {
 
     },
     "מעבדת תלת-ממד אינטראקטיבית" : {
@@ -3222,6 +3255,9 @@
 
     },
     "רובע סיפור + רגע משמעותי" : {
+
+    },
+    "רובע קטן. הצצה לעיר שלך." : {
 
     },
     "רצף ימים פעיל" : {

@@ -52,12 +52,12 @@ public struct ThreeDioramaView: ViewRepresentable {
     }
     #endif
     public let mapStyle: CityMapStyle
+    public let isDistrictSample: Bool
     public let totalSpent: Double
     public let totalSavings: Double
     /// The amount that fills the savings park; 0 when the user has no baseline yet.
     public let savingsTarget: Double
     /// How the reserve looks this month, 0 parched to 1 lush. Resets with the month.
-    public let cityHallProgress: Double
     public let parkHealth: Double
     /// Bumped by the app every time the user asks for the city view back. The map resets its
     /// camera whenever this changes, which is the only way to reset a camera that is already
@@ -98,10 +98,10 @@ public struct ThreeDioramaView: ViewRepresentable {
     
     public init(
         mapStyle: CityMapStyle = .urban,
+        isDistrictSample: Bool = false,
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
-        cityHallProgress: Double = 0,
         parkHealth: Double = 0.78,
         viewResetToken: Int = 0,
         isOverview: Bool = false,
@@ -126,10 +126,10 @@ public struct ThreeDioramaView: ViewRepresentable {
         onCameraOffsetChanged: ((Bool) -> Void)? = nil
     ) {
         self.mapStyle = mapStyle
+        self.isDistrictSample = isDistrictSample
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
-        self.cityHallProgress = cityHallProgress
         self.parkHealth = parkHealth
         self.viewResetToken = viewResetToken
         self.isOverview = isOverview
@@ -230,8 +230,6 @@ public struct ThreeDioramaView: ViewRepresentable {
         public let savings: Double
         /// What a full savings park is worth for this user. 0 when there is no baseline.
         public let savingsTarget: Double
-        /// How the reserve looks this month, 0 parched to 1 lush.
-        public var cityHallProgress: Double = 0
         public let parkHealth: Double
         public let otherAmount: Double?
         public let museumAmount: Double?
@@ -286,7 +284,6 @@ public struct ThreeDioramaView: ViewRepresentable {
             transport: transport,
             savings: savings,
             savingsTarget: savingsTarget,
-            cityHallProgress: cityHallProgress,
             parkHealth: parkHealth,
             otherAmount: otherSpend,
             museumAmount: museumSpend,
@@ -388,30 +385,23 @@ public struct ThreeDioramaView: ViewRepresentable {
         let currentHour = timeOfDayOverride ?? Self.currentDeviceLocalHour
         let safeHour = currentHour.isFinite ? (currentHour * 100).rounded() / 100.0 : 12.0
         let powerLiteral = Self.jsonLiteral(context.coordinator.powerMode)
+        // Arctic is a presentation skin of the shared city, including its live simulation.
+        var isArctic = mapStyle == .arctic
+        var isIsrael = mapStyle == .israel
+        var isFuture = mapStyle == .future
+        #if DEBUG
+        if let session = worldPreviewSession {
+            isArctic = session.world == .arctic
+            isIsrael = session.world == .israel
+            isFuture = session.world == .future
+        }
+        #endif
         let initScript = WKUserScript(
-            source: "window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = \(powerLiteral); window._initialTimeOfDay = \(safeHour);",
+            source: "window._futureWorld = \(isFuture ? "true" : "false"); window._israelWorld = \(isIsrael ? "true" : "false"); window._arcticWorld = \(isArctic ? "true" : "false"); window._districtSample = \(isDistrictSample ? "true" : "false"); window._initialDataPayload = \(dataPayloadJSON); window._initialRenderPaused = \(isPaused || !context.coordinator.appIsActive ? "true" : "false"); window._initialPowerMode = \(powerLiteral); window._initialTimeOfDay = \(safeHour);",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         )
         config.userContentController.addUserScript(initScript)
-        #if DEBUG
-        if worldPreviewSession != nil {
-            // The standalone Medieval prototype assigns its own demo payload later.
-            // Keep the native lab fixture authoritative from the very first frame.
-            config.userContentController.addUserScript(WKUserScript(
-                source: """
-                (() => {
-                    const payload = window._initialDataPayload;
-                    Object.defineProperty(window, '_initialDataPayload', {
-                        configurable: true, get: () => payload, set: () => {}
-                    });
-                })();
-                """,
-                injectionTime: .atDocumentStart,
-                forMainFrameOnly: true
-            ))
-        }
-        #endif
         
         let webView = DioramaWebView(frame: .zero, configuration: config)
         context.coordinator.observeLifecycle(of: webView)
@@ -475,7 +465,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         \(timeControl)
         """
         // Do not even serialize the city while hidden. The latest model is sent on resume.
-        let js: String
+        var js: String
         if paused {
             coordinator.stopTimeTimer()
             js = controls
@@ -509,6 +499,8 @@ public struct ThreeDioramaView: ViewRepresentable {
             }
             js = script
         }
+        // Apply after navigation/camera updates too: SwiftUI can reuse an existing WebView.
+        js += "\nwindow._districtSample = \(isDistrictSample ? "true" : "false"); if(window.setDistrictSample){window.setDistrictSample(window._districtSample);}"
         guard coordinator.lastSentPayload != js else { return }
         coordinator.lastSentPayload = js
         webView.evaluateJavaScript(js) { [weak coordinator] _, error in

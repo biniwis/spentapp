@@ -235,11 +235,11 @@
 ,      housing:  {
  az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 0,    lookY: 0.6, lookZ: -9.2 }
 ,      savings:  {
- az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 9.4,  lookY: 0.4, lookZ: -9.4 }
+ az: Math.PI * 0.25, el: 0.52, zoom: 2.05, lookX: 0,    lookY: 0.4, lookZ: 0 }
 ,      transport:{
  az: Math.PI * 0.25, el: 0.52, zoom: 1.95, lookX: 9.2, lookY: 0.6, lookZ: 9.2 }
-,      civic:    {
- az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 0,    lookY: 0.9, lookZ: -0.4 }
+,      finance:  {
+ az: Math.PI * 0.25, el: 0.54, zoom: 1.90, lookX: 9.4,  lookY: 0.9, lookZ: -9.4 }
     }
 ;
     let currentMode = "city";
@@ -3425,8 +3425,11 @@ function mdMountTieredArchitecture(parent,id,w,d) {
   });
   const plot=new THREE.Group(),stall=new THREE.Group();
   parent.add(plot,stall);
+  let _proxy = null;
   const rec={id:id,group:parent,shell:shell,plot:plot,stall:stall,
-    tierGroups:groups,dressing:[],floors:[],roofs:[],minTier:1,maxTier:4,tier:-1};
+    tierGroups:groups,dressing:[],floors:[],roofs:[],minTier:1,maxTier:4,tier:-1,
+    get proxy() { return _proxy || (typeof bodyOf === "function" ? bodyOf(id) : null); },
+    set proxy(val) { _proxy = val; }};
   cityBuildings[id]=rec;setBuildingTier(rec,1);
   return rec;
 }
@@ -6177,13 +6180,14 @@ const CHARACTER = {
     mdLanternPost(spentGroup, 1.9, 1.35);
     // Replace the prototype hall with the same authored stone architecture.
     spentGroup.clear();
-    mdMountTieredArchitecture(spentGroup, 'finance_bank', 3.7, 3.0);
+    const bankRec = mdMountTieredArchitecture(spentGroup, 'finance_bank', 3.7, 3.0);
     const spentProxy = hitProxy(4.2, 4.4, 3.2);
     spentProxy.position.z = 0.1;
-    spentProxy.userData = { id: "finance_bank", district: "civic", name: "עיריית SPENT", amount: 0, trend: "מרכז העיר והממשל", shell: spentGroup };
+    spentProxy.userData = { id: "finance_bank", district: "finance", name: "פיננסים ועמלות", amount: 0, trend: "בנקים, עמלות ושירותים פיננסיים", shell: spentGroup };
     spentGroup.add(spentProxy);
     interactiveBuildings.push(spentProxy);
     buildingRoots["finance_bank"] = spentGroup;
+    bankRec.proxy = spentProxy;
     
     /* Trees belong to the reserve planting pass; old plaza beds overlapped it. */
     [].forEach(function (p) {
@@ -6422,7 +6426,7 @@ const CHARACTER = {
     transportYard.remove(barnBox, barnRoof);
     const stableArchitecture = new THREE.Group();
     transportYard.add(stableArchitecture);
-    mdMountTieredArchitecture(stableArchitecture, 'trans_station', 4.6, 3.2);
+    const transRec = mdMountTieredArchitecture(stableArchitecture, 'trans_station', 4.6, 3.2);
     const barnSignMat = new THREE.MeshStandardMaterial({ map: signTex("STABLES", "#5B3D24", "#F5D88A", 26), roughness: 0.6 });
     transportYard.add(mesh(roundedBox(0.8, 0.34, 0.06, 0.03), barnSignMat, 0, 1.85, -1.1, false, false));
     mdBarrel(transportYard, -1.7, 1.85);
@@ -6466,6 +6470,7 @@ const CHARACTER = {
     transportYard.add(transportHit);
     interactiveBuildings.push(transportHit);
     buildingRoots["trans_station"] = transportYard;
+    transRec.proxy = transportHit;
     
     
     
@@ -7953,9 +7958,10 @@ function applyCityLife(data) {
   
   Object.keys(cityBuildings).forEach(function (id) {
     const b = cityBuildings[id], v = venueStates[id];
-    b.proxy.userData.visits = v ? v.purchaseCount : 0;
-  }
-);
+    if (b && b.proxy && b.proxy.userData) {
+      b.proxy.userData.visits = v ? v.purchaseCount : 0;
+    }
+  });
   const next = allocateLifePlaces(venueStates, LIFE_PLOTS);
   lifeInstances.forEach(function (entry) {
  entry.group.visible = false;
@@ -9951,7 +9957,7 @@ window.dioramaEnergyState = function () {
     
     const I18N_BUILDINGS = {
       finance_bank:       {
- he: ["עיריית SPENT", "מרכז העיר והממשל"],   en: ["SPENT City Hall", "Civic centre"] }
+ he: ["פיננסים ועמלות", "בנקים, עמלות ושירותים פיננסיים"],   en: ["Finance & Fees", "Banking, fees and financial services"] }
 ,      house_tower:        {
  he: ["מגורים ושכירות", "שכר דירה או משכנתא"], en: ["Housing & rent", "Rent or mortgage"] }
 ,      house_util:         {
@@ -10567,6 +10573,13 @@ foodSub:["restaurant","groceries","coffee","delivery"], shoppingSub:["fashion","
       if (renderPaused || energyDisposed) return;
       rafId = requestAnimationFrame(loop);
       if (!energyFrameDue(now)) return;
+      if (window._districtSample) {
+        // Render only the isolated district, including no city-level scenery batches.
+        prepareEnergyRender(now);
+        renderer.render(districtSampleScene, camera);
+        return;
+      }
+
       
       
       
@@ -11286,56 +11299,57 @@ foodSub:["restaurant","groceries","coffee","delivery"], shoppingSub:["fashion","
     placeCam();
  resize();
     startLoop();
-window._initialDataPayload = {
-      schemaVersion: 1,
-      food: 950, shopping: 620, housing: 2800, transport: 340, savings: 1200, savingsTarget: 4000, parkHealth: 85,
-      foodSub: { restaurant: 420, groceries: 380, coffee: 110, delivery: 40 },
-      shoppingSub: { fashion: 260, tech: 210, travel: 90, entertainment: 60 },
-      housingSub: { rent: 2300, utilities: 200, subs: 300 },
-      districts: [
-        { id: "housing", amount: 2300, share: 0.35, activity: 0.55, prominence: "active" },
-        { id: "subscriptions", amount: 300, share: 0.05, activity: 0.30, prominence: "quiet" },
-        { id: "food", amount: 950, share: 0.16, activity: 0.85, prominence: "active" },
-        { id: "shopping", amount: 560, share: 0.09, activity: 0.70, prominence: "active" },
-        { id: "entertainment", amount: 60, share: 0.01, activity: 0.40, prominence: "quiet" },
-        { id: "transport", amount: 340, share: 0.05, activity: 0.60, prominence: "quiet" },
-        { id: "health", amount: 210, share: 0.03, activity: 0.30, prominence: "quiet" },
-        { id: "finance", amount: 0, share: 0, activity: 0, prominence: "quiet" },
-        { id: "miscellaneous", amount: 90, share: 0.01, activity: 0.25, prominence: "quiet" },
-        { id: "other", amount: 0, share: 0, activity: 0, prominence: "quiet" },
-        { id: "savings", amount: 1200, share: 0.25, activity: 0.75, prominence: "active" }
-      ],
-      venues: [
-        { id: "house_tower", amount: 900, share: 0.13, activity: 0.5, purchaseCount: 12, activeDays: 20, merchantCount: 1, presence: 2, additionalPlaces: 0 },
-        { id: "house_util", amount: 800, share: 0.12, activity: 0.5, purchaseCount: 10, activeDays: 18, merchantCount: 1, presence: 2, additionalPlaces: 0 },
-        { id: "house_subs", amount: 300, share: 0.04, activity: 0.25, purchaseCount: 6, activeDays: 15, merchantCount: 0, presence: 0, additionalPlaces: 0 },
-        { id: "food_super", amount: 380, share: 0.06, activity: 0.8, purchaseCount: 16, activeDays: 22, merchantCount: 3, presence: 3, additionalPlaces: 0 },
-        { id: "food_bistro", amount: 420, share: 0.06, activity: 0.7, purchaseCount: 18, activeDays: 14, merchantCount: 2, presence: 2, additionalPlaces: 0 },
-        { id: "food_coffee", amount: 110, share: 0.02, activity: 0.55, purchaseCount: 14, activeDays: 12, merchantCount: 1, presence: 1, additionalPlaces: 0 },
-        { id: "food_wolt", amount: 40, share: 0.006, activity: 0.2, purchaseCount: 4, activeDays: 5, merchantCount: 0, presence: 0, additionalPlaces: 0 },
-        { id: "shop_boutique", amount: 260, share: 0.04, activity: 0.55, purchaseCount: 9, activeDays: 10, merchantCount: 1, presence: 2, additionalPlaces: 0 },
-        { id: "shop_tech", amount: 210, share: 0.03, activity: 0.5, purchaseCount: 7, activeDays: 8, merchantCount: 1, presence: 2, additionalPlaces: 0 },
-        { id: "shop_travel", amount: 90, share: 0.01, activity: 0.25, purchaseCount: 3, activeDays: 4, merchantCount: 0, presence: 1, additionalPlaces: 0 },
-        { id: "shop_arcade", amount: 60, share: 0.01, activity: 0.3, purchaseCount: 5, activeDays: 6, merchantCount: 0, presence: 1, additionalPlaces: 0 },
-        { id: "trans_station", amount: 340, share: 0.05, activity: 0.6, purchaseCount: 20, activeDays: 25, merchantCount: 0, presence: 1, additionalPlaces: 0 },
-        { id: "health_pharmacy", amount: 210, share: 0.03, activity: 0.3, purchaseCount: 6, activeDays: 7, merchantCount: 1, presence: 1, additionalPlaces: 0 },
-        { id: "finance_bank", amount: 0, share: 0, activity: 0, purchaseCount: 0, activeDays: 0, merchantCount: 0, presence: 0, additionalPlaces: 0 },
-        { id: "museum_curiosities", amount: 90, share: 0.01, activity: 0.25, purchaseCount: 3, activeDays: 4, merchantCount: 0, presence: 1, additionalPlaces: 0 },
-        { id: "city_sorting_hub", amount: 0, share: 0, activity: 0, purchaseCount: 0, activeDays: 0, merchantCount: 0, presence: 0, additionalPlaces: 0 },
-        { id: "savings_sanctuary", amount: 1200, share: 0.25, activity: 0.75, purchaseCount: 0, activeDays: 0, merchantCount: 0, presence: 3, additionalPlaces: 0 }
-      ],
-      habits: { hasTravelOrFlight: false, woltCount: 4, coffeeCount: 10, onlinePackagesCount: 3, activeSubscriptionsCount: 6 },
-      otherAmount: 0, museumAmount: 90, healthAmount: 210, financeAmount: 0, pendingSortingCount: 0,
-      tutorialBuildingId: null,
-      enrichments: [],
-      slotPlacements: {},
-      language: "he",
-      targetDistrict: "all"
-    };
     if (window._initialDataPayload) {
       window.updateDioramaData(window._initialDataPayload);
     }
     mergeStaticScenery();
+
+    // Onboarding style swatch: complete food venues on their own freestanding plinth.
+    // Clones stay independent of subsequent finance payloads and tier updates.
+    let districtSampleGroup = null;
+    const districtSampleScene = new THREE.Scene();
+    // City scenery can live outside root after batching. A separate scene guarantees
+    // that the onboarding sample contains only its plinth, venues and lighting.
+    scene.children.forEach(function (object) {
+      if (!object.isLight) return;
+      const light = object.clone();
+      districtSampleScene.add(light);
+      if (light.target) districtSampleScene.add(light.target);
+    });
+    window.setDistrictSample = function (enabled) {
+      window._districtSample = !!enabled;
+      root.visible = !enabled;
+      if (districtSampleGroup) districtSampleGroup.visible = !!enabled;
+      if (!enabled) return;
+      if (!districtSampleGroup) {
+      const sample = new THREE.Group();
+      const base = new THREE.Mesh(
+        roundedBox(6.0, 0.38, 9.8, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0xE8DDC9, roughness: 0.95 })
+      );
+      base.position.set(0, Y_WALK - 0.19, 0);
+      base.receiveShadow = true;
+      sample.add(base);
+      ["food_super", "food_bistro", "food_coffee", "food_wolt"].forEach(function (id) {
+        const rec = cityBuildings[id];
+        rec.tier = -1;
+        setBuildingTier(rec, 2);
+        const venue = rec.group.clone(true);
+        venue.position.x -= 9.2;
+        sample.add(venue);
+      });
+      districtSampleScene.add(sample);
+      districtSampleGroup = sample;
+      }
+
+      const sampleCamera = { az: Math.PI * 0.25, el: 0.60, zoom: 2.05, lookX: 0, lookY: 0.8, lookZ: 0 };
+      Object.assign(currentCam, sampleCamera);
+      Object.assign(targetCam, sampleCamera);
+      placeCam();
+      applyFrustum();
+    };
+    window.setDistrictSample(!!window._districtSample);
+
     
     
     

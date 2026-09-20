@@ -8,7 +8,6 @@ public struct DioramaReadyWrapper: View {
     public let totalSpent: Double
     public let totalSavings: Double
     public let savingsTarget: Double
-    public let cityHallProgress: Double
     public let parkHealth: Double
     /// Bumped whenever the user asks for the default city view back.
     public let viewResetToken: Int
@@ -43,7 +42,6 @@ public struct DioramaReadyWrapper: View {
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
-        cityHallProgress: Double = 0,
         parkHealth: Double = 0.78,
         viewResetToken: Int = 0,
         isOverview: Bool = false,
@@ -71,7 +69,6 @@ public struct DioramaReadyWrapper: View {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
-        self.cityHallProgress = cityHallProgress
         self.parkHealth = parkHealth
         self.viewResetToken = viewResetToken
         self.isOverview = isOverview
@@ -105,7 +102,6 @@ public struct DioramaReadyWrapper: View {
                 mapStyle: mapStyle,                totalSpent: totalSpent,
                 totalSavings: totalSavings,
                 savingsTarget: savingsTarget,
-                cityHallProgress: cityHallProgress,
                 parkHealth: parkHealth,
                 viewResetToken: viewResetToken,
                 isOverview: isOverview,
@@ -154,6 +150,9 @@ public struct DioramaReadyWrapper: View {
         .onReceive(NotificationCenter.default.publisher(for: .dioramaReady)) { _ in
             withAnimation(.easeOut(duration: 0.4)) { isLoaded = true }
         }
+        // A world switch replaces the WebView via .id(mapStyle); reset the loading state
+        // so the skeleton appears while the new WebGL context initializes.
+        .onChange(of: mapStyle) { _, _ in isLoaded = false }
     }
 }
 

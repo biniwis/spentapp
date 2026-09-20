@@ -475,7 +475,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @u
             let merchant = userInfo["merchant"] as? String ?? ""
             let isRefund = userInfo["isRefund"] as? Bool ?? false
             let currency = userInfo["currency"] as? String ?? "₪"
-            let categoryName = userInfo["categoryName"] as? String
+            _ = userInfo["categoryName"] as? String
             let rawBuildingId = userInfo["buildingId"] as? String
             let transactionIdStr = userInfo["transactionId"] as? String
             let transactionId = transactionIdStr.flatMap { UUID(uuidString: $0) }

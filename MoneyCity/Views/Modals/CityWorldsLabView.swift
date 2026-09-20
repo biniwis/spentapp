@@ -5,9 +5,9 @@ import WebKit
 /// Ephemeral Design Lab state. Never connected to settings or the user's city.
 final class CityWorldPreviewSession: ObservableObject {
     enum World: String, CaseIterable, Identifiable {
-        case urban = "Urban", medieval = "Medieval"
+        case urban = "Urban", medieval = "Medieval", arctic = "Arctic", israel = "Israel", future = "Future"
         var id: String { rawValue }
-        var resourceName: String { self == .urban ? "diorama" : "diorama_medieval" }
+        var resourceName: String { self == .medieval ? "diorama_medieval" : "diorama" }
     }
 
     @Published private(set) var world: World = .urban
@@ -212,8 +212,8 @@ struct CityWorldsLabView: View {
                          : "Drag to rotate · Pinch to zoom · Tap to inspect")
                         .font(.caption)
                     Text(isHe
-                         ? "מעבדה פנימית בלבד · אותם נתוני דוגמה בשני העולמות · הבחירה לא נשמרת"
-                         : "Internal lab · Same demo data in both worlds · Selection is not saved")
+                         ? "מעבדה פנימית בלבד · אותם נתוני דוגמה בכל העולמות · הבחירה לא נשמרת"
+                         : "Internal lab · Same demo data in every world · Selection is not saved")
                         .font(.caption2)
                         .foregroundStyle(Color.textSecondary)
                 }

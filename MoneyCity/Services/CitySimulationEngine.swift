@@ -200,8 +200,6 @@ public final class CitySimulationEngine: Sendable {
         // medium for a soft signal. Numbers stay literal.
         let accruedFraction = CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
         let baseline = estimatedMonthlyBudget > 0 ? estimatedMonthlyBudget : typicalMonthlySpend
-        let cityHallProgress = baseline.isFinite && baseline > 0 && totalSpent.isFinite
-            ? min(1, max(0, totalSpent / baseline)) : 0
         let totalSavings = directSavings
 
         // ── How the park LOOKS, which is a different question from how much was saved ────────
@@ -385,7 +383,6 @@ public final class CitySimulationEngine: Sendable {
             totalSpent: totalSpent,
             totalSavings: totalSavings,
             savingsTarget: savingsTarget,
-            cityHallProgress: cityHallProgress,
             parkHealth: parkHealth,
             everydaySpent: everydaySpent,
             everydayBaseline: everydayBaseline,

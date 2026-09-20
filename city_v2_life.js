@@ -221,7 +221,9 @@ function applyCityLife(data) {
   // Old callers still render safely, but no visits or new businesses are invented from ₪.
   Object.keys(cityBuildings).forEach(function (id) {
     const b = cityBuildings[id], v = venueStates[id];
-    b.proxy.userData.visits = v ? v.purchaseCount : 0;
+    if (b && b.proxy && b.proxy.userData) {
+      b.proxy.userData.visits = v ? v.purchaseCount : 0;
+    }
   });
   const next = allocateLifePlaces(venueStates, LIFE_PLOTS);
   lifeInstances.forEach(function (entry) { entry.group.visible = false; });

@@ -83,10 +83,9 @@ public struct MonthlyCity: Identifiable, Sendable {
     /// The amount that fills the savings park completely — a fifth of the user's monthly
     /// baseline. Zero when there is no baseline yet.
     public var savingsTarget: Double
-    /// How the park looks, 0 parched to 1 lush. A normally-run month sits near 0.78.
-    /// This is the month's verdict, and it resets with the month.
-    /// Monthly spending volume relative to the budget/history baseline, independent of pace.
-    public var cityHallProgress: Double
+    /// How the park looks this month, from stressed/dry to healthy/lush.
+    /// 0 = parched, 1 = lush. A normally-run month sits near 0.78.
+    /// This is visual financial-state information and resets with the month.
     public var parkHealth: Double
     /// Day-to-day spending this month — everything except rent, bills, subscriptions and
     /// savings. This is what the garden is measured on.
@@ -114,7 +113,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         totalSpent: Double,
         totalSavings: Double,
         savingsTarget: Double = 0,
-        cityHallProgress: Double = 0,
         parkHealth: Double = CitySimulationEngine.healthyParkLevel,
         everydaySpent: Double = 0,
         everydayBaseline: Double = 0,
@@ -133,7 +131,6 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.totalSpent = totalSpent
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
-        self.cityHallProgress = cityHallProgress
         self.parkHealth = parkHealth
         self.everydaySpent = everydaySpent
         self.everydayBaseline = everydayBaseline
@@ -147,38 +144,134 @@ public struct MonthlyCity: Identifiable, Sendable {
     }
 }
 
-/// Presentation choice only; both worlds consume the same financial simulation.
+/// Presentation choice only; all worlds consume the same financial simulation.
 public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
-    case urban, medieval
+    case urban, medieval, arctic, israel, future
     public var id: String { rawValue }
-    public var resourceName: String { self == .urban ? "diorama" : "diorama_medieval" }
+    public var resourceName: String { self == .medieval ? "diorama_medieval" : "diorama" }
 
     public func title(isHebrew: Bool) -> String {
         switch self {
         case .urban: return isHebrew ? "עיר מודרנית" : "Modern city"
         case .medieval: return isHebrew ? "עיר ימי הביניים" : "Medieval city"
+        case .arctic: return isHebrew ? "עיר הקרח" : "Arctic city"
+        case .israel: return isHebrew ? "עיר ישראלית" : "Israeli city"
+        case .future: return isHebrew ? "עיר העתיד" : "Future city"
         }
     }
 }
 
-/// Stores only visual configuration. Months before onboarding keep their original Urban map.
+/// Per-month world storage.
+///
+/// Each month can have a different visual world. The choice is saved in a JSON dictionary
+/// keyed by "YYYY-MM" so changing October never touches September.
+///
+/// Storage layout (v2):
+///   Key: "spent.city.monthlyMapSelections.v2"
+///   Value: JSON-encoded [String: String] e.g. {"2026-09": "medieval", "2026-10": "urban"}
+///
+/// Historical months with no saved record fall back to .urban, preserving old city history.
 enum CityMapSelection {
-    static let preferenceKey = "spent.city.mapSelection"
+    static let preferenceKey = "spent.city.monthlyMapSelections.v2"
+    static let legacyPreferenceKey = "spent.city.mapSelection"
 
-    static func style(for date: Date, selection: String) -> CityMapStyle {
-        let parts = selection.split(separator: "|")
-        guard parts.count == 2, monthID(date) >= String(parts[0]),
-              let style = CityMapStyle(rawValue: String(parts[1])) else { return .urban }
+    // MARK: - Month ID
+
+    static func monthID(
+        _ date: Date,
+        calendar: Calendar = .current
+    ) -> String {
+        let parts = calendar.dateComponents([.year, .month], from: date)
+        return String(
+            format: "%04d-%02d",
+            parts.year ?? 0,
+            parts.month ?? 0
+        )
+    }
+
+    // MARK: - Read
+
+    static func selections(
+        defaults: UserDefaults = .standard
+    ) -> [String: String] {
+        guard
+            let data = defaults.data(forKey: preferenceKey),
+            let decoded = try? JSONDecoder().decode([String: String].self, from: data)
+        else {
+            return [:]
+        }
+        return decoded
+    }
+
+    /// Returns the explicitly saved style for this month, or nil if none has been chosen.
+    /// Use `resolvedStyle(for:)` for a value that always has an answer.
+    static func selectedStyle(
+        for date: Date,
+        defaults: UserDefaults = .standard
+    ) -> CityMapStyle? {
+        let values = selections(defaults: defaults)
+        guard
+            let raw = values[monthID(date)],
+            let style = CityMapStyle(rawValue: raw)
+        else {
+            return nil
+        }
         return style
     }
 
-    static func saveInitial(_ style: CityMapStyle, date: Date = Date(), defaults: UserDefaults = .standard) {
-        // The onboarding choice is the user's explicit map choice for this month.
-        defaults.set("\(monthID(date))|\(style.rawValue)", forKey: preferenceKey)
+    /// Returns the saved style for this month, or .urban for months with no record.
+    /// This is the right call site for the city renderer — it always returns something.
+    static func resolvedStyle(
+        for date: Date,
+        defaults: UserDefaults = .standard
+    ) -> CityMapStyle {
+        selectedStyle(for: date, defaults: defaults) ?? .urban
     }
 
-    private static func monthID(_ date: Date) -> String {
-        let parts = Calendar(identifier: .gregorian).dateComponents([.year, .month], from: date)
-        return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
+    static func hasSelection(
+        for date: Date,
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        selectedStyle(for: date, defaults: defaults) != nil
+    }
+
+    // MARK: - Write
+
+    /// Saves the user's world choice for a specific month only.
+    /// Never touches any other month's record.
+    static func save(
+        _ style: CityMapStyle,
+        for date: Date,
+        defaults: UserDefaults = .standard
+    ) {
+        var values = selections(defaults: defaults)
+        values[monthID(date)] = style.rawValue
+        guard let data = try? JSONEncoder().encode(values) else { return }
+        defaults.set(data, forKey: preferenceKey)
+    }
+
+    // MARK: - Legacy Migration
+
+    /// Runs once: if the user has an old "YYYY-MM|style" preference and no v2 data,
+    /// migrates that single explicit month. Does NOT propagate to future months.
+    static func migrateLegacyIfNeeded(defaults: UserDefaults = .standard) {
+        guard
+            selections(defaults: defaults).isEmpty,
+            let legacy = defaults.string(forKey: legacyPreferenceKey),
+            !legacy.isEmpty
+        else {
+            return
+        }
+        let parts = legacy.split(separator: "|")
+        guard
+            parts.count == 2,
+            let style = CityMapStyle(rawValue: String(parts[1]))
+        else {
+            return
+        }
+        var values: [String: String] = [:]
+        values[String(parts[0])] = style.rawValue
+        guard let data = try? JSONEncoder().encode(values) else { return }
+        defaults.set(data, forKey: preferenceKey)
     }
 }

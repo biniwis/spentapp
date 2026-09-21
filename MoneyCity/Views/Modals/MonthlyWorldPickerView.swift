@@ -146,9 +146,94 @@ public struct MonthlyWorldPickerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
 
-                    // ── 2x2 Bento Tiles: Clean white squares matching ProfileView ──
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                        ForEach(worlds) { style in
+                    // ── Primary Map: Classic City (Hero Card) ──
+                    let isClassicSelected = (draft == .urban)
+
+                    Button {
+                        Haptics.selection()
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82)) {
+                            draft = .urban
+                        }
+                        onSelect(.urban)
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(styleBgColor(.urban))
+                                    .frame(width: 44, height: 44)
+                                MoneyIcon(styleIcon(.urban), size: 22, color: styleTintColor(.urban))
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 8) {
+                                    Text(CityMapStyle.urban.title(isHebrew: isHebrew))
+                                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                                        .foregroundColor(MoneyCityTheme.jetBlack)
+
+                                    Text(isHebrew ? "המפה הראשית" : "Primary")
+                                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                                        .foregroundColor(MoneyCityTheme.violetBlue)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2.5)
+                                        .background(MoneyCityTheme.babyBlue.opacity(0.65))
+                                        .clipShape(Capsule())
+                                }
+
+                                Text(styleShortSubtitle(.urban))
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(MoneyCityTheme.textSecondary)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            Spacer()
+
+                            if isClassicSelected {
+                                ZStack {
+                                    Circle()
+                                        .fill(MoneyCityTheme.jetBlack)
+                                        .frame(width: 22, height: 22)
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                        }
+                        .padding(15)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(isClassicSelected ? MoneyCityTheme.jetBlack : Color.clear, lineWidth: isClassicSelected ? 1.5 : 0)
+                        )
+                        .shadow(color: Color.black.opacity(isClassicSelected ? 0.05 : 0.025), radius: 8, y: 2)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .bouncyPress(scale: reduceMotion ? 1 : 0.98)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(isClassicSelected ? [.isButton, .isSelected] : [.isButton])
+
+                    // ── Section Title: Additional Options ──
+                    HStack {
+                        Text(isHebrew ? "עולמות נוספים" : "Alternative Worlds")
+                            .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                            .foregroundColor(MoneyCityTheme.jetBlack.opacity(0.65))
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                    .padding(.horizontal, 4)
+
+                    // ── 3 Alternative Worlds Grid ──
+                    let alternativeWorlds: [CityMapStyle] = [.medieval, .arctic, .israel]
+
+                    LazyVGrid(columns: [
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10),
+                        GridItem(.flexible(), spacing: 10)
+                    ], spacing: 10) {
+                        ForEach(alternativeWorlds) { style in
                             let isSelected = (style == draft)
 
                             Button {
@@ -158,14 +243,14 @@ public struct MonthlyWorldPickerView: View {
                                 }
                                 onSelect(style)
                             } label: {
-                                VStack(alignment: .leading, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 8) {
                                     // Top row: Icon on leading, Checkmark on trailing when selected
                                     HStack(alignment: .center) {
                                         ZStack {
                                             Circle()
                                                 .fill(styleBgColor(style))
-                                                .frame(width: 38, height: 38)
-                                            MoneyIcon(styleIcon(style), size: 20, color: styleTintColor(style))
+                                                .frame(width: 34, height: 34)
+                                            MoneyIcon(styleIcon(style), size: 18, color: styleTintColor(style))
                                         }
 
                                         Spacer()
@@ -174,9 +259,9 @@ public struct MonthlyWorldPickerView: View {
                                             ZStack {
                                                 Circle()
                                                     .fill(MoneyCityTheme.jetBlack)
-                                                    .frame(width: 20, height: 20)
+                                                    .frame(width: 18, height: 18)
                                                 Image(systemName: "checkmark")
-                                                    .font(.system(size: 10, weight: .bold))
+                                                    .font(.system(size: 9, weight: .bold))
                                                     .foregroundColor(.white)
                                             }
                                         }
@@ -185,24 +270,25 @@ public struct MonthlyWorldPickerView: View {
                                     // Style title and short descriptive note
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(style.title(isHebrew: isHebrew))
-                                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                                            .font(.system(size: 13.5, weight: .bold, design: .rounded))
                                             .foregroundColor(MoneyCityTheme.jetBlack)
                                             .lineLimit(1)
+                                            .minimumScaleFactor(0.85)
 
                                         Text(styleShortSubtitle(style))
-                                            .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                                            .font(.system(size: 10.5, weight: .medium, design: .rounded))
                                             .foregroundColor(MoneyCityTheme.textSecondary)
                                             .lineLimit(2)
                                             .fixedSize(horizontal: false, vertical: true)
                                     }
                                 }
-                                .padding(14)
+                                .padding(12)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .frame(minHeight: 110)
+                                .frame(minHeight: 112)
                                 .background(Color.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
                                         .stroke(isSelected ? MoneyCityTheme.jetBlack : Color.clear, lineWidth: isSelected ? 1.5 : 0)
                                 )
                                 .shadow(color: Color.black.opacity(isSelected ? 0.05 : 0.025), radius: 8, y: 2)
@@ -226,15 +312,15 @@ public struct MonthlyWorldPickerView: View {
     private func styleShortSubtitle(_ style: CityMapStyle) -> String {
         switch style {
         case .urban:
-            return isHebrew ? "שדרות נעימות ובתי קפה" : "Charming avenues & cafes"
+            return isHebrew ? "שדרות נעימות, בתי קפה ואדריכלות עיר מודרנית" : "Charming avenues, cafes & modern architecture"
         case .medieval:
-            return isHebrew ? "טירות אבן וסמטאות שוק" : "Stone castles & market alleys"
+            return isHebrew ? "טירות אבן ושווקים" : "Stone castles & markets"
         case .arctic:
-            return isHebrew ? "כיפות קרח ואורות קוטב" : "Ice domes & northern lights"
+            return isHebrew ? "איגלו, שלג וזוהר קוטב" : "Igloos, snow & polar lights"
         case .israel:
-            return isHebrew ? "בנייני באוהאוס ועצי דקל" : "Bauhaus & warm palms"
+            return isHebrew ? "באוהאוס ועצי דקל" : "Bauhaus & warm palms"
         case .future:
-            return isHebrew ? "מגדלים מרחפים ואורות ניאון" : "Floating towers & neon"
+            return isHebrew ? "מגדלים מרחפים וניאון" : "Floating towers & neon"
         }
     }
 }

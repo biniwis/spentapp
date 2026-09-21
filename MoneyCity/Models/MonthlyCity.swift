@@ -152,19 +152,19 @@ public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
 
     public func title(isHebrew: Bool) -> String {
         switch self {
-        case .urban: return isHebrew ? "עיר קלאסית" : "Classic city"
-        case .medieval: return isHebrew ? "עיר ימי הביניים" : "Medieval city"
-        case .arctic: return isHebrew ? "עיר הקרח" : "Arctic city"
-        case .israel: return isHebrew ? "עיר ישראלית" : "Israeli city"
-        case .future: return isHebrew ? "עיר העתיד" : "Future city"
+        case .urban: return isHebrew ? "קלאסית" : "Classic"
+        case .medieval: return isHebrew ? "ימי הביניים" : "Medieval"
+        case .arctic: return isHebrew ? "אסקימואים" : "Eskimo"
+        case .israel: return isHebrew ? "ישראלית" : "Israeli"
+        case .future: return isHebrew ? "עתידנית" : "Future"
         }
     }
 
     public func subtitle(isHebrew: Bool) -> String {
         switch self {
-        case .urban: return isHebrew ? "בתי קפה, שדרות נעימות ואדריכלות עירונית קלאסית" : "Charming boulevards, cafes, and classic architecture"
+        case .urban: return isHebrew ? "בתי קפה, שדרות נעימות ואדריכלות עירונית מודרנית" : "Charming boulevards, cafes, and modern architecture"
         case .medieval: return isHebrew ? "טירות אבן, שווקים עתיקים וסמטאות היסטוריות" : "Stone castles, ancient markets, and historic alleys"
-        case .arctic: return isHebrew ? "כיפות קרח, גשרי שלג ואורות קוטב זוהרים" : "Ice domes, snow bridges, and glowing northern lights"
+        case .arctic: return isHebrew ? "איגלו, שלג ואורות קוטב זוהרים" : "Snow igloos, frost domes, and glowing northern lights"
         case .israel: return isHebrew ? "בנייני באוהאוס, עצי דקל ושדרות חמימות" : "Bauhaus buildings, palm trees, and warm boulevards"
         case .future: return isHebrew ? "מגדלים מרחפים, רכבות מגנטיות ואורות ניאון" : "Floating towers, maglev transit, and neon lights"
         }

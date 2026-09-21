@@ -1702,8 +1702,24 @@
       [-1, 1].forEach(function (side) {
         const x = side * w * 0.29, front = d * 0.415;
         israelWindow(g, x, 0.62, front, w * 0.25, (level + (side > 0 ? 1 : 0)) % 2 === 0);
-        if (home || kind === "neve" || kind === "kiosk") israelBalcony(g, x, front, w * 0.38, side > 0 && level === 0, level);
-        else israelAC(g, x, 0.19, front + 0.13);
+        if (home || kind === "neve" || kind === "kiosk") {
+          israelBalcony(g, x, front, w * 0.38, side > 0 && level === 0, level);
+          // Flag hanging DOWN from the balcony railing like a banner — level 1, right side only
+          if ((home || kind === "neve") && level === 1 && side > 0) {
+            const flagW = 0.32, flagH = 0.40, railY = 0.46, flagZ = front + 0.30;
+            // Thin horizontal rod the flag hangs from
+            const rod = mesh(new THREE.CylinderGeometry(0.006, 0.006, flagW + 0.05, 5), mat(0x8B8680, 0.65), x, railY + 0.012, flagZ, false, false);
+            rod.rotation.z = Math.PI / 2; g.add(rod);
+            // White field — hangs downward from rail
+            g.add(mesh(new THREE.BoxGeometry(flagW, flagH, 0.007), mat(0xF4F1E8, 0.92), x, railY - flagH / 2, flagZ, false, false));
+            // Blue stripe — upper (just below the rod)
+            g.add(mesh(new THREE.BoxGeometry(flagW, 0.058, 0.009), mat(0x1A4A9B, 0.88), x, railY - 0.044, flagZ, false, false));
+            // Blue stripe — lower (near bottom of flag)
+            g.add(mesh(new THREE.BoxGeometry(flagW, 0.058, 0.009), mat(0x1A4A9B, 0.88), x, railY - flagH + 0.044, flagZ, false, false));
+          }
+        } else {
+          israelAC(g, x, 0.19, front + 0.13);
+        }
       });
       for (let i = 0; i < 3; i++) israelBox(g, w * 0.095, 0.11, 0.025, 0x8C9E9A, w * 0.06, 0.25 + i * 0.27, d * 0.515);
       [-1, 1].forEach(function (direction) {
@@ -2103,7 +2119,9 @@
         proxy:proxy,floors:[],roofs:[],dressing:[],tierGroups:[],minTier:1,
         maxTier:cfg.maxTier===undefined?4:cfg.maxTier,tier:-1,
         buildStage:function(tier){const stage=new THREE.Group();shell.add(stage);buildWorldStage(stage,cfg.w,cfg.d,cfg,tier);packRigidModel(stage);return stage;}};
-      cityBuildings[cfg.id]=rec;setBuildingTier(rec,1);return rec;
+      cityBuildings[cfg.id]=rec;
+      if (typeof attachBuildingContextualLife === "function") attachBuildingContextualLife(g, cfg, cfg.w, cfg.d);
+      setBuildingTier(rec,1);return rec;
     }
 
     function makeBuilding(cfg) {
@@ -2243,9 +2261,7 @@
       });
 
       // What this building actually is, beyond a sign: mannequins, crates, a dish, scooters.
-      if (!FUTURE && !ARCTIC && !ISRAEL && typeof CHARACTER !== "undefined" && CHARACTER[cfg.id]) {
-        try { CHARACTER[cfg.id](ground, w, d); } catch (e) { console.warn("character " + cfg.id, e); }
-      }
+      attachBuildingContextualLife(ground, cfg, w, d);
 
       // Batch each independently visible tier, not the whole building. Guests stay separate.
       [stall, ground].concat(floors, roofs, dressing.map(function (p) { return p.obj; })).forEach(packRigidModel);
@@ -2482,7 +2498,14 @@
         accHpBand:       new THREE.BoxGeometry(0.195, 0.010, 0.010),
         accHpCup:        new THREE.CylinderGeometry(0.021, 0.021, 0.015, 7),
         jacketShoulder:  new THREE.BoxGeometry(0.305, 0.044, 0.148),
-        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7)
+        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7),
+        kippah:          new THREE.SphereGeometry(0.052, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.44),
+        harediBrim:      new THREE.CylinderGeometry(0.136, 0.136, 0.012, 16),
+        harediCrown:     new THREE.CylinderGeometry(0.076, 0.082, 0.085, 16),
+        harediRibbon:    new THREE.CylinderGeometry(0.083, 0.083, 0.018, 16),
+        tzitzitStrand:   new THREE.BoxGeometry(0.007, 0.065, 0.007),
+        shades:          new THREE.BoxGeometry(0.125, 0.022, 0.026),
+        peyot:           new THREE.CylinderGeometry(0.007, 0.005, 0.08, 6)
       };
     })();
 
@@ -2620,12 +2643,122 @@
       return buildAppearanceProfile(key, 0);
     }
 
+    // Adapt appearance profile for the sunny, diverse Israeli streetscape
+    function adaptIsraelAppearance(p) {
+      if (!p) return p;
+      const rand = makePRNG(hashCitizenKey((p.key || 'israel:citizen') + ':israel:v1'));
+      const roll = rand();
+
+      // 1. One Haredi citizen ("אולי אחד חרדי עם חליפה")
+      const isCrosswalk = p.key && (p.key.includes('crosswalk') || p.key === 'city:crosswalk:ped');
+      const isChabad    = p.key && p.key.startsWith('chabad:');
+      const isHaredi = isCrosswalk || isChabad || roll < 0.085;
+      if (isHaredi) {
+        return Object.assign({}, p, {
+          israelType: 'haredi',
+          presentation: 'male',
+          topStyle: 'jacket',
+          topColor: 0x18181B,
+          innerShirt: 0xFFFFFF,
+          bottomStyle: 'straight',
+          bottomColor: 0x18181B,
+          shoeStyle: 'shoe',
+          israelShoe: 'shoe',
+          hairStyle: 'short',
+          hairColor: 0x221B17,
+          accessory: 'harediHat'
+        });
+      }
+
+      // 2. Subtly Religious ("איזה כמה ממש בקטנה דתיים" - kippah, tzitzit)
+      const isDati = roll >= 0.085 && roll < 0.28;
+      if (isDati) {
+        const kippahColors = [0x1E3A5F, 0x2C4035, 0x222226, 0xDCDAD1, 0x4A3E36];
+        const kCol = kippahColors[Math.floor(rand() * kippahColors.length)];
+        const wearShorts = rand() < 0.45;
+        const btm = wearShorts ? 'shorts' : (rand() < 0.5 ? 'straight' : 'slim');
+        const btmCols = wearShorts
+          ? [0xB8A882, 0x58664A, 0x405466, 0x8C8479]
+          : [0x2C3E50, 0x424852, 0x544E45, 0x36433E];
+        const bCol = btmCols[Math.floor(rand() * btmCols.length)];
+        const shoeRoll = rand();
+        const israelShoe = shoeRoll < 0.45 ? 'blundstone' : (shoeRoll < 0.75 ? 'sneaker' : 'shoe');
+        return Object.assign({}, p, {
+          israelType: 'dati',
+          presentation: 'male',
+          topStyle: rand() < 0.65 ? 'basic' : 'oversized',
+          topColor: [0xF8F8F6, 0x52728C, 0x6E7B62, 0xC4B59D, 0x3E4B5B, 0xB66B56][Math.floor(rand() * 6)],
+          bottomStyle: btm,
+          bottomColor: bCol,
+          israelShoe: israelShoe,
+          shoeStyle: israelShoe === 'blundstone' ? 'boot' : (israelShoe === 'sneaker' ? 'sneaker' : 'shoe'),
+          blundstoneColor: rand() < 0.55 ? 0x4A3423 : 0x36271A,
+          accessory: 'kippah',
+          kippahColor: kCol,
+          tzitzit: true,
+          hairStyle: ['short', 'crop', 'shaved'][Math.floor(rand() * 3)]
+        });
+      }
+
+      // 3. Israeli Casual (Mediterranean summer style, ~45% shorts, blundstones/sandals/sneakers, shades)
+      const wearShorts = rand() < 0.45;
+      const btmStyle = wearShorts ? 'shorts' : (p.presentation === 'female' && rand() < 0.22 ? 'skirt' : (rand() < 0.5 ? 'slim' : 'straight'));
+      const israelBottomColors = wearShorts
+        ? [0xB8A882, 0x546347, 0x425B70, 0x948E84, 0x35414D, 0xA89F91]
+        : [0x3B4856, 0x4E555C, 0x5A5248, 0x364842, 0x2A343F];
+      const bCol = israelBottomColors[Math.floor(rand() * israelBottomColors.length)];
+
+      const israelTopColors = [
+        0xF7F6F2, 0x5A738E, 0x6C7E5F, 0xD4B896, 0xB86B58, 0x8EA093, 0x3E4C59, 0xE2C578
+      ];
+      const topCol = israelTopColors[Math.floor(rand() * israelTopColors.length)];
+
+      const shoeRoll = rand();
+      let israelShoe = null;
+      let shoeStyle = p.shoeStyle;
+      if (shoeRoll < 0.38) {
+        israelShoe = 'blundstone';
+        shoeStyle = 'boot';
+      } else if (shoeRoll < 0.72) {
+        israelShoe = 'sneaker';
+        shoeStyle = 'sneaker';
+      } else {
+        israelShoe = 'sandals';
+        shoeStyle = 'shoe';
+      }
+
+      const accRoll = rand();
+      let acc = null;
+      if (accRoll < 0.22) acc = 'sunglasses';
+      else if (accRoll < 0.36) acc = 'cap';
+      else if (accRoll < 0.46) acc = 'tote';
+      else if (accRoll < 0.56) acc = 'backpack';
+
+      const topStyle = rand() < 0.55 ? 'basic' : (rand() < 0.82 ? 'oversized' : p.topStyle);
+
+      return Object.assign({}, p, {
+        israelType: 'casual',
+        bottomStyle: btmStyle,
+        bottomColor: bCol,
+        topStyle: topStyle,
+        topColor: topCol,
+        shoeStyle: shoeStyle,
+        israelShoe: israelShoe,
+        blundstoneColor: rand() < 0.6 ? 0x4E3726 : 0x38281B,
+        accessory: acc
+      });
+    }
+
     // Update appearance on an existing figure record (crowd pool reuse).
     function applyAppearanceToFigure(record, appearance) {
-      if (ARCTIC) appearance = Object.assign({}, appearance, {
-        topStyle: 'jacket', bottomStyle: 'regular', shoeStyle: 'boot',
-        accessory: ['cap', 'headphones'].includes(appearance.accessory) ? null : appearance.accessory
-      });
+      if (typeof ISRAEL !== "undefined" && ISRAEL) {
+        appearance = adaptIsraelAppearance(appearance);
+      } else if (typeof ARCTIC !== "undefined" && ARCTIC) {
+        appearance = Object.assign({}, appearance, {
+          topStyle: 'jacket', bottomStyle: 'regular', shoeStyle: 'boot',
+          accessory: ['cap', 'headphones'].includes(appearance.accessory) ? null : appearance.accessory
+        });
+      }
       const ud = record.obj.userData;
       // Feet are at local y≈0 in fig space; scaling from origin keeps them on Y_WALK.
       record.obj.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
@@ -2640,7 +2773,7 @@
       if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
       addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
       applyCitizenDesign(record.obj, appearance);
-      if (ARCTIC) dressArcticFigure(record.obj, topMat);
+      if (typeof ARCTIC !== "undefined" && ARCTIC) dressArcticFigure(record.obj, topMat);
       record.motion        = appearance.motion;
       record.appearance    = appearance;
       record.appearanceKey = appearance.key;
@@ -2706,9 +2839,15 @@
         u.shinMeshes[i].position.y = 0;
         u.shinMeshes[i].scale.set(wide,shin,wide);
         u.shinMeshes[i].material = p.bottomStyle === 'shorts' ? skin : bottom;
-        const shoe = knee.children[1]; shoe.geometry = G[p.shoeStyle]; shoe.material = dark;
+        const shoe = knee.children[1];
+        shoe.geometry = G[p.shoeStyle] || G.sneaker;
+        const shoeMat = (p.israelShoe === 'blundstone')
+          ? citizenMat(p.blundstoneColor || 0x4E3726, 0.76)
+          : (p.israelShoe === 'sneaker' ? citizenMat(0xF0EFEA, 0.85) : dark);
+        shoe.material = shoeMat;
         shoe.position.set(0,-shin - .050,0); shoe.scale.set(1,1,1);
-        citizenPart(knee,2,G.sole,sole,0,-shin - .050,0);
+        const soleMat = (p.israelShoe === 'blundstone') ? citizenMat(0x1C1A17, 0.92) : sole;
+        citizenPart(knee,2,G.sole,soleMat,0,-shin - .050,0);
       });
       const c = u.clothingGrp; hideCitizenParts(c);
       // A visible hem, articulated sleeves and open jacket panels define clothing at zoom.
@@ -2718,7 +2857,10 @@
           citizenPart(c,1+i,G.panel,top,side*d.top*.50,.006,d.depth*bulk+.004,d.top*.79,d.length*.88,.014);
           citizenPart(c,3+i,G.panel,top,side*.038,d.length*.43,d.depth*.83,.045,.049,.016).rotation.z = side*.34;
         });
-        citizenPart(c,5,G.panel,citizenMat(0xB9B4A9,.88),0,.004,d.depth*bulk+.003,.022,d.length*.80,.011);
+        citizenPart(c,5,G.panel,citizenMat(p.innerShirt || 0xB9B4A9,.88),0,.004,d.depth*bulk+.003,.022,d.length*.80,.011);
+        if (p.israelType === 'haredi') {
+          citizenPart(c,6,G.neck,citizenMat(0xFFFFFF,.9),0,d.length*.49,0,1.22,.34,1.22);
+        }
       } else if (p.topStyle === 'hoodie') {
         citizenPart(c,1,G.hood,top,0,d.length*.39,-d.depth-.009);
       } else if (p.topStyle === 'sweater' || p.topStyle === 'longSleeve') {
@@ -2731,7 +2873,7 @@
       u.pelvis.scale.set(d.hip/.103,u.seated ? contact/.045 : 1,d.depth/.069);
       if (drape) {
         const fabric = p.topStyle === 'dress' || p.topStyle === 'longTop' ? top : bottom;
-        citizenPart(c,6,G.skirt,fabric,0,-d.length*.43,0,d.hip/.101,.22,1).visible = !u.seated;
+        citizenPart(c,7,G.skirt,fabric,0,-d.length*.43,0,d.hip/.101,.22,1).visible = !u.seated;
         // Two overlapping cloth panels follow the thighs when seated; no rigid cone through the chair.
         [u.legL,u.legR].forEach(function (leg) {
           citizenPart(leg,2,G.thigh,fabric,0,0,0,1.7,thigh,1.23).visible = !!u.seated;
@@ -2751,6 +2893,37 @@
       } else if (p.accessory === 'headphones') {
         citizenPart(a,0,G.accHpBand,dark,0,.352+headOffset,0,headWidth,1,1);
         [-1,1].forEach(function (side,i) { citizenPart(a,i+1,G.accHpCup,dark,side*.09*headWidth,.267+headOffset,0).rotation.z = Math.PI/2; });
+      } else if (p.accessory === 'kippah') {
+        const kippahMat = citizenMat(p.kippahColor || 0x1E3A5F, 0.92);
+        const kippahMesh = citizenPart(a, 0, G.kippah, kippahMat, 0, 0.332 + headOffset, -0.022, headWidth * 1.05, headHeight, d.head * 1.05);
+        kippahMesh.rotation.x = -0.32;
+        if (p.tzitzit) {
+          const tzitzitMat = citizenMat(0xFAFAFA, 0.95);
+          citizenPart(a, 1, G.tzitzitStrand, tzitzitMat, -d.hip * 0.96, -d.length / 2 - 0.02, 0);
+          citizenPart(a, 2, G.tzitzitStrand, tzitzitMat,  d.hip * 0.96, -d.length / 2 - 0.02, 0);
+        }
+      } else if (p.accessory === 'harediHat') {
+        const hatMat = citizenMat(0x18181B, 0.85);
+        const ribbonMat = citizenMat(0x0E0E10, 0.92);
+        const brim = citizenPart(a, 0, G.harediBrim, hatMat, 0, 0.320 + headOffset, 0.005, headWidth, 1, d.head);
+        brim.rotation.x = -0.04;
+        const crown = citizenPart(a, 1, G.harediCrown, hatMat, 0, 0.362 + headOffset, 0.005, headWidth, 1, d.head);
+        crown.rotation.x = -0.04;
+        const rib = citizenPart(a, 2, G.harediRibbon, ribbonMat, 0, 0.328 + headOffset, 0.005, headWidth * 1.01, 1, d.head * 1.01);
+        rib.rotation.x = -0.04;
+        const peyotMat = citizenMat(p.hairColor || 0x221B17, 0.9);
+        [-1, 1].forEach(function (side, pi) {
+          const curl = citizenPart(a, 3 + pi, G.peyot, peyotMat, side * 0.076 * headWidth, 0.235 + headOffset, 0.012, 1, 1, 1);
+          curl.rotation.z = side * 0.12;
+        });
+      } else if (p.accessory === 'sunglasses') {
+        const shadesMat = citizenMat(0x1C1C20, 0.45);
+        citizenPart(a, 0, G.shades, shadesMat, 0, 0.305 + headOffset, 0.065 * d.head, headWidth, 1, 1);
+      }
+      if (p.tzitzit && p.accessory !== 'kippah') {
+        const tzitzitMat = citizenMat(0xFAFAFA, 0.95);
+        citizenPart(a, 3, G.tzitzitStrand, tzitzitMat, -d.hip * 0.96, -d.length / 2 - 0.02, 0);
+        citizenPart(a, 4, G.tzitzitStrand, tzitzitMat,  d.hip * 0.96, -d.length / 2 - 0.02, 0);
       }
       if (!u.propGrp) { u.propGrp = new THREE.Group(); u.armR.children[1].add(u.propGrp); }
       hideCitizenParts(u.propGrp);
@@ -2919,7 +3092,7 @@
         pantsMeshes: thighMeshes.concat(shinMeshes)
       };
       if (appearance) applyAppearanceToFigure({ obj: fig }, appearance);
-      if (ARCTIC && !appearance) dressArcticFigure(fig, shirt);
+      if (typeof ARCTIC !== "undefined" && ARCTIC && !appearance) dressArcticFigure(fig, shirt);
       return fig;
     }
 
@@ -3595,6 +3768,206 @@
         g.add(mesh(new THREE.BoxGeometry(0.20, 0.02, 0.16), mat(0xDC2626, 0.6), w * 0.30, 0.39, d / 2 + 0.44, false, false));
       }
     };
+
+    function attachIsraelContextualLife(g, cfg, w, d) {
+      if (cfg.id === "food_coffee") {
+        const tGrp = new THREE.Group(); tGrp.position.set(w * 0.13, 0, d / 2 + 0.85); g.add(tGrp);
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 16), M_CREAM, 0, 0.41, 0));
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.38, 8), mat(0x596F67, 0.6), 0, 0.20, 0, false, false));
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 10), mat(0x596F67, 0.6), 0, 0.02, 0, false, false));
+        [-0.08, 0.08].forEach(function (cx) {
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.065, 8), M_WHITE, cx, 0.46, 0.05, false, false));
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.007, 8), mat(0x4A2E18, 0.9), cx, 0.49, 0.05, false, false));
+        });
+        [-1, 1].forEach(function (side, i) {
+          const chair = new THREE.Group(); chair.position.z = side * 0.44; chair.rotation.y = side > 0 ? Math.PI : 0; tGrp.add(chair);
+          chair.add(mesh(roundedBox(0.24, 0.03, 0.24, 0.02), M_WOOD, 0, 0.25, 0));
+          chair.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.28, 6), mat(0x596F67, 0.7), -0.09, 0.39, -0.10, false, false));
+          chair.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.28, 6), mat(0x596F67, 0.7),  0.09, 0.39, -0.10, false, false));
+          chair.add(mesh(roundedBox(0.22, 0.06, 0.02, 0.01), M_WOOD, 0, 0.46, -0.10, false, false));
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:israel:guest:' + i) });
+          guest.position.z = 0.015; chair.add(guest);
+          applySeatedPoseVariant(guest, i === 0 ? "leanBack" : "turnedSlightly");
+          guest.userData.lifeActor = true; packRigidModel(guest);
+          bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+          registerCharacterIdle({
+            mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+            phase: 200 + i * 450, subType: i
+          });
+        });
+      } else if (cfg.id === "food_bistro") {
+        [-0.38, 0.38].forEach(function (tx, tIdx) {
+          const dt = new THREE.Group(); dt.position.set(tx, 0, d / 2 + 0.75); g.add(dt);
+          dt.add(mesh(roundedBox(0.56, 0.045, 0.62, 0.02), M_WOOD, 0, 0.43, 0));
+          dt.add(mesh(roundedBox(0.58, 0.02, 0.64, 0.02), mat(0xF4E9D4, 0.8), 0, 0.46, 0));
+          [-1, 1].forEach(function (side, sIdx) {
+            const idx = tIdx * 2 + (side > 0 ? 1 : 0);
+            const threshold = [0.18, 0.46, 0.45, 0.73][idx];
+            const guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:israel:guest:' + idx) });
+            guest.position.z = side * 0.46; guest.rotation.y = side > 0 ? Math.PI : 0;
+            applySeatedPoseVariant(guest, ["leanBack", "turnedSlightly", "leanForward", "neutral"][idx]);
+            guest.userData.lifeActor = true; packRigidModel(guest);
+            dt.add(guest);
+            bindVenueActor(guest, "food_bistro", threshold);
+            registerCharacterIdle({
+              mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+              phase: 150 + idx * 220, subType: side > 0 ? 1 : 0
+            });
+            dt.add(mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.015, 10), M_WHITE, 0, 0.48, side * 0.18));
+            dt.add(mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.06, 8), mat(0xA8C3C8, 0.4), 0.14, 0.50, side * 0.18, false, false));
+            dt.add(mesh(roundedBox(0.26, 0.03, 0.25, 0.02), M_WOOD, 0, 0.25, side * 0.46));
+            dt.add(mesh(roundedBox(0.26, 0.24, 0.03, 0.02), M_WOOD, 0, 0.38, side * 0.56));
+        });
+        });
+      } else if (cfg.id === "shop_boutique") {
+        [-w * 0.34, w * 0.34].forEach(function (px) {
+          const pl = new THREE.Group(); pl.position.set(px, 0, d / 2 + 0.38); g.add(pl);
+          pl.add(mesh(roundedBox(0.24, 0.28, 0.24, 0.03), mat(0x596F67, 0.8), 0, 0.14, 0, false, false));
+          pl.add(mesh(new THREE.SphereGeometry(0.13, 8, 8), M_STREET_LEAF, 0, 0.35, 0, false, false));
+        });
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:israel:shopper') });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60); shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.12, 0.15, 0.08, 0.02), mat(0x596F67, 0.8), 0.22, 0.24, 0.08, false, false));
+        shopper.userData.lifeActor = true; packRigidModel(shopper); g.add(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({
+          mode: "shopper", ref: shopper, torso: shopper.userData.torso,
+          armL: shopper.userData.armL, armR: shopper.userData.armR,
+          phase: 330
+        });
+      } else if (cfg.id === "food_super") {
+        crateStack(g, -w * 0.32, d / 2 + 0.40);
+        crateStack(g,  w * 0.30, d / 2 + 0.38);
+      }
+    }
+
+    function attachArcticContextualLife(g, cfg, w, d) {
+      if (cfg.id === "food_coffee") {
+        const tGrp = new THREE.Group(); tGrp.position.set(w * 0.13, 0, d / 2 + 0.85); g.add(tGrp);
+        tGrp.add(mesh(roundedBox(0.48, 0.045, 0.52, 0.02), M_WOOD, 0, 0.41, 0));
+        [-0.18, 0.18].forEach(x => tGrp.add(mesh(new THREE.BoxGeometry(0.04, 0.38, 0.04), M_DARKFRAME, x, 0.20, 0)));
+        [-0.08, 0.08].forEach(function (cx) {
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.075, 8), mat(0x31576B, 0.9), cx, 0.47, 0, false, false));
+        });
+        [-1, 1].forEach(function (side, i) {
+          const chair = new THREE.Group(); chair.position.z = side * 0.44; chair.rotation.y = side > 0 ? Math.PI : 0; tGrp.add(chair);
+          chair.add(mesh(roundedBox(0.24, 0.035, 0.24, 0.02), M_WOOD, 0, 0.25, 0));
+          chair.add(mesh(roundedBox(0.24, 0.24, 0.03, 0.02), M_WOOD, 0, 0.38, -0.10));
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:arctic:guest:' + i) });
+          guest.position.z = 0.015; chair.add(guest);
+          applySeatedPoseVariant(guest, i === 0 ? "leanForward" : "neutral");
+          guest.userData.lifeActor = true; packRigidModel(guest);
+          bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+          registerCharacterIdle({
+            mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+            phase: 250 + i * 400, subType: i
+          });
+        });
+      } else if (cfg.id === "food_bistro") {
+        [-0.38, 0.38].forEach(function (tx, tIdx) {
+          const dt = new THREE.Group(); dt.position.set(tx, 0, d / 2 + 0.75); g.add(dt);
+          dt.add(mesh(roundedBox(0.56, 0.045, 0.62, 0.02), M_WOOD, 0, 0.43, 0));
+          [-1, 1].forEach(function (side, sIdx) {
+            const idx = tIdx * 2 + (side > 0 ? 1 : 0);
+            const threshold = [0.18, 0.46, 0.45, 0.73][idx];
+            const guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:arctic:guest:' + idx) });
+            guest.position.z = side * 0.46; guest.rotation.y = side > 0 ? Math.PI : 0;
+            applySeatedPoseVariant(guest, ["leanForward", "neutral", "turnedSlightly", "leanBack"][idx]);
+            guest.userData.lifeActor = true; packRigidModel(guest);
+            dt.add(guest);
+            bindVenueActor(guest, "food_bistro", threshold);
+            registerCharacterIdle({
+              mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+              phase: 180 + idx * 210, subType: side > 0 ? 1 : 0
+            });
+            dt.add(mesh(new THREE.CylinderGeometry(0.10, 0.08, 0.04, 10), mat(0x71949F, 0.8), 0, 0.48, side * 0.18));
+            dt.add(mesh(roundedBox(0.26, 0.035, 0.25, 0.02), M_WOOD, 0, 0.25, side * 0.46));
+            dt.add(mesh(roundedBox(0.26, 0.24, 0.03, 0.02), M_WOOD, 0, 0.38, side * 0.56));
+          });
+        });
+      } else if (cfg.id === "shop_boutique") {
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:arctic:shopper') });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60); shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.12, 0.16, 0.08, 0.02), mat(0x31576B, 0.85), 0.22, 0.24, 0.08, false, false));
+        shopper.userData.lifeActor = true; packRigidModel(shopper); g.add(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({
+          mode: "shopper", ref: shopper, torso: shopper.userData.torso, phase: 420
+        });
+      } else if (cfg.id === "food_super") {
+        crateStack(g, -w * 0.32, d / 2 + 0.40);
+      }
+    }
+
+    function attachFutureContextualLife(g, cfg, w, d) {
+      if (cfg.id === "food_coffee") {
+        const tGrp = new THREE.Group(); tGrp.position.set(w * 0.13, 0, d / 2 + 0.85); g.add(tGrp);
+        const neonCyan = mat(0x75DAE0, 0.3, 0.2, 0x75DAE0, 1.2);
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.035, 16), mat(0x1E293B, 0.8), 0, 0.42, 0));
+        tGrp.add(mesh(new THREE.TorusGeometry(0.24, 0.012, 6, 18), neonCyan, 0, 0.42, 0));
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.40, 8), mat(0x334155, 0.8), 0, 0.20, 0, false, false));
+        [-0.08, 0.08].forEach(function (cx) {
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.08, 8), neonCyan, cx, 0.48, 0, false, false));
+        });
+        [-1, 1].forEach(function (side, i) {
+          const chair = new THREE.Group(); chair.position.z = side * 0.44; chair.rotation.y = side > 0 ? Math.PI : 0; tGrp.add(chair);
+          chair.add(mesh(roundedBox(0.24, 0.03, 0.24, 0.02), mat(0x1E293B, 0.8), 0, 0.25, 0));
+          chair.add(mesh(roundedBox(0.24, 0.22, 0.03, 0.02), mat(0x334155, 0.8), 0, 0.38, -0.10));
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:future:guest:' + i) });
+          guest.position.z = 0.015; chair.add(guest);
+          applySeatedPoseVariant(guest, i === 0 ? "leanBack" : "turnedSlightly");
+          guest.userData.lifeActor = true; packRigidModel(guest);
+          bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+          registerCharacterIdle({
+            mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+            phase: 310 + i * 380, subType: i
+          });
+        });
+      } else if (cfg.id === "food_bistro") {
+        [-0.38, 0.38].forEach(function (tx, tIdx) {
+          const dt = new THREE.Group(); dt.position.set(tx, 0, d / 2 + 0.75); g.add(dt);
+          dt.add(mesh(roundedBox(0.56, 0.04, 0.62, 0.02), mat(0x1E293B, 0.85), 0, 0.43, 0));
+          [-1, 1].forEach(function (side, sIdx) {
+            const idx = tIdx * 2 + (side > 0 ? 1 : 0);
+            const threshold = [0.18, 0.46, 0.45, 0.73][idx];
+            const guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:future:guest:' + idx) });
+            guest.position.z = side * 0.46; guest.rotation.y = side > 0 ? Math.PI : 0;
+            applySeatedPoseVariant(guest, ["leanBack", "turnedSlightly", "leanForward", "neutral"][idx]);
+            guest.userData.lifeActor = true; packRigidModel(guest);
+            dt.add(guest);
+            bindVenueActor(guest, "food_bistro", threshold);
+            registerCharacterIdle({
+              mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+              phase: 220 + idx * 230, subType: side > 0 ? 1 : 0
+            });
+            dt.add(mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.015, 10), mat(0x64748B, 0.7), 0, 0.465, side * 0.18));
+            dt.add(mesh(roundedBox(0.25, 0.03, 0.25, 0.02), mat(0x1E293B, 0.8), 0, 0.25, side * 0.46));
+            dt.add(mesh(roundedBox(0.25, 0.24, 0.03, 0.02), mat(0x334155, 0.8), 0, 0.38, side * 0.56));
+          });
+        });
+      } else if (cfg.id === "shop_boutique") {
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:future:shopper') });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60); shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.12, 0.15, 0.07, 0.02), mat(0x75DAE0, 0.9), 0.22, 0.24, 0.08, false, false));
+        shopper.userData.lifeActor = true; packRigidModel(shopper); g.add(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({ mode: "shopper", ref: shopper, torso: shopper.userData.torso, phase: 290 });
+      } else if (cfg.id === "food_super") {
+        crateStack(g, -w * 0.32, d / 2 + 0.40);
+      }
+    }
+
+    function attachBuildingContextualLife(g, cfg, w, d) {
+      if (ISRAEL) {
+        attachIsraelContextualLife(g, cfg, w, d);
+      } else if (ARCTIC) {
+        attachArcticContextualLife(g, cfg, w, d);
+      } else if (FUTURE) {
+        attachFutureContextualLife(g, cfg, w, d);
+      } else if (typeof CHARACTER !== "undefined" && CHARACTER[cfg.id]) {
+        try { CHARACTER[cfg.id](g, w, d); } catch (e) { console.warn("character " + cfg.id, e); }
+      }
+    }
 
     // ────────────────────────────────────────────────────────────────
     // 🎪 3e. CUSTOM TIER 1 STALLS — Bespoke character for every category
@@ -5161,6 +5534,208 @@ function normalizedSlotPlacements(input) {
     }
 
     // ────────────────────────────────────────────────────────────────
+    // 🇮🇱 10c-IL. ISRAEL-SPECIFIC STREET DETAILS
+    // Authentic urban texture: street cat, park mangal, satellite dish
+    // ────────────────────────────────────────────────────────────────
+    if (typeof ISRAEL !== "undefined" && ISRAEL) {
+
+      // 🐈 Street cat — Tel Aviv's iconic feral cat, sitting by a wall
+      (function createStreetCat(x, y, z, ry) {
+        const cat = new THREE.Group(); cat.position.set(x, y, z); cat.rotation.y = ry; root.add(cat);
+        const bodyM = mat(0xB5A48C, 0.7);
+        const darkM = mat(0x6B5B4A, 0.8);
+        // body
+        cat.add(mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.18, 7), bodyM, 0, 0.09, 0));
+        // head
+        const head = new THREE.Group(); head.position.set(0, 0.19, 0.04); cat.add(head);
+        head.add(mesh(new THREE.SphereGeometry(0.065, 8, 6), bodyM, 0, 0, 0));
+        // ears
+        [-0.04, 0.04].forEach(function (ex) {
+          head.add(mesh(new THREE.ConeGeometry(0.022, 0.038, 4), darkM, ex, 0.065, 0));
+        });
+        // eyes — two tiny dark spheres
+        [-0.025, 0.025].forEach(function (ex) {
+          head.add(mesh(new THREE.SphereGeometry(0.011, 5, 5), mat(0x1C1C1C, 0.2), ex, 0.005, 0.058, false, false));
+        });
+        // tail curling up behind
+        const tail = new THREE.Group(); tail.position.set(0.03, 0.05, -0.09); cat.add(tail);
+        tail.add(mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.18, 6), bodyM, 0, 0.09, 0));
+        tail.add(mesh(new THREE.SphereGeometry(0.025, 6, 5), bodyM, 0, 0.19, 0, false, false));
+        tail.rotation.x = -0.9; tail.rotation.z = 0.3;
+        animObjects.push({ type: "bob", ref: cat, base: y, phase: 1.8, baseRotY: ry });
+      }(-4.85, Y_WALK, -1.2, 0.6));
+
+      // 🔥 Mangal (charcoal BBQ) — the quintessential Israeli park activity
+      (function createMangal(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_GRASS, z); g.rotation.y = ry; reserveGroup.add(g);
+        const metalM = mat(0x374151, 0.4, 0.7);
+        const charM  = mat(0x1C1917, 0.9);
+        // legs — four thin posts
+        [[-0.18, -0.14], [0.18, -0.14], [-0.18, 0.14], [0.18, 0.14]].forEach(function (p) {
+          g.add(mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.44, 5), metalM, p[0], 0.22, p[1]));
+        });
+        // grill tray
+        g.add(mesh(new THREE.BoxGeometry(0.44, 0.06, 0.34), metalM, 0, 0.46, 0));
+        // charcoal bed inside
+        g.add(mesh(new THREE.BoxGeometry(0.38, 0.03, 0.28), charM, 0, 0.50, 0, false, false));
+        // grill grate — a few thin rods
+        for (let r = -0.13; r <= 0.13; r += 0.065) {
+          g.add(mesh(new THREE.BoxGeometry(0.40, 0.012, 0.012), mat(0x52525B, 0.5, 0.8), 0, 0.53, r, false, false));
+        }
+        // heat shimmer glow (very subtle orange emissive)
+        const glowM = mat(0xF97316, 0.05, 0, 0xF97316, 0.55);
+        g.add(mesh(new THREE.BoxGeometry(0.34, 0.018, 0.24), glowM, 0, 0.515, 0, false, false));
+        animObjects.push({ type: "neon_pulse", mat: glowM, base: 0.35, range: 0.75, phase: 0.7 });
+      }(-1.2, 2.4, 0.4));
+
+      // 📡 Satellite dish on a building wall — very common in Israeli residential buildings
+      (function createSatelliteDish(parent, x, y, z) {
+        const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g);
+        const dishM = mat(0xC8C0B0, 0.3, 0.6);
+        const armM  = mat(0x6B7280, 0.5, 0.7);
+        // wall bracket arm
+        g.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.18), armM, 0, 0, -0.07));
+        // dish bowl — half-sphere
+        const dish = mesh(new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), dishM, 0, 0, 0.04);
+        dish.rotation.x = -0.5; dish.rotation.y = 0.3; g.add(dish);
+        // LNB arm + head
+        g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.14, 5), armM, 0, 0.08, 0.10));
+        g.add(mesh(new THREE.SphereGeometry(0.022, 6, 6), mat(0x374151, 0.6), 0, 0.16, 0.10, false, false));
+      }(root, -7.4, 3.1, -4.8));
+
+      // 🟠 Mifal HaPayis (לוטו) kiosk — the iconic orange-blue corner booth
+      (function createLottoKiosk(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+        const orange = mat(0xE55A08, 0.35, 0.5);
+        const blue   = mat(0x1B3D9E, 0.4, 0.5);
+        const starO  = mat(0xE55A08, 0.5);
+        const glass  = mat(0xB8D4D8, 0.15, 0, 0x90C0C8, 0.12);
+
+        // — Main body: rounded orange hull —
+        g.add(mesh(roundedBox(0.62, 0.56, 0.50, 0.06), orange, 0, 0.28, 0));
+        // — Blue angled wing panels left and right —
+        [-1, 1].forEach(function (s) {
+          const wing = new THREE.Group();
+          wing.position.set(s * 0.34, 0.26, -0.01);
+          wing.rotation.y = s * 0.38;
+          wing.add(mesh(new THREE.BoxGeometry(0.22, 0.46, 0.07), blue, 0, 0, 0));
+          // Stars on wing (small orange dots)
+          [[0, 0.14], [0.07, -0.06], [-0.07, -0.06]].forEach(function (p) {
+            wing.add(mesh(new THREE.SphereGeometry(0.018, 5, 5), starO, p[0], p[1], 0.038, false, false));
+          });
+          g.add(wing);
+        });
+        // — Blue header band across top of body —
+        g.add(mesh(new THREE.BoxGeometry(0.64, 0.10, 0.52), blue, 0, 0.53, 0));
+        // Stars on header
+        [-0.20, 0, 0.20].forEach(function (sx) {
+          g.add(mesh(new THREE.SphereGeometry(0.018, 5, 5), starO, sx, 0.53, 0.27, false, false));
+        });
+        // — Counter window (glass inset) —
+        g.add(mesh(new THREE.BoxGeometry(0.38, 0.22, 0.015), glass, 0, 0.38, 0.26, false, false));
+        // Counter shelf below window
+        g.add(mesh(new THREE.BoxGeometry(0.38, 0.025, 0.08), mat(0xD4500A, 0.7), 0, 0.265, 0.26, false, false));
+        // — Sign box on top: white panel with "לוטו" hint —
+        g.add(mesh(roundedBox(0.52, 0.18, 0.12, 0.02), mat(0xF2F0EC, 0.9), 0, 0.69, 0));
+        // Blue circle on sign (logo circle)
+        g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.015, 10), blue, -0.10, 0.69, 0.065, false, false));
+        // Orange arc on logo circle
+        g.add(mesh(new THREE.TorusGeometry(0.038, 0.010, 5, 10, Math.PI * 1.2), orange, -0.10, 0.70, 0.065, false, false));
+        // — Flat base plinth —
+        g.add(mesh(new THREE.CylinderGeometry(0.44, 0.46, 0.04, 8), mat(0x2A2A2A, 0.8), 0, 0.02, 0));
+      }(2.6, 9.6, -2.188));
+
+      // 🕍 Chabad tefillin stand — shaliach with a small folding table
+      (function createTefillinStand(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+
+        // Folding table — thin aluminium-looking legs + white formica top
+        const tableM = mat(0xE8E4DC, 0.5, 0.6);
+        const legM   = mat(0x9CA3AF, 0.3, 0.8);
+        g.add(mesh(new THREE.BoxGeometry(0.48, 0.018, 0.32), tableM, 0, 0.46, 0));
+        [[-0.20, -0.13], [0.20, -0.13], [-0.20, 0.13], [0.20, 0.13]].forEach(function (p) {
+          g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.46, 5), legM, p[0], 0.23, p[1]));
+        });
+
+        // Tefillin boxes on the table — shel rosh + shel yad, small black cubes
+        const blackBox = mat(0x18181B, 0.6, 0.5);
+        g.add(mesh(new THREE.BoxGeometry(0.07, 0.07, 0.07), blackBox, -0.09, 0.51, -0.05, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.055, 0.055, 0.055), blackBox, 0.04, 0.497, -0.03, false, false));
+        // Leather strap coiled beside the box
+        g.add(mesh(new THREE.TorusGeometry(0.032, 0.007, 5, 10), mat(0x2C1810, 0.8), 0.13, 0.477, 0, false, false));
+
+        // Small velvet pouch (dark blue)
+        g.add(mesh(roundedBox(0.13, 0.055, 0.09, 0.015), mat(0x1E2D5A, 0.7), -0.12, 0.487, 0.08, false, false));
+
+        // Sign: "תפילין" leaning on the table front edge
+        const signGrp = new THREE.Group(); signGrp.position.set(0, 0.52, 0.17); signGrp.rotation.x = 0.22; g.add(signGrp);
+        signGrp.add(mesh(new THREE.BoxGeometry(0.30, 0.12, 0.006), mat(0xF5EDD2, 0.9), 0, 0, 0, false, false));
+        signGrp.add(mesh(new THREE.BoxGeometry(0.30, 0.012, 0.007), mat(0x1B3D9E, 0.8), 0,  0.054, 0, false, false));
+        signGrp.add(mesh(new THREE.BoxGeometry(0.30, 0.012, 0.007), mat(0x1B3D9E, 0.8), 0, -0.054, 0, false, false));
+
+        // Chabad shaliach — haredi figure, standing behind the table
+        const shaliach = makeFigure({ appearance: buildAppearanceProfile('chabad:tefillin:shaliach:v1') });
+        shaliach.position.set(0, 0, -0.28);
+        shaliach.rotation.y = Math.PI;
+        shaliach.userData.lifeActor = true;
+        packRigidModel(shaliach);
+        g.add(shaliach);
+        bindVenueActor(shaliach, "chabad_stand", 0.25);
+        registerCharacterIdle({
+          mode: "shopper", ref: shaliach,
+          torso: shaliach.userData.torso,
+          armL: shaliach.userData.armL,
+          armR: shaliach.userData.armR,
+          phase: 580
+        });
+
+        // Give him interactive speech bubbles
+        if (shaliach.userData.torso) {
+          shaliach.userData.torso.userData = {
+            phrases: ["יהודי! תפילין היום? 🕍", "שליחות עם חיוך 😊", "מצווה! בא נניח תפילין ✡️"],
+            phrasesByLang: {
+              he: ["יהודי! תפילין היום? 🕍", "שליחות עם חיוך 😊", "מצווה! בא נניח תפילין ✡️"],
+              en: ["Tefillin today? 🕍", "On a mission, with a smile 😊", "A mitzvah! Come put on tefillin ✡️"]
+            }
+          };
+          interactiveCitizens.push(shaliach.userData.torso);
+        }
+      }(0.6, 3.6, Math.PI * 0.6));
+
+      // 🗑️ Israeli municipal green bins — the big boxy dark-green containers
+      (function () {
+        function createIsraeliGreenBin(x, z, ry) {
+          const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry || 0; root.add(g);
+          const bodyM = mat(0x2B5C25, 0.5, 0.4);
+          const lidM  = mat(0x234D1E, 0.45, 0.5);
+          const rimM  = mat(0x1A3D16, 0.6, 0.6);
+          // Body — boxy with slight taper
+          g.add(mesh(roundedBox(0.36, 0.46, 0.30, 0.025), bodyM, 0, 0.23, 0));
+          // Darker rim strip at bottom
+          g.add(mesh(new THREE.BoxGeometry(0.37, 0.04, 0.31), rimM, 0, 0.02, 0, false, false));
+          // Lid — slightly wider, angled
+          const lid = mesh(roundedBox(0.38, 0.055, 0.32, 0.02), lidM, 0, 0.478, 0, false, false);
+          lid.rotation.x = -0.06; g.add(lid);
+          // Lid handle — small bar
+          g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.12, 5), mat(0x1A3D16, 0.7), 0, 0.52, 0.10, false, false));
+          // Opening slot on the front face
+          g.add(mesh(new THREE.BoxGeometry(0.16, 0.025, 0.012), mat(0x0F2410, 0.9), 0, 0.44, 0.155, false, false));
+          // Small black wheels (two, at back)
+          [-0.12, 0.12].forEach(function (wx) {
+            const wh = mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.04, 8), mat(0x18181B, 0.8), wx, 0.038, -0.12);
+            wh.rotation.z = Math.PI / 2; g.add(wh);
+          });
+        }
+        // Place bins on the sidewalk — between road (ROAD_AT=5.6) and buildings
+        createIsraeliGreenBin( 6.4,  3.0,  Math.PI * 0.5);
+        createIsraeliGreenBin(-6.4, -2.8, -Math.PI * 0.5);
+        createIsraeliGreenBin( 2.0,  7.0,  0);
+        createIsraeliGreenBin(-2.4, -6.8,  Math.PI);
+      }());
+
+    } // end ISRAEL street details
+
+    // ────────────────────────────────────────────────────────────────
     // 🌱 10d. NATURE RESERVE: MONTHLY SPENDING PACE DYNAMICS
     // ────────────────────────────────────────────────────────────────
     const HEALTHY_PARK = 0.78;
@@ -5359,10 +5934,30 @@ function normalizedSlotPlacements(input) {
             bag: withDog ? null : (walkingCitizens.length % 2 ? 0xA67F52 : null) });
       const joints = g.userData, torso = joints.body;
       root.add(g);
-      const he = phrases || ["איזה יום מקסים! ✨", "שומר על תקציב מעולה 📈"];
+      let he = phrases;
+      let en = englishPhrases;
+      if (typeof ISRAEL !== "undefined" && ISRAEL) {
+        const app = g.userData.appearance || appearance;
+        if (app && app.israelType === 'haredi') {
+          he = ["שבוע טוב ומבורך! ☀️", "ברוך השם יום יום 🙏", "בדרך לקניות לשבת 🛍️", "הפרנסה מן השמיים 🕊️"];
+          en = ["A blessed week! ☀️", "Thank God for every day 🙏", "Shopping for Shabbat 🛍️", "Peace and blessings 🕊️"];
+        } else if (app && app.israelType === 'dati') {
+          he = ["יום נעים ומלא ברכה ✨", "שומר על תקציב שפוי 📊", "קפצתי רגע לסידורים 🚶‍♂️", "איזה יום יפה בשדרה 🌳"];
+          en = ["A wonderful and blessed day ✨", "Keeping the budget steady 📊", "Running quick errands 🚶‍♂️", "Beautiful day on the boulevard 🌳"];
+        } else if (app && app.bottomStyle === 'shorts') {
+          he = ["איזה חום היום... יאללה לים 🌊", "הקפה של הבוקר זה קדוש ☕", "סיבוב קצר בשכונה ☀️", "מי בא לחומוס? 🧆"];
+          en = ["Warm day, heading to the beach 🌊", "Morning coffee is sacred ☕", "Quick walk around ☀️", "Who's up for hummus? 🧆"];
+        } else {
+          he = ["הקפה של הבוקר זה קדוש ☕", "איזה כיף בשדרה 🌳", "שומר על תקציב מעולה 📊", "אחלה יום שבעולם ✨"];
+          en = ["Morning coffee is sacred ☕", "Lovely day on the boulevard 🌳", "Budget looking great 📊", "Wonderful day ✨"];
+        }
+      } else {
+        if (!he || !he.length) he = ["איזה יום מקסים! ✨", "שומר על תקציב מעולה 📈"];
+        if (!en || !en.length) en = ["What a lovely day ✨", "Budget looking good 📈"];
+      }
       torso.userData = {
         phrases: he,
-        phrasesByLang: { he: he, en: englishPhrases || ["What a lovely day ✨", "Budget looking good 📈"] }
+        phrasesByLang: { he: he, en: en }
       };
       interactiveCitizens.push(torso);
 
@@ -5400,8 +5995,8 @@ function normalizedSlotPlacements(input) {
       {x:-2.8,z:1.8}, {x:-2.4,z:2.6}, {x:0,z:3.2}, {x:2.4,z:2.6}, {x:2.8,z:1.8}
     ], ["טיול נעים בפארק 🌿"], ["A lovely stroll through the park 🌿"], false, 0.35, 'city:plaza:stroller');
 
-    // 2. Crosswalk Pedestrian crossing the street
-    addCitizen(null, null, null, [
+    // 2. Crosswalk Pedestrian crossing the street (not in Israel — path runs through road)
+    if (!(typeof ISRAEL !== "undefined" && ISRAEL)) addCitizen(null, null, null, [
       {x: -ROAD_AT, z: -3.2}, {x: -ROAD_AT, z: -1.0}, {x: -ROAD_AT, z: 1.0}, {x: -ROAD_AT, z: -3.2}
     ], ["חוצה בזהירות במעבר חצייה 🚶", "העיר תוססת היום! ✨"], ["Crossing at the zebra walk 🚶", "Lively city today! ✨"], false, 0.38, 'city:crosswalk:ped');
 

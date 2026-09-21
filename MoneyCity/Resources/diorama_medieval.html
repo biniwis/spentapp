@@ -377,6 +377,9 @@
  o.receiveShadow = rec !== false;
  return o;
     }
+    function cylinder(rt, rb, h, seg) {
+      return new THREE.CylinderGeometry(rt, rb, h, seg || 8);
+    }
     
     
     
@@ -1704,7 +1707,7 @@
     }
     /* moving hand cart + human pusher on one root (no knee groups).
        Hands aligned with cart handles; pusher stands behind cart (−Z). */
-    function mdHandCartUnit(g, x, z, rotY, color) {
+    function mdHandCartUnit(g, x, z, rotY, color, isWolt) {
       g.position.set(x, 0, z);
       g.rotation.y = rotY || 0;
       const cart = new THREE.Group();
@@ -1725,23 +1728,60 @@
         hd.rotation.x = Math.PI / 2 + 0.28;
         cart.add(hd);
       });
-      /* This is the moving-cart layer used by the current Medieval map's
-         road traffic. Keep the courier joke on the shared cart itself so it
-         remains visible even when the dedicated delivery pool is quiet. */
-      const courierBag = new THREE.Group();
-      courierBag.position.set(0, 0.56, -0.04);
-      cart.add(courierBag);
-      const deliveryCanvas=mat(0x27B9CB,.96);
-      courierBag.add(mesh(roundedBox(.60,.42,.40,.045),deliveryCanvas,0,0,0,false,true));
-      courierBag.add(mesh(roundedBox(.64,.055,.44,.025),deliveryCanvas,0,.23,0,false,true));
-      [-.21,.21].forEach(function(s){
-        courierBag.add(mesh(new THREE.BoxGeometry(.035,.43,.414),MD_TIMBER_DOOR,s,0,0,false,false));
-        courierBag.add(mesh(new THREE.BoxGeometry(.055,.065,.018),MD_LANTERN_BR,s,.09,.218,false,false));
-      });
-      if(!mdHandCartUnit.deliveryMark)mdHandCartUnit.deliveryMark=new THREE.MeshStandardMaterial({map:signTex('Wolt','#27B9CB','#FFFFFF',49),roughness:1});
-      const frontMark=mesh(new THREE.PlaneGeometry(.35,.14),mdHandCartUnit.deliveryMark,0,.01,.211,false,false);courierBag.add(frontMark);
-      [-1,1].forEach(function(s){const mark=frontMark.clone();mark.position.set(s*.306,.02,0);mark.rotation.y=s*Math.PI/2;courierBag.add(mark);});
-      var appearance = buildAppearanceProfile("handcart-pusher:" + ((color || 0xB8452E).toString(16)));
+
+      if (isWolt) {
+        // Dedicated Wolt delivery courier bag: cyan insulated thermal cube + Wolt branding
+        const courierBag = new THREE.Group();
+        courierBag.position.set(0, 0.56, -0.04);
+        cart.add(courierBag);
+        const deliveryCanvas = mat(0x27B9CB, 0.96);
+        courierBag.add(mesh(roundedBox(0.60, 0.42, 0.40, 0.045), deliveryCanvas, 0, 0, 0, false, true));
+        courierBag.add(mesh(roundedBox(0.64, 0.055, 0.44, 0.025), deliveryCanvas, 0, 0.23, 0, false, true));
+        [-0.21, 0.21].forEach(function (s) {
+          courierBag.add(mesh(new THREE.BoxGeometry(0.035, 0.43, 0.414), MD_TIMBER_DOOR, s, 0, 0, false, false));
+          courierBag.add(mesh(new THREE.BoxGeometry(0.055, 0.065, 0.018), MD_LANTERN_BR, s, 0.09, 0.218, false, false));
+        });
+        if (!mdHandCartUnit.deliveryMark) {
+          mdHandCartUnit.deliveryMark = new THREE.MeshStandardMaterial({ map: signTex('Wolt', '#27B9CB', '#FFFFFF', 49), roughness: 1 });
+        }
+        const frontMark = mesh(new THREE.PlaneGeometry(0.35, 0.14), mdHandCartUnit.deliveryMark, 0, 0.01, 0.211, false, false);
+        courierBag.add(frontMark);
+        [-1, 1].forEach(function (s) {
+          const mark = frontMark.clone();
+          mark.position.set(s * 0.306, 0.02, 0);
+          mark.rotation.y = s * Math.PI / 2;
+          courierBag.add(mark);
+        });
+      } else {
+        // Regular merchant & town handcart: authentic rustic cargo (crates, grain sacks, small barrel)
+        const cargo = new THREE.Group();
+        cargo.position.set(0, 0.34, -0.04);
+        cart.add(cargo);
+
+        // Wooden cargo crate
+        cargo.add(mesh(roundedBox(0.34, 0.26, 0.36, 0.02), MD_TIMBER_LT, -0.16, 0.13, 0, false, true));
+        cargo.add(mesh(new THREE.BoxGeometry(0.35, 0.03, 0.37), MD_TIMBER, -0.16, 0.13, 0, false, false));
+
+        // Sacks of flour/grain tied on the side
+        const sack1 = mesh(new THREE.SphereGeometry(0.13, 8, 6), MD_SACK, 0.18, 0.09, -0.08, false, true);
+        sack1.scale.set(1.0, 0.76, 1.22);
+        cargo.add(sack1);
+
+        const sack2 = mesh(new THREE.SphereGeometry(0.11, 8, 6), MD_SACK, 0.18, 0.22, -0.05, false, true);
+        sack2.scale.set(0.9, 0.72, 1.10);
+        cargo.add(sack2);
+
+        // Small wooden barrel
+        const barrel = mesh(new THREE.CylinderGeometry(0.09, 0.105, 0.24, 8), MD_TIMBER, 0.17, 0.12, 0.12, false, true);
+        barrel.rotation.z = Math.PI / 2;
+        cargo.add(barrel);
+      }
+
+      var appearance = buildAppearanceProfile(
+        isWolt
+          ? ("wolt-pusher:" + ((color || 0x27B9CB).toString(16)))
+          : ("handcart-pusher:" + ((color || 0xB8452E).toString(16)))
+      );
       var pusher = makeFigure({ appearance: appearance });
       var ud = pusher.userData;
       pusher.position.set(0, 0, -0.62);
@@ -3186,6 +3226,7 @@
       };
       proxy.userData.shell = shell;
       cityBuildings[cfg.id] = rec;
+      if (typeof attachMedievalContextualLife === "function") attachMedievalContextualLife(g, cfg, w, d);
       setBuildingTier(rec, 1);
       return rec;
     }/* ============ MEDIEVAL ROOFSCAPE / ARCHITECTURAL IDENTITY — BOLD PASS ============
@@ -4822,8 +4863,10 @@ function mdLegacyTierLookup(id) {
 
       // Knight Archetype (אביר)
       const isSeated = (fullKey.indexOf('seated') >= 0 || fullKey.indexOf('guest') >= 0 || fullKey.indexOf('driver') >= 0);
+      const isPusher = (fullKey.indexOf('pusher') >= 0 || fullKey.indexOf('worker') >= 0 || fullKey.indexOf('courier') >= 0);
+      const isWoltCourier = (fullKey.indexOf('wolt') >= 0);
       const knightRoll = rand();
-      const isKnight = !isSeated && (fullKey.indexOf('knight') >= 0 || fullKey.indexOf('guard') >= 0 || knightRoll < 0.28);
+      const isKnight = !isSeated && !isPusher && (fullKey.indexOf('knight') >= 0 || fullKey.indexOf('guard') >= 0 || knightRoll < 0.28);
       const KNIGHT_ORDERS = [
         { surcoat: 0x991B1B, trim: 0xF59E0B, plume: 0xDC2626 }, // Royal Lion (Crimson & Gold)
         { surcoat: 0x1E40AF, trim: 0xF3F4F6, plume: 0x2563EB }, // Azure Cross (Blue & White)
@@ -4848,10 +4891,10 @@ function mdLegacyTierLookup(id) {
         prop: isKnight ? null : prop,
         restPose: isKnight ? 'neutral' : restPose,
         headShape: headShape,
-        topStyle: isKnight ? 'sweater' : CITIZEN_TOP_STYLES[topStyleIdx],
-        topColor: isKnight ? knightOrder.surcoat : CITIZEN_TOPS[topColIdx],
-        bottomColor: isKnight ? armorColor : CITIZEN_BOTTOMS[btmColIdx],
-        accessory: isKnight ? null : accessory,
+        topStyle: isKnight ? 'sweater' : (isWoltCourier ? 'longSleeve' : CITIZEN_TOP_STYLES[topStyleIdx]),
+        topColor: isKnight ? knightOrder.surcoat : (isWoltCourier ? 0x27B9CB : CITIZEN_TOPS[topColIdx]),
+        bottomColor: isKnight ? armorColor : (isWoltCourier ? 0x1E293B : CITIZEN_BOTTOMS[btmColIdx]),
+        accessory: (isKnight || isPusher) ? null : accessory,
         motion: CITIZEN_MOTION_PROFILES[motionIdx],
         isKnight: isKnight,
         knightSurcoat: knightOrder.surcoat,
@@ -5374,10 +5417,10 @@ function mdLegacyTierLookup(id) {
     function makeCourier(color, poseVariant) {
       /* Medieval delivery unit: the existing SPENT figure is already built
          into mdHandCartUnit, standing behind the handles and moving as one
-         root with the cart. Add the blue courier satchel to the cargo bed,
-         never to the worker, so it cannot float independently. */
+         root with the cart. Add the cyan Wolt courier box to the cargo bed
+         only for actual Wolt couriers. */
       const vehicle = new THREE.Group();
-      mdHandCartUnit(vehicle, 0, 0, 0, color || 0x8A5A2B);
+      mdHandCartUnit(vehicle, 0, 0, 0, color || 0x27B9CB, true);
       return vehicle;
     }
     function makeWorker(vest) {
@@ -5462,7 +5505,7 @@ function createCar(color, isBus, isTaxi) {
         var c = mdWagon(color || (isTaxi ? 0x8B5A2B : 0x6E4E2E), true, true);
         g.add(c);
       } else {
-        mdHandCartUnit(g, 0, 0, 0, color);
+        mdHandCartUnit(g, 0, 0, 0, color, false);
       }
       g.traverse(function(child) {
         if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
@@ -5762,7 +5805,91 @@ const CHARACTER = {
       trans_station: function (g, w, d) { mdHitchRail(g, -w * 0.34, d / 2 + 0.50, 1.1, 0); mdBanner(g, -w * 0.4, 0, -d / 2 + 0.05, 1.4); }
 };
 
-;
+function attachMedievalContextualLife(g, cfg, w, d) {
+  if (typeof CHARACTER !== "undefined" && CHARACTER[cfg.id]) {
+    try { CHARACTER[cfg.id](g, w, d); } catch (e) { console.warn("medieval character " + cfg.id, e); }
+  }
+  if (cfg.id === "food_coffee") {
+    var tGrp = new THREE.Group();
+    tGrp.position.set(w * 0.13, 0, d / 2 + 0.85);
+    g.add(tGrp);
+    tGrp.add(mesh(roundedBox(0.48, 0.045, 0.52, 0.02), MD_TIMBER_LT, 0, 0.41, 0, false, false));
+    [-0.18, 0.18].forEach(function (x) {
+      tGrp.add(mesh(new THREE.BoxGeometry(0.04, 0.38, 0.04), MD_TIMBER, x, 0.20, 0, false, false));
+    });
+    [-0.08, 0.08].forEach(function (cx) {
+      tGrp.add(mesh(cylinder(0.038, 0.032, 0.075, 7), mat(0x8A5A3C, 0.92), cx, 0.47, 0, false, false));
+    });
+    [-1, 1].forEach(function (side, i) {
+      var bench = new THREE.Group();
+      bench.position.z = side * 0.44;
+      bench.rotation.y = side > 0 ? Math.PI : 0;
+      tGrp.add(bench);
+      bench.add(mesh(roundedBox(0.24, 0.035, 0.24, 0.02), MD_TIMBER_LT, 0, 0.25, 0, false, false));
+      bench.add(mesh(roundedBox(0.24, 0.24, 0.03, 0.02), MD_TIMBER, 0, 0.38, -0.10, false, false));
+      var guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:medieval:guest:' + i) });
+      guest.position.z = 0.015;
+      bench.add(guest);
+      applySeatedPoseVariant(guest, i === 0 ? "leanForward" : "neutral");
+      guest.userData.lifeActor = true;
+      packRigidModel(guest);
+      bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+      registerCharacterIdle({
+        mode: "seated",
+        ref: guest,
+        baseYaw: guest.rotation.y,
+        baseY: guest.position.y,
+        phase: 250 + i * 400,
+        subType: i
+      });
+    });
+  } else if (cfg.id === "food_bistro") {
+    [-0.38, 0.38].forEach(function (tx, tIdx) {
+      var dt = new THREE.Group();
+      dt.position.set(tx, 0, d / 2 + 0.75);
+      g.add(dt);
+      dt.add(mesh(roundedBox(0.56, 0.045, 0.62, 0.02), MD_TIMBER_LT, 0, 0.43, 0, false, false));
+      [-1, 1].forEach(function (side, sIdx) {
+        var idx = tIdx * 2 + (side > 0 ? 1 : 0);
+        var threshold = [0.18, 0.46, 0.45, 0.73][idx];
+        var guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:medieval:guest:' + idx) });
+        guest.position.z = side * 0.46;
+        guest.rotation.y = side > 0 ? Math.PI : 0;
+        applySeatedPoseVariant(guest, ["leanForward", "neutral", "turnedSlightly", "leanBack"][idx]);
+        guest.userData.lifeActor = true;
+        packRigidModel(guest);
+        dt.add(guest);
+        bindVenueActor(guest, "food_bistro", threshold);
+        registerCharacterIdle({
+          mode: "seated",
+          ref: guest,
+          baseYaw: guest.rotation.y,
+          baseY: guest.position.y,
+          phase: 180 + idx * 210,
+          subType: side > 0 ? 1 : 0
+        });
+        dt.add(mesh(cylinder(0.04, 0.035, 0.06, 7), mat(0x8A5A3C, 0.92), 0, 0.48, side * 0.18, false, false));
+        dt.add(mesh(roundedBox(0.26, 0.035, 0.25, 0.02), MD_TIMBER_LT, 0, 0.25, side * 0.46, false, false));
+        dt.add(mesh(roundedBox(0.26, 0.24, 0.03, 0.02), MD_TIMBER, 0, 0.38, side * 0.56, false, false));
+      });
+    });
+  } else if (cfg.id === "shop_boutique") {
+    var shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:medieval:shopper') });
+    shopper.position.set(w * 0.24, 0, d / 2 + 0.60);
+    shopper.rotation.y = -0.35;
+    shopper.add(mesh(roundedBox(0.12, 0.16, 0.08, 0.02), mat(0x8A5A3C, 0.9), 0.22, 0.24, 0.08, false, false));
+    shopper.userData.lifeActor = true;
+    packRigidModel(shopper);
+    g.add(shopper);
+    bindVenueActor(shopper, "shop_boutique", 0.15);
+    registerCharacterIdle({
+      mode: "shopper",
+      ref: shopper,
+      torso: shopper.userData.torso,
+      phase: 420
+    });
+  }
+}
     
     
     
@@ -8389,32 +8516,19 @@ const CROWD_RECENT_WINDOW = 6;
 
 
 const CROWD_FRONTAGES = {
-  food_super:    {
- x: 10.88, z: -3.25, rot: Math.PI / 2, width: 1.85, routeOffset: 1.66, laneWidth: 0.10 }
-,  food_bistro:   {
- x: 10.98, z: -1.05, rot: Math.PI / 2, width: 1.70, routeOffset: 1.56, laneWidth: 0.10,    maxWait: 3, waitSlots: [[0, -0.20], [0, 0.12], [0, 0.43]] }
-,  food_coffee:   {
- x: 10.88, z: 1.15, rot: Math.PI / 2, width: 1.70, cafe: true, routeOffset: 1.66, laneWidth: 0.10 }
-,  food_wolt:     {
- x: 10.88, z: 3.30, rot: Math.PI / 2, width: 1.80, routeOffset: 1.66, laneWidth: 0.10, maxWalk: 3, maxWait: 3 }
-,  shop_boutique: {
- x: -7.40, z: -3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.20, waitOffset: -0.30 }
-,  shop_tech:     {
- x: -7.40, z: -1.10, rot: Math.PI / 2, width: 1.30, routeOffset: 0.20, waitOffset: -0.30 }
-,  shop_travel:   {
- x: -7.40, z: 1.15, rot: Math.PI / 2, width: 1.30, routeOffset: 0.20, waitOffset: -0.30, maxWalk: 3, maxWait: 3 }
-,  shop_arcade:   {
- x: -7.40, z: 3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.20, waitOffset: -0.30 }
-,  house_tower:   {
- x: -2.85, z: -7.60, rot: 0, width: 2.10, maxWalk: 2, maxWait: 2, routeOffset: 0.58, laneWidth: 0.10 }
-,  health_pharmacy: {
- x: -2.85, z: 10.85, rot: 0, width: 1.90, maxWalk: 4, maxWait: 4 }
-,  museum_curiosities: {
- x: 0, z: 10.95, rot: 0, width: 1.80, maxWalk: 4, maxWait: 4 }
-,  trans_station: {
- x: 8.85, z: 7.85, rot: 0, width: 1.90, maxWalk: 4, maxWait: 4, routeOffset: -0.9 }
-}
-;
+  food_super:    { x: 10.35, z: -3.25, rot: Math.PI / 2, width: 1.85, routeOffset: 0.95, laneWidth: 0.20 },
+  food_bistro:   { x: 10.35, z: -1.05, rot: Math.PI / 2, width: 1.70, routeOffset: 1.10, laneWidth: 0.20, maxWait: 3, waitSlots: [[0, 0.25], [0, 0.45], [0, 0.65]] },
+  food_coffee:   { x: 10.20, z: 1.15, rot: Math.PI / 2, width: 1.70, cafe: true, routeOffset: 1.15, laneWidth: 0.20 },
+  food_wolt:     { x: 10.30, z: 3.30, rot: Math.PI / 2, width: 1.80, routeOffset: 1.05, laneWidth: 0.20, maxWalk: 3, maxWait: 3 },
+  shop_boutique: { x: -7.60, z: -3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.45, laneWidth: 0.22, waitOffset: -0.20 },
+  shop_tech:     { x: -7.60, z: -1.10, rot: Math.PI / 2, width: 1.30, routeOffset: 0.45, laneWidth: 0.22, waitOffset: -0.20 },
+  shop_travel:   { x: -7.60, z: 1.15, rot: Math.PI / 2, width: 1.30, routeOffset: 0.45, laneWidth: 0.22, waitOffset: -0.20, maxWalk: 3, maxWait: 3 },
+  shop_arcade:   { x: -7.60, z: 3.30, rot: Math.PI / 2, width: 1.70, routeOffset: 0.45, laneWidth: 0.22, waitOffset: -0.20 },
+  house_tower:   { x: -2.85, z: -7.80, rot: 0, width: 2.10, maxWalk: 2, maxWait: 2, routeOffset: 0.60, laneWidth: 0.20 },
+  health_pharmacy: { x: -2.85, z: 10.55, rot: 0, width: 1.90, maxWalk: 4, maxWait: 4, routeOffset: 0.40, laneWidth: 0.20 },
+  museum_curiosities: { x: 0, z: 10.60, rot: 0, width: 1.80, maxWalk: 4, maxWait: 4, routeOffset: 0.40, laneWidth: 0.20 },
+  trans_station: { x: 8.85, z: 7.85, rot: 0, width: 1.90, maxWalk: 4, maxWait: 4, routeOffset: -0.9, laneWidth: 0.22 }
+};
 function crowdDemand(state, frontage) {
   if (!state || !(state.amount > 0) || !(state.purchaseCount > 0)) return {
  walkers: 0, waiting: 0 }
@@ -8484,13 +8598,14 @@ function crowdRoute(front) {
 );
 }
 function waitingPose(front, index) {
-  
-  const u = front.waitSlots ? front.waitSlots[index][0] : front.cafe ? (index < 3 ? -0.73 : 0.73) : [-0.66, -0.30, 0.06, 0.48, 0.72, 0.42][index];
-  const v = front.waitSlots ? front.waitSlots[index][1] : front.cafe ? [-0.27, 0.02, 0.28][index % 3] : [-0.06, -0.06, -0.06, -0.11, 0.17, 0.21][index];
+  const slot = front.waitSlots ? (front.waitSlots[index] || front.waitSlots[front.waitSlots.length - 1]) : null;
+  const u = slot ? slot[0] : front.cafe ? (index < 3 ? -0.73 : 0.73) : [-0.66, -0.30, 0.06, 0.48, 0.72, 0.42][index % 6];
+  const v = slot ? slot[1] : front.cafe ? [-0.27, 0.02, 0.28][index % 3] : [-0.06, -0.06, -0.06, -0.11, 0.17, 0.21][index % 6];
   const point = frontagePoint(front, u, v + (front.waitOffset || 0));
   return {
- x: point.x, z: point.z, yaw: front.rot + (index < 3 ? Math.PI : (index % 2 ? -0.8 : 2.3)),    role: index < 3 ? "waiting" : "chatting" }
-;
+    x: point.x, z: point.z, yaw: front.rot + (index < 3 ? Math.PI : (index % 2 ? -0.8 : 2.3)),
+    role: index < 3 ? "waiting" : "chatting"
+  };
 }
 function ensureCrowdBatches() {
   if (crowdBatches.length) return;

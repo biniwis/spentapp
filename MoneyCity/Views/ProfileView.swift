@@ -36,7 +36,7 @@ public struct ProfileView: View {
     @State private var showDetailedBudget = false
     @State private var activeRecapForSheet: MonthlyRecap? = nil
     @State private var showCityWorldPicker = false
-    @State private var cityWorldPickerTargetMonth: Date = Date()
+    @State private var cityWorldPickerTargetMonth: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
     @State private var cityWorldDraft: CityMapStyle = .urban
     @State private var cityWorldRevision: Int = 0
     #if DEBUG
@@ -284,13 +284,15 @@ public struct ProfileView: View {
                 targetMonth: cityWorldPickerTargetMonth,
                 draft: $cityWorldDraft,
                 isHebrew: l10n.language == .hebrew,
+                onClose: {
+                    showCityWorldPicker = false
+                },
                 onConfirm: { chosenStyle in
                     CityMapSelection.confirmWorldChoice(chosenStyle, for: cityWorldPickerTargetMonth)
                     cityWorldRevision += 1
                     showCityWorldPicker = false
                 }
             )
-            .interactiveDismissDisabled()
             .environmentObject(l10n)
         }
         .onAppear {

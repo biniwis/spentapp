@@ -144,6 +144,7 @@ struct CityWorldsLabView: View {
     @StateObject private var session = CityWorldPreviewSession()
     @State private var resetToken = 0
     @State private var night = false
+    @State private var activityLevel: Double = 0.60
     private var isHe: Bool { l10n.language == .hebrew }
 
     var body: some View {
@@ -184,7 +185,7 @@ struct CityWorldsLabView: View {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(building.name).font(.headline)
                                 Text(building.id).font(.caption.monospaced())
-                                Text("\(l10n.format(amount: CityWorldDemo.buildings[building.id] ?? building.amount)) · \(CityWorldDemo.venues.first(where: { $0.id == building.id })?.purchaseCount ?? 0) \(isHe ? "ביקורים לדוגמה" : "demo visits")")
+                                Text("\(l10n.format(amount: CityWorldDemo.buildings[building.id] ?? building.amount)) · \(currentVenues.first(where: { $0.id == building.id })?.purchaseCount ?? 0) \(isHe ? "ביקורים לדוגמה" : "demo visits")")
                                     .font(.caption)
                             }
                             Spacer()
@@ -194,6 +195,93 @@ struct CityWorldsLabView: View {
                             .accessibilityLabel(isHe ? "סגור פרטי מבנה" : "Close building details")
                         }
                     }
+
+                    // ── Activity & People Test Controls ──
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            HStack(spacing: 5) {
+                                Image(systemName: "person.2.fill")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(MoneyCityTheme.jetBlack)
+                                Text(isHe ? "רמת פעילות ואנשים" : "Activity & People")
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundColor(MoneyCityTheme.jetBlack)
+                            }
+                            Spacer()
+                            Text("\(Int(round(activityLevel * 100)))%")
+                                .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                                .foregroundColor(MoneyCityTheme.violetBlue)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(MoneyCityTheme.babyBlue.opacity(0.55))
+                                .clipShape(Capsule())
+                        }
+
+                        Slider(value: $activityLevel, in: 0.0...1.0, step: 0.01)
+                            .tint(MoneyCityTheme.brandPrimary)
+
+                        HStack(spacing: 5) {
+                            ForEach([
+                                (0.0, isHe ? "שקט 0%" : "0%"),
+                                (0.20, isHe ? "סף 20%" : "20%"),
+                                (0.50, isHe ? "בינוני 50%" : "50%"),
+                                (0.75, isHe ? "שוקק 75%" : "75%"),
+                                (1.0, isHe ? "מקס 100%" : "100%")
+                            ], id: \.0) { val, label in
+                                let isCurrent = abs(activityLevel - val) < 0.04
+                                Button {
+                                    Haptics.impact(.light)
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        activityLevel = val
+                                    }
+                                } label: {
+                                    Text(label)
+                                        .font(.system(size: 10.5, weight: isCurrent ? .bold : .medium, design: .rounded))
+                                        .foregroundColor(isCurrent ? .white : MoneyCityTheme.jetBlack)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3.5)
+                                        .background(isCurrent ? MoneyCityTheme.jetBlack : Color.black.opacity(0.06))
+                                        .clipShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+
+                        HStack(spacing: 12) {
+                            let coffeePatrons = activityLevel < 0.18 ? 0 : (activityLevel < 0.46 ? 1 : 2)
+                            let bistroPatrons = activityLevel < 0.18 ? 0 : (activityLevel < 0.45 ? 1 : (activityLevel < 0.46 ? 2 : (activityLevel < 0.73 ? 3 : 4)))
+                            let shopperPatrons = activityLevel < 0.15 ? 0 : 1
+
+                            HStack(spacing: 3) {
+                                Text("☕")
+                                Text("\(coffeePatrons)/2")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                                    .foregroundColor(coffeePatrons > 0 ? MoneyCityTheme.jetBlack : MoneyCityTheme.textSecondary)
+                            }
+                            HStack(spacing: 3) {
+                                Text("🍷")
+                                Text("\(bistroPatrons)/4")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                                    .foregroundColor(bistroPatrons > 0 ? MoneyCityTheme.jetBlack : MoneyCityTheme.textSecondary)
+                            }
+                            HStack(spacing: 3) {
+                                Text("🛍️")
+                                Text("\(shopperPatrons)/1")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded).monospacedDigit())
+                                    .foregroundColor(shopperPatrons > 0 ? MoneyCityTheme.jetBlack : MoneyCityTheme.textSecondary)
+                            }
+                            Spacer()
+                            let walkersEst = activityLevel <= 0 ? 0 : max(1, Int(round(pow(activityLevel, 1.3) * 7.0)))
+                            Text(isHe ? "הולכים: ~\(walkersEst)" : "Walkers: ~\(walkersEst)")
+                                .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                                .foregroundColor(MoneyCityTheme.textSecondary)
+                        }
+                    }
+                    .padding(10)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.025), radius: 4, y: 1)
+
                     HStack {
                         Button {
                             session.district = nil
@@ -232,13 +320,66 @@ struct CityWorldsLabView: View {
         .environment(\.layoutDirection, isHe ? .rightToLeft : .leftToRight)
     }
 
+    private var currentVenues: [CityVenueState] {
+        if activityLevel <= 0 {
+            return CityLifeEngine.venueIDs.map { id in
+                CityVenueState(
+                    id: id, amount: 0, share: 0,
+                    purchaseCount: 0, activeDays: 0,
+                    merchantCount: 0, activity: 0,
+                    presence: 0, additionalPlaces: 0
+                )
+            }
+        }
+        let total = CityWorldDemo.buildings.values.reduce(0, +)
+        return CityLifeEngine.venueIDs.map { id in
+            let baseAmount = CityWorldDemo.buildings[id] ?? 200
+            let scaledAmount = baseAmount * max(0.08, activityLevel)
+            let purchases = max(1, Int(round(Double(18) * activityLevel)))
+            return CityVenueState(
+                id: id,
+                amount: scaledAmount,
+                share: scaledAmount / total,
+                purchaseCount: purchases,
+                activeDays: max(1, Int(round(Double(14) * activityLevel))),
+                merchantCount: max(1, Int(round(Double(3) * activityLevel))),
+                activity: activityLevel,
+                presence: activityLevel,
+                additionalPlaces: activityLevel > 0.85 ? 1 : 0
+            )
+        }
+    }
+
+    private var currentHabits: BehavioralHabits {
+        let wolt = Int(round(12.0 * activityLevel))
+        let coffee = Int(round(20.0 * activityLevel))
+        let totalSpend = Double(wolt) * 85.0
+        let activeDays = max(0, Int(round(8.0 * activityLevel)))
+        return BehavioralHabits(
+            woltDeliveryCount: wolt,
+            woltActiveDays: activeDays,
+            woltTotalSpend: totalSpend,
+            coffeeCount: coffee,
+            onlinePackagesCount: Int(round(6.0 * activityLevel)),
+            hasTravelOrFlight: activityLevel > 0.3,
+            activeSubscriptionsCount: activityLevel > 0 ? 5 : 0,
+            totalGroceryBags: Int(round(8.0 * activityLevel)),
+            deliveryIntensity: DeliveryIntensityEngine.compute(
+                orderCount: wolt, totalSpend: totalSpend,
+                activeDays: activeDays, elapsedDays: 30
+            )
+        )
+    }
+
     private var preview: some View {
         ThreeDioramaView(
-            totalSpent: CityWorldDemo.total, totalSavings: 3200, savingsTarget: 4000,
+            totalSpent: activityLevel <= 0 ? 0 : CityWorldDemo.total * max(0.1, activityLevel),
+            totalSavings: 3200, savingsTarget: 4000,
             parkHealth: 0.85, viewResetToken: resetToken,
-            categoryTotals: CityWorldDemo.categories, buildingTotals: CityWorldDemo.buildings,
-            districtStates: CitySimulationEngine.districtStates(for: CityWorldDemo.categories),
-            venueStates: CityWorldDemo.venues, habits: CityWorldDemo.habits,
+            categoryTotals: activityLevel <= 0 ? [:] : CityWorldDemo.categories,
+            buildingTotals: activityLevel <= 0 ? [:] : CityWorldDemo.buildings,
+            districtStates: CitySimulationEngine.districtStates(for: activityLevel <= 0 ? [:] : CityWorldDemo.categories),
+            venueStates: currentVenues, habits: currentHabits,
             selectedDistrict: session.district, selectedBuildingId: session.building?.id,
             language: isHe ? "he" : "en", timeOfDayOverride: night ? 22 : 14,
             onSelectDistrict: { session.district = $0 },

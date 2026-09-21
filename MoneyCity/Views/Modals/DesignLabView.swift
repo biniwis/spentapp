@@ -1793,7 +1793,18 @@ public struct CityDensityLabSheet: View {
                 categoryTotals: currentPreset.categoryTotals,
                 buildingTotals: currentPreset.buildingTotals,
                 districtStates: CitySimulationEngine.districtStates(for: currentPreset.categoryTotals),
-                venueStates: [],
+                venueStates: currentPreset.buildingTotals.isEmpty ? [] : CityLifeEngine.venueIDs.map { id in
+                    let amt = currentPreset.buildingTotals[id] ?? 0
+                    let total = max(1.0, currentPreset.totalSpent)
+                    let act = amt > 0 ? min(1.0, max(0.12, amt / 1000.0)) : 0.0
+                    return CityVenueState(
+                        id: id, amount: amt, share: amt / total,
+                        purchaseCount: amt > 0 ? max(1, Int(amt / 120)) : 0,
+                        activeDays: amt > 0 ? max(1, Int(amt / 250)) : 0,
+                        merchantCount: amt > 0 ? 1 : 0,
+                        activity: act, presence: act, additionalPlaces: 0
+                    )
+                },
                 habits: currentPreset.habits,
                 enrichmentIds: currentPreset.enrichmentIds,
                 newlyUnlockedEnrichmentId: nil,

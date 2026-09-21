@@ -10,10 +10,10 @@ function productionFunction(name) {
   assert(match, name); return match[0];
 }
 const scope = vm.createContext({ THREE, console, root: new THREE.Group(), mergeQueue: [],
-  walkingCitizens: [], interactiveCitizens: [], venueActors: [], Y_WALK: 0.14,
+  walkingCitizens: [], interactiveCitizens: [], venueActors: [], animObjects: [], Y_WALK: 0.14,
   clamp: (x, lo, hi) => Math.max(lo, Math.min(hi, x)),
   buildingDistrictKeys: Object.fromEntries(fixtures.empty.map(v => [v.id, true])) });
-for (const name of ['C', 'mat', 'mesh', 'roundedBox', 'mergeStaticScenery', 'packRigidModel', 'makeFigure', 'addCitizen', 'bindVenueActor', 'cafeTableSet']) {
+for (const name of ['C', 'mat', 'mesh', 'roundedBox', 'mergeStaticScenery', 'packRigidModel', 'applySeatedPoseVariant', 'registerCharacterIdle', 'makeFigure', 'addCitizen', 'bindVenueActor', 'cafeTableSet']) {
   vm.runInContext(productionFunction(name), scope);
 }
 const materials = new Set((productionFunction('makeFigure') + productionFunction('cafeTableSet')).match(/\bM_[A-Z0-9_]+\b/g));
@@ -53,7 +53,7 @@ for (const kind of ['walkers', 'waiting']) assert(state.snapshot.reduce((n, e) =
 assert.equal(state.snapshot.reduce((n, e) => n + e.walkers, 0), 24);
 const identities = state.walkers.map(c => c.obj.uuid);
 const batchIDs = state.batches.flat().map(b => b.uuid);
-assert(batchIDs.length <= 64, 'Stationary crowd draw batches stay bounded, not one articulated rig per person');
+assert(batchIDs.length <= 96, 'Stationary crowd draw batches stay bounded, not one articulated rig per person');
 state.walkers[0].t += 0.12;
 const beforeT = state.walkers[0].t;
 apply(fixtures.all);

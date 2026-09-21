@@ -153,7 +153,9 @@ public struct MonthlyWorldPickerView: View {
 
                             Button {
                                 Haptics.selection()
-                                draft = style
+                                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82)) {
+                                    draft = style
+                                }
                                 onSelect(style)
                             } label: {
                                 VStack(alignment: .leading, spacing: 10) {

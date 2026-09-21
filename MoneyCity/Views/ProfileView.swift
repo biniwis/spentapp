@@ -294,7 +294,6 @@ public struct ProfileView: View {
                     CityMapSelection.save(chosenStyle, for: Date())
                     cityWorldRevision += 1
                     onMapStyleChanged?(chosenStyle)
-                    showCityWorldPicker = false
                 }
             )
             .environmentObject(l10n)

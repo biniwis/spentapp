@@ -2281,6 +2281,72 @@
       return g;
     }
 
+    function mdSwallowtailPennant(parent, x, y, z, poleH, flagColor, stripeColor, rotY) {
+      const p = new THREE.Group();
+      p.position.set(x, y, z);
+      if (rotY) p.rotation.y = rotY;
+      parent.add(p);
+      const h = poleH || 1.2;
+      p.add(mesh(new THREE.CylinderGeometry(0.02, 0.02, h, 6), MD_TIMBER, 0, h / 2, 0, false, true));
+      p.add(mesh(new THREE.SphereGeometry(0.045, 6, 5), mat(0xBDA05C, 0.8), 0, h + 0.03, 0));
+      const s = new THREE.Shape();
+      s.moveTo(0, 0);
+      s.lineTo(0.55, 0.04);
+      s.lineTo(0.42, -0.14);
+      s.lineTo(0.55, -0.32);
+      s.lineTo(0, -0.28);
+      s.closePath();
+      const fGeo = new THREE.ExtrudeGeometry(s, { depth: 0.015, bevelEnabled: false });
+      p.add(mesh(fGeo, flagColor || MD_LINEN_RD, 0.016, h, 0));
+      if (stripeColor) {
+        p.add(mesh(new THREE.BoxGeometry(0.22, 0.05, 0.02), stripeColor, 0.16, h - 0.14, 0));
+      }
+      return p;
+    }
+
+    function mdHangingBanner(parent, x, y, z, w, h, col1, col2, rotY) {
+      const bg = new THREE.Group();
+      bg.position.set(x, y, z);
+      if (rotY) bg.rotation.y = rotY;
+      parent.add(bg);
+      bg.add(mesh(new THREE.BoxGeometry(w + 0.08, 0.035, 0.035), MD_TIMBER, 0, 0, 0));
+      [-1, 1].forEach(s => bg.add(mesh(new THREE.SphereGeometry(0.03, 5, 4), mat(0xBDA05C, 0.8), s * (w / 2 + 0.04), 0, 0)));
+      const s = new THREE.Shape();
+      s.moveTo(-w / 2, 0);
+      s.lineTo(w / 2, 0);
+      s.lineTo(w / 2, -h);
+      s.lineTo(0, -h + 0.16);
+      s.lineTo(-w / 2, -h);
+      s.closePath();
+      const geo = new THREE.ExtrudeGeometry(s, { depth: 0.012, bevelEnabled: false });
+      bg.add(mesh(geo, col1 || MD_LINEN_RD, 0, 0, 0.01));
+      if (col2) {
+        bg.add(mesh(new THREE.BoxGeometry(w * 0.36, h * 0.45, 0.016), col2, 0, -h * 0.40, 0.012));
+      }
+      return bg;
+    }
+
+    function mdWallShield(parent, x, y, z, col1, col2, rotY) {
+      const sg = new THREE.Group();
+      sg.position.set(x, y, z);
+      if (rotY) sg.rotation.y = rotY;
+      parent.add(sg);
+      const s = new THREE.Shape();
+      s.moveTo(-0.16, 0.22);
+      s.lineTo(0.16, 0.22);
+      s.lineTo(0.16, 0.02);
+      s.quadraticCurveTo(0.15, -0.16, 0, -0.28);
+      s.quadraticCurveTo(-0.15, -0.16, -0.16, 0.02);
+      s.closePath();
+      const geo = new THREE.ExtrudeGeometry(s, { depth: 0.025, bevelEnabled: false });
+      sg.add(mesh(geo, col1 || MD_LINEN_RD, 0, 0, 0));
+      if (col2) {
+        sg.add(mesh(new THREE.BoxGeometry(0.28, 0.05, 0.03), col2, 0, 0.04, 0.005));
+        sg.add(mesh(new THREE.BoxGeometry(0.06, 0.38, 0.03), col2, 0, -0.02, 0.005));
+      }
+      return sg;
+    }
+
     /* tilted shopfront cloth canopy; y = canopy height */
     function mdShopCanopy(parent, w, d, y, m) {
       const g = new THREE.Group();
@@ -3123,9 +3189,9 @@
       setBuildingTier(rec, 1);
       return rec;
     }/* ============ MEDIEVAL ROOFSCAPE / ARCHITECTURAL IDENTITY — BOLD PASS ============
-   TIER ENGINE NOTE: setBuildingTier reveals groups additively (group i visible at
-   tier >= i+1). So tier groups are CUMULATIVE LAYERS: group0 = the complete
-   tier-1 building, groups 1..3 ADD the mass/roof pieces that grow the icon.
+   TIER ENGINE NOTE: every group is a COMPLETE building for one tier.
+   setBuildingTier displays exactly one group; roofs and wings must never
+   depend on geometry from another tier being visible.
    The default camera (elevated isometric) sees the ROOF first — so every venue
    is designed TOP-DOWN as ONE plan-view symbol (L / T / + / U / slab / needle /
    quilt / cluster / hip+lantern), one dominant massing idea, asymmetric on
@@ -3174,10 +3240,36 @@ function mdTierLookup(id) {
   function hall(g,x,z,w,d,h,m,r,pitch,frame) {
     const b=new THREE.Group();b.position.set(x,0,z);g.add(b);
     box(b,w+.09,.16,d+.09,stone,0,.08,0);box(b,w,h-.16,d,m,0,(h+.16)/2,0);
-    [-1,1].forEach(side=>{box(b,w+.04,.07,.075,timber,0,.22,side*d/2);box(b,w+.04,.075,.075,timber,0,h-.03,side*d/2);
-      if(frame!==false){for(let n=0;n<4;n++)box(b,.065,h,.07,timber,-w/2+n*w/3,h/2,side*(d/2+.018));
-      if(h>1.3)box(b,w,.075,.08,timber,0,h*.54,side*d/2);}
-      for(let n=0;n<Math.max(1,Math.floor(w/.6));n++){const xx=(n-(Math.max(1,Math.floor(w/.6))-1)/2)*.55;windowAt(b,xx,h>.95?h*.72:.62,side*(d/2+.035),r);}
+    const isMultiStory = h >= 2.2;
+    if (isMultiStory) {
+      // Overhanging jetty timber belt for authentic medieval multi-story character
+      box(b, w + .09, .08, d + .09, timber, 0, h * .48, 0);
+    }
+    [-1,1].forEach(side=>{
+      box(b,w+.04,.07,.075,timber,0,.22,side*d/2);
+      box(b,w+.04,.075,.075,timber,0,h-.03,side*d/2);
+      if(frame!==false){
+        for(let n=0;n<4;n++)box(b,.065,h,.07,timber,-w/2+n*w/3,h/2,side*(d/2+.018));
+        if(h>1.3)box(b,w,.075,.08,timber,0,h*.54,side*d/2);
+        if(isMultiStory) {
+          // Half-timber diagonal braces on upper floor
+          for(let n=0;n<2;n++){
+            const bx = -w*0.25 + n*w*0.5;
+            const br = box(b, .04, h*0.35, .05, timber, bx, h*0.72, side*(d/2+.02));
+            br.rotation.z = (n === 0 ? 0.35 : -0.35);
+          }
+        }
+      }
+      const winCount = Math.max(1,Math.floor(w/.6));
+      for(let n=0;n<winCount;n++){
+        const xx=(n-(winCount-1)/2)*.55;
+        if(isMultiStory) {
+          windowAt(b, xx, 0.85, side*(d/2+.035), r);
+          windowAt(b, xx, h * .75, side*(d/2+.035), r);
+        } else {
+          windowAt(b, xx, h>.95?h*.72:.62, side*(d/2+.035), r);
+        }
+      }
     });
     box(b,.34,.65,.065,timber,0,.4,d/2+.06);box(b,.42,.055,.20,stone,0,.105,d/2+.12);
     roof(b,w,d,pitch,h,r);return b;
@@ -3186,7 +3278,6 @@ function mdTierLookup(id) {
   function cargo(g,x,z,n) {for(let k=0;k<n;k++){box(g,.22,.22,.22,MD_TIMBER_LT,x+(k%2)*.24,.11+Math.floor(k/2)*.23,z);box(g,.24,.035,.24,timber,x+(k%2)*.24,.16+Math.floor(k/2)*.23,z);}}
   function outdoorTable(g,x,z,banquet) {
     const width=banquet?.78:.45;
-    // Separate boards, supported legs and simple period seating.
     for(let p=0;p<3;p++)box(g,width,.045,.105,MD_TIMBER_LT,x,.43,z+(p-1)*.115);
     for(const a of [-1,1])for(const b of [-1,1])box(g,.045,.39,.045,timber,x+a*(width/2-.065),.215,z+b*.105);
     for(const side of [-1,1]){
@@ -3197,48 +3288,118 @@ function mdTierLookup(id) {
     const loaf=mesh(new THREE.SphereGeometry(1,8,5),gold,x-.09,.501,z);loaf.scale.set(.07,.034,.045);g.add(loaf);
     g.add(mesh(new THREE.CylinderGeometry(.034,.030,.09,8),brick,x+.13,.505,z+.07));
   }
-  function chimney(g,x,z,h) {box(g,.29,h,.29,brick,x,h/2,z);box(g,.37,.09,.37,stone,x,h-.05,z);box(g,.23,.012,.23,ink,x,h+.002,z);}
-  function tower(g,x,z,h) {box(g,.48,h,.48,stone,x,h/2,z);const c=mesh(new THREE.ConeGeometry(.42,.66,4),slate,x,h+.33,z);c.rotation.y=Math.PI/4;g.add(c);}
+  function chimney(g,x,z,h) {box(g,.32,h,.32,brick,x,h/2,z);box(g,.40,.11,.40,stone,x,h-.05,z);box(g,.24,.015,.24,ink,x,h+.002,z);}
+  function tower(g,x,z,th,flagColor) {
+    box(g,.56,th,.56,stone,x,th/2,z);
+    // Stone parapet corbels and battlements
+    box(g,.68,.12,.68,stone,x,th+.04,z);
+    box(g,.72,.18,.72,stone,x,th+.16,z);
+    [-1,1].forEach(sx=>[-1,1].forEach(sz=>box(g,.15,.15,.15,stone,x+sx*.27,th+.30,z+sz*.27)));
+    // Conical roof spire
+    const c=mesh(new THREE.ConeGeometry(.50,.85,8),slate,x,th+.68,z);c.rotation.y=Math.PI/4;g.add(c);
+    // Fluttering swallowtail pennant atop the tower
+    mdSwallowtailPennant(g, x, th + 1.08, z, 0.70, flagColor || MD_LINEN_RD, gold, 0.35);
+  }
   return [1,2,3,4].map(t=>function(parent,w,d){
     const g=new THREE.Group();parent.add(g);
-    // Each complete stage grows within the same parcel. Horizontal trades
-    // gain working area; residential towers keep their footprint and rise.
-    const tall=['house_tower','house_subs','shop_boutique'].includes(id);
-    const footprint=(tall?[.83,.90,.96,1]:[.66,.78,.90,1])[t-1];
+    const footprint=t===1?.78:t===2?.94:t===3?1.05:1.14;
     g.scale.set(w/2.5*footprint,1,d/2.2*footprint);
     parent.userData.completeMedievalTier=true;
-    const h=1.02+t*.20;
+    const h=t===1?1.15:t===2?1.85:t===3?2.75:3.65;
     box(g,2.44,.045,2.14,MD_STONE_TAN,0,.025,0);
+    if(t===1) {
+      switch(id) {
+        case 'house_tower':
+          hall(g,0,-.12,1.12,1.06,.83,plaster,MD_TILE_TERRA,.36,true);break;
+        case 'house_util':
+          canopy(g,0,0,1.05,.82,MD_TILE_MOSS);cargo(g,-.35,.14,3);
+          box(g,.40,.42,.38,stone,.47,.23,-.16);break;
+        case 'house_subs':
+          canopy(g,0,0,.92,.76,slate);
+          for(let k=0;k<4;k++)g.add(mesh(new THREE.CylinderGeometry(.065,.065,.32,8),plaster,-.28+k*.18,.60,0));break;
+        case 'food_super':
+          canopy(g,0,0,1.18,.78,MD_LINEN_CR);cargo(g,-.63,.58,2);
+          for(let k=0;k<5;k++)g.add(mesh(new THREE.SphereGeometry(.08,7,5),k%2?sage:MD_LINEN_RD,-.4+k*.20,.56,0));break;
+        case 'food_bistro':
+          canopy(g,-.23,0,1.06,.82,MD_LINEN_RD);outdoorTable(g,-.23,.22,false);
+          box(g,.44,.38,.43,stone,.65,.21,-.20);chimney(g,.68,-.25,.91);break;
+        case 'food_coffee':
+          canopy(g,.25,0,.95,.76,MD_TILE_HONEY);
+          box(g,.56,.33,.55,brick,-.63,.18,-.13);
+          g.add(mesh(new THREE.SphereGeometry(.28,10,6,0,Math.PI*2,0,Math.PI/2),brick,-.63,.34,-.13));
+          box(g,.19,.19,.03,ink,-.63,.18,.155);
+          for(let k=0;k<3;k++){const loaf=mesh(new THREE.SphereGeometry(1,8,5),gold,.02+k*.22,.54,0);loaf.scale.set(.09,.06,.14);g.add(loaf);}break;
+        case 'shop_boutique':
+          canopy(g,0,0,1.17,.85,MD_LINEN_BL);
+          for(let k=0;k<3;k++)box(g,.24,.42,.07,[MD_LINEN_RD,MD_LINEN_CR,gold][k],-.36+k*.36,.59,.02);break;
+        case 'shop_tech':
+          canopy(g,-.23,-.1,1.10,.83,timber);
+          box(g,.28,.33,.27,timber,-.18,.20,.05);box(g,.52,.13,.22,ink,-.18,.43,.05);
+          chimney(g,.63,-.27,.96);break;
+        case 'food_wolt':
+        case 'city_sorting_hub':
+          canopy(g,-.30,-.17,.91,.78,sage);cargo(g,-.53,-.14,3);mdCart(g,.47,.42,0);break;
+        case 'shop_travel':
+        case 'trans_station':
+          canopy(g,0,-.20,1.24,.86,MD_TILE_TERRA);
+          box(g,1.30,.06,.07,timber,0,.52,.51);
+          [-.56,.56].forEach(x=>box(g,.055,.52,.055,timber,x,.26,.51));cargo(g,-.48,-.22,2);break;
+        case 'shop_arcade':
+          box(g,1.16,.18,.86,timber,0,.11,0);
+          canopy(g,0,0,1.08,.75,MD_LINEN_RD);
+          for(let k=0;k<3;k++)g.add(mesh(new THREE.CylinderGeometry(.07,.07,.13,8),gold,-.27+k*.27,.58,0));break;
+        case 'health_pharmacy':
+          canopy(g,0,0,1.03,.81,MD_TILE_MOSS);
+          for(let k=0;k<3;k++)g.add(mesh(new THREE.CylinderGeometry(.075,.09,.19,8),k%2?brick:sage,-.3+k*.3,.58,0));
+          box(g,.75,.18,.24,timber,0,.14,.55);break;
+        case 'finance_bank':
+          canopy(g,0,0,1.02,.80,slate);box(g,.60,.27,.38,timber,0,.60,0);
+          [-.20,.20].forEach(x=>box(g,.06,.28,.40,ink,x,.60,0));break;
+        default:
+          canopy(g,0,0,1.12,.81,MD_LINEN_CR);g.add(mesh(new THREE.OctahedronGeometry(.20,0),gold,0,.68,0));break;
+      }
+      return;
+    }
     switch(id){
       case 'house_tower':
-        hall(g,-.25,-.15,1.4,1.45,h+.25,plaster,MD_TILE_TERRA,.58,true);
-        tower(g,.78,-.58,1.45+t*.30);
-        if(t>1)hall(g,.68,.48,.78,.86,1.02,plaster,MD_TILE_TERRA,.38,true);
+        hall(g,-.25,-.15,1.4,1.45,h+.25,plaster,MD_TILE_TERRA,.62,true);
+        if(t>=3)tower(g,.78,-.58,h+.85,MD_LINEN_RD);
+        if(t>1)hall(g,.68,.48,.78,.86,h*.62,plaster,MD_TILE_TERRA,.40,true);
+        if(t>=3)mdHangingBanner(g,-.25,h*.75,.60,.38,.70,MD_LINEN_RD,gold);
         box(g,1.3,.24,.10,stone,-.35,.12,.98);break;
       case 'house_util':
-        hall(g,-.25,-.15,1.55,1.35,.85+t*.06,MD_PLASTER_OX,MD_TILE_MOSS,.47,true);
-        chimney(g,-.75,-.4,1.75);canopy(g,.75,.5,.58,.66,MD_TILE_MOSS);cargo(g,.65,.48,t);break;
+        hall(g,-.25,-.15,1.55,1.35,h*.82,MD_PLASTER_OX,MD_TILE_MOSS,.47,true);
+        chimney(g,-.75,-.4,h+.45);
+        if(t>=3)hall(g,.88,-.15,.48,1.15,h*.68,MD_PLASTER_OX,MD_TILE_MOSS,.30,true);
+        if(t===4)canopy(g,.70,.69,.64,.43,MD_TILE_MOSS);
+        cargo(g,.65,.48,t);break;
       case 'house_subs':
-        hall(g,-.18,-.22,.94,1.34,1.3+t*.32,plaster,slate,.65,true);
+        hall(g,-.18,-.22,.94,1.34,h+.30,plaster,slate,.68,true);
+        if(t>=3)hall(g,.65,-.25,.56,1.08,h*.68,plaster,slate,.30,true);
+        if(t===4)mdSwallowtailPennant(g,-.18,h+1.0,-.22,.55,MD_LINEN_BL,gold);
+        if(t===4)canopy(g,.62,.58,.62,.40,MD_LINEN_CR);
         box(g,.70,.09,.30,timber,-.18,.62,.63);
         for(let k=0;k<t+2;k++)box(g,.085,.18,.12,k%2?MD_LINEN_RD:gold,-.45+k*.10,.75,.65);break;
       case 'food_super':
-        for(let k=0;k<t;k++){const x=k%2? .58:-.58,z=k<2?-.48:.53;canopy(g,x,z,.92,.65,k%2?MD_LINEN_CR:sage);
+        if(t===4)hall(g,0,-.47,2.04,.85,h*.78,plaster,MD_TILE_MOSS,.46,true);
+        if(t>=3)mdHangingBanner(g,0,h*.70,.45,.40,.65,MD_LINEN_RD,MD_LINEN_CR);
+        for(let k=0;k<(t===4?2:t);k++){const x=k%2? .58:-.58,z=t===4?.55:k<2?-.48:.53;canopy(g,x,z,.92,.65,k%2?MD_LINEN_CR:sage);
           for(let j=0;j<4;j++)g.add(mesh(new THREE.SphereGeometry(.075,6,4),j%2?MD_LINEN_RD:gold,x-.30+j*.20,.54,z));}
         cargo(g,-1,.7,2);break;
       case 'food_bistro':
         hall(g,-.35,-.52,1.35,.92,h+.30,MD_PLASTER_OX,slate,.67,true);
-        if(t>=2)hall(g,.64,-.42,.74,.92,1.0+t*.15,MD_PLASTER_OX,slate,.48,true);
-        // Raised inn balcony, wine-red cloth and a deep stone hearth.
-        box(g,1.18,.09,.29,timber,-.35,h*.68,.05);
-        box(g,1.18,.045,.045,timber,-.35,h*.68+.28,.18);
-        for(let k=0;k<6;k++)box(g,.035,.28,.035,timber,-.88+k*.21,h*.68+.14,.18);
-        box(g,.36,.38,.035,MD_LINEN_RD,-.35,h*.68+.10,.208);
+        if(t>=3)hall(g,.64,-.42,.74,.92,h*.72,MD_PLASTER_OX,slate,.48,true);
+        if(t===4)canopy(g,.63,.68,.83,.56,slate);
+        box(g,1.18,.09,.29,timber,-.35,h*.58,.05);
+        box(g,1.18,.045,.045,timber,-.35,h*.58+.28,.18);
+        for(let k=0;k<6;k++)box(g,.035,.28,.035,timber,-.88+k*.21,h*.58+.14,.18);
+        box(g,.36,.38,.035,MD_LINEN_RD,-.35,h*.58+.10,.208);
         outdoorTable(g,-.62,.66,true);outdoorTable(g,.62,.66,true);
-        chimney(g,-.7,-.65,h+1.02);break;
+        chimney(g,-.7,-.65,h+.95);
+        if(t>=3)mdHangingBanner(g,-.35,h*.65,.45,.36,.60,MD_LINEN_RD,gold);
+        break;
       case 'food_coffee':
-        hall(g,.32,-.48,1.17,.96,.75+t*.07,plaster,MD_TILE_HONEY,.25,false);
-        // Low bakery shopfront with an open serving hatch and striped canvas.
+        hall(g,.32,-.48,1.17,.96,h*.72,plaster,MD_TILE_HONEY,.32,false);
         box(g,.79,.29,.045,ink,.32,.56,.018);
         box(g,.88,.055,.25,MD_TIMBER_LT,.32,.39,.12);
         for(let k=0;k<7;k++){
@@ -3246,49 +3407,76 @@ function mdTierLookup(id) {
           box(g,.135,.09,.025,k%2?MD_LINEN_CR:MD_TILE_HONEY,-.085+k*.135,.765,.34);
         }
         g.add(mesh(new THREE.SphereGeometry(.43,12,8,0,Math.PI*2,0,Math.PI/2),brick,-.66,.48,-.45));
-        box(g,.85,.48,.80,brick,-.66,.24,-.45);box(g,.33,.28,.04,ink,-.66,.22,-.03);chimney(g,-.73,-.65,1.85+t*.08);
-        outdoorTable(g,-.65,.64,false);outdoorTable(g,.73,.64,false);break;
+        box(g,.85,.48,.80,brick,-.66,.24,-.45);box(g,.33,.28,.04,ink,-.66,.22,-.03);chimney(g,-.73,-.65,h+.65);
+        outdoorTable(g,-.65,.64,false);
+        if(t>=3)outdoorTable(g,.73,.64,false);
+        if(t===4)canopy(g,.32,.64,1.15,.52,MD_TILE_HONEY);break;
       case 'food_wolt':
-        hall(g,-.53,-.33,.98,1.10,.97+t*.08,plaster,MD_TILE_MOSS,.35,true);
-        if(t>=2)canopy(g,.55,-.25,.87,1.02,sage);cargo(g,.31,-.38,t+1);
+        hall(g,-.53,-.33,.98,1.10,h*.75,plaster,MD_TILE_MOSS,.35,true);
+        if(t===3)canopy(g,.55,-.25,.87,1.02,sage);
+        if(t===4)hall(g,.58,-.32,.83,.88,h*.70,plaster,MD_TILE_MOSS,.28,true);
+        cargo(g,.31,-.38,t+1);
         box(g,1.95,.08,.08,timber,0,.51,.90);for(let k=0;k<3;k++)box(g,.07,.52,.07,timber,-.85+k*.85,.26,.90);break;
       case 'shop_boutique':
-        hall(g,-.16,-.20,1.08,1.26,1.22+t*.26,MD_PLASTER_PK,slate,.65,true);
+        hall(g,-.16,-.20,1.08,1.26,h+.35,MD_PLASTER_PK,slate,.68,true);
+        if(t>=3)hall(g,.75,-.22,.51,1.15,h*.70,MD_PLASTER_PK,slate,.30,true);
+        if(t===4)canopy(g,.73,.65,.53,.42,MD_LINEN_BL);
         canopy(g,-.16,.68,1.15,.48,MD_LINEN_BL);
+        if(t>=3)mdHangingBanner(g,-.16,h*.72,.45,.32,.60,MD_LINEN_BL,gold);
         for(let k=0;k<3;k++)box(g,.19,.58,.12,[MD_LINEN_RD,gold,MD_LINEN_BL][k],-.62+k*.48,.48,.97);break;
       case 'shop_tech':
-        hall(g,-.42,-.23,1.24,1.38,.85+t*.045,MD_STONE_DK,slate,.24,false);
-        chimney(g,-.78,-.57,1.85+t*.1);canopy(g,.67,-.07,.70,1.27,timber);
-        box(g,.29,.32,.28,timber,.66,.16,.37);box(g,.49,.13,.22,ink,.66,.385,.37);cargo(g,.55,-.5,2);break;
+        hall(g,-.42,-.23,1.24,1.38,h*.70,MD_STONE_DK,slate,.28,false);
+        chimney(g,-.78,-.57,h+.85);
+        if(t===3)canopy(g,.67,-.07,.70,1.27,timber);
+        if(t===4)hall(g,.70,-.07,.64,1.27,h*.65,MD_STONE_DK,slate,.27,false);
+        box(g,.29,.32,.28,timber,.66,.16,.37);box(g,.49,.13,.22,ink,.66,.385,.37);cargo(g,.55,-.5,2);
+        if(t>=3)mdWallShield(g,-.42,h*.45,.48,0x1E293B,gold,0);
+        break;
       case 'shop_travel':
-        hall(g,0,-.61,2.10,.66,.9+t*.09,plaster,MD_TILE_HONEY,.30,true);
+        hall(g,0,-.61,2.10,.66,h*.75,plaster,MD_TILE_HONEY,.32,true);
         if(t>=2)canopy(g,-.8,.22,.40,.84,MD_TILE_HONEY);if(t>=3)canopy(g,.8,.22,.40,.84,MD_TILE_HONEY);
+        if(t===4)canopy(g,0,.57,.91,.38,MD_TILE_HONEY);
         box(g,1.55,.07,.08,timber,0,.65,.85);cargo(g,-.75,.65,t);break;
       case 'shop_arcade':
         box(g,1.10,.20,.72,timber,0,.10,-.53);
         for(let k=0;k<Math.min(3,t);k++){const x=-.77+k*.77,z=k===1?-.53:.40;
-          box(g,.52,.53,.52,k%2?MD_LINEN_CR:MD_LINEN_RD,x,.265,z);
-          const c=mesh(new THREE.ConeGeometry(.48,.72,8),k%2?MD_LINEN_BL:MD_LINEN_RD,x,.89,z);g.add(c);beam(g,[x,1.23,z],[x,1.48,z],.018);box(g,.20,.12,.018,gold,x+.10,1.4,z);}
+          if(t===4 && k===1) {const stage=new THREE.Group();stage.position.y=.20;g.add(stage);canopy(stage,0,-.53,1.06,.64,MD_LINEN_BL);continue;}
+          const pavH = .60 + t * .15;
+          box(g,.52,pavH,.52,k%2?MD_LINEN_CR:MD_LINEN_RD,x,pavH/2,z);
+          const c=mesh(new THREE.ConeGeometry(.48,.85,8),k%2?MD_LINEN_BL:MD_LINEN_RD,x,pavH+.42,z);g.add(c);
+          mdSwallowtailPennant(g, x, pavH + .88, z, .48, k%2?gold:MD_LINEN_RD, MD_LINEN_CR);
+        }
         break;
       case 'health_pharmacy':
-        hall(g,-.33,-.10,1.12,1.37,1.05+t*.17,MD_PLASTER_BL,MD_TILE_MOSS,.70,true);
-        tower(g,.65,-.56,1.22+t*.23);
+        hall(g,-.33,-.10,1.12,1.37,h+.20,MD_PLASTER_BL,MD_TILE_MOSS,.72,true);
+        if(t>=3)tower(g,.65,-.56,h+.75,sage);
+        if(t===4)canopy(g,.61,.49,.72,.58,MD_TILE_MOSS);
         for(let k=0;k<4;k++){const x=-.9+k*.51;box(g,.36,.14,.26,timber,x,.13,.88);g.add(mesh(new THREE.SphereGeometry(.15,7,5),sage,x,.30,.88));}break;
       case 'museum_curiosities':
-        hall(g,0,-.20,1.92,1.30,1.13+t*.13,stone,slate,.30,false);
-        for(let k=0;k<4;k++)box(g,.13,1.02,.17,MD_STONE_TAN,-.76+k*.5,.51,.56);
-        tower(g,0,-.22,1.65+t*.13);box(g,1.5,.10,.42,stone,0,.09,.82);break;
+        hall(g,0,-.20,1.92,1.30,h+.25,stone,slate,.38,false);
+        for(let k=0;k<4;k++)box(g,.13,h*.65,.17,MD_STONE_TAN,-.76+k*.5,h*.32,.56);
+        if(t>=3)tower(g,0,-.22,h+1.10,slate);
+        if(t>=3)mdHangingBanner(g,0,h*.72,.48,.40,.75,0x1E40AF,gold);
+        if(t===4)canopy(g,0,.71,1.80,.45,slate);
+        box(g,1.5,.10,.42,stone,0,.09,.82);break;
       case 'city_sorting_hub':
-        hall(g,0,-.35,2.06,1.10,.86+t*.045,MD_TIMBER_LT,MD_TILE_HONEY,.28,true);
-        canopy(g,0,.54,1.95,.58,timber);for(let k=0;k<3;k++)cargo(g,-.78+k*.58,.43,Math.min(t+1,4));break;
+        hall(g,0,-.35,2.06,1.10,h*.72,MD_TIMBER_LT,MD_TILE_HONEY,.28,true);
+        if(t>=3)canopy(g,0,.54,1.95,.58,timber);
+        if(t===4)hall(g,-.81,.45,.43,.65,h*.65,MD_TIMBER_LT,MD_TILE_HONEY,.23,true);
+        for(let k=0;k<3;k++)cargo(g,-.78+k*.58,.43,Math.min(t+1,4));break;
       case 'finance_bank':
-        hall(g,0,-.12,1.80,1.42,1.12+t*.16,stone,slate,.57,false);
-        if(t>=2)tower(g,-.91,-.6,1.35+t*.16);if(t>=3)tower(g,.91,-.6,1.35+t*.16);
+        hall(g,0,-.12,1.80,1.42,h+.30,stone,slate,.58,false);
+        if(t>=2)tower(g,-.91,-.6,h+.85,MD_LINEN_RD);
+        if(t>=3)tower(g,.91,-.6,h+.85,MD_LINEN_RD);
+        if(t>=3)mdHangingBanner(g,0,h*.75,.62,.45,.80,MD_LINEN_RD,gold);
+        if(t>=2)mdWallShield(g,0,h*.40,.62,MD_LINEN_RD,gold,0);
+        if(t===4)canopy(g,0,.86,.90,.37,slate);
         box(g,.52,.75,.11,timber,0,.48,.65);box(g,.22,.31,.07,gold,0,1.26,.64);break;
       case 'trans_station':
-        hall(g,0,-.53,2.18,.78,.80+t*.08,plaster,MD_TILE_TERRA,.42,true);
-        if(t>=2)hall(g,-.88,.25,.42,.94,.83,MD_TIMBER_LT,MD_TILE_TERRA,.25,true);
-        if(t>=3)hall(g,.88,.25,.42,.94,.83,MD_TIMBER_LT,MD_TILE_TERRA,.25,true);
+        hall(g,0,-.53,2.18,.78,h*.72,plaster,MD_TILE_TERRA,.42,true);
+        if(t>=2)hall(g,-.88,.25,.42,.94,h*.60,MD_TIMBER_LT,MD_TILE_TERRA,.25,true);
+        if(t>=3)hall(g,.88,.25,.42,.94,h*.60,MD_TIMBER_LT,MD_TILE_TERRA,.25,true);
+        if(t>=3)mdSwallowtailPennant(g,0,h*.72+.55,-.53,.65,MD_TILE_TERRA,gold);
         if(t===4)canopy(g,0,.60,1.22,.50,MD_TILE_TERRA);break;
     }
     // Large, physical trade emblems remain readable at the city camera scale.
@@ -3327,18 +3515,27 @@ function mdTierLookup(id) {
         emblem.add(mesh(new THREE.CylinderGeometry(.28,.28,.52,12),MD_TIMBER_LT,.78,.26,-.57));
         for(const y of [.12,.40]){const band=mesh(new THREE.TorusGeometry(.28,.028,5,14),ink,.78,y,-.57);band.rotation.x=Math.PI/2;emblem.add(band);}break;
       case 'house_tower':
-        box(emblem,.055,.68,.055,timber,.78,2.40+t*.30,-.58);
-        box(emblem,.39,.24,.035,MD_LINEN_RD,.96,2.57+t*.30,-.58);break;
+        {
+          const ey = (t >= 3 ? h + 1.25 : 2.40 + t * .30);
+          box(emblem,.055,.68,.055,timber,.78,ey,-.58);
+          box(emblem,.39,.24,.035,MD_LINEN_RD,.96,ey+.17,-.58);
+        }
+        break;
       case 'museum_curiosities':
-        {const globe=mesh(new THREE.TorusGeometry(.32,.035,6,20),gold,0,2.10+t*.13,-.22);emblem.add(globe);const orbit=globe.clone();orbit.rotation.y=Math.PI/2;emblem.add(orbit);oval(0,2.10+t*.13,-.22,.18,.18,.18,slate);}break;
+        {
+          const gy = (t >= 3 ? h + 1.45 : 2.10 + t * .13);
+          const globe=mesh(new THREE.TorusGeometry(.32,.035,6,20),gold,0,gy,-.22);emblem.add(globe);
+          const orbit=globe.clone();orbit.rotation.y=Math.PI/2;emblem.add(orbit);oval(0,gy,-.22,.18,.18,.18,slate);
+        }
+        break;
       case 'city_sorting_hub':
         beam(emblem,[.95,0,.20],[.95,1.70,.20],.065);beam(emblem,[.95,1.70,.20],[.95,1.70,.85],.055);
         beam(emblem,[.95,1.68,.85],[.95,.74,.85],.012,ink);box(emblem,.37,.34,.33,MD_TIMBER_LT,.95,.56,.85);break;
       case 'trans_station':
         {const shoe=mesh(new THREE.TorusGeometry(.22,.055,6,18,Math.PI*1.55),gold,0,1.2,-.10);shoe.rotation.z=-Math.PI*.275;emblem.add(shoe);}break;
       case 'finance_bank':
-        box(emblem,.70,.48,.08,MD_LINEN_RD,0,1.26,.72);
-        for(let k=0;k<3;k++)box(emblem,.14,.20+(k===1?.09:0),.10,gold,-.19+k*.19,1.29,.78);
+        box(emblem,.70,.48,.08,MD_LINEN_RD,0,1.26+(t>=2?.45:0),.72);
+        for(let k=0;k<3;k++)box(emblem,.14,.20+(k===1?.09:0),.10,gold,-.19+k*.19,1.29+(t>=2?.45:0),.78);
         for(let k=0;k<3;k++)emblem.add(mesh(new THREE.CylinderGeometry(.13,.13,.07*(k+1),10),gold,-.7+k*.28,.10+.035*(k+1),.91));break;
     }
     // Functional courtyard objects replace text boards. Keep entrances open.
@@ -4309,18 +4506,9 @@ function mdLegacyTierLookup(id) {
         rec.stall.visible = false;
         rec.shell.visible = true;
         rec.tierGroups.forEach(function (tg) {
-          /* Compound venues read best as one legible building plus one
-             deliberate extension.  The old additive reveal left every
-             previous stable wing and roof visible, so the silhouette became
-             a pile of intersecting roofs at higher tiers.  Keep the original
-             base mass and show only the current extension for the stable;
-             other profiles retain their existing growth behavior. */
-          /* Every Medieval profile is composed as a clean base building plus
-             one intentional extension.  Showing every historical tier at
-             once made the renderer stack unrelated roofs, chimneys and
-             wings into an unreadable silhouette. */
+          // Each group contains the entire stage, including its own roof.
           const want = tg.visibleAt === tier;
-          if (want && !tg.group.visible && previous >= 0) raise(tg.group);
+          if (want && !tg.group.visible && previous >= 0 && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) raise(tg.group);
           tg.group.visible = want;
         });
         rec.dressing.forEach(function (dr) { dr.obj.visible = tier >= dr.from; });
@@ -4480,8 +4668,33 @@ function mdLegacyTierLookup(id) {
     const CITIZEN_GEO = (function () {
       const HR = 0.085;
       return {
-        pelvis: citizenLoft([[-.045,.086,.055],[.015,.103,.069],[.035,.098,.065]]),        neck: new THREE.CylinderGeometry(.032, .037, .07, 8),        head: citizenLoft([[-.090,.032,.041],[-.072,.052,.055],[-.025,.072,.067],[.028,.076,.069],[.067,.063,.058],[.091,.031,.028]], 10),        nose: citizenLoft([[-.015,.008,.010],[.002,.014,.018],[.020,.005,.006]], 6),        ear: new THREE.SphereGeometry(.016, 6, 4),        upper: citizenLoft([[-.14,.027,.027],[-.11,.033,.031],[-.025,.036,.034],[.008,.026,.026]]),        forearm: citizenLoft([[-.125,.020,.019],[-.090,.024,.022],[0,.026,.025]]),        hand: citizenLoft([[-.030,.013,.014],[-.021,.022,.017],[.014,.021,.016],[.022,.014,.014]]),        thigh: citizenLoft([[-1,.032,.035],[-.84,.036,.037],[-.20,.045,.048],[0,.040,.042]]),        shin: citizenLoft([[-1,.024,.026],[-.70,.028,.029],[-.22,.034,.035],[0,.032,.035]]),        sneaker: citizenLoft([[0,.032,.062,.025],[.013,.039,.073,.029],[.033,.035,.068,.028],[.056,.027,.037,.002]]),        shoe: citizenLoft([[0,.031,.062,.025],[.012,.035,.068,.028],[.031,.032,.063,.027],[.049,.025,.032,0]]),        boot: citizenLoft([[0,.033,.063,.023],[.018,.037,.071,.027],[.038,.033,.065,.023],[.055,.026,.031,0],[.095,.027,.030,0]]),        sole: citizenLoft([[0,.034,.065,.025],[.010,.038,.071,.028]]),        hairMass: citizenLoft([[-.17,.054,.025,-.060],[-.125,.083,.040,-.048],[-.035,.091,.056,-.025],[.035,.073,.054,-.006]]),        hairSide: citizenLoft([[-.105,.021,.027],[-.025,.032,.042],[.040,.024,.025]]),        ponyMass: citizenLoft([[-.115,.015,.019,-.021],[-.065,.027,.031,-.013],[-.018,.024,.025],[.02,.016,.017]]),        bunMass: citizenLoft([[-.028,.014,.021],[-.013,.030,.030],[.014,.030,.026],[.030,.014,.014]]),        panel: new THREE.BoxGeometry(1, 1, 1),        hood: citizenLoft([[-.052,.037,.026],[0,.061,.045],[.044,.053,.037]]),        skirt: citizenLoft([[-1,.145,.088],[-.9,.146,.089],[0,.101,.069]]),        phone: new THREE.BoxGeometry(.038,.065,.009),        coffee: new THREE.CylinderGeometry(.023,.018,.058,8),        lid: new THREE.CylinderGeometry(.025,.025,.007,8),        hairCrop:     new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.40),        hairShort:    new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairBobBase:  new THREE.SphereGeometry(HR * 1.03, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairBobChunk: new THREE.BoxGeometry(0.080, 0.056, 0.046),        hairLongBase: new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairLongExt:  new THREE.CylinderGeometry(0.032, 0.016, 0.12, 6),        hairBunBase:  new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairBunKnot:  new THREE.SphereGeometry(0.026, 6, 5),        hairPonyBase: new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairPonyTail: new THREE.CylinderGeometry(0.016, 0.009, 0.088, 5),        hairShaved:   new THREE.SphereGeometry(HR * 0.93, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.32),        accBackpackBody: new THREE.BoxGeometry(0.16, 0.19, 0.085),        accBackpackStr:  new THREE.BoxGeometry(0.02, 0.23, 0.02),        accCrossbody:    new THREE.BoxGeometry(0.10, 0.12, 0.06),        accTote:         new THREE.BoxGeometry(0.13, 0.14, 0.05),        accCapDome:      new THREE.SphereGeometry(0.09, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),        accCapBrim:      new THREE.BoxGeometry(0.14, 0.016, 0.08),        accHpBand:       new THREE.BoxGeometry(0.195, 0.010, 0.010),        accHpCup:        new THREE.CylinderGeometry(0.021, 0.021, 0.015, 7),        shoulderPadX:  new THREE.BoxGeometry(0.305, 0.044, 0.148),        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7)      }
-;
+        pelvis: citizenLoft([[-.045,.086,.055],[.015,.103,.069],[.035,.098,.065]]),        neck: new THREE.CylinderGeometry(.032, .037, .07, 8),        head: citizenLoft([[-.090,.032,.041],[-.072,.052,.055],[-.025,.072,.067],[.028,.076,.069],[.067,.063,.058],[.091,.031,.028]], 10),        nose: citizenLoft([[-.015,.008,.010],[.002,.014,.018],[.020,.005,.006]], 6),        ear: new THREE.SphereGeometry(.016, 6, 4),        upper: citizenLoft([[-.14,.027,.027],[-.11,.033,.031],[-.025,.036,.034],[.008,.026,.026]]),        forearm: citizenLoft([[-.125,.020,.019],[-.090,.024,.022],[0,.026,.025]]),        hand: citizenLoft([[-.030,.013,.014],[-.021,.022,.017],[.014,.021,.016],[.022,.014,.014]]),        thigh: citizenLoft([[-1,.032,.035],[-.84,.036,.037],[-.20,.045,.048],[0,.040,.042]]),        shin: citizenLoft([[-1,.024,.026],[-.70,.028,.029],[-.22,.034,.035],[0,.032,.035]]),        sneaker: citizenLoft([[0,.032,.062,.025],[.013,.039,.073,.029],[.033,.035,.068,.028],[.056,.027,.037,.002]]),        shoe: citizenLoft([[0,.031,.062,.025],[.012,.035,.068,.028],[.031,.032,.063,.027],[.049,.025,.032,0]]),        boot: citizenLoft([[0,.033,.063,.023],[.018,.037,.071,.027],[.038,.033,.065,.023],[.055,.026,.031,0],[.095,.027,.030,0]]),        sole: citizenLoft([[0,.034,.065,.025],[.010,.038,.071,.028]]),        hairMass: citizenLoft([[-.17,.054,.025,-.060],[-.125,.083,.040,-.048],[-.035,.091,.056,-.025],[.035,.073,.054,-.006]]),        hairSide: citizenLoft([[-.105,.021,.027],[-.025,.032,.042],[.040,.024,.025]]),        ponyMass: citizenLoft([[-.115,.015,.019,-.021],[-.065,.027,.031,-.013],[-.018,.024,.025],[.02,.016,.017]]),        bunMass: citizenLoft([[-.028,.014,.021],[-.013,.030,.030],[.014,.030,.026],[.030,.014,.014]]),        panel: new THREE.BoxGeometry(1, 1, 1),        hood: citizenLoft([[-.052,.037,.026],[0,.061,.045],[.044,.053,.037]]),        skirt: citizenLoft([[-1,.145,.088],[-.9,.146,.089],[0,.101,.069]]),        phone: new THREE.BoxGeometry(.038,.065,.009),        coffee: new THREE.CylinderGeometry(.023,.018,.058,8),        lid: new THREE.CylinderGeometry(.025,.025,.007,8),        hairCrop:     new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.40),        hairShort:    new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairBobBase:  new THREE.SphereGeometry(HR * 1.03, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairBobChunk: new THREE.BoxGeometry(0.080, 0.056, 0.046),        hairLongBase: new THREE.SphereGeometry(HR,        10, 8, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairLongExt:  new THREE.CylinderGeometry(0.032, 0.016, 0.12, 6),        hairBunBase:  new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairBunKnot:  new THREE.SphereGeometry(0.026, 6, 5),        hairPonyBase: new THREE.SphereGeometry(HR * 0.97, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),        hairPonyTail: new THREE.CylinderGeometry(0.016, 0.009, 0.088, 5),        hairShaved:   new THREE.SphereGeometry(HR * 0.93, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.32),        accBackpackBody: new THREE.BoxGeometry(0.16, 0.19, 0.085),        accBackpackStr:  new THREE.BoxGeometry(0.02, 0.23, 0.02),        accCrossbody:    new THREE.BoxGeometry(0.10, 0.12, 0.06),        accTote:         new THREE.BoxGeometry(0.13, 0.14, 0.05),        accCapDome:      new THREE.SphereGeometry(0.09, 10, 8, 0, Math.PI * 2, 0, Math.PI * 0.5),        accCapBrim:      new THREE.BoxGeometry(0.14, 0.016, 0.08),        accHpBand:       new THREE.BoxGeometry(0.195, 0.010, 0.010),        accHpCup:        new THREE.CylinderGeometry(0.021, 0.021, 0.015, 7),        shoulderPadX:  new THREE.BoxGeometry(0.305, 0.044, 0.148),
+        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7),
+        knightHelm:      new THREE.CylinderGeometry(0.088, 0.084, 0.17, 10),
+        knightHelmDome:  new THREE.SphereGeometry(0.088, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        knightVisor:     new THREE.BoxGeometry(0.125, 0.022, 0.045),
+        knightCross:     new THREE.BoxGeometry(0.018, 0.15, 0.046),
+        knightPlume:     new THREE.ConeGeometry(0.038, 0.18, 5),
+        knightPauldron:  new THREE.SphereGeometry(0.055, 7, 5, 0, Math.PI * 2, 0, Math.PI * 0.5),
+        knightShieldCrossH: new THREE.BoxGeometry(0.17, 0.035, 0.024),
+        knightShieldCrossV: new THREE.BoxGeometry(0.035, 0.28, 0.024),
+        knightSwordBlade:   new THREE.BoxGeometry(0.026, 0.32, 0.015),
+        knightSwordGuard:   new THREE.BoxGeometry(0.10, 0.018, 0.026),
+        knightSwordHilt:    new THREE.CylinderGeometry(0.012, 0.012, 0.070, 6),
+        knightSwordPommel:  new THREE.SphereGeometry(0.018, 6, 5),
+        knightLancePole:    new THREE.CylinderGeometry(0.015, 0.022, 1.25, 6),
+        knightLanceTip:     new THREE.ConeGeometry(0.030, 0.14, 6),
+        knightShield: (function() {
+          const s = new THREE.Shape();
+          s.moveTo(-0.095, 0.14);
+          s.lineTo(0.095, 0.14);
+          s.lineTo(0.095, 0.02);
+          s.quadraticCurveTo(0.088, -0.10, 0, -0.19);
+          s.quadraticCurveTo(-0.088, -0.10, -0.095, 0.02);
+          s.closePath();
+          return new THREE.ExtrudeGeometry(s, { depth: 0.018, bevelEnabled: false });
+        })()
+      };
     }
 )();
     Object.keys(CITIZEN_GEO).forEach(function (key) {
@@ -4606,29 +4819,60 @@ function mdLegacyTierLookup(id) {
       const headShape = Math.floor(rand() * 3);
       const hJitter = 1 + (rand() - 0.5) * 0.018;
       const wJitter = 1 + (rand() - 0.5) * 0.018;
+
+      // Knight Archetype (אביר)
+      const isSeated = (fullKey.indexOf('seated') >= 0 || fullKey.indexOf('guest') >= 0 || fullKey.indexOf('driver') >= 0);
+      const knightRoll = rand();
+      const isKnight = !isSeated && (fullKey.indexOf('knight') >= 0 || fullKey.indexOf('guard') >= 0 || knightRoll < 0.28);
+      const KNIGHT_ORDERS = [
+        { surcoat: 0x991B1B, trim: 0xF59E0B, plume: 0xDC2626 }, // Royal Lion (Crimson & Gold)
+        { surcoat: 0x1E40AF, trim: 0xF3F4F6, plume: 0x2563EB }, // Azure Cross (Blue & White)
+        { surcoat: 0x065F46, trim: 0xFBBF24, plume: 0x059669 }, // Green Falcon (Emerald & Gold)
+        { surcoat: 0x4C1D95, trim: 0xF472B6, plume: 0x9333EA }, // Royal Purple
+        { surcoat: 0x1F2937, trim: 0xDC2626, plume: 0xE11D48 }, // Black Iron Order
+        { surcoat: 0xD97706, trim: 0x1E293B, plume: 0xF59E0B }  // Golden Sun
+      ];
+      const knightOrder = KNIGHT_ORDERS[Math.floor(rand() * KNIGHT_ORDERS.length)];
+      const hasPlume = rand() < 0.65;
+      const hasLance = rand() < 0.35;
+      const armorColor = rand() < 0.25 ? 0x64748B : 0x94A3B8;
+
       return {
-        key: fullKey, skinTone: skinIdx,        hairStyle: hairStyle, hairColor: CITIZEN_HAIR_COLORS[hairColIdx],        bodyId: body.id, presentation: presentation, heightScale: body.h * hJitter, widthScale: wJitter,        bottomStyle: bottomStyle, shoeStyle: shoeStyle, prop: prop, restPose: restPose, headShape: headShape,        topStyle: CITIZEN_TOP_STYLES[topStyleIdx],        topColor: CITIZEN_TOPS[topColIdx], bottomColor: CITIZEN_BOTTOMS[btmColIdx],        accessory: accessory, motion: CITIZEN_MOTION_PROFILES[motionIdx]      }
-;
+        key: fullKey, skinTone: skinIdx,
+        hairStyle: hairStyle, hairColor: CITIZEN_HAIR_COLORS[hairColIdx],
+        bodyId: body.id, presentation: presentation,
+        heightScale: (isKnight ? 1.05 : body.h) * hJitter,
+        widthScale: (isKnight ? 1.06 : 1) * wJitter,
+        bottomStyle: isKnight ? 'straight' : bottomStyle,
+        shoeStyle: isKnight ? 'boot' : shoeStyle,
+        prop: isKnight ? null : prop,
+        restPose: isKnight ? 'neutral' : restPose,
+        headShape: headShape,
+        topStyle: isKnight ? 'sweater' : CITIZEN_TOP_STYLES[topStyleIdx],
+        topColor: isKnight ? knightOrder.surcoat : CITIZEN_TOPS[topColIdx],
+        bottomColor: isKnight ? armorColor : CITIZEN_BOTTOMS[btmColIdx],
+        accessory: isKnight ? null : accessory,
+        motion: CITIZEN_MOTION_PROFILES[motionIdx],
+        isKnight: isKnight,
+        knightSurcoat: knightOrder.surcoat,
+        knightTrim: knightOrder.trim,
+        knightPlume: knightOrder.plume,
+        hasPlume: hasPlume,
+        hasLance: hasLance,
+        armorColor: armorColor
+      };
     }
     
     function appearanceSig(p) {
-      return p.presentation + '|' + p.topStyle + '|' + p.bottomStyle + '|' + p.hairStyle + '|' + p.skinTone + '|' + p.topColor + '|' + p.bottomColor + '|' + p.bodyId;
+      return p.presentation + '|' + p.topStyle + '|' + p.bottomStyle + '|' + p.hairStyle + '|' + p.skinTone + '|' + p.topColor + '|' + p.bottomColor + '|' + p.bodyId + (p.isKnight ? '|knight' : '');
     }
     
     function chooseAppearanceForSlot(key, recentProfiles) {
       const recent = recentProfiles || [];
-      for (let salt = 0;
- salt <= 5;
- salt++) {
+      for (let salt = 0; salt <= 5; salt++) {
         const p = buildAppearanceProfile(key, salt);
-        if (recent.some(function (r) {
- return appearanceSig(r) === appearanceSig(p);
- }
-)) continue;
-        if (recent.filter(function (r) {
- return r.hairStyle === p.hairStyle && r.topColor === p.topColor;
- }
-).length >= 2) continue;
+        if (recent.some(function (r) { return appearanceSig(r) === appearanceSig(p); })) continue;
+        if (recent.filter(function (r) { return r.hairStyle === p.hairStyle && r.topColor === p.topColor; }).length >= 2) continue;
         return p;
       }
       return buildAppearanceProfile(key, 0);
@@ -4636,27 +4880,18 @@ function mdLegacyTierLookup(id) {
     
     function applyAppearanceToFigure(record, appearance) {
       const ud = record.obj.userData;
-      
       record.obj.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
-      
-      const skinMat = CITIZEN_SKIN_MATS[appearance.skinTone];
-      if (ud.skinMeshes)  ud.skinMeshes.forEach(function (m) {
- m.material = skinMat;
- }
-);
-      
-      const topMat  = citizenMat(appearance.topColor, 0.76);
-      if (ud.shirtMeshes) ud.shirtMeshes.forEach(function (m) {
- m.material = topMat;
- }
-);
-      
-      const btmMat  = citizenMat(appearance.bottomColor, 0.86);
-      if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) {
- m.material = btmMat;
- }
-);
-      addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
+      const skinMat = appearance.isKnight ? citizenMat(appearance.armorColor, 0.45) : CITIZEN_SKIN_MATS[appearance.skinTone];
+      if (ud.skinMeshes) ud.skinMeshes.forEach(function (m) { m.material = skinMat; });
+      const topMat = citizenMat(appearance.topColor, 0.76);
+      if (ud.shirtMeshes) ud.shirtMeshes.forEach(function (m) { m.material = topMat; });
+      const btmMat = citizenMat(appearance.bottomColor, appearance.isKnight ? 0.45 : 0.86);
+      if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
+      if (!appearance.isKnight) {
+        addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
+      } else {
+        hideCitizenParts(ud.hairGrp);
+      }
       applyCitizenDesign(record.obj, appearance);
       record.motion        = appearance.motion;
       record.appearance    = appearance;
@@ -4665,7 +4900,7 @@ function mdLegacyTierLookup(id) {
     
     function applyCitizenDesign(fig, p) {
       const u = fig.userData, d = citizenDimensions(p), G = CITIZEN_GEO;
-      const top = citizenMat(p.topColor, .76), bottom = citizenMat(p.bottomColor, .86);
+      const top = citizenMat(p.topColor, .76), bottom = citizenMat(p.bottomColor, p.isKnight ? .45 : .86);
       const skin = CITIZEN_SKIN_MATS[p.skinTone], dark = citizenMat(0x30343A, .85);
       const sole = citizenMat(0xB9B4A9, .88);
       const loose = ['oversized','longTop'].includes(p.topStyle);
@@ -4676,10 +4911,10 @@ function mdLegacyTierLookup(id) {
       const hip = u.seated ? u.seatHeight / p.heightScale + contact : thigh + d.shin + .050;
       const shin = u.seated ? hip - .050 : d.shin;
       u.dimensions = d;
- u.hipHeight = hip;
- u.shinLength = shin;
- u.seatContact = contact;
- u.appearance = p;
+      u.hipHeight = hip;
+      u.shinLength = shin;
+      u.seatContact = contact;
+      u.appearance = p;
       u.torso.position.set(0, hip + d.length / 2, 0);
       u.torso.rotation.set(0, 0, 0);
       u.bodyMesh.geometry = citizenTorsoGeometry(p, d);
@@ -4697,19 +4932,45 @@ function mdLegacyTierLookup(id) {
       if (!u.ears) {
         u.ears = [-1,1].map(function (side) {
           const ear = mesh(G.ear,skin,0,0,0,false,false);
- u.torso.add(ear);
- u.skinMeshes.push(ear);
- return ear;
-        }
-);
+          u.torso.add(ear);
+          u.skinMeshes.push(ear);
+          return ear;
+        });
       }
       u.ears.forEach(function (ear,i) {
- ear.material = skin;
- ear.position.set((i ? 1 : -1) * .073 * headWidth,.25 + headOffset,0);
- ear.scale.set(.64,1,.7);
- }
-);
-      const longSleeve = ['longSleeve','sweater','longTop'].includes(p.topStyle);
+        ear.material = skin;
+        ear.position.set((i ? 1 : -1) * .073 * headWidth,.25 + headOffset,0);
+        ear.scale.set(.64,1,.7);
+        ear.visible = !p.isKnight;
+      });
+
+      // Knight Helm & Armor
+      const armorMat = p.isKnight ? citizenMat(p.armorColor, 0.45) : null;
+      const goldMat = citizenMat(0xD4AF37, 0.5);
+      const trimMat = p.isKnight ? citizenMat(p.knightTrim, 0.8) : null;
+
+      if (!u.knightGrp) {
+        u.knightGrp = new THREE.Group();
+        u.torso.add(u.knightGrp);
+      }
+      hideCitizenParts(u.knightGrp);
+
+      if (p.isKnight) {
+        u.headMesh.visible = false;
+        u.noseMesh.visible = false;
+        citizenPart(u.knightGrp, 0, G.knightHelm, armorMat, 0, .255 + headOffset, 0);
+        citizenPart(u.knightGrp, 1, G.knightHelmDome, armorMat, 0, .338 + headOffset, 0);
+        citizenPart(u.knightGrp, 2, G.knightVisor, dark, 0, .260 + headOffset, .072);
+        citizenPart(u.knightGrp, 3, G.knightCross, goldMat, 0, .260 + headOffset, .074);
+        if (p.hasPlume) {
+          citizenPart(u.knightGrp, 4, G.knightPlume, citizenMat(p.knightPlume, 0.85), 0, .425 + headOffset, -.02);
+        }
+      } else {
+        u.headMesh.visible = true;
+        u.noseMesh.visible = true;
+      }
+
+      const longSleeve = p.isKnight || ['longSleeve','sweater','longTop'].includes(p.topStyle);
       [u.armL,u.armR].forEach(function (arm,i) {
         const side = i ? 1 : -1, fore = arm.children[1];
         arm.position.set(side * (d.shoulder * bulk + .009),d.length * .42,0);
@@ -4718,12 +4979,74 @@ function mdLegacyTierLookup(id) {
         u.upperMeshes[i].scale.set(bulk,1,bulk);
         fore.rotation.set(u.seated ? -.8 : -.16,0,0);
         fore.children[0].position.y = 0;
-        fore.children[0].material = longSleeve ? top : skin;
+        fore.children[0].material = p.isKnight ? armorMat : (longSleeve ? top : skin);
         fore.children[0].scale.set(longSleeve ? 1.12 : 1,1,longSleeve ? 1.12 : 1);
         fore.children[1].position.y = -.14;
-        fore.children[1].material = skin;
+        fore.children[1].material = p.isKnight ? citizenMat(0x334155, 0.6) : skin;
+
+        // Shoulder Pauldron
+        if (p.isKnight) {
+          if (!arm.userData.pauldron) {
+            const pMesh = mesh(G.knightPauldron, armorMat, 0, 0.03, 0, false, false);
+            arm.add(pMesh);
+            arm.userData.pauldron = pMesh;
+          }
+          arm.userData.pauldron.visible = true;
+          arm.userData.pauldron.material = armorMat;
+        } else if (arm.userData.pauldron) {
+          arm.userData.pauldron.visible = false;
+        }
+      });
+
+      // Knight Heater Shield on left forearm
+      if (!u.knightShield) {
+        const shGrp = new THREE.Group();
+        shGrp.position.set(-0.065, -0.05, 0.04);
+        shGrp.rotation.y = -Math.PI / 2;
+        const shBase = mesh(G.knightShield, top, 0, 0, 0, false, false);
+        const shCrH = mesh(G.knightShieldCrossH, goldMat, 0, 0, 0.012, false, false);
+        const shCrV = mesh(G.knightShieldCrossV, goldMat, 0, -0.01, 0.012, false, false);
+        shGrp.add(shBase, shCrH, shCrV);
+        u.armL.children[1].add(shGrp);
+        u.knightShield = { grp: shGrp, base: shBase, crH: shCrH, crV: shCrV };
       }
-);
+      if (u.knightShield) {
+        u.knightShield.grp.visible = !!p.isKnight;
+        if (p.isKnight) {
+          u.knightShield.base.material = top;
+          u.knightShield.crH.material = trimMat;
+          u.knightShield.crV.material = trimMat;
+        }
+      }
+
+      // Knight Weapon (Tournament Lance or Sheathed Broadsword)
+      if (!u.knightLance) {
+        const lGrp = new THREE.Group();
+        lGrp.position.set(0.02, -0.14, 0.03);
+        lGrp.rotation.set(0.55, 0.20, 0.08);
+        const pole = mesh(G.knightLancePole, MD_TIMBER, 0, 0.40, 0, false, false);
+        const tip = mesh(G.knightLanceTip, citizenMat(0x94A3B8, 0.45), 0, 1.08, 0, false, false);
+        lGrp.add(pole, tip);
+        mdSwallowtailPennant(lGrp, 0, 0.95, 0, 0.32, top, goldMat, 0);
+        u.armR.children[1].add(lGrp);
+        u.knightLance = lGrp;
+      }
+      if (!u.knightSword) {
+        const swGrp = new THREE.Group();
+        swGrp.position.set(-0.11, -d.length * 0.25, 0.02);
+        swGrp.rotation.z = -0.22;
+        swGrp.rotation.x = 0.12;
+        const scabbard = mesh(G.knightSwordBlade, citizenMat(0x1F2937, 0.8), 0, -0.14, 0, false, false);
+        const guard = mesh(G.knightSwordGuard, goldMat, 0, 0.02, 0, false, false);
+        const hilt = mesh(G.knightSwordHilt, citizenMat(0x4B5563, 0.9), 0, 0.06, 0, false, false);
+        const pommel = mesh(G.knightSwordPommel, goldMat, 0, 0.10, 0, false, false);
+        swGrp.add(scabbard, guard, hilt, pommel);
+        u.torso.add(swGrp);
+        u.knightSword = swGrp;
+      }
+      if (u.knightLance) u.knightLance.visible = !!p.isKnight && !!p.hasLance;
+      if (u.knightSword) u.knightSword.visible = !!p.isKnight && !p.hasLance;
+
       const wide = p.bottomStyle === 'wide' ? 1.32 : p.bottomStyle === 'slim' ? .85 : 1;
       [u.legL,u.legR].forEach(function (leg,i) {
         const knee = i ? u.kneeR : u.kneeL;
@@ -4737,92 +5060,100 @@ function mdLegacyTierLookup(id) {
         u.shinMeshes[i].scale.set(wide,shin,wide);
         u.shinMeshes[i].material = p.bottomStyle === 'shorts' ? skin : bottom;
         const shoe = knee.children[1];
- shoe.geometry = G[p.shoeStyle];
- shoe.material = dark;
+        shoe.geometry = G[p.shoeStyle];
+        shoe.material = p.isKnight ? citizenMat(0x475569, 0.5) : dark;
         shoe.position.set(0,-shin - .050,0);
- shoe.scale.set(1,1,1);
+        shoe.scale.set(1,1,1);
         citizenPart(knee,2,G.sole,sole,0,-shin - .050,0);
-      }
-);
+      });
       const c = u.clothingGrp;
- hideCitizenParts(c);
-      
+      hideCitizenParts(c);
       
       if (p.topStyle === 'dead_style_7') {
         [-1,1].forEach(function (side,i) {
           citizenPart(c,1+i,G.panel,top,side*d.top*.50,.006,d.depth*bulk+.004,d.top*.79,d.length*.88,.014);
           citizenPart(c,3+i,G.panel,top,side*.038,d.length*.43,d.depth*.83,.045,.049,.016).rotation.z = side*.34;
-        }
-);
+        });
         citizenPart(c,5,G.panel,citizenMat(0xB9B4A9,.88),0,.004,d.depth*bulk+.003,.022,d.length*.80,.011);
       }
- else if (p.topStyle === 'dead_style_9') {
+      else if (p.topStyle === 'dead_style_9') {
         citizenPart(c,1,G.hood,top,0,d.length*.39,-d.depth-.009);
       }
- else if (p.topStyle === 'sweater' || p.topStyle === 'longSleeve') {
+      else if (p.topStyle === 'sweater' || p.topStyle === 'longSleeve') {
         citizenPart(c,1,G.neck,top,0,d.length*.49,0,1.22,.34,1.22);
       }
-      const drape = p.topStyle === 'dress' || p.bottomStyle === 'skirt' || p.topStyle === 'longTop';
+      const drape = !p.isKnight && (p.topStyle === 'dress' || p.bottomStyle === 'skirt' || p.topStyle === 'longTop');
       u.hasDrape = drape;
       if (!u.pelvis) {
- u.pelvis = mesh(G.pelvis,bottom,0,0,0,false,false);
- u.torso.add(u.pelvis);
- }
+        u.pelvis = mesh(G.pelvis,bottom,0,0,0,false,false);
+        u.torso.add(u.pelvis);
+      }
       u.pelvis.material = bottom;
- u.pelvis.position.y = -d.length/2;
+      u.pelvis.position.y = -d.length/2;
       u.pelvis.scale.set(d.hip/.103,u.seated ? contact/.045 : 1,d.depth/.069);
       if (drape) {
         const fabric = p.topStyle === 'dress' || p.topStyle === 'longTop' ? top : bottom;
         citizenPart(c,6,G.skirt,fabric,0,-d.length*.43,0,d.hip/.101,.22,1).visible = !u.seated;
-        
         [u.legL,u.legR].forEach(function (leg) {
           citizenPart(leg,2,G.thigh,fabric,0,0,0,1.7,thigh,1.23).visible = !!u.seated;
-        }
-);
+        });
       }
- else [u.legL,u.legR].forEach(function (leg) {
- if (leg.children[2]) leg.children[2].visible = false;
- }
-);
+      else [u.legL,u.legR].forEach(function (leg) {
+        if (leg.children[2]) leg.children[2].visible = false;
+      });
       const a = u.accGrp;
- hideCitizenParts(a);
-      if (p.accessory === 'satchel') {
-        citizenPart(a, 0, G.accCrossbody, dark, -1 * (d.hip * bulk + .052), -.085, 0, .82, .91, .85);
-        citizenPart(a, 1, G.panel, dark, -1 * (d.hip * bulk + .031), .032, -.08, .012, .24, .018).rotation.z = -.12;
-      }
-      else if (p.accessory === 'crossbody' || p.accessory === 'tote') {
-        const side = p.accessory === 'tote' ? 1 : -1;
-        citizenPart(a, 0, p.accessory === 'tote' ? G.accTote : G.accCrossbody, dark, side * (d.hip * bulk + .052), -.09, 0, .82, .91, .85);
-        citizenPart(a, 1, G.panel, dark, side * (d.hip * bulk + .031), .032, 0, .012, .24, .018).rotation.z = side * .12;
-      }
-      else if (p.accessory === 'cap') {
-        citizenPart(a, 0, G.accCapDome, dark, 0, .305 + headOffset, 0, headWidth, headHeight, d.head);
-        citizenPart(a, 1, G.accCapBrim, dark, 0, .305 + headOffset, .083, headWidth, 1, 1);
-      }
-      else if (p.accessory === 'basket') {
-        citizenPart(a, 0, new THREE.CylinderGeometry(.05, .042, .075, 7), citizenMat(0xB7A281, .92), 1 * (d.hip * bulk + .052), -.115, 0, .9, .9, .9);
-        citizenPart(a, 1, new THREE.TorusGeometry(.045, .006, 5, 9), citizenMat(0x6E4E2E, .9), 1 * (d.hip * bulk + .052), -.032, 0, 1, 1, 1).rotation.x = Math.PI / 2;
+      hideCitizenParts(a);
+      if (!p.isKnight) {
+        if (p.accessory === 'satchel') {
+          citizenPart(a, 0, G.accCrossbody, dark, -1 * (d.hip * bulk + .052), -.085, 0, .82, .91, .85);
+          citizenPart(a, 1, G.panel, dark, -1 * (d.hip * bulk + .031), .032, -.08, .012, .24, .018).rotation.z = -.12;
+        }
+        else if (p.accessory === 'crossbody' || p.accessory === 'tote') {
+          const side = p.accessory === 'tote' ? 1 : -1;
+          citizenPart(a, 0, p.accessory === 'tote' ? G.accTote : G.accCrossbody, dark, side * (d.hip * bulk + .052), -.09, 0, .82, .91, .85);
+          citizenPart(a, 1, G.panel, dark, side * (d.hip * bulk + .031), .032, 0, .012, .24, .018).rotation.z = side * .12;
+        }
+        else if (p.accessory === 'cap') {
+          citizenPart(a, 0, G.accCapDome, dark, 0, .305 + headOffset, 0, headWidth, headHeight, d.head);
+          citizenPart(a, 1, G.accCapBrim, dark, 0, .305 + headOffset, .083, headWidth, 1, 1);
+        }
+        else if (p.accessory === 'basket') {
+          citizenPart(a, 0, new THREE.CylinderGeometry(.05, .042, .075, 7), citizenMat(0xB7A281, .92), 1 * (d.hip * bulk + .052), -.115, 0, .9, .9, .9);
+          citizenPart(a, 1, new THREE.TorusGeometry(.045, .006, 5, 9), citizenMat(0x6E4E2E, .9), 1 * (d.hip * bulk + .052), -.032, 0, 1, 1, 1).rotation.x = Math.PI / 2;
+        }
       }
       if (!u.propGrp) {
- u.propGrp = new THREE.Group();
- u.armR.children[1].add(u.propGrp);
- }
+        u.propGrp = new THREE.Group();
+        u.armR.children[1].add(u.propGrp);
+      }
       hideCitizenParts(u.propGrp);
-      if (p.prop === 'sack') citizenPart(u.propGrp, 0, new THREE.SphereGeometry(0.032, 6, 5), citizenMat(0xB7A281, .9), 0, -.148, .022).scale.set(1, 1.25, 1);
-      if (p.prop === 'mug') {
-        citizenPart(u.propGrp, 0, G.coffee, citizenMat(0x8B5E34, .9), 0, -.14, .035).rotation.x = Math.PI / 2;
-        citizenPart(u.propGrp, 1, G.lid, sole, 0, -.14, .066).rotation.x = Math.PI / 2;
+      if (!p.isKnight) {
+        if (p.prop === 'sack') citizenPart(u.propGrp, 0, new THREE.SphereGeometry(0.032, 6, 5), citizenMat(0xB7A281, .9), 0, -.148, .022).scale.set(1, 1.25, 1);
+        if (p.prop === 'mug') {
+          citizenPart(u.propGrp, 0, G.coffee, citizenMat(0x8B5E34, .9), 0, -.14, .035).rotation.x = Math.PI / 2;
+          citizenPart(u.propGrp, 1, G.lid, sole, 0, -.14, .066).rotation.x = Math.PI / 2;
+        }
       }
       citizenRestArms(u,0);
     }
     function citizenRestArms(u, swing) {
       if (!u.appearance) return;
       const p = u.appearance;
+      if (p.isKnight) {
+        u.armL.rotation.x = -0.28 - swing * 0.08;
+        u.armL.rotation.z = -0.16;
+        u.armL.children[1].rotation.x = -0.45;
+        u.armR.rotation.x = -0.24 + swing * 0.08;
+        u.armR.rotation.z = 0.08;
+        u.armR.children[1].rotation.x = -0.35;
+        u.torso.rotation.y = 0;
+        return;
+      }
       u.armL.rotation.x = (u.seated ? -.62 : 0) - swing*.8;
       u.armR.rotation.x = p.prop ? -.72 + swing*.12 : (u.seated ? -.62 : p.restPose === 'relaxed' ? -.24 : 0) + swing*.8;
       u.armR.children[1].rotation.x = p.prop ? -.85 : u.seated ? -.8 : -.16;
       u.armL.rotation.z = -.055;
- u.armR.rotation.z = .055;
+      u.armR.rotation.z = .055;
       u.torso.rotation.y = p.restPose === 'relaxed' ? .035 : 0;
     }
     
@@ -6188,6 +6519,17 @@ const CHARACTER = {
     interactiveBuildings.push(spentProxy);
     buildingRoots["finance_bank"] = spentGroup;
     bankRec.proxy = spentProxy;
+
+    // Royal Treasury Knight Guards
+    const guardL = makeFigure({ appearance: buildAppearanceProfile('knight:guard:left') });
+    guardL.position.set(-1.35, 0, 1.25);
+    guardL.rotation.y = 0.25;
+    spentGroup.add(guardL);
+
+    const guardR = makeFigure({ appearance: buildAppearanceProfile('knight:guard:right') });
+    guardR.position.set(1.35, 0, 1.25);
+    guardR.rotation.y = -0.25;
+    spentGroup.add(guardR);
     
     /* Trees belong to the reserve planting pass; old plaza beds overlapped it. */
     [].forEach(function (p) {

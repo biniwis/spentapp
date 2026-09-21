@@ -1913,6 +1913,199 @@
       return packRigidModel(g);
     }
 
+    // Alternate worlds use complete architectural stages. Geometry is created
+    // on demand and batched per stage; Urban retains its original tier engine.
+    function worldStarter(parent, w, d, cfg) {
+      const g = new THREE.Group(); parent.add(g);
+      const unit = Math.min(w / 2.4, d / 2.0, 1);
+      g.scale.setScalar(unit);
+      const id = cfg.id, cold = ARCTIC, next = FUTURE;
+      const wall = mat(next ? 0xD4DDE7 : cold ? 0xDDE5DC : cfg.body, .86);
+      const trim = mat(next ? futureSpec(id)[0] : cold ? 0x5B8190 : cfg.accent, .84);
+      const dark = mat(next ? 0x30445D : cold ? 0x455A64 : 0x52615C, .9);
+      const wood = next ? wall : M_WOOD;
+      function b(wi, h, de, x, y, z, m) { g.add(mesh(new THREE.BoxGeometry(wi,h,de),m || wall,x,y,z)); }
+      function cup(x,y,z) {
+        g.add(mesh(new THREE.CylinderGeometry(.07,.05,.11,9),M_CREAM,x,y,z));
+      }
+      function canopy(width,depth,height) {
+        [-1,1].forEach(s => b(.055,height,.055,s*(width/2-.06),height/2,-depth/2+.06,wood));
+        const roof = mesh(new THREE.BoxGeometry(width,.07,depth),cold ? M_WHITE : trim,0,height,0);
+        roof.rotation.x = .09; g.add(roof);
+      }
+      function counter(width) { b(width,.42,.48,0,.25,0,trim);b(width+.08,.06,.55,0,.49,0,wall); }
+      function terminal(x,z) {
+        b(.34,.75,.30,x,.40,z,dark); b(.26,.28,.025,x,.56,z+.16,trim);
+        b(.22,.045,.17,x,.34,z+.20,wall);
+      }
+      function crate(x,z) { b(.30,.24,.30,x,.14,z,wood);b(.32,.04,.32,x,.28,z,trim); }
+      function hut() {
+        b(1.12,.74,.85,0,.40,-.12);b(.31,.58,.04,.24,.30,.32,dark);
+        b(.31,.25,.04,-.24,.47,.32,M_GLASS_BL);
+        if(cold) pitchedRoof(g,1.25,1,.40,M_WHITE,.78,{});
+        else { b(1.24,.10,.97,0,.82,-.12,trim); }
+      }
+      b(1.65,.06,1.42,0,.03,0,cold ? M_WHITE : M_WARM_STONE);
+      switch(id) {
+        case 'food_coffee':
+          counter(.88);canopy(1.14,.83,.99);
+          b(.33,.27,.25,-.18,.65,-.05,dark);cup(.17,.58,.12);cup(.35,.58,.12);
+          if(!cold && !next) [-1,1].forEach(s=>{const wheel=mesh(new THREE.CylinderGeometry(.12,.12,.08,10),dark,s*.43,.16,.22);wheel.rotation.x=Math.PI/2;g.add(wheel);});
+          break;
+        case 'food_bistro':
+          counter(1.08);canopy(1.27,.88,1.03);
+          b(.43,.12,.30,-.22,.58,0,dark);
+          g.add(mesh(new THREE.CylinderGeometry(.14,.14,.06,10),M_CREAM,.28,.56,.06));
+          b(.15,.45,.15,-.48,.81,-.30,wood);break;
+        case 'food_super':
+          canopy(1.40,1.0,1.0);counter(.96);
+          for(let i=0;i<3;i++) {crate(-.53+i*.52,.48);g.add(mesh(new THREE.SphereGeometry(.09,7,5),i%2?M_GOLD:M_STREET_LEAF,-.53+i*.52,.36,.48));}
+          if(next) {terminal(-.52,-.18);terminal(.52,-.18);}break;
+        case 'food_wolt':
+        case 'city_sorting_hub':
+          canopy(1.36,.93,.92);crate(-.37,.13);crate(.03,.13);crate(.40,-.18);
+          if(next) {
+            futureRing(g,.30,.025,trim,0,.10,.40);
+            b(.29,.10,.20,0,.45,.40,dark);
+            [-1,1].forEach(s=>futureRing(g,.12,.02,trim,s*.26,.49,.40));
+          } else {b(.75,.05,.40,0,.10,.19,wood);b(.04,.37,.04,.49,.23,.43,wood);}break;
+        case 'shop_boutique':
+          canopy(1.30,.88,1.10);b(1.04,.05,.05,0,.91,0,dark);
+          [-1,0,1].forEach((s,i)=>b(.24,.40,.09,s*.33,.66,0,i%2?trim:M_CREAM));
+          b(.67,.10,.42,0,.12,0,wood);break;
+        case 'shop_tech':
+        case 'shop_arcade':
+          if(next) {terminal(-.29,0);terminal(.29,0);}
+          else {counter(1.06);canopy(1.22,.83,1.13);[-1,1].forEach(s=>{b(.26,.34,.08,s*.28,.69,0,dark);b(.20,.24,.025,s*.28,.70,.055,M_GLASS_BL);});}
+          break;
+        case 'house_tower': hut();break;
+        case 'house_util':
+          b(.75,.56,.54,0,.32,0,trim);
+          b(.30,.30,.035,0,.41,.29,dark);
+          {const panel=mesh(new THREE.BoxGeometry(.93,.055,.62),M_GLASS_BL,0,.82,-.04);panel.rotation.x=-.30;g.add(panel);}
+          break;
+        case 'house_subs':
+          terminal(0,0);b(.045,.55,.045,0,1.02,-.10,dark);
+          g.add(mesh(new THREE.SphereGeometry(.20,10,6,0,Math.PI*2,0,Math.PI*.45),wall,0,1.27,-.10));break;
+        case 'health_pharmacy':
+          hut();b(.12,.40,.045,-.26,.48,.36,trim);b(.38,.12,.045,-.26,.48,.36,trim);break;
+        case 'shop_travel':
+          canopy(1.25,.80,1.13);b(.52,.54,.08,-.23,.58,-.18,trim);
+          b(.35,.20,.06,-.23,.62,-.12,M_CREAM);crate(.40,.30);break;
+        case 'finance_bank': terminal(0,0);canopy(.86,.72,1.04);break;
+        default:
+          canopy(1.17,.84,.97);counter(.84);
+          g.add(mesh(new THREE.OctahedronGeometry(.18,0),trim,0,.72,0));break;
+      }
+      if(ISRAEL && cfg.sign && cfg.sign.text)
+        israelSmallSign(g,cfg.sign.text,1.0,.20,0,1.20,.20,cfg.sign.bg,cfg.sign.fg);
+    }
+
+    function buildWorldStage(g, w, d, cfg, tier) {
+      if(tier===1) {worldStarter(g,w,d,cfg);return;}
+      const home = cfg.kind === 'house', id = cfg.id;
+      const food = id === 'food_coffee' || id === 'food_bistro';
+      const freight = id === 'food_wolt' || id === 'city_sorting_hub';
+      const accent = mat(FUTURE ? futureSpec(id)[0] : cfg.accent || cfg.body,.85);
+      function box(wi,h,de,x,y,z,m) {g.add(mesh(new THREE.BoxGeometry(wi,h,de),m,x,y,z));}
+      // Main modules own category identity; secondary modules are quiet service
+      // rooms, so a compound does not duplicate signs, entrances and emblems.
+      function module(x,z,wi,de,levels,main) {
+        const p = new THREE.Group();p.position.set(x,0,z);g.add(p);
+        if(ISRAEL) {
+          if(main) {
+            if(home) israelStorey(p,wi,de,cfg,0);
+            else {israelGround(p,wi,de,cfg);if(cfg.sign)signPlate(p,wi,1.02,de,cfg.sign.text,cfg.sign.bg,cfg.sign.fg,27);}
+          } else {
+            israelBox(p,wi,FLOOR_H,de,cfg.body,0,FLOOR_H/2,0);
+            israelWindow(p,0,.62,de/2,Math.min(.45,wi*.54),false);
+          }
+          for(let i=1;i<levels;i++) {const f=new THREE.Group();f.position.y=i*FLOOR_H;p.add(f);israelStorey(f,wi,de,cfg,i-1);}
+          israelRoof(p,wi,de,levels*FLOOR_H,cfg);
+        } else if(ARCTIC) {
+          if(main) iceFront(p,wi,de,cfg,false);
+          else {
+            p.add(mesh(roundedBox(wi,FLOOR_H,de,.10),M_CREAM,0,FLOOR_H/2,0));
+            p.add(mesh(new THREE.BoxGeometry(wi*.58,.30,.04),M_GLASS_BL,0,.61,de/2+.02));
+            p.add(mesh(new THREE.BoxGeometry(wi,.09,de),accent,0,.16,0));
+          }
+          for(let i=1;i<levels;i++) {const f=new THREE.Group();f.position.y=i*FLOOR_H;p.add(f);iceStorey(f,wi,de,i-1,cfg);}
+          iceRoof(p,wi*1.04,de*1.04,.48,levels*FLOOR_H,id);
+        } else {
+          if(main) futureFront(p,wi,de,cfg,false);
+          else {
+            futureBox(p,wi,.10,de,mat(0x30445D,.8),0,.08,0);
+            futureBox(p,wi*.88,.86,de*.85,mat(0xCAD7E0,.8),0,.65,0,.12);
+            futureBox(p,wi*.67,.26,.035,accent,0,.68,de*.43);
+          }
+          for(let i=1;i<levels;i++) {const f=new THREE.Group();f.position.y=i*FLOOR_H;p.add(f);futureStorey(f,wi,de,cfg,i-1);}
+          futureRoof(p,wi,de,levels*FLOOR_H,cfg);
+        }
+      }
+      function terrace(x,z,wi,de) {
+        const material = ISRAEL ? M_WOOD : ARCTIC ? M_WHITE : accent;
+        box(wi,.07,de,x,.07,z,ARCTIC?M_WOOD:M_WARM_STONE);
+        [-1,1].forEach(s=>box(.045,.92,.045,x+s*wi*.43,.51,z-de*.37,material));
+        box(wi,.06,de,x,1.0,z,material);
+        if(food) {
+          box(wi*.52,.06,de*.42,x,.44,z,M_CREAM);box(.07,.35,.07,x,.24,z,M_WOOD);
+          [-1,1].forEach(s=>box(.18,.23,.18,x+s*wi*.37,.20,z,accent));
+        } else if(freight || id==='food_super') {
+          [-1,1].forEach(s=>box(wi*.27,.30,de*.46,x+s*wi*.22,.25,z,accent));
+        } else {box(wi*.65,.25,de*.27,x,.22,z,accent);}
+      }
+      box(w*.98,.05,d*.98,0,.025,0,ARCTIC?M_WHITE:M_WARM_STONE);
+      if(ISRAEL) {
+        if(home) {
+          module(tier===4?-w*.13:0,-d*.08,w*(tier===4?.66:.72),d*.72,tier===2?1:tier===3?2:3,true);
+          if(tier===4)module(w*.34,-d*.12,w*.24,d*.57,1,false);
+        } else if(tier===2) module(0,-d*.10,w*.62,d*.58,1,true);
+        else if(tier===3) {
+          module(-w*.08,-d*.13,w*.78,d*.65,1,true);
+          terrace(w*.20,d*.32,w*.46,d*.25);
+        } else {
+          module(-w*.15,-d*.15,w*.64,d*.64,food||freight?1:2,true);
+          module(w*.32,-d*.04,w*.27,d*.84,1,false);
+          terrace(-w*.15,d*.33,w*.61,d*.23);
+        }
+      } else if(ARCTIC) {
+        module(tier===2?0:-w*.19,-d*.12,w*(tier===2?.66:.54),d*.60,tier===4&&home?2:1,true);
+        if(tier>=3) {
+          module(w*.30,-d*.16,w*.28,d*.51,1,false);
+          box(w*.15,.55,d*.22,w*.14,.36,-d*.17,M_WARM_STONE);
+        }
+        if(tier===4) {module(w*.30,d*.27,w*.28,d*.28,1,false);terrace(-w*.20,d*.30,w*.47,d*.27);}
+      } else {
+        if(tier===2) module(0,-d*.12,w*.62,d*.57,1,true);
+        else if(tier===3) {
+          module(-w*.24,-d*.12,w*.43,d*.64,1,true);
+          module(w*.26,-d*.12,w*.35,d*.64,1,false);
+          box(w*.18,.16,d*.28,w*.03,.92,-d*.12,accent);
+        } else {
+          module(-w*.10,-d*.22,w*.65,d*.46,2,true);
+          module(w*.32,d*.22,w*.25,d*.33,1,false);
+          terrace(-w*.22,d*.27,w*.43,d*.32);
+          box(w*.17,.16,d*.24,w*.32,.72,-d*.05,accent);
+        }
+      }
+    }
+
+    function makeWorldBuilding(cfg) {
+      const g=new THREE.Group();g.position.set(cfg.x,Y_WALK,cfg.z);
+      if(cfg.rotY)g.rotation.y=cfg.rotY;
+      root.add(g);
+      const shell=new THREE.Group(),plot=new THREE.Group(),stall=new THREE.Group();
+      g.add(shell,plot,stall);
+      const proxy=hitProxy(cfg.w+.2,FLOOR_H*3.8,cfg.d+.2);
+      proxy.userData={id:cfg.id,district:cfg.district,name:cfg.name,amount:0,trend:cfg.trend,shell:shell};
+      g.add(proxy);interactiveBuildings.push(proxy);buildingRoots[cfg.id]=g;
+      const rec={id:cfg.id,group:g,shell:shell,plot:plot,stall:stall,ground:shell,
+        proxy:proxy,floors:[],roofs:[],dressing:[],tierGroups:[],minTier:1,
+        maxTier:cfg.maxTier===undefined?4:cfg.maxTier,tier:-1,
+        buildStage:function(tier){const stage=new THREE.Group();shell.add(stage);buildWorldStage(stage,cfg.w,cfg.d,cfg,tier);packRigidModel(stage);return stage;}};
+      cityBuildings[cfg.id]=rec;setBuildingTier(rec,1);return rec;
+    }
+
     function makeBuilding(cfg) {
       if (ISRAEL) {
         const local = ISRAEL_BUILDINGS[cfg.id] || [cfg.body, cfg.accent || cfg.body, "#596F67", "utility"];
@@ -1923,6 +2116,8 @@
           sign: { text: ISRAEL_SIGNS[cfg.id] || (cfg.sign && cfg.sign.text) || "", bg: local[2], fg: "#FFF7E9", size: 27 }
         });
       }
+
+      if(ISRAEL || ARCTIC || FUTURE) return makeWorldBuilding(cfg);
 
       const g = new THREE.Group();
       g.position.set(cfg.x, Y_WALK, cfg.z);
@@ -1940,20 +2135,7 @@
 
       // ---- tier 1 ----
       const stall = new THREE.Group(); g.add(stall);
-      if (FUTURE) { futureFront(stall, w, d, cfg, true); }
-      else if (ARCTIC) { iceFront(stall, w, d, cfg, true); }
-      else if (ISRAEL) {
-        const miniature = new THREE.Group(); stall.add(miniature);
-        miniature.scale.setScalar(0.92);
-        israelGround(miniature, w, d, cfg);
-        if (cfg.kind === "house") {
-          const apartment = new THREE.Group(); apartment.position.y = FLOOR_H; miniature.add(apartment);
-          israelStorey(apartment, w, d, cfg, 0);
-        }
-        israelRoof(miniature, w, d, FLOOR_H * (cfg.kind === "house" ? 2 : 1), cfg);
-        if (cfg.kind !== "house" && cfg.sign.text) signPlate(miniature, w, 1.02, d, cfg.sign.text, cfg.sign.bg, cfg.sign.fg, 27);
-      }
-      else if (typeof CUSTOM_STALLS !== "undefined" && CUSTOM_STALLS[cfg.id]) {
+      if (typeof CUSTOM_STALLS !== "undefined" && CUSTOM_STALLS[cfg.id]) {
         CUSTOM_STALLS[cfg.id](stall, w, d);
       } else {
         marketStall(stall, cfg.awning ? cfg.awning[0] : "#EF4444", cfg.awning ? cfg.awning[1] : "#FFFFFF");
@@ -2110,6 +2292,14 @@
       if (rec.tier === tier) return;
       const previous = rec.tier;
       rec.tier = tier;
+      if(rec.buildStage) {
+        let current=rec.tierGroups.find(t=>t.visibleAt===tier);
+        if(!current) {current={visibleAt:tier,group:rec.buildStage(tier)};rec.tierGroups.push(current);}
+        rec.plot.visible=false;rec.stall.visible=false;rec.shell.visible=true;
+        rec.tierGroups.forEach(t=>{t.group.visible=t===current;});
+        if(previous>=0 && tier>previous && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) raise(current.group);
+        return;
+      }
       rec.plot.visible = (tier === 0);
       rec.stall.visible = (tier === 1);
       rec.shell.visible = (tier >= 2);

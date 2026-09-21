@@ -1677,7 +1677,7 @@
     "Restore this snapshot?" : {
 
     },
-    "Restore will replace your current data with the latest backup from your iCloud account. You may want to export a local copy first." : {
+    "Restore will replace your current data with the latest backup from iCloud.\n\nA local recovery snapshot of your current state will be created first, so you can always roll back if needed." : {
 
     },
     "Restoring now…" : {
@@ -2763,7 +2763,7 @@
     "השוואה חצי שנתית" : {
 
     },
-    "השחזור יחליף את הנתונים הנוכחיים בגיבוי העדכני ביותר מחשבון ה־iCloud שלך. מומלץ לוודא ששמרת עותק גיבוי מקומי קודם." : {
+    "השחזור יחליף את הנתונים הנוכחיים בגיבוי העדכני ביותר מחשבון ה־iCloud שלך.\n\nלפני השחזור, ייווצר באופן אוטומטי תצלום שחזור מקומי של הנתונים הקיימים, כך שתוכל לחזור אליהם בכל עת מתחת ל'תצלומי שחזור מקומיים'." : {
 
     },
     "השם שלך" : {

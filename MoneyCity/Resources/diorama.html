@@ -5733,6 +5733,145 @@ function normalizedSlotPlacements(input) {
         createIsraeliGreenBin(-2.4, -6.8,  Math.PI);
       }());
 
+      // 💧 Dripping AC Drain Pipe & Wet Pavement Puddle
+      // A familiar Israeli summer street reality: an external PVC drain pipe descending
+      // from a 1st-floor AC unit, dripping onto a glossy puddle on the sidewalk.
+      (function createAcDripAndPuddle() {
+        const wallX = -7.42, groundZ = -3.85;
+        const g = new THREE.Group(); g.position.set(wallX, Y_WALK, groundZ); root.add(g);
+        const pvcMat = mat(0xE5E7EB, 0.4, 0.2);
+        const bracketMat = mat(0x9CA3AF, 0.3, 0.8);
+        const pipeH = 1.35;
+        // Vertical PVC pipe descending from upper AC
+        g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, pipeH, 6), pvcMat, 0, pipeH / 2 + 0.12, 0));
+        // Wall mounting brackets holding the pipe
+        [0.35, 0.85, 1.30].forEach(function (by) {
+          g.add(mesh(new THREE.BoxGeometry(0.035, 0.015, 0.03), bracketMat, -0.012, by, 0));
+        });
+        // 45-degree angled spout elbow at the bottom, pointing out towards sidewalk
+        const elbow = mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.08, 6), pvcMat, 0.025, 0.09, 0.02);
+        elbow.rotation.z = -0.55; g.add(elbow);
+        // Dangling translucent water drop at tip
+        const waterDropMat = mat(0x38BDF8, 0.1, 0.2, 0x38BDF8, 0.4);
+        g.add(mesh(new THREE.SphereGeometry(0.013, 6, 6), waterDropMat, 0.052, 0.065, 0.02, false, false));
+
+        // Wet pavement puddle on the ground directly below
+        const wetDarkStone = mat(0x52525B, 0.1, 0.1);
+        const puddleWater = mat(0x60A5FA, 0.05, 0.2, 0x60A5FA, 0.25);
+        // Organic overlapping puddle shape
+        const p1 = mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.008, 10), wetDarkStone, 0.10, 0.004, 0.03, false, false);
+        p1.scale.set(1.4, 1.0, 0.85); g.add(p1);
+        const p2 = mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.010, 10), puddleWater, 0.12, 0.006, 0.02, false, false);
+        p2.scale.set(1.2, 1.0, 0.75); g.add(p2);
+        // Subtle concentric ripple ring
+        const ripple = mesh(new THREE.TorusGeometry(0.07, 0.006, 4, 14), puddleWater, 0.11, 0.009, 0.025, false, false);
+        ripple.rotation.x = Math.PI / 2; g.add(ripple);
+        animObjects.push({ type: "neon_pulse", mat: puddleWater, base: 0.25, range: 0.65, phase: 1.2 });
+      }());
+
+      // ⚡ Bezeq / Electric Utility Cabinet (פילר סעף ותקשורת)
+      // The ubiquitous street-corner utility pillar with dual doors, ventilation louvers,
+      // a concrete curb plinth, and a small faded service sticker.
+      (function createUtilityPillar(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+        const baseM = mat(0x71717A, 0.9, 0.1);
+        const cabinetM = mat(0xC8C3B4, 0.75, 0.1);
+        const seamM = mat(0x52525B, 0.9);
+        const lockM = mat(0xD97706, 0.3, 0.7);
+
+        // Concrete base plinth
+        g.add(mesh(roundedBox(0.46, 0.10, 0.26, 0.02), baseM, 0, 0.05, 0));
+        // Main composite/metal cabinet body
+        g.add(mesh(roundedBox(0.42, 0.58, 0.22, 0.02), cabinetM, 0, 0.39, 0));
+        // Sloped rain-shed roof cap
+        const roof = mesh(new THREE.BoxGeometry(0.44, 0.035, 0.24), cabinetM, 0, 0.69, 0);
+        roof.rotation.x = -0.04; g.add(roof);
+
+        // Vertical door seam dividing the two service doors
+        g.add(mesh(new THREE.BoxGeometry(0.012, 0.50, 0.015), seamM, 0, 0.39, 0.111, false, false));
+        // Recessed ventilation louvers (horizontal slits on both door tops)
+        [-0.10, 0.10].forEach(function (dx) {
+          for (let l = 0; l < 3; l++) {
+            g.add(mesh(new THREE.BoxGeometry(0.12, 0.010, 0.008), seamM, dx, 0.54 - l * 0.024, 0.111, false, false));
+          }
+        });
+        // Central brass hasp & padlock
+        g.add(mesh(new THREE.BoxGeometry(0.028, 0.04, 0.018), lockM, 0, 0.34, 0.115, false, false));
+        // Small faded service sticker ("אינסטלטור / הובלות")
+        g.add(mesh(new THREE.BoxGeometry(0.09, 0.065, 0.005), mat(0xFDE047, 0.8), 0.09, 0.26, 0.111, false, false));
+      }(6.45, 2.15, -Math.PI * 0.5));
+
+      // ♻️ Neighborhood Plastic Bottle Recycling Cage (כלוב מחזור בקבוקים)
+      // The familiar green wire-mesh bottle bank next to municipal bins, with an inlet hole.
+      (function createRecyclingCage(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+        const frameM = mat(0x15803D, 0.6, 0.4);
+        const meshM  = mat(0x166534, 0.65, 0.35);
+        const metalDark = mat(0x334155, 0.7);
+
+        // Raised metal corner posts (legs)
+        [[-0.26, -0.19], [0.26, -0.19], [-0.26, 0.19], [0.26, 0.19]].forEach(function (cp) {
+          g.add(mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.68, 6), frameM, cp[0], 0.34, cp[1]));
+        });
+        // Bottom frame rail & mesh floor
+        g.add(mesh(new THREE.BoxGeometry(0.54, 0.025, 0.40), frameM, 0, 0.09, 0));
+        // Main wire-mesh cage body
+        g.add(mesh(new THREE.BoxGeometry(0.53, 0.48, 0.39), meshM, 0, 0.34, 0));
+        // Sheet metal roof with curved slope
+        const roof = mesh(roundedBox(0.56, 0.04, 0.42, 0.02), frameM, 0, 0.59, 0);
+        g.add(roof);
+        // Circular rubber/metal bottle deposit chute on top
+        const chute = mesh(new THREE.TorusGeometry(0.065, 0.016, 6, 16), metalDark, 0, 0.615, 0, false, false);
+        chute.rotation.x = Math.PI / 2; g.add(chute);
+        // A few colorful translucent plastic bottles visible at bottom inside
+        const bottleColors = [0x38BDF8, 0x4ADE80, 0xE2E8F0, 0x60A5FA];
+        [[-0.12, 0.11, -0.06, 0.4], [0.08, 0.11, 0.05, -0.6], [-0.02, 0.13, 0.02, 0.9], [0.14, 0.11, -0.08, -0.2]].forEach(function (b, idx) {
+          const bMesh = mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.09, 6), mat(bottleColors[idx], 0.2, 0.1), b[0], b[1], b[2], false, false);
+          bMesh.rotation.z = b[3]; bMesh.rotation.x = b[3] * 0.5; g.add(bMesh);
+        });
+        // Small circular recycling emblem on front
+        g.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.008, 10), mat(0xF0FDF4, 0.9), 0, 0.45, 0.201, false, false));
+        g.add(mesh(new THREE.TorusGeometry(0.026, 0.006, 4, 10), frameM, 0, 0.45, 0.206, false, false));
+      }(2.7, 7.15, -0.15));
+
+      // 🛴 Single Parked Shared E-Scooter (קורקינט שיתופי מוטה על רגלית)
+      // Parked along the sidewalk edge, tilted naturally on its kickstand.
+      (function createParkedScooter(x, z, ry) {
+        const sc = new THREE.Group(); sc.position.set(x, Y_WALK, z); sc.rotation.y = ry; root.add(sc);
+        // Natural kickstand tilt (~10 degrees roll)
+        sc.rotation.z = -0.16;
+
+        const bodyDark = mat(0x18181B, 0.7, 0.5);
+        const limeM    = mat(0x84CC16, 0.4, 0.4);
+        const wheelM   = mat(0x09090B, 0.9);
+        const lightM   = mat(0x22C55E, 0.2, 0, 0x22C55E, 2.5);
+
+        // Deck: sleek narrow board
+        sc.add(mesh(roundedBox(0.12, 0.04, 0.56, 0.02), bodyDark, 0, 0.085, 0));
+        // Rubber grip tape strip
+        sc.add(mesh(new THREE.BoxGeometry(0.08, 0.006, 0.48), mat(0x3F3F46, 0.95), 0, 0.108, 0, false, false));
+        // Wheels: front and rear black rubber wheels
+        [-0.24, 0.24].forEach(function (wz) {
+          const w = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10), wheelM, 0, 0.05, wz);
+          w.rotation.z = Math.PI / 2; sc.add(w);
+        });
+        // Steering column (bright lime green tube)
+        const stem = mesh(new THREE.CylinderGeometry(0.014, 0.015, 0.65, 8), limeM, 0, 0.41, 0.22);
+        stem.rotation.x = -0.12; sc.add(stem);
+        // Handlebars (horizontal bar with black rubber hand grips)
+        sc.add(mesh(new THREE.BoxGeometry(0.32, 0.022, 0.022), bodyDark, 0, 0.72, 0.18));
+        [-0.13, 0.13].forEach(function (hx) {
+          sc.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 6), mat(0x27272A, 0.9), hx, 0.72, 0.18));
+        });
+        // Center digital dash & tiny green pulsing status LED
+        sc.add(mesh(new THREE.BoxGeometry(0.05, 0.035, 0.018), bodyDark, 0, 0.73, 0.17, false, false));
+        sc.add(mesh(new THREE.BoxGeometry(0.016, 0.016, 0.006), lightM, 0, 0.735, 0.16, false, false));
+        animObjects.push({ type: "neon_pulse", mat: lightM, base: 1.0, range: 2.2, phase: 0.5 });
+        // Kickstand leg holding the scooter tilted
+        const stand = mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.12, 5), mat(0x71717A, 0.5, 0.7), -0.055, 0.045, -0.08);
+        stand.rotation.z = 0.35; stand.rotation.x = 0.15; sc.add(stand);
+      }(-4.85, 2.2, 0.4));
+
     } // end ISRAEL street details
 
     // ────────────────────────────────────────────────────────────────

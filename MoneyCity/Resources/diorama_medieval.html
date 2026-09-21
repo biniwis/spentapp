@@ -7975,24 +7975,25 @@ function normalizedSlotPlacements(input) {
 ,      {
  x:  R_OUT - 0.30,     z: -R_OUT + 0.30 }
     ];
-    function addVehicleToPath(color, isBus, isTaxi, path, initP, spd) {
+    function addVehicleToPath(color, isBus, isTaxi, path, initP, spd, threshold) {
       const v = createCar(color, isBus, isTaxi);
       v.position.y = Y_WALK;
       root.add(v);
       vehicleState.push({
- obj: v, path: path, progress: initP, speed: spd, baseY: Y_WALK, purpose: "transport" }
-);
+        obj: v, path: path, progress: initP, speed: spd, baseY: Y_WALK, purpose: "transport",
+        threshold: threshold !== undefined ? threshold : 0.18
+      });
     }
     
     
-    addVehicleToPath(0x8B5A2B, false, true,  roadClockwise, 0.05, 0.022);
+    addVehicleToPath(0x8B5A2B, false, true,  roadClockwise, 0.05, 0.022, 0); // Permanent horse & wagon
  
-    addVehicleToPath(0x6E4E2E, false, false, roadClockwise, 0.50, 0.009);
+    addVehicleToPath(0x6E4E2E, false, false, roadClockwise, 0.50, 0.009, 0.25);
  
     
-    addVehicleToPath(0x6E5D4B, true, false,  roadCounterClockwise, 0.20, 0.016);
+    addVehicleToPath(0x6E5D4B, true, false,  roadCounterClockwise, 0.20, 0.016, 0.18);
  
-    addVehicleToPath(0xB8452E, false, false, roadCounterClockwise, 0.70, 0.009);
+    addVehicleToPath(0xB8452E, false, false, roadCounterClockwise, 0.70, 0.009, 0.35);
  
     
     

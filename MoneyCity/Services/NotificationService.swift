@@ -46,9 +46,9 @@ public enum NotificationService {
                 }
                 return
             }
+            center.removePendingNotificationRequests(withIdentifiers: [monthlyWorldSelectionIdentifier])
             scheduleWeeklyNotification(isHebrew: isHebrew)
             scheduleMonthlyRecapNotification(isHebrew: isHebrew)
-            scheduleWorldSelectionNotification(isHebrew: isHebrew)
             Task { @MainActor in
                 CityNarrativeEngine.shared.onAppForeground()
             }
@@ -158,34 +158,6 @@ public enum NotificationService {
         center.add(request, withCompletionHandler: nil)
     }
 
-    /// Schedules a monthly world-selection reminder for the 1st of every month at 11:00 AM.
-    /// Fires on the same day as the Recap notification so the user sees both at once.
-    /// The notification is cancelled automatically once the user confirms their world choice
-    /// via `CityMapSelection.confirmWorldChoice` (checked on next `sync` call).
-    public static func scheduleWorldSelectionNotification(isHebrew: Bool) {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [monthlyWorldSelectionIdentifier])
-
-        let content = UNMutableNotificationContent()
-        content.title = isHebrew
-            ? "בחר את העולם שלך לחודש החדש 🌍"
-            : "Choose your world for the new month 🌍"
-        content.body = isHebrew
-            ? "עיר חדשה מחכה לך — בחר את הסגנון של החודש."
-            : "A new city awaits — pick your style for this month."
-        content.sound = .default
-        content.userInfo = ["type": "world_selection"]
-
-        // Fires on the 1st of every month at 11:00 AM — same slot as Recap
-        var components = DateComponents()
-        components.day = 1
-        components.hour = 11
-        components.minute = 0
-
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
-        let request = UNNotificationRequest(identifier: monthlyWorldSelectionIdentifier, content: content, trigger: trigger)
-        center.add(request, withCompletionHandler: nil)
-    }
 
     /// Dispatches an immediate confirmation notification when an Apple Pay expense is logged.
     public static func sendExpenseLoggedNotification(

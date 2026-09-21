@@ -792,7 +792,7 @@
     "Choose a Category" : {
 
     },
-    "Choose for next month" : {
+    "Choose how your city looks" : {
 
     },
     "City" : {
@@ -823,9 +823,6 @@
 
     },
     "Confirm Deposit" : {
-
-    },
-    "Confirm Map" : {
 
     },
     "Confirming will deduct this amount from your monthly spending" : {
@@ -875,10 +872,10 @@
         }
       }
     },
-    "Current" : {
+    "Current spending exceeds planned income. Nature Reserve growth slows down." : {
 
     },
-    "Current spending exceeds planned income. Nature Reserve growth slows down." : {
+    "Current: %@" : {
 
     },
     "Date and Time" : {
@@ -1391,12 +1388,6 @@
     "Next" : {
 
     },
-    "Next Month's Map" : {
-
-    },
-    "Next: %@" : {
-
-    },
     "Night" : {
 
     },
@@ -1805,9 +1796,6 @@
     "Select Category" : {
 
     },
-    "Selected" : {
-
-    },
     "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
 
     },
@@ -1997,9 +1985,6 @@
 
     },
     "This month: %@" : {
-
-    },
-    "This Month's Map" : {
 
     },
     "THIS MONTH’S TARGET" : {
@@ -2426,13 +2411,10 @@
     "בודק גיבויים ב־iCloud…" : {
 
     },
-    "בחירה לחודש הבא" : {
-
-    },
-    "בחירת מפה" : {
-
-    },
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
+
+    },
+    "בחר איך העיר שלך תיראה" : {
 
     },
     "בחר קטגוריה" : {
@@ -2503,9 +2485,6 @@
 
     },
     "הבא" : {
-
-    },
-    "הבא: %@" : {
 
     },
     "הגדר יעד" : {
@@ -2608,9 +2587,6 @@
 
     },
     "החבר עדיין לא נוסף" : {
-
-    },
-    "החודש" : {
 
     },
     "החודש: %@" : {
@@ -2947,6 +2923,9 @@
     "כמה ברצונך להפקיד?" : {
 
     },
+    "כרגע: %@" : {
+
+    },
     "לא בשימוש — התקרות למטה גוברות" : {
 
     },
@@ -3085,12 +3064,6 @@
     "מפקח מועמדויות (Candidate Inspector)" : {
 
     },
-    "מפת החודש" : {
-
-    },
-    "מפת החודש הבא" : {
-
-    },
     "מצאנו גיבוי של SPENT" : {
 
     },
@@ -3131,9 +3104,6 @@
 
     },
     "נא להזין סכום תקין" : {
-
-    },
-    "נבחר" : {
 
     },
     "נגדיר לאייפון להעביר ל-SPENT את סכום העסקה ואת בית העסק אחרי כל תשלום ב-Apple Pay." : {

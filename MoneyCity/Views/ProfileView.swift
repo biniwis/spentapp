@@ -10,9 +10,14 @@ public struct ProfileView: View {
     /// Passed down to the recap archive so its "Back to City" button reaches the tab state,
     /// which lives above this view.
     public var onNavigateToCity: ((Date) -> Void)? = nil
+    public var onMapStyleChanged: ((CityMapStyle) -> Void)? = nil
 
-    public init(onNavigateToCity: ((Date) -> Void)? = nil) {
+    public init(
+        onNavigateToCity: ((Date) -> Void)? = nil,
+        onMapStyleChanged: ((CityMapStyle) -> Void)? = nil
+    ) {
         self.onNavigateToCity = onNavigateToCity
+        self.onMapStyleChanged = onMapStyleChanged
     }
     @Query private var budgets: [CategoryBudget]
 
@@ -36,7 +41,6 @@ public struct ProfileView: View {
     @State private var showDetailedBudget = false
     @State private var activeRecapForSheet: MonthlyRecap? = nil
     @State private var showCityWorldPicker = false
-    @State private var cityWorldPickerTargetMonth: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
     @State private var cityWorldDraft: CityMapStyle = .urban
     @State private var cityWorldRevision: Int = 0
     #if DEBUG
@@ -281,15 +285,15 @@ public struct ProfileView: View {
         }
         .sheet(isPresented: $showCityWorldPicker) {
             MonthlyWorldPickerView(
-                targetMonth: cityWorldPickerTargetMonth,
                 draft: $cityWorldDraft,
                 isHebrew: l10n.language == .hebrew,
                 onClose: {
                     showCityWorldPicker = false
                 },
-                onConfirm: { chosenStyle in
-                    CityMapSelection.confirmWorldChoice(chosenStyle, for: cityWorldPickerTargetMonth)
+                onSelect: { chosenStyle in
+                    CityMapSelection.save(chosenStyle, for: Date())
                     cityWorldRevision += 1
+                    onMapStyleChanged?(chosenStyle)
                     showCityWorldPicker = false
                 }
             )
@@ -800,32 +804,9 @@ public struct ProfileView: View {
 
     // MARK: - City World Menu Row
 
-    private var nextMonthDate: Date {
-        Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
-    }
-
     private var currentMonthStyle: CityMapStyle {
         _ = cityWorldRevision
         return CityMapSelection.resolvedStyle(for: Date())
-    }
-
-    private var nextMonthStyle: CityMapStyle? {
-        _ = cityWorldRevision
-        return CityMapSelection.selectedStyle(for: nextMonthDate)
-    }
-
-    private var nextMonthName: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
-        f.dateFormat = "LLLL"
-        return f.string(from: nextMonthDate)
-    }
-
-    private var currentMonthName: String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
-        f.dateFormat = "LLLL"
-        return f.string(from: Date())
     }
 
     @ViewBuilder
@@ -834,9 +815,7 @@ public struct ProfileView: View {
 
         Button(action: {
             Haptics.impact(.light)
-            // Profile menu row is specifically for choosing/previewing the next month's city
-            cityWorldPickerTargetMonth = nextMonthDate
-            cityWorldDraft = CityMapSelection.selectedStyle(for: nextMonthDate) ?? CityMapSelection.resolvedStyle(for: Date())
+            cityWorldDraft = CityMapSelection.resolvedStyle(for: Date())
             showCityWorldPicker = true
         }) {
             HStack(spacing: 14) {
@@ -852,25 +831,9 @@ public struct ProfileView: View {
                         .font(.system(size: 15, weight: .semibold, design: .default))
                         .foregroundColor(Color.deepNavy)
 
-                    HStack(spacing: 6) {
-                        Text(isHe ? "החודש: \(currentMonthStyle.title(isHebrew: isHe))" : "This month: \(currentMonthStyle.title(isHebrew: isHe))")
-                            .font(.system(size: 12, weight: .regular, design: .default))
-                            .foregroundColor(Color.textSecondary)
-
-                        Text("•")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color.textMuted)
-
-                        if let next = nextMonthStyle {
-                            Text(isHe ? "הבא: \(next.title(isHebrew: isHe))" : "Next: \(next.title(isHebrew: isHe))")
-                                .font(.system(size: 12, weight: .semibold, design: .default))
-                                .foregroundColor(MoneyCityTheme.violetBlue)
-                        } else {
-                            Text(isHe ? "בחירה לחודש הבא" : "Choose for next month")
-                                .font(.system(size: 12, weight: .medium, design: .default))
-                                .foregroundColor(MoneyCityTheme.luckyGreen)
-                        }
-                    }
+                    Text(isHe ? "כרגע: \(currentMonthStyle.title(isHebrew: isHe))" : "Current: \(currentMonthStyle.title(isHebrew: isHe))")
+                        .font(.system(size: 12, weight: .regular, design: .default))
+                        .foregroundColor(Color.textSecondary)
                 }
 
                 Spacer()

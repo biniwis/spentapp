@@ -1,58 +1,31 @@
 import SwiftUI
 
-/// Monthly world selection sheet presented at the start of a new month or from Profile.
+/// Map style selection sheet presented from Profile.
 /// Features a top shopping street district sample (`isDistrictSample: true`) reflecting
-/// the selected draft, followed by individual world selection cards with clear hierarchy and no dividers.
+/// the selected draft, followed by individual world selection cards with immediate selection on tap.
 public struct MonthlyWorldPickerView: View {
-    /// The month this picker is selecting a world for.
-    public let targetMonth: Date
     @Binding public var draft: CityMapStyle
     public let isHebrew: Bool
     public var onClose: (() -> Void)?
-    public let onConfirm: (CityMapStyle) -> Void
+    public let onSelect: (CityMapStyle) -> Void
 
     public init(
-        targetMonth: Date,
         draft: Binding<CityMapStyle>,
         isHebrew: Bool,
         onClose: (() -> Void)? = nil,
-        onConfirm: @escaping (CityMapStyle) -> Void
+        onSelect: @escaping (CityMapStyle) -> Void
     ) {
-        self.targetMonth = targetMonth
         self._draft = draft
         self.isHebrew = isHebrew
         self.onClose = onClose
-        self.onConfirm = onConfirm
+        self.onSelect = onSelect
     }
 
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var targetMonthName: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
-        formatter.dateFormat = "LLLL yyyy"
-        return formatter.string(from: targetMonth)
-    }
-
-    private var isCurrentMonthTarget: Bool {
-        Calendar.current.isDate(targetMonth, equalTo: Date(), toGranularity: .month)
-    }
-
     /// Allowed worlds in the picker (excludes .future)
     private let worlds = CityMapSelection.pickerWorlds
-
-    private var headerSubtitleText: String {
-        if isHebrew {
-            return isCurrentMonthTarget
-                ? "בחר את מראה העיר עבור החודש הקרוב"
-                : "בחר את מראה העיר עבור החודש הבא"
-        } else {
-            return isCurrentMonthTarget
-                ? "Choose your city style for the upcoming month"
-                : "Choose your city style for next month"
-        }
-    }
 
     private func styleIcon(_ style: CityMapStyle) -> MoneyIconType {
         switch style {
@@ -89,13 +62,11 @@ public struct MonthlyWorldPickerView: View {
             // ── Header ──
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(isHebrew
-                         ? (isCurrentMonthTarget ? "מפת החודש" : "מפת החודש הבא")
-                         : (isCurrentMonthTarget ? "This Month's Map" : "Next Month's Map"))
+                    Text(isHebrew ? "סגנון המפה" : "Map Style")
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(MoneyCityTheme.jetBlack)
 
-                    Text(headerSubtitleText)
+                    Text(isHebrew ? "בחר איך העיר שלך תיראה" : "Choose how your city looks")
                         .font(.system(size: 13, weight: .medium, design: .rounded))
                         .foregroundColor(MoneyCityTheme.textSecondary)
                 }
@@ -179,19 +150,14 @@ public struct MonthlyWorldPickerView: View {
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                         ForEach(worlds) { style in
                             let isSelected = (style == draft)
-                            let currentMonthSelection = CityMapSelection.resolvedStyle(for: Date())
-                            let nextMonthSelection = CityMapSelection.selectedStyle(for: Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date())
-                            let isCurrentMonthActive = (style == currentMonthSelection)
-                            let isNextMonthChosen = (style == nextMonthSelection)
 
                             Button {
-                                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82)) {
-                                    draft = style
-                                }
                                 Haptics.selection()
+                                draft = style
+                                onSelect(style)
                             } label: {
                                 VStack(alignment: .leading, spacing: 10) {
-                                    // Top row: Icon on leading, Checkmark/Badge on trailing
+                                    // Top row: Icon on leading, Checkmark on trailing when selected
                                     HStack(alignment: .center) {
                                         ZStack {
                                             Circle()
@@ -211,22 +177,6 @@ public struct MonthlyWorldPickerView: View {
                                                     .font(.system(size: 10, weight: .bold))
                                                     .foregroundColor(.white)
                                             }
-                                        } else if isCurrentMonthActive {
-                                            Text(isHebrew ? "החודש" : "Current")
-                                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                                .foregroundColor(MoneyCityTheme.violetBlue)
-                                                .padding(.horizontal, 7)
-                                                .padding(.vertical, 3)
-                                                .background(MoneyCityTheme.babyBlue.opacity(0.55))
-                                                .clipShape(Capsule())
-                                        } else if isNextMonthChosen && !isCurrentMonthTarget {
-                                            Text(isHebrew ? "נבחר" : "Selected")
-                                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                                                .foregroundColor(MoneyCityTheme.luckyGreen)
-                                                .padding(.horizontal, 7)
-                                                .padding(.vertical, 3)
-                                                .background(MoneyCityTheme.luckyGreen.opacity(0.14))
-                                                .clipShape(Capsule())
                                         }
                                     }
 
@@ -264,29 +214,8 @@ public struct MonthlyWorldPickerView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+                .padding(.bottom, 24)
             }
-
-            // ── Confirm Action Button (Pinned at Bottom) ──
-            Button {
-                Haptics.impact(.medium)
-                onConfirm(draft)
-            } label: {
-                Text(isHebrew ? "בחירת מפה" : "Confirm Map")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(MoneyCityTheme.jetBlack)
-                    )
-            }
-            .buttonStyle(.plain)
-            .bouncyPress(scale: reduceMotion ? 1 : 0.98)
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 20)
         }
         .background(Color.white.ignoresSafeArea())
         .environment(\.layoutDirection, isHebrew ? .rightToLeft : .leftToRight)
@@ -308,13 +237,12 @@ public struct MonthlyWorldPickerView: View {
     }
 }
 
-#Preview("Monthly World Picker") {
+#Preview("Map Style Picker") {
     MonthlyWorldPickerView(
-        targetMonth: Date(),
         draft: .constant(.urban),
         isHebrew: true,
         onClose: {},
-        onConfirm: { _ in }
+        onSelect: { _ in }
     )
     .environmentObject(LocalizationManager())
 }

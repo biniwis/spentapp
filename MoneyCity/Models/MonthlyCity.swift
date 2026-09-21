@@ -173,23 +173,23 @@ public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
 
 // MARK: - Per-month world storage
 
-/// Per-month world storage with two-phase lifecycle: *assigned* → *confirmed*.
+/// Per-month world storage with immediate selection and historical date-awareness.
 ///
-/// **Lifecycle:**
-/// 1. At the start of a new month, `ensureAssignedStyle(for:)` copies the previous
-///    month's style (or `.urban`) and stores it as *unconfirmed* (`confirmed: false`).
-/// 2. The picker shows the inherited style as its initial selection.
-/// 3. When the user taps "Choose", `confirmWorldChoice(_:for:)` writes the final style
-///    and sets `confirmed: true` — the picker is not shown again this month.
+/// **Model:**
+/// - Selecting a map saves it immediately for the current month (`Date()`).
+/// - Later months automatically inherit the most recent valid map selection from an earlier month.
+/// - Historical months remain deterministic and resolve according to their own saved or inherited style.
+/// - First-ever install or missing history falls back to `.urban`.
 ///
 /// **Storage layout (v2):**
 ///   Key: `"spent.city.monthlyMapSelections.v2"`
 ///   Value: JSON-encoded `[String: MonthEntry]`
-///   e.g. `{"2026-09": {"style":"medieval","confirmed":true}, "2026-10": {"style":"medieval","confirmed":false}}`
+///   e.g. `{"2026-09": {"style":"medieval","confirmed":true}}`
 ///
 /// **Backward compatibility:**
-///   Old format was `[String: String]`. `loadEntries` reads both formats and
-///   treats any pre-existing String entry as confirmed (the user already chose it).
+///   Legacy format `[String: String]` is read and upgraded in-place.
+///   Pre-existing `MonthEntry` items with either `confirmed: true` or `confirmed: false`
+///   still resolve correctly without forcing data migrations.
 ///   `.future` is never shown in the picker but is a valid `CityMapStyle` case.
 public enum CityMapSelection {
 
@@ -198,7 +198,7 @@ public enum CityMapSelection {
     public static let preferenceKey       = "spent.city.monthlyMapSelections.v2"
     public static let legacyPreferenceKey = "spent.city.mapSelection"
 
-    /// Worlds presented in the monthly picker. `.future` is kept as a Swift case
+    /// Worlds presented in the map style picker. `.future` is kept as a Swift case
     /// but withheld from the picker until it is ready for release.
     public static let pickerWorlds: [CityMapStyle] = [.urban, .medieval, .arctic, .israel]
 
@@ -208,7 +208,7 @@ public enum CityMapSelection {
         public var style: String
         public var confirmed: Bool
 
-        public init(style: String, confirmed: Bool) {
+        public init(style: String, confirmed: Bool = true) {
             self.style = style
             self.confirmed = confirmed
         }
@@ -271,129 +271,86 @@ public enum CityMapSelection {
     /// Use `resolvedStyle(for:)` for a value that always has an answer.
     static func selectedStyle(
         for date: Date,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current
     ) -> CityMapStyle? {
         let entries = loadEntries(defaults: defaults)
-        guard let entry = entries[monthID(date)],
+        guard let entry = entries[monthID(date, calendar: calendar)],
               let style = CityMapStyle(rawValue: entry.style) else { return nil }
         return style
     }
 
-    /// Returns the saved style for this month, or `.urban` for months with no record.
-    /// This is the right call site for the city renderer — it always returns something.
-    static func resolvedStyle(
-        for date: Date,
-        defaults: UserDefaults = .standard
-    ) -> CityMapStyle {
-        selectedStyle(for: date, defaults: defaults) ?? .urban
-    }
-
-    static func hasSelection(
-        for date: Date,
-        defaults: UserDefaults = .standard
-    ) -> Bool {
-        selectedStyle(for: date, defaults: defaults) != nil
-    }
-
-    // MARK: - Lifecycle API
-
-    /// Returns the style assigned to this month (inherited or confirmed).
-    /// Does **not** write anything.
-    static func assignedStyle(
+    /// Returns the active style for this month:
+    /// 1. An explicit selection for this month if one exists.
+    /// 2. Otherwise, the most recent valid selection from an earlier month.
+    /// 3. Otherwise, the default `.urban`.
+    public static func resolvedStyle(
         for date: Date,
         defaults: UserDefaults = .standard,
         calendar: Calendar = .current
     ) -> CityMapStyle {
         let entries = loadEntries(defaults: defaults)
-        let key = monthID(date)
-        if let entry = entries[key],
+        let targetKey = monthID(date, calendar: calendar)
+
+        // 1. Explicit record for requested month
+        if let entry = entries[targetKey],
            let style = CityMapStyle(rawValue: entry.style) {
             return style
         }
-        return mostRecentConfirmedStyle(before: date, entries: entries, calendar: calendar)
-    }
 
-    /// Ensures this month has a stored entry, inheriting from the previous confirmed month
-    /// if needed. Writes the entry as *unconfirmed* so the picker will still be presented.
-    /// If a confirmed entry already exists, it is left untouched.
-    @discardableResult
-    static func ensureAssignedStyle(
-        for date: Date,
-        defaults: UserDefaults = .standard,
-        calendar: Calendar = .current
-    ) -> CityMapStyle {
-        var entries = loadEntries(defaults: defaults)
-        let key = monthID(date)
-        if let existing = entries[key],
-           let style = CityMapStyle(rawValue: existing.style) {
-            return style
-        }
-        let inherited = mostRecentConfirmedStyle(before: date, entries: entries, calendar: calendar)
-        entries[key] = MonthEntry(style: inherited.rawValue, confirmed: false)
-        saveEntries(entries, defaults: defaults)
-        return inherited
-    }
+        // 2. Most recent valid entry from an earlier month
+        let priorKeys = entries.keys
+            .filter { $0 < targetKey }
+            .sorted(by: >)
 
-    /// Returns `true` when the user has not yet confirmed a world choice for this month.
-    /// A month that was auto-inherited (via `ensureAssignedStyle`) is still pending.
-    static func isWorldChoicePending(
-        for date: Date,
-        defaults: UserDefaults = .standard
-    ) -> Bool {
-        let entries = loadEntries(defaults: defaults)
-        guard let entry = entries[monthID(date)] else { return true }
-        return !entry.confirmed
-    }
-
-    /// Saves the user's explicit world choice for a specific month and marks it confirmed.
-    /// Never touches any other month's record.
-    static func confirmWorldChoice(
-        _ style: CityMapStyle,
-        for date: Date,
-        defaults: UserDefaults = .standard
-    ) {
-        var entries = loadEntries(defaults: defaults)
-        entries[monthID(date)] = MonthEntry(style: style.rawValue, confirmed: true)
-        saveEntries(entries, defaults: defaults)
-    }
-
-    // MARK: - Write (backward-compatible)
-
-    /// Saves a style for a specific month and marks it confirmed.
-    /// Prefer `confirmWorldChoice(_:for:)` for explicit user selections.
-    static func save(
-        _ style: CityMapStyle,
-        for date: Date,
-        defaults: UserDefaults = .standard
-    ) {
-        confirmWorldChoice(style, for: date, defaults: defaults)
-    }
-
-    // MARK: - Private helpers
-
-    private static func mostRecentConfirmedStyle(
-        before date: Date,
-        entries: [String: MonthEntry],
-        calendar: Calendar
-    ) -> CityMapStyle {
-        var candidate = date
-        for _ in 0 ..< 24 {
-            guard let prev = calendar.date(byAdding: .month, value: -1, to: candidate) else { break }
-            candidate = prev
-            let key = monthID(prev, calendar: calendar)
+        for key in priorKeys {
             if let entry = entries[key],
-               entry.confirmed,
                let style = CityMapStyle(rawValue: entry.style) {
                 return style
             }
         }
+
+        // 3. Fallback
         return .urban
+    }
+
+    static func hasSelection(
+        for date: Date,
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current
+    ) -> Bool {
+        selectedStyle(for: date, defaults: defaults, calendar: calendar) != nil
+    }
+
+    // MARK: - Write
+
+    /// Saves the user's explicit world choice for a specific month immediately.
+    /// Defaults to current month (`Date()`). Never touches any other month's record.
+    public static func save(
+        _ style: CityMapStyle,
+        for date: Date = Date(),
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current
+    ) {
+        var entries = loadEntries(defaults: defaults)
+        entries[monthID(date, calendar: calendar)] = MonthEntry(style: style.rawValue, confirmed: true)
+        saveEntries(entries, defaults: defaults)
+    }
+
+    /// Compatibility alias for `save(_:for:defaults:calendar:)`.
+    public static func confirmWorldChoice(
+        _ style: CityMapStyle,
+        for date: Date = Date(),
+        defaults: UserDefaults = .standard,
+        calendar: Calendar = .current
+    ) {
+        save(style, for: date, defaults: defaults, calendar: calendar)
     }
 
     // MARK: - Legacy Migration
 
     /// Runs once: if the user has an old "YYYY-MM|style" preference and no v2 data,
-    /// migrates that single explicit month as confirmed. Does NOT propagate to future months.
+    /// migrates that single explicit month. Does NOT propagate to future months.
     static func migrateLegacyIfNeeded(defaults: UserDefaults = .standard) {
         guard
             selections(defaults: defaults).isEmpty,

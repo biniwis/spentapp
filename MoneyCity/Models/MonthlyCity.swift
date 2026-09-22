@@ -171,38 +171,28 @@ public enum CityMapStyle: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-// MARK: - Per-month world storage
+// MARK: - Global Map Style Storage
 
-/// Per-month world storage with immediate selection and historical date-awareness.
-///
-/// **Model:**
-/// - Selecting a map saves it immediately for the current month (`Date()`).
-/// - Later months automatically inherit the most recent valid map selection from an earlier month.
-/// - Historical months remain deterministic and resolve according to their own saved or inherited style.
-/// - First-ever install or missing history falls back to `.urban`.
-///
-/// **Storage layout (v2):**
-///   Key: `"spent.city.monthlyMapSelections.v2"`
-///   Value: JSON-encoded `[String: MonthEntry]`
-///   e.g. `{"2026-09": {"style":"medieval","confirmed":true}}`
-///
-/// **Backward compatibility:**
-///   Legacy format `[String: String]` is read and upgraded in-place.
-///   Pre-existing `MonthEntry` items with either `confirmed: true` or `confirmed: false`
-///   still resolve correctly without forcing data migrations.
-///   `.future` is never shown in the picker but is a valid `CityMapStyle` case.
+/// Global map style user preference, functioning like Theme:
+/// - New users automatically default to Classic (`.urban`).
+/// - Map style is a persistent global display preference, independent of months.
+/// - Changing the map style updates the city display immediately across all screens.
+/// - Existing users with legacy monthly or onboarding selections are migrated seamlessly.
 public enum CityMapSelection {
 
     // MARK: - Constants
 
-    public static let preferenceKey       = "spent.city.monthlyMapSelections.v2"
+    /// Global preference key storing the user's selected map style rawValue.
+    public static let preferenceKey       = "spent.city.mapStyle"
+    public static let legacyMonthlyKey    = "spent.city.monthlyMapSelections.v2"
     public static let legacyPreferenceKey = "spent.city.mapSelection"
+    public static let legacyOnboardingKey = "spent.onboarding.mapStyle"
 
     /// Worlds presented in the map style picker. `.future` is kept as a Swift case
     /// but withheld from the picker until it is ready for release.
     public static let pickerWorlds: [CityMapStyle] = [.urban, .medieval, .arctic, .israel]
 
-    // MARK: - Internal entry type
+    // MARK: - Legacy compatibility entry type
 
     public struct MonthEntry: Codable, Equatable {
         public var style: String
@@ -214,156 +204,148 @@ public enum CityMapSelection {
         }
     }
 
-    // MARK: - Month ID
+    // MARK: - Read
 
-    static func monthID(
-        _ date: Date,
-        calendar: Calendar = .current
-    ) -> String {
-        let parts = calendar.dateComponents([.year, .month], from: date)
-        return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
-    }
-
-    // MARK: - Private storage helpers
-
-    private static func loadEntries(defaults: UserDefaults) -> [String: MonthEntry] {
-        guard let data = defaults.data(forKey: preferenceKey) else { return [:] }
-
-        // Try new format first
-        if let decoded = try? JSONDecoder().decode([String: MonthEntry].self, from: data) {
-            return decoded
-        }
-
-        // Fall back to legacy flat String format and upgrade in-place
-        if let flat = try? JSONDecoder().decode([String: String].self, from: data) {
-            var upgraded: [String: MonthEntry] = [:]
-            for (k, v) in flat {
-                upgraded[k] = MonthEntry(style: v, confirmed: true)
-            }
-            saveEntries(upgraded, defaults: defaults)
-            return upgraded
-        }
-
-        return [:]
-    }
-
-    private static func saveEntries(_ entries: [String: MonthEntry], defaults: UserDefaults) {
-        guard let data = try? JSONEncoder().encode(entries) else { return }
-        defaults.set(data, forKey: preferenceKey)
-    }
-
-    public static func allEntries(defaults: UserDefaults = .standard) -> [String: MonthEntry] {
-        loadEntries(defaults: defaults)
-    }
-
-    public static func setAllEntries(_ entries: [String: MonthEntry], defaults: UserDefaults = .standard) {
-        saveEntries(entries, defaults: defaults)
-    }
-
-    // MARK: - Read (backward-compatible surface)
-
-    /// Flat `[String: String]` view for callers that only need the style rawValue.
-    static func selections(defaults: UserDefaults = .standard) -> [String: String] {
-        loadEntries(defaults: defaults).mapValues { $0.style }
-    }
-
-    /// Returns the explicitly saved style for this month, or nil if none has been stored.
-    /// Use `resolvedStyle(for:)` for a value that always has an answer.
-    static func selectedStyle(
-        for date: Date,
-        defaults: UserDefaults = .standard,
-        calendar: Calendar = .current
-    ) -> CityMapStyle? {
-        let entries = loadEntries(defaults: defaults)
-        guard let entry = entries[monthID(date, calendar: calendar)],
-              let style = CityMapStyle(rawValue: entry.style) else { return nil }
-        return style
-    }
-
-    /// Returns the active style for this month:
-    /// 1. An explicit selection for this month if one exists.
-    /// 2. Otherwise, the most recent valid selection from an earlier month.
-    /// 3. Otherwise, the default `.urban`.
-    public static func resolvedStyle(
-        for date: Date,
-        defaults: UserDefaults = .standard,
-        calendar: Calendar = .current
-    ) -> CityMapStyle {
-        let entries = loadEntries(defaults: defaults)
-        let targetKey = monthID(date, calendar: calendar)
-
-        // 1. Explicit record for requested month
-        if let entry = entries[targetKey],
-           let style = CityMapStyle(rawValue: entry.style) {
+    /// Returns the user's current global map style.
+    /// If no style has been set yet, migrates any legacy monthly or onboarding selection,
+    /// or defaults to `.urban` (Classic) for new users.
+    public static func currentStyle(defaults: UserDefaults = .standard) -> CityMapStyle {
+        if let raw = defaults.string(forKey: preferenceKey),
+           let style = CityMapStyle(rawValue: raw) {
             return style
         }
 
-        // 2. Most recent valid entry from an earlier month
-        let priorKeys = entries.keys
-            .filter { $0 < targetKey }
-            .sorted(by: >)
-
-        for key in priorKeys {
-            if let entry = entries[key],
-               let style = CityMapStyle(rawValue: entry.style) {
-                return style
-            }
+        // Migrate legacy data if available
+        if let migrated = migrateLegacy(defaults: defaults) {
+            save(migrated, defaults: defaults)
+            return migrated
         }
 
-        // 3. Fallback
         return .urban
     }
 
-    static func hasSelection(
-        for date: Date,
-        defaults: UserDefaults = .standard,
-        calendar: Calendar = .current
-    ) -> Bool {
-        selectedStyle(for: date, defaults: defaults, calendar: calendar) != nil
+    /// Whether the user has an explicitly chosen map style (or legacy selection).
+    public static func hasCustomStyle(defaults: UserDefaults = .standard) -> Bool {
+        if let raw = defaults.string(forKey: preferenceKey), CityMapStyle(rawValue: raw) != nil {
+            return true
+        }
+        if defaults.data(forKey: legacyMonthlyKey) != nil {
+            return true
+        }
+        if defaults.string(forKey: legacyOnboardingKey) != nil {
+            return true
+        }
+        if defaults.string(forKey: legacyPreferenceKey) != nil {
+            return true
+        }
+        return false
     }
 
     // MARK: - Write
 
-    /// Saves the user's explicit world choice for a specific month immediately.
-    /// Defaults to current month (`Date()`). Never touches any other month's record.
-    public static func save(
-        _ style: CityMapStyle,
-        for date: Date = Date(),
-        defaults: UserDefaults = .standard,
-        calendar: Calendar = .current
-    ) {
-        var entries = loadEntries(defaults: defaults)
-        entries[monthID(date, calendar: calendar)] = MonthEntry(style: style.rawValue, confirmed: true)
-        saveEntries(entries, defaults: defaults)
+    /// Saves the user's global map style preference.
+    public static func save(_ style: CityMapStyle, defaults: UserDefaults = .standard) {
+        defaults.set(style.rawValue, forKey: preferenceKey)
     }
 
-    /// Compatibility alias for `save(_:for:defaults:calendar:)`.
+    // MARK: - Migration from legacy systems
+
+    /// Migrates existing user's selection from legacy monthly or onboarding storage.
+    @discardableResult
+    public static func migrateLegacy(defaults: UserDefaults = .standard) -> CityMapStyle? {
+        // 1. Check v2 monthly selections dictionary
+        if let data = defaults.data(forKey: legacyMonthlyKey) {
+            if let entries = try? JSONDecoder().decode([String: MonthEntry].self, from: data), !entries.isEmpty {
+                // Find entry for current month or latest sorted key
+                let nowKey = monthID(Date())
+                if let currentEntry = entries[nowKey], let style = CityMapStyle(rawValue: currentEntry.style) {
+                    return style
+                }
+                let sortedKeys = entries.keys.sorted(by: >)
+                for key in sortedKeys {
+                    if let entry = entries[key], let style = CityMapStyle(rawValue: entry.style) {
+                        return style
+                    }
+                }
+            } else if let flat = try? JSONDecoder().decode([String: String].self, from: data), !flat.isEmpty {
+                let nowKey = monthID(Date())
+                if let currentVal = flat[nowKey], let style = CityMapStyle(rawValue: currentVal) {
+                    return style
+                }
+                let sortedKeys = flat.keys.sorted(by: >)
+                for key in sortedKeys {
+                    if let val = flat[key], let style = CityMapStyle(rawValue: val) {
+                        return style
+                    }
+                }
+            }
+        }
+
+        // 2. Check onboarding map style
+        if let onboardingRaw = defaults.string(forKey: legacyOnboardingKey),
+           let style = CityMapStyle(rawValue: onboardingRaw) {
+            return style
+        }
+
+        // 3. Check oldest single key "YYYY-MM|style"
+        if let legacy = defaults.string(forKey: legacyPreferenceKey), !legacy.isEmpty {
+            let parts = legacy.split(separator: "|")
+            if parts.count == 2, let style = CityMapStyle(rawValue: String(parts[1])) {
+                return style
+            }
+        }
+
+        return nil
+    }
+
+    public static func migrateLegacyIfNeeded(defaults: UserDefaults = .standard) {
+        _ = currentStyle(defaults: defaults)
+    }
+
+    // MARK: - Helpers
+
+    private static func monthID(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month], from: date)
+        return String(format: "%04d-%02d", parts.year ?? 0, parts.month ?? 0)
+    }
+
+    // MARK: - Backward Compatibility Surface
+
+    public static func resolvedStyle(
+        for date: Date = Date(),
+        defaults: UserDefaults = .standard
+    ) -> CityMapStyle {
+        currentStyle(defaults: defaults)
+    }
+
+    public static func selectedStyle(
+        for date: Date = Date(),
+        defaults: UserDefaults = .standard
+    ) -> CityMapStyle? {
+        currentStyle(defaults: defaults)
+    }
+
+    public static func hasSelection(
+        for date: Date = Date(),
+        defaults: UserDefaults = .standard
+    ) -> Bool {
+        hasCustomStyle(defaults: defaults)
+    }
+
+    public static func save(
+        _ style: CityMapStyle,
+        for date: Date,
+        defaults: UserDefaults = .standard
+    ) {
+        save(style, defaults: defaults)
+    }
+
     public static func confirmWorldChoice(
         _ style: CityMapStyle,
         for date: Date = Date(),
-        defaults: UserDefaults = .standard,
-        calendar: Calendar = .current
+        defaults: UserDefaults = .standard
     ) {
-        save(style, for: date, defaults: defaults, calendar: calendar)
-    }
-
-    // MARK: - Legacy Migration
-
-    /// Runs once: if the user has an old "YYYY-MM|style" preference and no v2 data,
-    /// migrates that single explicit month. Does NOT propagate to future months.
-    static func migrateLegacyIfNeeded(defaults: UserDefaults = .standard) {
-        guard
-            selections(defaults: defaults).isEmpty,
-            let legacy = defaults.string(forKey: legacyPreferenceKey),
-            !legacy.isEmpty
-        else { return }
-        let parts = legacy.split(separator: "|")
-        guard
-            parts.count == 2,
-            let style = CityMapStyle(rawValue: String(parts[1]))
-        else { return }
-        var entries = loadEntries(defaults: defaults)
-        entries[String(parts[0])] = MonthEntry(style: style.rawValue, confirmed: true)
-        saveEntries(entries, defaults: defaults)
+        save(style, defaults: defaults)
     }
 }
+

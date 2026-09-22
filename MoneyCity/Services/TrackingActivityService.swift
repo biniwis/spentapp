@@ -16,7 +16,7 @@ public final class TrackingActivityService: @unchecked Sendable {
         self.defaults = defaults
     }
 
-    private func dayKey(for date: Date) -> String {
+    func dayKey(for date: Date) -> String {
         let cal = Calendar.current
         let year = cal.component(.year, from: date)
         let month = cal.component(.month, from: date)

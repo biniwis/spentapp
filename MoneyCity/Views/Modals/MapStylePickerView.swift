@@ -3,7 +3,7 @@ import SwiftUI
 /// Map style selection sheet presented from Profile.
 /// Features a top shopping street district sample (`isDistrictSample: true`) reflecting
 /// the selected draft, followed by individual world selection cards with immediate selection on tap.
-public struct MonthlyWorldPickerView: View {
+public struct MapStylePickerView: View {
     @Binding public var draft: CityMapStyle
     public let isHebrew: Bool
     public var onClose: (() -> Void)?
@@ -325,8 +325,10 @@ public struct MonthlyWorldPickerView: View {
     }
 }
 
+public typealias MonthlyWorldPickerView = MapStylePickerView
+
 #Preview("Map Style Picker") {
-    MonthlyWorldPickerView(
+    MapStylePickerView(
         draft: .constant(.urban),
         isHebrew: true,
         onClose: {},

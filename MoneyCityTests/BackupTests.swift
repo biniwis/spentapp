@@ -347,7 +347,12 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
 
         let trackingService = TrackingActivityService(defaults: testDefaults)
-        let originalDays = ["2026-09-18", "2026-09-19", "2026-09-20"]
+        let cal = Calendar.current
+        let today = Date()
+        let d0 = trackingService.dayKey(for: today)
+        let d1 = trackingService.dayKey(for: cal.date(byAdding: .day, value: -1, to: today)!)
+        let d2 = trackingService.dayKey(for: cal.date(byAdding: .day, value: -2, to: today)!)
+        let originalDays = [d2, d1, d0]
         trackingService.setActiveDays(originalDays)
         XCTAssertEqual(trackingService.activeDays(), originalDays)
 
@@ -377,16 +382,12 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         XCTAssertEqual(trackingService.currentStreakDays(), 3)
     }
 
-    func testMonthlyMapSelectionsSurvivesRoundTrip() throws {
+    func testMapStyleSurvivesRoundTrip() throws {
         let testDefaults = UserDefaults(suiteName: "test_maps_\(UUID().uuidString)")!
         defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
 
-        let sampleEntries: [String: CityMapSelection.MonthEntry] = [
-            "2026-07": CityMapSelection.MonthEntry(style: "medieval", confirmed: true),
-            "2026-08": CityMapSelection.MonthEntry(style: "arctic", confirmed: false)
-        ]
-        CityMapSelection.setAllEntries(sampleEntries, defaults: testDefaults)
-        XCTAssertEqual(CityMapSelection.allEntries(defaults: testDefaults), sampleEntries)
+        CityMapSelection.save(.medieval, defaults: testDefaults)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .medieval)
 
         let context = makeInMemoryContext()
         let data = try DataPortabilityService.exportData(
@@ -396,9 +397,9 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
             includePreferences: true
         )
 
-        // Clear entries
-        CityMapSelection.setAllEntries([:], defaults: testDefaults)
-        XCTAssertTrue(CityMapSelection.allEntries(defaults: testDefaults).isEmpty)
+        // Clear entry
+        testDefaults.removeObject(forKey: CityMapSelection.preferenceKey)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .urban)
 
         // Restore
         _ = try DataPortabilityService.importData(
@@ -410,7 +411,50 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
             restorePreferences: true
         )
 
-        XCTAssertEqual(CityMapSelection.allEntries(defaults: testDefaults), sampleEntries)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .medieval)
+    }
+
+    func testLegacyMonthlyMapSelectionsRestoresAsGlobalMapStyle() throws {
+        let testDefaults = UserDefaults(suiteName: "test_legacy_maps_\(UUID().uuidString)")!
+        defer { testDefaults.removePersistentDomain(forName: testDefaults.description) }
+
+        let context = makeInMemoryContext()
+        let prefs = DataPortabilityService.AppPreferencesDTO(
+            monthlyMapSelections: [
+                "2026-07": CityMapSelection.MonthEntry(style: "medieval", confirmed: true),
+                "2026-08": CityMapSelection.MonthEntry(style: "arctic", confirmed: true)
+            ]
+        )
+        let envelope = DataPortabilityService.Envelope(
+            format: DataPortabilityService.formatIdentifier,
+            formatVersion: 2,
+            appVersion: "1.0",
+            appBuild: "47",
+            exportedAt: Date(),
+            transactions: [],
+            recurring: [],
+            income: [],
+            budgets: [],
+            merchantRules: [],
+            installments: [],
+            savingsGoals: [],
+            enrichments: [],
+            recaps: [],
+            preferences: prefs
+        )
+        let data = try DataPortabilityService.makeEncoder().encode(envelope)
+
+        _ = try DataPortabilityService.importData(
+            data,
+            into: context,
+            defaults: testDefaults,
+            groupDefaults: testDefaults,
+            mode: .replace,
+            restorePreferences: true
+        )
+
+        // Latest entry from legacy backup is arctic
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .arctic)
     }
 
     func testSavingsGoalsReconciliationNoDoubleCounting() throws {
@@ -607,8 +651,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         testDefaults.set(true, forKey: "hasCompletedOnboarding")
         let activeDays = ["2026-09-18", "2026-09-19", "2026-09-20"]
         TrackingActivityService(defaults: testDefaults).setActiveDays(activeDays)
-        let mapEntries = ["2026-09": CityMapSelection.MonthEntry(style: "urban", confirmed: true)]
-        CityMapSelection.setAllEntries(mapEntries, defaults: testDefaults)
+        CityMapSelection.save(.urban, defaults: testDefaults)
 
         // Verify pre-cloud state: NO cloud backup exists anywhere
         let worker = CloudBackupStorageWorker(customContainerURL: tempCloudDir)
@@ -675,7 +718,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         XCTAssertEqual(testDefaults.double(forKey: "monthly_budget"), 4500.0)
         XCTAssertEqual(testDefaults.bool(forKey: "hasCompletedOnboarding"), true)
         XCTAssertEqual(TrackingActivityService(defaults: testDefaults).activeDays(), activeDays)
-        XCTAssertEqual(CityMapSelection.allEntries(defaults: testDefaults)["2026-09"]?.style, "urban")
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .urban)
     }
 
     func testHasMeaningfulLocalStateEvaluatesWithOrLogic() throws {
@@ -707,8 +750,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         testDefaults.removeObject(forKey: "spent_tracking_active_days")
 
         // Scenario 5: ONLY map selection exists
-        let mapEntries = ["2026-09": CityMapSelection.MonthEntry(style: "coastal", confirmed: true)]
-        CityMapSelection.setAllEntries(mapEntries, defaults: testDefaults)
+        CityMapSelection.save(.israel, defaults: testDefaults)
         XCTAssertTrue(CloudBackupService.hasMeaningfulLocalState(context: context, defaults: testDefaults, groupDefaults: testDefaults))
         testDefaults.removeObject(forKey: CityMapSelection.preferenceKey)
 

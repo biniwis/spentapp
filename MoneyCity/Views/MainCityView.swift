@@ -18,7 +18,7 @@ public struct MainCityView: View {
 
     private var currentMapStyle: CityMapStyle {
         _ = mapSelectionRevision // explicit read — SwiftUI sees this dependency
-        return CityMapSelection.resolvedStyle(for: currentDate)
+        return CityMapSelection.currentStyle()
     }
 
     @Query private var categoryBudgets: [CategoryBudget]

@@ -498,8 +498,8 @@ public final class CloudBackupService: ObservableObject {
         let activeDays = defaults.stringArray(forKey: "spent_tracking_active_days") ?? []
         if !activeDays.isEmpty { return true }
 
-        // 5. Monthly city map selections
-        if !CityMapSelection.allEntries(defaults: defaults).isEmpty { return true }
+        // 5. City map style preference
+        if CityMapSelection.hasCustomStyle(defaults: defaults) { return true }
 
         // 6. Core SwiftData models (ANY row count > 0 is meaningful state)
         if (try? context.fetchCount(FetchDescriptor<Transaction>())) ?? 0 > 0 { return true }

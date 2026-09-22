@@ -1448,9 +1448,6 @@
     "One demo city, two worlds. Rotate, zoom and inspect in live 3D." : {
 
     },
-    "One district. A glimpse of your city." : {
-
-    },
     "Open 3D ↗" : {
 
     },
@@ -1919,10 +1916,7 @@
     "Status:" : {
 
     },
-    "Step %lld of 6" : {
-
-    },
-    "Swipe to choose a style" : {
+    "Step %lld of 5" : {
 
     },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
@@ -1982,9 +1976,6 @@
 
     },
     "The Nature Reserve changes with your budget and savings." : {
-
-    },
-    "This is a sample of the food district. Choose a style to reveal the full city. You can choose again at the start of each month." : {
 
     },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
@@ -2610,9 +2601,6 @@
     "החלפה מוחקת את כל מה שיש כאן. תצלום אוטומטי נשמר בכל בנייה, אבל לא לפני ייבוא — ייצא עותק קודם." : {
 
     },
-    "החלק לבחירת סגנון" : {
-
-    },
     "היי, ברוך הבא" : {
 
     },
@@ -2816,9 +2804,6 @@
 
     },
     "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור." : {
-
-    },
-    "זה רובע האוכל, לדוגמה. אחרי הבחירה תתגלה העיר המלאה. בתחילת כל חודש אפשר לבחור סגנון מחדש." : {
 
     },
     "זוהה זיכוי / החזר מ-Apple Pay" : {
@@ -3383,9 +3368,6 @@
     "רובע סיפור + רגע משמעותי" : {
 
     },
-    "רובע קטן. הצצה לעיר שלך." : {
-
-    },
     "רמת פעילות ואנשים" : {
 
     },
@@ -3441,7 +3423,7 @@
     "שכר דירה" : {
 
     },
-    "שלב %lld מתוך 6" : {
+    "שלב %lld מתוך 5" : {
 
     },
     "שלום, %@" : {

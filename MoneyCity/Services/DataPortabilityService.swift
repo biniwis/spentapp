@@ -42,6 +42,7 @@ public enum DataPortabilityService {
         public var hasCompletedOnboarding: Bool?
         public var hasStartedOnboardingV2: Bool?
         public var trackingActiveDays: [String]?
+        public var mapStyle: String?
         public var monthlyMapSelections: [String: CityMapSelection.MonthEntry]?
         public var cityRewardStateData: Data?
         public var cityCompanionsStartedAt: Double?
@@ -65,6 +66,7 @@ public enum DataPortabilityService {
             hasCompletedOnboarding: Bool? = nil,
             hasStartedOnboardingV2: Bool? = nil,
             trackingActiveDays: [String]? = nil,
+            mapStyle: String? = nil,
             monthlyMapSelections: [String: CityMapSelection.MonthEntry]? = nil,
             cityRewardStateData: Data? = nil,
             cityCompanionsStartedAt: Double? = nil,
@@ -87,6 +89,7 @@ public enum DataPortabilityService {
             self.hasCompletedOnboarding = hasCompletedOnboarding
             self.hasStartedOnboardingV2 = hasStartedOnboardingV2
             self.trackingActiveDays = trackingActiveDays
+            self.mapStyle = mapStyle
             self.monthlyMapSelections = monthlyMapSelections
             self.cityRewardStateData = cityRewardStateData
             self.cityCompanionsStartedAt = cityCompanionsStartedAt
@@ -450,12 +453,11 @@ public enum DataPortabilityService {
         groupDefaults: UserDefaults = UserDefaults(suiteName: "group.com.moneycity.app") ?? .standard
     ) -> AppPreferencesDTO {
         let activeDays = TrackingActivityService(defaults: defaults).activeDays()
-        let mapSelections = CityMapSelection.allEntries(defaults: defaults)
+        let customMapStyle = CityMapSelection.hasCustomStyle(defaults: defaults) ? CityMapSelection.currentStyle(defaults: defaults).rawValue : nil
         let rewardData = defaults.data(forKey: CityRewardEngine.storageKey)
         let companionsStarted = defaults.object(forKey: "cityCompanionsStartedAt") as? Double
         let firstLaunch = defaults.object(forKey: "firstAppLaunchDate") as? Date
         let lastAckMonth = defaults.string(forKey: "last_acknowledged_month")
-        let onboardingMap = defaults.string(forKey: "spent.onboarding.mapStyle")
         let userName = defaults.string(forKey: "userName") ?? defaults.string(forKey: "user_name")
         let monthlyBudget = defaults.object(forKey: "monthly_budget") as? Double
         let hasCompletedOnboarding = defaults.object(forKey: "hasCompletedOnboarding") as? Bool
@@ -477,12 +479,13 @@ public enum DataPortabilityService {
             hasCompletedOnboarding: hasCompletedOnboarding,
             hasStartedOnboardingV2: hasStartedOnboardingV2,
             trackingActiveDays: activeDays.isEmpty ? nil : activeDays,
-            monthlyMapSelections: mapSelections.isEmpty ? nil : mapSelections,
+            mapStyle: customMapStyle,
+            monthlyMapSelections: nil,
             cityRewardStateData: rewardData,
             cityCompanionsStartedAt: companionsStarted,
             firstAppLaunchDate: firstLaunch,
             lastAcknowledgedMonth: lastAckMonth,
-            onboardingMapStyle: onboardingMap,
+            onboardingMapStyle: nil,
             appLanguage: appLang,
             appCurrency: appCur,
             autoConvertFX: autoFX,
@@ -518,8 +521,18 @@ public enum DataPortabilityService {
         if let days = prefs.trackingActiveDays {
             TrackingActivityService(defaults: defaults).setActiveDays(days)
         }
-        if let maps = prefs.monthlyMapSelections {
-            CityMapSelection.setAllEntries(maps, defaults: defaults)
+        if let styleStr = prefs.mapStyle, let style = CityMapStyle(rawValue: styleStr) {
+            CityMapSelection.save(style, defaults: defaults)
+        } else if let maps = prefs.monthlyMapSelections, !maps.isEmpty {
+            let sortedKeys = maps.keys.sorted(by: >)
+            for key in sortedKeys {
+                if let entry = maps[key], let style = CityMapStyle(rawValue: entry.style) {
+                    CityMapSelection.save(style, defaults: defaults)
+                    break
+                }
+            }
+        } else if let mapStyle = prefs.onboardingMapStyle, let style = CityMapStyle(rawValue: mapStyle) {
+            CityMapSelection.save(style, defaults: defaults)
         }
         if let rewardData = prefs.cityRewardStateData {
             defaults.set(rewardData, forKey: CityRewardEngine.storageKey)
@@ -532,9 +545,6 @@ public enum DataPortabilityService {
         }
         if let ack = prefs.lastAcknowledgedMonth {
             defaults.set(ack, forKey: "last_acknowledged_month")
-        }
-        if let mapStyle = prefs.onboardingMapStyle {
-            defaults.set(mapStyle, forKey: "spent.onboarding.mapStyle")
         }
         if let lang = prefs.appLanguage {
             defaults.set(lang, forKey: "app_language_pref")

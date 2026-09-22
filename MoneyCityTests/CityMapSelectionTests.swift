@@ -18,183 +18,108 @@ final class CityMapSelectionTests: XCTestCase {
         super.tearDown()
     }
 
-    private func makeDate(year: Int, month: Int, day: Int = 1) -> Date {
-        var comps = DateComponents()
-        comps.year = year
-        comps.month = month
-        comps.day = day
-        return Calendar.current.date(from: comps)!
+    // MARK: - 1. Default Classic for New User
+    func testDefaultClassicForNewUser() {
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .urban)
+        XCTAssertFalse(CityMapSelection.hasCustomStyle(defaults: testDefaults))
+        XCTAssertEqual(CityMapSelection.resolvedStyle(for: Date(), defaults: testDefaults), .urban)
     }
 
-    // MARK: - Test A — Current Explicit Selection
-    func testCurrentExplicitSelection() {
-        let sep = makeDate(year: 2026, month: 9)
-        CityMapSelection.save(.medieval, for: sep, defaults: testDefaults)
+    // MARK: - 2. Global Style Selection & Change
+    func testGlobalStyleSelectionAndImmediateChange() {
+        CityMapSelection.save(.medieval, defaults: testDefaults)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .medieval)
+        XCTAssertTrue(CityMapSelection.hasCustomStyle(defaults: testDefaults))
 
-        XCTAssertEqual(CityMapSelection.selectedStyle(for: sep, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .medieval)
-        XCTAssertTrue(CityMapSelection.hasSelection(for: sep, defaults: testDefaults))
+        // No month dependency: past, present, and future dates return the user's global style
+        let pastDate = Calendar.current.date(byAdding: .month, value: -6, to: Date())!
+        let futureDate = Calendar.current.date(byAdding: .month, value: 6, to: Date())!
+        XCTAssertEqual(CityMapSelection.resolvedStyle(for: pastDate, defaults: testDefaults), .medieval)
+        XCTAssertEqual(CityMapSelection.resolvedStyle(for: futureDate, defaults: testDefaults), .medieval)
+
+        // Change to another style
+        CityMapSelection.save(.israel, defaults: testDefaults)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .israel)
+        XCTAssertEqual(CityMapSelection.resolvedStyle(for: pastDate, defaults: testDefaults), .israel)
     }
 
-    // MARK: - Test B — Next Month Inherits
-    func testNextMonthInherits() {
-        let sep = makeDate(year: 2026, month: 9)
-        let oct = makeDate(year: 2026, month: 10)
-
-        CityMapSelection.save(.medieval, for: sep, defaults: testDefaults)
-
-        // October has no explicit entry
-        XCTAssertNil(CityMapSelection.selectedStyle(for: oct, defaults: testDefaults))
-        XCTAssertFalse(CityMapSelection.hasSelection(for: oct, defaults: testDefaults))
-
-        // But resolvedStyle inherits Medieval from September
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .medieval)
+    // MARK: - 3. Persistence
+    func testPersistenceAcrossDefaultsReload() {
+        CityMapSelection.save(.arctic, defaults: testDefaults)
+        XCTAssertEqual(testDefaults.string(forKey: CityMapSelection.preferenceKey), "arctic")
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .arctic)
     }
 
-    // MARK: - Test C — Inheritance Across Multiple Empty Months
-    func testInheritanceAcrossMultipleEmptyMonths() {
-        let aug = makeDate(year: 2026, month: 8)
-        let sep = makeDate(year: 2026, month: 9)
-        let oct = makeDate(year: 2026, month: 10)
-        let nov = makeDate(year: 2026, month: 11)
-
-        CityMapSelection.save(.arctic, for: aug, defaults: testDefaults)
-
-        XCTAssertNil(CityMapSelection.selectedStyle(for: sep, defaults: testDefaults))
-        XCTAssertNil(CityMapSelection.selectedStyle(for: oct, defaults: testDefaults))
-        XCTAssertNil(CityMapSelection.selectedStyle(for: nov, defaults: testDefaults))
-
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .arctic)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .arctic)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: nov, defaults: testDefaults), .arctic)
+    // MARK: - 4. Corrupt Data Fallback
+    func testCorruptDataFallsBackToUrban() {
+        testDefaults.set(Data([0xFF, 0xFE, 0xFD]), forKey: CityMapSelection.preferenceKey)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .urban)
     }
 
-    // MARK: - Test D — Later Override
-    func testLaterOverride() {
-        let sep = makeDate(year: 2026, month: 9)
-        let oct = makeDate(year: 2026, month: 10)
-        let nov = makeDate(year: 2026, month: 11)
-
-        CityMapSelection.save(.medieval, for: sep, defaults: testDefaults)
-        CityMapSelection.save(.israel, for: oct, defaults: testDefaults)
-
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .israel)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: nov, defaults: testDefaults), .israel)
+    // MARK: - 5. Unknown Raw Value Fallback
+    func testUnknownRawValueFallsBackToUrban() {
+        testDefaults.set("cyberpunk_neon_future", forKey: CityMapSelection.preferenceKey)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .urban)
     }
 
-    // MARK: - Test E — Historical Isolation
-    func testHistoricalIsolation() {
-        let aug = makeDate(year: 2026, month: 8)
-        let sep = makeDate(year: 2026, month: 9)
-        let oct = makeDate(year: 2026, month: 10)
-        let nov = makeDate(year: 2026, month: 11)
+    // MARK: - 6. Migration from v2 Monthly Selections Dictionary
+    func testMigrationFromV2MonthlySelections() {
+        let entries: [String: CityMapSelection.MonthEntry] = [
+            "2026-08": CityMapSelection.MonthEntry(style: "urban", confirmed: true),
+            "2026-09": CityMapSelection.MonthEntry(style: "medieval", confirmed: true)
+        ]
+        let data = try! JSONEncoder().encode(entries)
+        testDefaults.set(data, forKey: CityMapSelection.legacyMonthlyKey)
 
-        CityMapSelection.save(.urban, for: aug, defaults: testDefaults)
-        CityMapSelection.save(.medieval, for: sep, defaults: testDefaults)
-        CityMapSelection.save(.israel, for: nov, defaults: testDefaults)
-
-        // Verify August, September, October (inherited September), November
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: aug, defaults: testDefaults), .urban)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: nov, defaults: testDefaults), .israel)
-
-        // Overriding a later month does not modify older months
-        CityMapSelection.save(.arctic, for: nov, defaults: testDefaults)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: aug, defaults: testDefaults), .urban)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: nov, defaults: testDefaults), .arctic)
+        // Reading currentStyle should migrate to the latest valid selection (medieval)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .medieval)
+        // Global key must now be persisted
+        XCTAssertEqual(testDefaults.string(forKey: CityMapSelection.preferenceKey), "medieval")
     }
 
-    // MARK: - Test F — First-Ever Install Fallback
-    func testFirstEverInstallFallback() {
-        let anyDate = makeDate(year: 2026, month: 9)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: anyDate, defaults: testDefaults), .urban)
-        XCTAssertNil(CityMapSelection.selectedStyle(for: anyDate, defaults: testDefaults))
-        XCTAssertFalse(CityMapSelection.hasSelection(for: anyDate, defaults: testDefaults))
-        XCTAssertTrue(CityMapSelection.selections(defaults: testDefaults).isEmpty)
+    func testMigrationFromV2MonthlySelectionsFlatStringFormat() {
+        let flat: [String: String] = [
+            "2026-08": "arctic"
+        ]
+        let data = try! JSONEncoder().encode(flat)
+        testDefaults.set(data, forKey: CityMapSelection.legacyMonthlyKey)
+
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .arctic)
+        XCTAssertEqual(testDefaults.string(forKey: CityMapSelection.preferenceKey), "arctic")
     }
 
-    // MARK: - Test G — Corrupted Data
-    func testCorruptDataDoesNotCrash() {
-        let corruptData = "not a valid json".data(using: .utf8)!
-        testDefaults.set(corruptData, forKey: CityMapSelection.preferenceKey)
+    // MARK: - 7. Migration from Legacy Onboarding Key
+    func testMigrationFromOnboardingMapStyle() {
+        testDefaults.set("israel", forKey: CityMapSelection.legacyOnboardingKey)
 
-        let date = makeDate(year: 2026, month: 9)
-        XCTAssertNil(CityMapSelection.selectedStyle(for: date, defaults: testDefaults))
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: date, defaults: testDefaults), .urban)
-        XCTAssertTrue(CityMapSelection.selections(defaults: testDefaults).isEmpty)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .israel)
+        XCTAssertEqual(testDefaults.string(forKey: CityMapSelection.preferenceKey), "israel")
     }
 
-    func testCorruptNewFormatDataDoesNotCrash() {
-        let corruptData = "{\"2026-09\": 42}".data(using: .utf8)! // invalid value type
-        testDefaults.set(corruptData, forKey: CityMapSelection.preferenceKey)
-
-        let date = makeDate(year: 2026, month: 9)
-        XCTAssertNil(CityMapSelection.selectedStyle(for: date, defaults: testDefaults))
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: date, defaults: testDefaults), .urban)
-    }
-
-    func testUnknownStyleRawValue() {
-        let dict = ["2026-09": ["style": "sci_fi_future_unknown", "confirmed": true]] as [String: [String: Any]]
-        let data = try! JSONSerialization.data(withJSONObject: dict)
-        testDefaults.set(data, forKey: CityMapSelection.preferenceKey)
-
-        let date = makeDate(year: 2026, month: 9)
-        XCTAssertNil(CityMapSelection.selectedStyle(for: date, defaults: testDefaults))
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: date, defaults: testDefaults), .urban)
-    }
-
-    // MARK: - Test H — Legacy Storage
-    func testOldFlatFormatUpgraded() {
-        let oldFormat = ["2026-09": "arctic"]
-        let data = try! JSONEncoder().encode(oldFormat)
-        testDefaults.set(data, forKey: CityMapSelection.preferenceKey)
-
-        let sep = makeDate(year: 2026, month: 9)
-        let oct = makeDate(year: 2026, month: 10)
-
-        // Reading should upgrade automatically and resolve correctly
-        XCTAssertEqual(CityMapSelection.selectedStyle(for: sep, defaults: testDefaults), .arctic)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .arctic)
-        // October inherits from upgraded September
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .arctic)
-    }
-
-    func testLegacyMigrationSingleKey() {
+    // MARK: - 8. Migration from Legacy Pipe-Delimited Single Key
+    func testMigrationFromLegacySingleKey() {
         testDefaults.set("2026-09|medieval", forKey: CityMapSelection.legacyPreferenceKey)
 
-        CityMapSelection.migrateLegacyIfNeeded(defaults: testDefaults)
-
-        let sep = makeDate(year: 2026, month: 9)
-        let oct = makeDate(year: 2026, month: 10)
-
-        XCTAssertEqual(CityMapSelection.selectedStyle(for: sep, defaults: testDefaults), .medieval)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .medieval)
-        // October inherits
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: oct, defaults: testDefaults), .medieval)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .medieval)
+        XCTAssertEqual(testDefaults.string(forKey: CityMapSelection.preferenceKey), "medieval")
     }
 
-    // MARK: - Test I — .future Not in Picker Worlds
+    // MARK: - 9. Picker Worlds Specification
     func testPickerWorldsDoesNotContainFuture() {
         XCTAssertFalse(CityMapSelection.pickerWorlds.contains(.future),
                        ".future must not appear in the picker until it is released")
-        XCTAssertTrue(CityMapSelection.pickerWorlds.count >= 4,
-                      "Picker should have at least urban, medieval, arctic, israel")
         XCTAssertEqual(CityMapSelection.pickerWorlds, [.urban, .medieval, .arctic, .israel])
     }
 
-    // MARK: - Test J — confirmWorldChoice Alias Compatibility
-    func testConfirmWorldChoiceAlias() {
-        let sep = makeDate(year: 2026, month: 9)
-        CityMapSelection.confirmWorldChoice(.israel, for: sep, defaults: testDefaults)
-
-        XCTAssertEqual(CityMapSelection.selectedStyle(for: sep, defaults: testDefaults), .israel)
-        XCTAssertEqual(CityMapSelection.resolvedStyle(for: sep, defaults: testDefaults), .israel)
+    // MARK: - 10. Compatibility aliases
+    func testCompatibilityAliases() {
+        CityMapSelection.confirmWorldChoice(.arctic, defaults: testDefaults)
+        XCTAssertEqual(CityMapSelection.currentStyle(defaults: testDefaults), .arctic)
+        XCTAssertEqual(CityMapSelection.selectedStyle(defaults: testDefaults), .arctic)
+        XCTAssertTrue(CityMapSelection.hasSelection(defaults: testDefaults))
     }
 }
+
 
 // MARK: - Map resource contract tests
 

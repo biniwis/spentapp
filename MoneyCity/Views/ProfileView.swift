@@ -284,14 +284,14 @@ public struct ProfileView: View {
                 .environmentObject(l10n)
         }
         .sheet(isPresented: $showCityWorldPicker) {
-            MonthlyWorldPickerView(
+            MapStylePickerView(
                 draft: $cityWorldDraft,
                 isHebrew: l10n.language == .hebrew,
                 onClose: {
                     showCityWorldPicker = false
                 },
                 onSelect: { chosenStyle in
-                    CityMapSelection.save(chosenStyle, for: Date())
+                    CityMapSelection.save(chosenStyle)
                     cityWorldRevision += 1
                     onMapStyleChanged?(chosenStyle)
                 }
@@ -803,9 +803,9 @@ public struct ProfileView: View {
 
     // MARK: - City World Menu Row
 
-    private var currentMonthStyle: CityMapStyle {
+    private var currentMapStyle: CityMapStyle {
         _ = cityWorldRevision
-        return CityMapSelection.resolvedStyle(for: Date())
+        return CityMapSelection.currentStyle()
     }
 
     @ViewBuilder
@@ -814,7 +814,7 @@ public struct ProfileView: View {
 
         Button(action: {
             Haptics.impact(.light)
-            cityWorldDraft = CityMapSelection.resolvedStyle(for: Date())
+            cityWorldDraft = CityMapSelection.currentStyle()
             showCityWorldPicker = true
         }) {
             HStack(spacing: 14) {
@@ -830,7 +830,7 @@ public struct ProfileView: View {
                         .font(.system(size: 15, weight: .semibold, design: .default))
                         .foregroundColor(Color.deepNavy)
 
-                    Text(isHe ? "כרגע: \(currentMonthStyle.title(isHebrew: isHe))" : "Current: \(currentMonthStyle.title(isHebrew: isHe))")
+                    Text(isHe ? "כרגע: \(currentMapStyle.title(isHebrew: isHe))" : "Current: \(currentMapStyle.title(isHebrew: isHe))")
                         .font(.system(size: 12, weight: .regular, design: .default))
                         .foregroundColor(Color.textSecondary)
                 }

@@ -17,6 +17,7 @@ public struct SettingsSheet: View {
     @State private var showPrivacySheet = false
     @State private var showAboutSheet = false
     @State private var showOnboardingTour = false
+    @State private var currencyMigrationError: String?
     @FocusState private var isUserNameFocused: Bool
 
     public var body: some View {
@@ -84,6 +85,12 @@ public struct SettingsSheet: View {
                                             try BaseCurrencyMigrationService.migrateBaseCurrency(from: old, to: newCurr, context: modelContext)
                                             Haptics.notify(.success)
                                         } catch {
+                                            // The picker stays on the old currency: migrateBaseCurrency writes the
+                                            // new preference only after everything has been migrated and saved.
+                                            currencyMigrationError = (error as? LocalizedError)?.errorDescription
+                                                ?? (l10n.language == .hebrew
+                                                    ? "שינוי המטבע לא הושלם. הנתונים שלך נשארו ללא שינוי."
+                                                    : "The currency change couldn't be completed. Your data was left unchanged.")
                                             Haptics.notify(.error)
                                         }
                                     }
@@ -365,6 +372,19 @@ public struct SettingsSheet: View {
                 Text(l10n.language == .hebrew
                      ? "כל העסקאות, העיר שבנית, התשלומים והכללים שהאפליקציה למדה יימחקו. התקציב, ההכנסות, ההוצאות הקבועות ויעדי החיסכון יישארו — היעדים יתאפסו לאפס."
                      : "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero.")
+            }
+            .alert(
+                l10n.language == .hebrew ? "שינוי מטבע" : "Currency Change",
+                isPresented: Binding(
+                    get: { currencyMigrationError != nil },
+                    set: { if !$0 { currencyMigrationError = nil } }
+                )
+            ) {
+                Button(l10n.language == .hebrew ? "אישור" : "OK", role: .cancel) {
+                    currencyMigrationError = nil
+                }
+            } message: {
+                Text(currencyMigrationError ?? "")
             }
         }
     }

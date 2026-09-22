@@ -4,6 +4,37 @@ import SwiftData
 /// Materializes one-time scheduled expenses into real Transactions when their due date arrives.
 public enum ScheduledExpenseService {
 
+    /// Centralized conversion of an existing Transaction into a future ScheduledExpense.
+    ///
+    /// Owns the sign preservation, foreign-currency metadata, merchant/category/building
+    /// mapping and sanitization so the UI never hand-assembles a financial record.
+    /// Returns `nil` when the amount cannot be trusted (e.g. sanitization rejects it).
+    @MainActor
+    public static func makeScheduledExpense(
+        from transaction: Transaction,
+        merchant: String,
+        amount: Double,
+        category: SpendingCategory,
+        buildingId: String?,
+        scheduledFor: Date
+    ) -> ScheduledExpense? {
+        // Negative = refund/credit; the sign must survive, not be zeroed or flipped.
+        guard let safeAmount = MoneyAmount.sanitizedSigned(amount) else { return nil }
+
+        return ScheduledExpense(
+            merchant: merchant,
+            amount: safeAmount,
+            currency: transaction.currency,
+            category: category,
+            scheduledFor: scheduledFor,
+            createdAt: Date(),
+            buildingIdRaw: buildingId ?? transaction.buildingIdRaw,
+            originalAmount: MoneyAmount.sanitizedSigned(transaction.originalAmount),
+            originalCurrency: transaction.originalCurrency,
+            exchangeRate: transaction.exchangeRate
+        )
+    }
+
     /// Materializes all due scheduled expenses whose scheduled date has arrived and that haven't been materialized yet.
     /// Safe to call on every launch and app-active transition (idempotent).
     @MainActor

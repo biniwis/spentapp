@@ -119,6 +119,24 @@ public struct QuickAddSheet: View {
         return MoneyAmount.sanitized(Double(clean))
     }
 
+    /// Verified rate of the selected currency into the base currency, or `nil` when no rate exists.
+    /// For the base currency itself there is nothing to resolve (rate 1:1 by definition).
+    private var foreignExchangeRate: Double? {
+        guard selectedCurrency != l10n.baseCurrency else { return nil }
+        return CurrencyType.convertIfAvailable(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency)
+    }
+
+    /// Save is only allowed when the entry can be expressed honestly in base currency.
+    private var canResolveForeignCurrency: Bool {
+        selectedCurrency == l10n.baseCurrency || foreignExchangeRate != nil
+    }
+
+    private var foreignConversionUnavailableMessage: String {
+        l10n.language == .hebrew
+            ? "לא ניתן להמיר את המטבע כרגע. נסה שוב כששער ההמרה זמין."
+            : "This currency can't be converted right now. Try again when an exchange rate is available."
+    }
+
     private func dismissKeyboard() {
         isAmountFocused = false
         isNoteFocused = false
@@ -239,15 +257,29 @@ public struct QuickAddSheet: View {
 
                         // Currency switcher pill if foreign
                         if selectedCurrency != l10n.baseCurrency, let val = parseAmount(amountText), val > 0 {
-                            let inBase = CurrencyType.convert(amount: val, from: selectedCurrency, to: l10n.baseCurrency)
-                            HStack(spacing: 4) {
-                                ExchangeVectorIcon(color: Color.themeMint)
-                                Text("≈ \(l10n.format(amount: inBase, showDecimals: true))")
-                                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            if let rate = foreignExchangeRate {
+                                let inBase = val * rate
+                                HStack(spacing: 4) {
+                                    ExchangeVectorIcon(color: Color.themeMint)
+                                    Text("≈ \(l10n.format(amount: inBase, showDecimals: true))")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                }
+                                .environment(\.layoutDirection, .leftToRight)
+                                .foregroundColor(Color.themeMint)
+                                .padding(.bottom, 8)
+                            } else {
+                                // No verified rate: do NOT show a fake approximate conversion.
+                                HStack(spacing: 6) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.system(size: 11, weight: .bold))
+                                    Text(foreignConversionUnavailableMessage)
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .environment(\.layoutDirection, .leftToRight)
+                                .foregroundColor(Color.accentOrange)
+                                .padding(.bottom, 8)
                             }
-                            .environment(\.layoutDirection, .leftToRight)
-                            .foregroundColor(Color.themeMint)
-                            .padding(.bottom, 8)
                         }
 
                         // ── 2. Built-in Numeric Keypad (Reference Screen 5) ──
@@ -1083,7 +1115,7 @@ public struct QuickAddSheet: View {
     @ViewBuilder @MainActor
     private var saveTransactionButton: some View {
         let parsed = parseAmount(amountText)
-        let canSave = (parsed ?? 0) > 0 && selectedCategory != nil
+        let canSave = (parsed ?? 0) > 0 && selectedCategory != nil && canResolveForeignCurrency
         let saveTitle: String = {
             if isFutureDate {
                 return l10n.language == .hebrew ? "תזמן הוצאה" : "Schedule Expense"
@@ -1134,7 +1166,26 @@ public struct QuickAddSheet: View {
         }
 
         let isForeign = selectedCurrency != l10n.baseCurrency
-        let converted = isForeign ? CurrencyType.convert(amount: amount, from: selectedCurrency, to: l10n.baseCurrency) : amount
+        guard canResolveForeignCurrency else {
+            showErrorHint = true
+            Haptics.notify(.warning)
+            return
+        }
+        let converted: Double
+        let origAmt: Double?
+        let origCurr: String?
+        let rate: Double?
+        if isForeign, let availableRate = foreignExchangeRate {
+            converted = (amount * availableRate * 100).rounded() / 100
+            origAmt = amount
+            origCurr = selectedCurrency.rawValue
+            rate = availableRate
+        } else {
+            converted = amount
+            origAmt = nil
+            origCurr = nil
+            rate = nil
+        }
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackMerchant: String = {
             if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {
@@ -1143,9 +1194,6 @@ public struct QuickAddSheet: View {
             return category.displayName
         }()
         let merchant = typed.isEmpty ? fallbackMerchant : typed
-        let origAmt: Double? = isForeign ? amount : nil
-        let origCurr: String? = isForeign ? selectedCurrency.rawValue : nil
-        let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
 
         let isCategoryExplicit = userExplicitlySelectedCategory || (initialCategory != nil && initialCategoryIsExplicit)
         onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId, isCategoryExplicit, transactionDate)
@@ -1158,10 +1206,26 @@ public struct QuickAddSheet: View {
     /// so a split payment records exactly what a single payment would.
     private func submitInstallments(category: SpendingCategory, total: Double) {
         let isForeign = selectedCurrency != l10n.baseCurrency
-        let converted = isForeign ? CurrencyType.convert(amount: total, from: selectedCurrency, to: l10n.baseCurrency) : total
-        let origAmt: Double? = isForeign ? total : nil
-        let origCurr: String? = isForeign ? selectedCurrency.rawValue : nil
-        let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
+        guard canResolveForeignCurrency else {
+            showErrorHint = true
+            Haptics.notify(.warning)
+            return
+        }
+        let converted: Double
+        let origAmt: Double?
+        let origCurr: String?
+        let rate: Double?
+        if isForeign, let availableRate = foreignExchangeRate {
+            converted = (total * availableRate * 100).rounded() / 100
+            origAmt = total
+            origCurr = selectedCurrency.rawValue
+            rate = availableRate
+        } else {
+            converted = total
+            origAmt = nil
+            origCurr = nil
+            rate = nil
+        }
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackMerchant: String = {
             if let bId = selectedBuildingId, let building = CityBuilding.find(id: bId) {

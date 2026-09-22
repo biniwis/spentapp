@@ -651,4 +651,128 @@ final class ScheduledExpenseTests: XCTestCase {
         XCTAssertEqual(newScheduled.first?.amount, 110.0)
         XCTAssertEqual(newScheduled.first?.merchant, "Hardware Store")
     }
+
+    // MARK: - 23. Negative refund amount survives sanitization
+
+    @MainActor
+    func testScheduledExpensePreservesNegativeRefund() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let tomorrow = date(2026, 4, 16, 12, 0)
+
+        let sched = ScheduledExpense(
+            merchant: "Electric Refund",
+            amount: -100.0,
+            currency: "₪",
+            category: .housing,
+            scheduledFor: tomorrow
+        )
+        context.insert(sched)
+        try context.save()
+
+        XCTAssertEqual(sched.amount, -100.0, "Refund must stay negative, never become zero")
+        XCTAssertEqual(sched.currency, "₪")
+    }
+
+    // MARK: - 24. Negative refund materializes as a negative Transaction
+
+    @MainActor
+    func testScheduledRefundMaterializesAsNegativeTransaction() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let schedDate = date(2026, 4, 16, 9, 0)
+
+        let sched = ScheduledExpense(
+            merchant: "Electric Refund",
+            amount: -100.0,
+            currency: "₪",
+            category: .housing,
+            scheduledFor: schedDate
+        )
+        context.insert(sched)
+        try context.save()
+
+        let now = date(2026, 4, 16, 15, 0)
+        _ = ScheduledExpenseService.materializeDue(now: now, context: context, calendar: cal)
+
+        let transactions = try context.fetch(FetchDescriptor<Transaction>())
+        XCTAssertEqual(transactions.count, 1)
+        XCTAssertEqual(transactions.first?.amount, -100.0, "Materialized refund must keep its negative sign")
+    }
+
+    // MARK: - 25. Centralized Transaction → ScheduledExpense conversion preserves sign + metadata
+
+    @MainActor
+    func testMakeScheduledExpenseFromRefundPreservesSignAndForeignMetadata() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+
+        let tx = Transaction(
+            amount: -73.4,
+            currency: "₪",
+            merchant: "Steam Refund",
+            category: .entertainment,
+            timestamp: date(2026, 4, 10, 12, 0),
+            isConfirmed: true,
+            originalAmount: 20.0,
+            originalCurrency: "USD",
+            exchangeRate: 3.67
+        )
+        context.insert(tx)
+        try context.save()
+
+        let scheduled = ScheduledExpenseService.makeScheduledExpense(
+            from: tx,
+            merchant: tx.merchant,
+            amount: -73.4,
+            category: tx.category,
+            buildingId: tx.buildingIdRaw,
+            scheduledFor: date(2026, 5, 1, 12, 0)
+        )
+        XCTAssertNotNil(scheduled)
+        XCTAssertEqual(scheduled?.amount, -73.4)
+        XCTAssertEqual(scheduled?.currency, "₪")
+        XCTAssertEqual(scheduled?.originalAmount, 20.0)
+        XCTAssertEqual(scheduled?.originalCurrency, "USD")
+        XCTAssertEqual(scheduled?.exchangeRate, 3.67)
+        XCTAssertEqual(scheduled?.merchant, "Steam Refund")
+    }
+
+    // MARK: - 26. Backup round-trip preserves a negative scheduled refund
+
+    @MainActor
+    func testBackupRoundTripPreservesNegativeScheduledRefund() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let schedDate = date(2026, 6, 1, 10, 0)
+
+        let sched = ScheduledExpense(
+            merchant: "Electric Refund",
+            amount: -250.0,
+            currency: "₪",
+            category: .housing,
+            scheduledFor: schedDate,
+            originalAmount: 66.0,
+            originalCurrency: "USD",
+            exchangeRate: 3.78
+        )
+        context.insert(sched)
+        try context.save()
+
+        let backupData = try DataPortabilityService.exportData(context: context)
+
+        let summary = try DataPortabilityService.importData(
+            backupData,
+            into: context,
+            mode: .replace,
+            restorePreferences: false
+        )
+        XCTAssertGreaterThanOrEqual(summary.added, 1)
+
+        let restored = try context.fetch(FetchDescriptor<ScheduledExpense>())
+        XCTAssertEqual(restored.count, 1)
+        XCTAssertEqual(restored.first?.amount, -250.0, "Backup must preserve the negative refund sign")
+        XCTAssertEqual(restored.first?.originalCurrency, "USD")
+        XCTAssertEqual(restored.first?.originalAmount, 66.0)
+    }
 }

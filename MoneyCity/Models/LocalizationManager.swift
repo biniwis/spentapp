@@ -211,8 +211,19 @@ public struct CurrencyType: Hashable, Identifiable, Codable, Sendable, RawRepres
         FXService.rateToILS(for: self)
     }
 
-    public static func convert(amount: Double, from: CurrencyType, to: CurrencyType) -> Double {
+    /// Converts `amount` from `from` to `to`. Returns `nil` when no verified/cached/default
+    /// rate exists. A missing rate is an explicit failure — never a silent 1:1 pass-through.
+    public static func convert(amount: Double, from: CurrencyType, to: CurrencyType) -> Double? {
         FXService.convert(amount: amount, from: from, to: to)
+    }
+
+    /// Canonical safe conversion path that exposes failure.
+    ///
+    /// Delegates to `FXService.convert(amount:from:to:)` and returns `nil` when the rate is
+    /// unavailable. Financial persistence code must never fall back to the original amount
+    /// when this returns `nil`.
+    public static func convertIfAvailable(amount: Double, from: CurrencyType, to: CurrencyType) -> Double? {
+        convert(amount: amount, from: from, to: to)
     }
 }
 
@@ -308,16 +319,28 @@ public final class LocalizationManager: ObservableObject {
     public func format(amount: Double, currency: CurrencyType? = nil, showDecimals: Bool = false) -> String {
         let targetCurrency = baseCurrency
         let converted: Double
-        if let sourceCurrency = currency {
-            converted = CurrencyType.convert(amount: amount, from: sourceCurrency, to: targetCurrency)
+        let displayedSymbol: String
+        if let sourceCurrency = currency, sourceCurrency != targetCurrency {
+            guard let available = CurrencyType.convertIfAvailable(amount: amount, from: sourceCurrency, to: targetCurrency) else {
+                // No usable rate. Never relabel the number under the base currency; show the
+                // amount in the currency it was actually entered in instead of guessing a value.
+                let safe = amount.isFinite ? amount : 0
+                let digits = Self.groupingFormatter(decimals: showDecimals)
+                    .string(from: NSNumber(value: abs(safe))) ?? "0"
+                let sign = safe < 0 ? "-" : ""
+                return "\u{2068}" + sign + sourceCurrency.symbol + digits + "\u{2069}"
+            }
+            converted = available
+            displayedSymbol = targetCurrency.symbol
         } else {
             converted = amount
+            displayedSymbol = targetCurrency.symbol
         }
         let safe = converted.isFinite ? converted : 0
         let digits = Self.groupingFormatter(decimals: showDecimals)
             .string(from: NSNumber(value: abs(safe))) ?? "0"
         let sign = safe < 0 ? "-" : ""
-        return "\u{2068}" + sign + targetCurrency.symbol + digits + "\u{2069}"
+        return "\u{2068}" + sign + displayedSymbol + digits + "\u{2069}"
     }
 
     private static let formatterCache = NSCache<NSString, NumberFormatter>()

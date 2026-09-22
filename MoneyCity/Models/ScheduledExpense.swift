@@ -51,13 +51,16 @@ public final class ScheduledExpense: Identifiable {
     ) {
         self.id = id
         self.merchant = InputSanitizer.sanitizeSingleLine(merchant, maxLength: InputSanitizer.maxMerchantLength)
-        self.amount = MoneyAmount.sanitized(amount) ?? 0.0
+        // Signed: positive = expense, negative = refund/credit. Sanitizing with the unsigned
+        // rule used to silently destroy a refund (e.g. -₪100 -> ₪0) when a transaction was
+        // rescheduled into the future.
+        self.amount = MoneyAmount.sanitizedSigned(amount) ?? 0.0
         self.currency = InputSanitizer.sanitizeSingleLine(currency, maxLength: InputSanitizer.maxCurrencyLength)
         self.categoryRawValue = category.canonical.rawValue
         self.scheduledFor = scheduledFor
         self.createdAt = createdAt
         self.buildingIdRaw = buildingIdRaw.map { InputSanitizer.sanitizeIdentifier($0) }
-        self.originalAmount = originalAmount.flatMap { MoneyAmount.sanitized($0) }
+        self.originalAmount = originalAmount.flatMap { MoneyAmount.sanitizedSigned($0) }
         self.originalCurrency = originalCurrency.map { InputSanitizer.sanitizeSingleLine($0, maxLength: InputSanitizer.maxCurrencyLength) }
         self.exchangeRate = exchangeRate.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
         self.materializedAt = materializedAt

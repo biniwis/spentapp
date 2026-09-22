@@ -550,18 +550,19 @@ public struct EditTransactionSheet: View {
         let cal = Calendar.current
         let isFutureDay = cal.startOfDay(for: transactionDate) > cal.startOfDay(for: Date())
         if isFutureDay {
-            let scheduled = ScheduledExpense(
+            // Centralized conversion preserves sign, foreign currency metadata, and sanitization.
+            guard let scheduled = ScheduledExpenseService.makeScheduledExpense(
+                from: transaction,
                 merchant: finalMerchant,
                 amount: isRefund ? -amount : amount,
-                currency: transaction.currency,
                 category: selectedCategory,
-                scheduledFor: transactionDate,
-                createdAt: Date(),
-                buildingIdRaw: selectedBuildingId,
-                originalAmount: transaction.originalAmount,
-                originalCurrency: transaction.originalCurrency,
-                exchangeRate: transaction.exchangeRate
-            )
+                buildingId: selectedBuildingId,
+                scheduledFor: transactionDate
+            ) else {
+                withAnimation { showAmountError = true }
+                Haptics.notify(.error)
+                return
+            }
             modelContext.insert(scheduled)
             modelContext.delete(transaction)
         } else {

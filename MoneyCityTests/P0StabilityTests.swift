@@ -192,7 +192,7 @@ final class P0StabilityTests: XCTestCase {
     func testQuickAddCurrencyNormalizationInvariants() {
         // 1. Base ILS + input ILS
         let res1_isForeign = CurrencyType.ils != CurrencyType.ils
-        let res1_amount = res1_isForeign ? CurrencyType.convert(amount: 100, from: .ils, to: .ils) : 100.0
+        let res1_amount = res1_isForeign ? (CurrencyType.convert(amount: 100, from: .ils, to: .ils) ?? 0) : 100.0
         let res1_curr = CurrencyType.ils.symbol
         XCTAssertEqual(res1_amount, 100.0)
         XCTAssertEqual(res1_curr, "₪")
@@ -200,7 +200,7 @@ final class P0StabilityTests: XCTestCase {
 
         // 2. Base USD + input USD
         let res2_isForeign = CurrencyType.usd != CurrencyType.usd
-        let res2_amount = res2_isForeign ? CurrencyType.convert(amount: 100, from: .usd, to: .usd) : 100.0
+        let res2_amount = res2_isForeign ? (CurrencyType.convert(amount: 100, from: .usd, to: .usd) ?? 0) : 100.0
         let res2_curr = CurrencyType.usd.symbol
         XCTAssertEqual(res2_amount, 100.0)
         XCTAssertEqual(res2_curr, "$")
@@ -208,7 +208,7 @@ final class P0StabilityTests: XCTestCase {
 
         // 3. Base USD + input ILS
         let res3_isForeign = CurrencyType.ils != CurrencyType.usd
-        let res3_amount = res3_isForeign ? CurrencyType.convert(amount: 100, from: .ils, to: .usd) : 100.0
+        let res3_amount = res3_isForeign ? (CurrencyType.convert(amount: 100, from: .ils, to: .usd) ?? 0) : 100.0
         let res3_curr = CurrencyType.usd.symbol
         let expectedUSD = 100.0 / FXService.rateToILS(for: .usd)
         XCTAssertEqual(res3_amount, expectedUSD, accuracy: 0.001)
@@ -217,7 +217,7 @@ final class P0StabilityTests: XCTestCase {
 
         // 4. Base ILS + input USD
         let res4_isForeign = CurrencyType.usd != CurrencyType.ils
-        let res4_amount = res4_isForeign ? CurrencyType.convert(amount: 100, from: .usd, to: .ils) : 100.0
+        let res4_amount = res4_isForeign ? (CurrencyType.convert(amount: 100, from: .usd, to: .ils) ?? 0) : 100.0
         let res4_curr = CurrencyType.ils.symbol
         let expectedILS = 100.0 * FXService.rateToILS(for: .usd)
         XCTAssertEqual(res4_amount, expectedILS, accuracy: 0.001)
@@ -226,7 +226,7 @@ final class P0StabilityTests: XCTestCase {
 
         // 5. Base EUR + input USD
         let res5_isForeign = CurrencyType.usd != CurrencyType.eur
-        let res5_amount = res5_isForeign ? CurrencyType.convert(amount: 100, from: .usd, to: .eur) : 100.0
+        let res5_amount = res5_isForeign ? (CurrencyType.convert(amount: 100, from: .usd, to: .eur) ?? 0) : 100.0
         let res5_curr = CurrencyType.eur.symbol
         let expectedEUR = (100.0 * FXService.rateToILS(for: .usd)) / FXService.rateToILS(for: .eur)
         XCTAssertEqual(res5_amount, expectedEUR, accuracy: 0.001)

@@ -1209,7 +1209,7 @@ public enum DataPortabilityService {
         var schedIds = mode == .replace ? Set<UUID>() : (try existingIds(ScheduledExpense.self) { $0.id })
         for dto in envelope.scheduled {
             guard !schedIds.contains(dto.id) else { summary.skipped += 1; continue }
-            guard dto.amount.isFinite, let sanitizedAmount = MoneyAmount.sanitized(dto.amount) else { continue }
+            guard dto.amount.isFinite, let sanitizedAmount = MoneyAmount.sanitizedSigned(dto.amount) else { continue }
             let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
             let cleanMerchant = InputSanitizer.sanitizeSingleLine(dto.merchant, maxLength: InputSanitizer.maxMerchantLength)
             let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
@@ -1227,7 +1227,7 @@ public enum DataPortabilityService {
                 scheduledFor: schedDate,
                 createdAt: isPlausibleDate(dto.createdAt) ? dto.createdAt : Date(),
                 buildingIdRaw: validBuildingId,
-                originalAmount: dto.originalAmount.flatMap { MoneyAmount.sanitized($0) },
+                originalAmount: dto.originalAmount.flatMap { MoneyAmount.sanitizedSigned($0) },
                 originalCurrency: dto.originalCurrency.map { InputSanitizer.sanitizeSingleLine($0, maxLength: InputSanitizer.maxCurrencyLength) },
                 exchangeRate: dto.exchangeRate.flatMap { $0.isFinite && $0 > 0 ? $0 : nil },
                 materializedAt: dto.materializedAt.flatMap { isPlausibleDate($0) ? $0 : nil },

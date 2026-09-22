@@ -77,12 +77,13 @@ public final class FXService: ObservableObject {
     }
 
     /// Convert amount between any two supported CurrencyTypes.
-    nonisolated public static func convert(amount: Double, from: CurrencyType, to: CurrencyType) -> Double {
+    ///
+    /// Returns `nil` when no verified/cached/default rate exists. Never substitutes the
+    /// original amount as a stand-in rate — a missing rate must be an explicit failure,
+    /// not a silent 1:1 conversion.
+    nonisolated public static func convert(amount: Double, from: CurrencyType, to: CurrencyType) -> Double? {
         if from == to { return amount }
-        guard let converted = convert(amount: amount, from: from.rawValue, to: to.rawValue) else {
-            return amount
-        }
-        return converted
+        return convert(amount: amount, from: from.rawValue, to: to.rawValue)
     }
 
     /// Human-friendly last updated string

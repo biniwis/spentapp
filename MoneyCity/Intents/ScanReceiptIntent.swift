@@ -80,12 +80,20 @@ public struct ScanReceiptIntent: AppIntent {
                 var exRate: Double? = nil
 
                 if let currType = CurrencyType(symbolOrCode: candidate.currency), currType != .ils {
-                    let converted = FXService.convert(amount: candidate.amount, from: currType, to: .ils)
-                    finalAmount = converted
-                    finalCurrency = CurrencyType.ils.symbol
-                    origAmount = candidate.amount
-                    origCurrency = currType.symbol
-                    exRate = candidate.amount > 0 ? converted / candidate.amount : nil
+                    if let converted = FXService.convert(amount: candidate.amount, from: currType, to: .ils) {
+                        finalAmount = converted
+                        finalCurrency = CurrencyType.ils.symbol
+                        origAmount = candidate.amount
+                        origCurrency = currType.symbol
+                        exRate = candidate.amount > 0 ? converted / candidate.amount : nil
+                    } else {
+                        // No usable rate: keep the foreign amount as-is, never invent a 1:1 rate.
+                        finalAmount = candidate.amount
+                        finalCurrency = currType.symbol
+                        origAmount = candidate.amount
+                        origCurrency = currType.symbol
+                        exRate = nil
+                    }
                 } else {
                     finalCurrency = CurrencyType(symbolOrCode: candidate.currency)?.symbol ?? "₪"
                 }

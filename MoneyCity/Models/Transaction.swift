@@ -43,11 +43,24 @@ public final class Transaction: Identifiable {
         return CategorizationEngine.shared.mapToBuildingId(category: category, merchant: merchant)
     }
     
+    public var isUnresolvedForeign: Bool {
+        guard let origCurr = originalCurrency, !origCurr.isEmpty else { return false }
+        let baseCode = UserDefaults.standard.string(forKey: "app_currency_pref") ?? "ILS"
+        let baseSymbol = CurrencyType(rawValue: baseCode).symbol
+        let origNormalized = CurrencyResolutionService.normalizeToISOCode(origCurr) ?? origCurr.uppercased()
+        if origNormalized != baseCode && (exchangeRate == nil || exchangeRate == 0) && currency != baseSymbol && currency != baseCode {
+            return true
+        }
+        return false
+    }
+
     public var displayOriginalText: String? {
         guard let origAmt = originalAmount, let origCurr = originalCurrency, origCurr != currency else {
             return nil
         }
-        return "\(origCurr)\(String(format: "%.2f", origAmt))"
+        let sym = CurrencyType(symbolOrCode: origCurr)?.symbol ?? origCurr
+        let prefix = (sym == "$" || sym == "€" || sym == "£" || sym == "₪" || sym == "₺" || sym == "¥") ? sym : "\(origCurr) "
+        return "\(prefix)\(String(format: "%.2f", abs(origAmt)))"
     }
     
     public init(

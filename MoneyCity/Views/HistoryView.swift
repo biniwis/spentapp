@@ -5,6 +5,7 @@ public struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
+    @Query(sort: \ScheduledExpense.scheduledFor, order: .forward) private var allScheduledExpenses: [ScheduledExpense]
 
     @State private var searchText: String = ""
     @State private var selectedCategory: SpendingCategory? = nil
@@ -38,6 +39,7 @@ public struct HistoryView: View {
     @State private var openSwipeRowID: UUID? = nil
 
     @State private var isSearchExpanded: Bool = false
+    @State private var isUpcomingExpanded: Bool = false
     @State private var showCalendarPicker: Bool = false
     @State private var calendarPickerDate: Date = Date()
     @State private var selectedSpecificDate: Date? = nil
@@ -84,6 +86,18 @@ public struct HistoryView: View {
 
     private var totalFiltered: Double {
         filtered.filter { $0.category != .savings }.reduce(0) { $0 + $1.amount }
+    }
+
+    private var isCurrentMonth: Bool {
+        Calendar.current.isDate(currentDate, equalTo: Date(), toGranularity: .month)
+    }
+
+    private var upcomingExpenses: [ScheduledExpense] {
+        allScheduledExpenses.filter { $0.materializedAt == nil }
+    }
+
+    private var showUpcomingSection: Bool {
+        isCurrentMonth && selectedSpecificDate == nil && !upcomingExpenses.isEmpty && !hasActiveFilters
     }
 
     private var groupedByDay: [(date: Date, txs: [Transaction])] {
@@ -144,7 +158,7 @@ public struct HistoryView: View {
                 .background(Color.appBackground)
 
                 // ── Transaction Ledger (Sitting directly on background, NO container cards) ──
-                if filtered.isEmpty {
+                if filtered.isEmpty && !showUpcomingSection {
                     Spacer()
                     SpentEmptyState(
                         icon: hasActiveFilters ? .search : .receipt,
@@ -161,6 +175,7 @@ public struct HistoryView: View {
                 } else {
                     ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: 0, pinnedViews: []) {
+                            upcomingSection
                             ForEach(groupedByDay, id: \.date) { group in
                                 daySection(group.date, txs: group.txs)
                             }
@@ -229,7 +244,6 @@ public struct HistoryView: View {
     // MARK: - Header Subviews & Navigation
 
     private var monthNavigationPill: some View {
-        let isCurrentMonth = Calendar.current.isDate(currentDate, equalTo: Date(), toGranularity: .month)
         return HStack(spacing: 8) {
             Button(action: {
                 Haptics.selection()
@@ -347,6 +361,117 @@ public struct HistoryView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
+    // MARK: - Upcoming Section (One-time Scheduled Expenses)
+
+    @ViewBuilder
+    private var upcomingSection: some View {
+        if showUpcomingSection {
+            VStack(alignment: .leading, spacing: 8) {
+                Button {
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                        isUpcomingExpanded.toggle()
+                    }
+                    Haptics.impact(.light)
+                } label: {
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(l10n.language == .hebrew ? "הוצאות מתוכננות" : "Upcoming")
+                            .font(.system(size: 15.5, weight: .bold, design: .default))
+                            .foregroundColor(Color.deepNavy)
+                        
+                        Text("\(upcomingExpenses.count)")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.accentOrange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.accentOrange.opacity(0.12))
+                            .clipShape(Capsule())
+
+                        Spacer()
+
+                        Image(systemName: isUpcomingExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color.deepNavy.opacity(0.45))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 4)
+
+                if isUpcomingExpanded {
+                    VStack(spacing: 12) {
+                        ForEach(upcomingExpenses) { expense in
+                            SwipeActionRow(
+                                id: expense.id,
+                                openSwipeRowID: $openSwipeRowID,
+                                onEdit: nil,
+                                onDelete: {
+                                    deleteScheduledExpense(expense)
+                                }
+                            ) {
+                                scheduledRow(expense)
+                            }
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+    }
+
+    private func deleteScheduledExpense(_ expense: ScheduledExpense) {
+        withAnimation {
+            modelContext.delete(expense)
+        }
+        _ = DatabaseService.safeSave(modelContext)
+        Haptics.notify(.success)
+    }
+
+    private func scheduledRow(_ expense: ScheduledExpense) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            CategoryBadge(category: expense.category, size: 42)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(expense.merchant.isEmpty ? expense.category.displayName : expense.merchant)
+                    .font(.system(size: 15.5, weight: .semibold, design: .default))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Text(expense.category.displayName)
+                        .font(.system(size: 12.5, weight: .regular, design: .default))
+                        .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+
+                    Text("• \(formattedScheduledDate(expense.scheduledFor))")
+                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .foregroundColor(Color.accentOrange)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(l10n.format(amount: expense.amount, showDecimals: true))
+                    .font(.system(size: 16.5, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+
+                Text(l10n.language == .hebrew ? "מתוכנן" : "Scheduled")
+                    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textMuted)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+    }
+
+    private func formattedScheduledDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+        formatter.dateFormat = l10n.language == .hebrew ? "d בMMMM" : "MMM d"
+        return formatter.string(from: date)
+    }
 
     // MARK: - Day Section (Direct on Background, Editorial Ledger)
 
@@ -426,24 +551,37 @@ public struct HistoryView: View {
             Spacer(minLength: 8)
 
             // Time + Amount (Left column in RTL, Right in LTR)
-            HStack(spacing: 12) {
-                Text(tx.timeString)
-                    .font(.system(size: 12.5, weight: .regular, design: .default))
-                    .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+            VStack(alignment: .trailing, spacing: 1) {
+                HStack(spacing: 12) {
+                    Text(tx.timeString)
+                        .font(.system(size: 12.5, weight: .regular, design: .default))
+                        .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
 
-                let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
-                if isRefund {
-                    Text("+\(l10n.format(amount: abs(tx.amount), showDecimals: true))")
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                } else {
-                    Text(l10n.format(amount: tx.amount, showDecimals: true))
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                    let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
+                    if tx.isUnresolvedForeign {
+                        Text("\(tx.currency) \(String(format: "%.2f", abs(tx.amount)))")
+                            .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.orange)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    } else if isRefund {
+                        Text("+\(l10n.format(amount: abs(tx.amount), showDecimals: true))")
+                            .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    } else {
+                        Text(l10n.format(amount: tx.amount, showDecimals: true))
+                            .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                }
+                if let orig = tx.displayOriginalText {
+                    Text("\(orig) \(l10n.language == .hebrew ? "במקור" : "originally")")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
                 }
             }
             .layoutPriority(1)

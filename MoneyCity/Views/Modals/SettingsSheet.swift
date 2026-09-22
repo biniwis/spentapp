@@ -75,7 +75,19 @@ public struct SettingsSheet: View {
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                                 Spacer()
-                                Picker("", selection: $l10n.baseCurrency) {
+                                Picker("", selection: Binding(
+                                    get: { l10n.baseCurrency },
+                                    set: { newCurr in
+                                        let old = l10n.baseCurrency
+                                        guard old != newCurr else { return }
+                                        do {
+                                            try BaseCurrencyMigrationService.migrateBaseCurrency(from: old, to: newCurr, context: modelContext)
+                                            Haptics.notify(.success)
+                                        } catch {
+                                            Haptics.notify(.error)
+                                        }
+                                    }
+                                )) {
                                     ForEach(CurrencyType.allCases) { cur in
                                         Text("\(cur.symbol) \(cur.rawValue)").tag(cur)
                                     }

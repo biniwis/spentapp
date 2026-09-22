@@ -118,6 +118,7 @@ public struct MainCityView: View {
     @State private var isDioramaReady: Bool = false
     @State private var animatedSpentValue: Double? = nil
     @State private var visibleConfirmationBanner: PendingExpenseConfirmation? = nil
+    @State private var scheduledConfirmationMessage: String? = nil
     @State private var showBrandSplash: Bool
 
     // ── Remote Config & Announcement ──
@@ -689,60 +690,115 @@ public struct MainCityView: View {
                 initialCategory: quickAddPreselectedCategory,
                 initialCategoryIsExplicit: quickAddPreselectedCategory != nil,
                 initialCurrency: l10n.baseCurrency,
-                onSaveWithExplicitFlag: { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit in
+                onSaveWithExplicitFlag: { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit, transactionDate in
+                    let cal = Calendar.current
+                    let isFutureDay = cal.startOfDay(for: transactionDate) > cal.startOfDay(for: Date())
                     let finalBuildingId = buildingId ?? CategorizationEngine.shared.mapToBuildingId(category: cat, merchant: note)
-                    let tx = Transaction(
-                        amount: amount,
-                        currency: l10n.baseCurrency.symbol,
-                        merchant: note,
-                        category: cat,
-                        timestamp: Date(),
-                        confidenceScore: 1.0,
-                        isManual: true,
-                        isConfirmed: true,
-                        note: nil,
-                        buildingId: finalBuildingId,
-                        originalAmount: origAmount,
-                        originalCurrency: origCurrency,
-                        exchangeRate: exchangeRate
-                    )
-                    modelContext.insert(tx)
-                    guard DatabaseService.safeSave(modelContext) else {
-                        Haptics.notify(.error)
-                        return
-                    }
 
-                    let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if isCategoryExplicit && !trimmed.isEmpty && cat != .other {
-                        DatabaseService.shared.rememberCorrection(
+                    if isFutureDay {
+                        let scheduled = ScheduledExpense(
+                            merchant: note,
+                            amount: amount,
+                            currency: l10n.baseCurrency.symbol,
+                            category: cat,
+                            scheduledFor: transactionDate,
+                            createdAt: Date(),
+                            buildingIdRaw: finalBuildingId,
+                            originalAmount: origAmount,
+                            originalCurrency: origCurrency,
+                            exchangeRate: exchangeRate
+                        )
+                        modelContext.insert(scheduled)
+                        guard DatabaseService.safeSave(modelContext) else {
+                            Haptics.notify(.error)
+                            return
+                        }
+
+                        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if isCategoryExplicit && !trimmed.isEmpty && cat != .other {
+                            DatabaseService.shared.rememberCorrection(
+                                merchant: note,
+                                category: cat,
+                                buildingId: finalBuildingId
+                            )
+                        }
+
+                        let formatter = DateFormatter()
+                        formatter.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+                        formatter.dateFormat = l10n.language == .hebrew ? "d בMMMM" : "MMM d"
+                        let dateStr = formatter.string(from: transactionDate)
+                        let message = l10n.language == .hebrew
+                            ? "ההוצאה נקבעה ל־\(dateStr)"
+                            : "Expense scheduled for \(dateStr)"
+
+                        triggerScheduledConfirmation(message: message)
+                    } else {
+                        let tx = Transaction(
+                            amount: amount,
+                            currency: l10n.baseCurrency.symbol,
                             merchant: note,
                             category: cat,
-                            buildingId: finalBuildingId
+                            timestamp: transactionDate,
+                            confidenceScore: 1.0,
+                            isManual: true,
+                            isConfirmed: true,
+                            note: nil,
+                            buildingId: finalBuildingId,
+                            originalAmount: origAmount,
+                            originalCurrency: origCurrency,
+                            exchangeRate: exchangeRate
                         )
+                        modelContext.insert(tx)
+                        guard DatabaseService.safeSave(modelContext) else {
+                            Haptics.notify(.error)
+                            return
+                        }
+
+                        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if isCategoryExplicit && !trimmed.isEmpty && cat != .other {
+                            DatabaseService.shared.rememberCorrection(
+                                merchant: note,
+                                category: cat,
+                                buildingId: finalBuildingId
+                            )
+                        }
+                        let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
+
+                        let isCurrentMonth = cal.isDate(transactionDate, equalTo: Date(), toGranularity: .month)
+                        if isCurrentMonth {
+                            ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                                amount: amount,
+                                merchant: merchantTitle,
+                                buildingId: finalBuildingId,
+                                transactionId: tx.id,
+                                isRefund: false
+                            )
+
+                            let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
+                                ? String(format: "%.0f", amount)
+                                : String(format: "%.2f", amount)
+                            let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
+
+                            buildingFocusRequest = CityBuildingFocusRequest(
+                                token: UUID(),
+                                buildingId: finalBuildingId,
+                                amount: amount,
+                                formattedAmount: formattedAmount,
+                                isRefund: false,
+                                transactionId: tx.id,
+                                source: .manualExpense
+                            )
+                        } else {
+                            // Historical past month: record transaction without focusing current month diorama
+                            ExpenseConfirmationCoordinator.shared.triggerConfirmation(
+                                amount: amount,
+                                merchant: merchantTitle,
+                                buildingId: nil,
+                                transactionId: tx.id,
+                                isRefund: false
+                            )
+                        }
                     }
-                    let merchantTitle = !trimmed.isEmpty ? trimmed : cat.displayName(for: l10n.language)
-                    ExpenseConfirmationCoordinator.shared.triggerConfirmation(
-                        amount: amount,
-                        merchant: merchantTitle,
-                        buildingId: finalBuildingId,
-                        transactionId: tx.id,
-                        isRefund: false
-                    )
-
-                    let numStr = (amount.truncatingRemainder(dividingBy: 1) == 0)
-                        ? String(format: "%.0f", amount)
-                        : String(format: "%.2f", amount)
-                    let formattedAmount = "\(l10n.baseCurrency.symbol)\(numStr)"
-
-                    buildingFocusRequest = CityBuildingFocusRequest(
-                        token: UUID(),
-                        buildingId: finalBuildingId,
-                        amount: amount,
-                        formattedAmount: formattedAmount,
-                        isRefund: false,
-                        transactionId: tx.id,
-                        source: .manualExpense
-                    )
                 }
             )
             .environmentObject(l10n)
@@ -881,8 +937,10 @@ public struct MainCityView: View {
             initialCurrency: curr,
             initialMerchant: isDefaultName ? "" : pending.merchant,
             initialBuildingId: pending.buildingId,
+            initialDate: pending.timestamp,
+            allowsDateEditing: false,
             titleOverride: l10n.language == .hebrew ? "עריכת עסקת Apple Pay" : "Edit Apple Pay Transaction",
-            onSaveWithExplicitFlag: { amount, cat, merchant, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit in
+            onSaveWithExplicitFlag: { amount, cat, merchant, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit, _ in
                 saveResolvedPending(
                     pending: pending,
                     amount: amount,
@@ -1023,6 +1081,21 @@ public struct MainCityView: View {
                 if visibleConfirmationBanner?.id == conf.id {
                     visibleConfirmationBanner = nil
                     animatedSpentValue = nil
+                }
+            }
+        }
+    }
+
+    /// Displays a scheduled expense confirmation toast pill without affecting city spending counters or building focus.
+    private func triggerScheduledConfirmation(message: String) {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+            scheduledConfirmationMessage = message
+        }
+        Haptics.notify(.success)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.8) {
+            withAnimation(.easeOut(duration: 0.35)) {
+                if scheduledConfirmationMessage == message {
+                    scheduledConfirmationMessage = nil
                 }
             }
         }
@@ -1565,7 +1638,32 @@ public struct MainCityView: View {
 
     @ViewBuilder
     private var confirmationBannerView: some View {
-        CityConfirmationBanner(banner: visibleConfirmationBanner)
+        if let msg = scheduledConfirmationMessage {
+            HStack(spacing: 7) {
+                MoneyIcon(.calendar, size: 13, color: MoneyCityTheme.primaryBlue)
+
+                Text(msg)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(Color.white)
+                    .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 3)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.borderSubtle, lineWidth: 1)
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, -4)
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        } else {
+            CityConfirmationBanner(banner: visibleConfirmationBanner)
+        }
     }
     
     private var districtSelectorRow: some View {

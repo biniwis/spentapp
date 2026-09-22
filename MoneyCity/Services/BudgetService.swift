@@ -75,18 +75,18 @@ public enum BudgetService {
     /// savings transfers excluded — they are not spending.
     public static func spentByCategory(_ transactions: [Transaction]) -> [SpendingCategory: Double] {
         var totals: [SpendingCategory: Double] = [:]
-        for tx in transactions where tx.category.canonical != .savings {
+        for tx in transactions where tx.category.canonical != .savings && !tx.isUnresolvedForeign {
             totals[tx.category.canonical, default: 0] += tx.amount
         }
         return totals
     }
 
     public static func totalSpent(_ transactions: [Transaction]) -> Double {
-        transactions.filter { $0.category.canonical != .savings }.reduce(0) { $0 + $1.amount }
+        transactions.filter { $0.category.canonical != .savings && !$0.isUnresolvedForeign }.reduce(0) { $0 + $1.amount }
     }
 
     public static func totalSavedToSavings(_ transactions: [Transaction]) -> Double {
-        transactions.filter { $0.category.canonical == .savings }.reduce(0) { $0 + $1.amount }
+        transactions.filter { $0.category.canonical == .savings && !$0.isUnresolvedForeign }.reduce(0) { $0 + $1.amount }
     }
 
     // MARK: - Income

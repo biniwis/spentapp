@@ -19,7 +19,7 @@ public enum DataPortabilityService {
     /// Bumped only when the shape changes in a way an older reader could not handle. The
     /// reader checks it so a future file fails loudly here rather than importing half of
     /// itself and leaving the user to discover which half.
-    public static let formatVersion = 2
+    public static let formatVersion = 3
     public static let formatIdentifier = "moneycity.backup"
 
     // MARK: - The file
@@ -217,9 +217,121 @@ public enum DataPortabilityService {
             self.recaps = recaps
             self.preferences = preferences
         }
+
+        /// Deterministic migration from V2 to V3:
+        /// Missing scheduled collection defaults to empty.
+        public func migrateToV3() -> EnvelopeV3 {
+            EnvelopeV3(
+                format: format,
+                formatVersion: 3,
+                appVersion: appVersion,
+                appBuild: appBuild,
+                exportedAt: exportedAt,
+                transactions: transactions,
+                recurring: recurring,
+                income: income,
+                budgets: budgets,
+                merchantRules: merchantRules,
+                installments: installments,
+                savingsGoals: savingsGoals,
+                enrichments: enrichments,
+                recaps: recaps,
+                scheduled: [],
+                preferences: preferences
+            )
+        }
     }
 
-    public typealias Envelope = EnvelopeV2
+    /// Canonical V3 Backup Envelope (current format with scheduled expenses).
+    public struct EnvelopeV3: Codable {
+        public var format: String
+        public var formatVersion: Int
+        public var appVersion: String
+        public var appBuild: String
+        public var exportedAt: Date
+
+        public var transactions: [TransactionDTO]
+        public var recurring: [RecurringDTO]
+        public var income: [IncomeDTO]
+        public var budgets: [BudgetDTO]
+        public var merchantRules: [MerchantRuleDTO]
+        public var installments: [InstallmentDTO]
+        public var savingsGoals: [SavingsGoalDTO]
+        public var enrichments: [EnrichmentDTO]
+        public var recaps: [RecapSnapshotDTO]
+        public var scheduled: [ScheduledDTO]
+        public var preferences: AppPreferencesDTO?
+
+        public var totalRecords: Int {
+            transactions.count + recurring.count + income.count + budgets.count
+                + merchantRules.count + installments.count + savingsGoals.count + enrichments.count
+                + recaps.count + scheduled.count
+        }
+
+        public init(
+            format: String = DataPortabilityService.formatIdentifier,
+            formatVersion: Int = DataPortabilityService.formatVersion,
+            appVersion: String,
+            appBuild: String,
+            exportedAt: Date,
+            transactions: [TransactionDTO],
+            recurring: [RecurringDTO],
+            income: [IncomeDTO],
+            budgets: [BudgetDTO],
+            merchantRules: [MerchantRuleDTO],
+            installments: [InstallmentDTO],
+            savingsGoals: [SavingsGoalDTO],
+            enrichments: [EnrichmentDTO],
+            recaps: [RecapSnapshotDTO] = [],
+            scheduled: [ScheduledDTO] = [],
+            preferences: AppPreferencesDTO? = nil
+        ) {
+            self.format = format
+            self.formatVersion = formatVersion
+            self.appVersion = appVersion
+            self.appBuild = appBuild
+            self.exportedAt = exportedAt
+            self.transactions = transactions
+            self.recurring = recurring
+            self.income = income
+            self.budgets = budgets
+            self.merchantRules = merchantRules
+            self.installments = installments
+            self.savingsGoals = savingsGoals
+            self.enrichments = enrichments
+            self.recaps = recaps
+            self.scheduled = scheduled
+            self.preferences = preferences
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case format, formatVersion, appVersion, appBuild, exportedAt
+            case transactions, recurring, income, budgets, merchantRules
+            case installments, savingsGoals, enrichments, recaps, scheduled, preferences
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            format = try container.decode(String.self, forKey: .format)
+            formatVersion = try container.decode(Int.self, forKey: .formatVersion)
+            appVersion = try container.decode(String.self, forKey: .appVersion)
+            appBuild = try container.decode(String.self, forKey: .appBuild)
+            exportedAt = try container.decode(Date.self, forKey: .exportedAt)
+            transactions = try container.decode([TransactionDTO].self, forKey: .transactions)
+            recurring = try container.decode([RecurringDTO].self, forKey: .recurring)
+            income = try container.decode([IncomeDTO].self, forKey: .income)
+            budgets = try container.decode([BudgetDTO].self, forKey: .budgets)
+            merchantRules = try container.decode([MerchantRuleDTO].self, forKey: .merchantRules)
+            installments = try container.decode([InstallmentDTO].self, forKey: .installments)
+            savingsGoals = try container.decode([SavingsGoalDTO].self, forKey: .savingsGoals)
+            enrichments = try container.decode([EnrichmentDTO].self, forKey: .enrichments)
+            recaps = try container.decodeIfPresent([RecapSnapshotDTO].self, forKey: .recaps) ?? []
+            scheduled = try container.decodeIfPresent([ScheduledDTO].self, forKey: .scheduled) ?? []
+            preferences = try container.decodeIfPresent(AppPreferencesDTO.self, forKey: .preferences)
+        }
+    }
+
+    public typealias Envelope = EnvelopeV3
 
     /// Version-aware decoder that dispatches to historical schema models and migrates forward deterministically.
     public enum BackupMigrator {
@@ -251,9 +363,12 @@ public enum DataPortabilityService {
             switch header.formatVersion {
             case 1:
                 let v1 = try DataPortabilityService.makeDecoder().decode(EnvelopeV1.self, from: data)
-                envelope = v1.migrateToV2()
+                envelope = v1.migrateToV2().migrateToV3()
             case 2:
-                envelope = try DataPortabilityService.makeDecoder().decode(EnvelopeV2.self, from: data)
+                let v2 = try DataPortabilityService.makeDecoder().decode(EnvelopeV2.self, from: data)
+                envelope = v2.migrateToV3()
+            case 3:
+                envelope = try DataPortabilityService.makeDecoder().decode(EnvelopeV3.self, from: data)
             default:
                 throw DataPortabilityService.ImportError.futureFormat(header.formatVersion)
             }
@@ -427,6 +542,52 @@ public enum DataPortabilityService {
         public var districtId: String
         public var isApplied: Bool
         public var placedSlotId: String?
+    }
+
+    public struct ScheduledDTO: Codable, Equatable {
+        public var id: UUID
+        public var merchant: String
+        public var amount: Double
+        public var currency: String
+        public var category: String
+        public var scheduledFor: Date
+        public var createdAt: Date
+        public var buildingId: String?
+        public var originalAmount: Double?
+        public var originalCurrency: String?
+        public var exchangeRate: Double?
+        public var materializedAt: Date?
+        public var materializedTransactionId: UUID?
+
+        public init(
+            id: UUID,
+            merchant: String,
+            amount: Double,
+            currency: String,
+            category: String,
+            scheduledFor: Date,
+            createdAt: Date,
+            buildingId: String?,
+            originalAmount: Double?,
+            originalCurrency: String?,
+            exchangeRate: Double?,
+            materializedAt: Date?,
+            materializedTransactionId: UUID?
+        ) {
+            self.id = id
+            self.merchant = merchant
+            self.amount = amount
+            self.currency = currency
+            self.category = category
+            self.scheduledFor = scheduledFor
+            self.createdAt = createdAt
+            self.buildingId = buildingId
+            self.originalAmount = originalAmount
+            self.originalCurrency = originalCurrency
+            self.exchangeRate = exchangeRate
+            self.materializedAt = materializedAt
+            self.materializedTransactionId = materializedTransactionId
+        }
     }
 
     // MARK: - Coders
@@ -671,6 +832,23 @@ public enum DataPortabilityService {
                     frozenAt: $0.frozenAt
                 )
             },
+            scheduled: try all(ScheduledExpense.self).map {
+                ScheduledDTO(
+                    id: $0.id,
+                    merchant: $0.merchant,
+                    amount: $0.amount,
+                    currency: $0.currency,
+                    category: $0.categoryRawValue,
+                    scheduledFor: $0.scheduledFor,
+                    createdAt: $0.createdAt,
+                    buildingId: $0.buildingIdRaw,
+                    originalAmount: $0.originalAmount,
+                    originalCurrency: $0.originalCurrency,
+                    exchangeRate: $0.exchangeRate,
+                    materializedAt: $0.materializedAt,
+                    materializedTransactionId: $0.materializedTransactionId
+                )
+            },
             preferences: includePreferences ? buildPreferencesDTO(defaults: defaults, groupDefaults: groupDefaults) : nil
         )
     }
@@ -777,6 +955,7 @@ public enum DataPortabilityService {
             try wipe(Transaction.self); try wipe(RecurringExpense.self); try wipe(IncomeSource.self)
             try wipe(CategoryBudget.self); try wipe(MerchantRule.self); try wipe(InstallmentPlan.self)
             try wipe(SavingsGoal.self); try wipe(CityEnrichment.self); try wipe(RecapSnapshot.self)
+            try wipe(ScheduledExpense.self)
         }
 
         var txIds = mode == .replace ? Set<UUID>() : (try existingIds(Transaction.self) { $0.id })
@@ -1024,6 +1203,38 @@ public enum DataPortabilityService {
             )
             context.insert(s)
             recapIds.insert(cleanMonthId)
+            summary.added += 1
+        }
+
+        var schedIds = mode == .replace ? Set<UUID>() : (try existingIds(ScheduledExpense.self) { $0.id })
+        for dto in envelope.scheduled {
+            guard !schedIds.contains(dto.id) else { summary.skipped += 1; continue }
+            guard dto.amount.isFinite, let sanitizedAmount = MoneyAmount.sanitized(dto.amount) else { continue }
+            let category = SpendingCategory(rawValue: dto.category)?.canonical ?? .other
+            let cleanMerchant = InputSanitizer.sanitizeSingleLine(dto.merchant, maxLength: InputSanitizer.maxMerchantLength)
+            let cleanCurrency = InputSanitizer.sanitizeSingleLine(dto.currency, maxLength: InputSanitizer.maxCurrencyLength)
+            let schedDate = isPlausibleDate(dto.scheduledFor) ? dto.scheduledFor : Date()
+            let validBuildingId = dto.buildingId.flatMap { raw -> String? in
+                let cleaned = InputSanitizer.sanitizeIdentifier(raw)
+                return CityBuilding.allKnownBuildingIds.contains(cleaned) ? cleaned : nil
+            }
+            let s = ScheduledExpense(
+                id: dto.id,
+                merchant: cleanMerchant,
+                amount: sanitizedAmount,
+                currency: cleanCurrency.isEmpty ? "₪" : cleanCurrency,
+                category: category,
+                scheduledFor: schedDate,
+                createdAt: isPlausibleDate(dto.createdAt) ? dto.createdAt : Date(),
+                buildingIdRaw: validBuildingId,
+                originalAmount: dto.originalAmount.flatMap { MoneyAmount.sanitized($0) },
+                originalCurrency: dto.originalCurrency.map { InputSanitizer.sanitizeSingleLine($0, maxLength: InputSanitizer.maxCurrencyLength) },
+                exchangeRate: dto.exchangeRate.flatMap { $0.isFinite && $0 > 0 ? $0 : nil },
+                materializedAt: dto.materializedAt.flatMap { isPlausibleDate($0) ? $0 : nil },
+                materializedTransactionId: dto.materializedTransactionId
+            )
+            context.insert(s)
+            schedIds.insert(dto.id)
             summary.added += 1
         }
 

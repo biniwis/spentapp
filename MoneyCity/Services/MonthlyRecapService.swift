@@ -516,16 +516,17 @@ public enum MonthlyRecapService {
         
         // 8. "One Thing to Know" & Highlights
         let oneThingToKnow: String
+        let baseSymbol = LocalizationManager.currentBaseCurrency.symbol
         if let comp = comparisonVsPrevMonth {
             if comp.isDecrease {
-                oneThingToKnow = "הוצאת ₪\(Int(comp.diffAmount)) פחות מחודש \(comp.prevMonthNameHe) (ירידה של \(Int(comp.percentChange))%)"
+                oneThingToKnow = "הוצאת \(baseSymbol)\(Int(comp.diffAmount)) פחות מחודש \(comp.prevMonthNameHe) (ירידה של \(Int(comp.percentChange))%)"
             } else if comp.diffAmount == 0 {
                 oneThingToKnow = "סך ההוצאות זהה בדיוק לחודש \(comp.prevMonthNameHe)"
             } else {
-                oneThingToKnow = "ההוצאות גדלו ב-₪\(Int(comp.diffAmount)) ביחס לחודש \(comp.prevMonthNameHe)"
+                oneThingToKnow = "ההוצאות גדלו ב-\(baseSymbol)\(Int(comp.diffAmount)) ביחס לחודש \(comp.prevMonthNameHe)"
             }
         } else if let b = biggestDistrict {
-            oneThingToKnow = "רובע \(b.nameHe) היה המרכיב הדומיננטי בעיר עם ₪\(Int(b.amount))"
+            oneThingToKnow = "רובע \(b.nameHe) היה המרכיב הדומיננטי בעיר עם \(baseSymbol)\(Int(b.amount))"
         } else {
             oneThingToKnow = "העיר נבנתה מ-\(spendingTxs.count) עסקאות החודש"
         }
@@ -763,7 +764,8 @@ public enum MonthlyRecapInsightSelector {
         guard let interval = cal.dateInterval(of: .month, for: month) else { return [] }
         let spend = transactions.filter {
             $0.timestamp >= interval.start && $0.timestamp < interval.end &&
-            $0.amount.isFinite && $0.amount > 0 && $0.category.canonical != .savings
+            $0.amount.isFinite && $0.amount > 0 && $0.category.canonical != .savings &&
+            !$0.isUnresolvedForeign
         }
         guard spend.count >= 4 else { return [] }
         let total = spend.reduce(0) { $0 + $1.amount }
@@ -824,7 +826,8 @@ public enum MonthlyRecapInsightSelector {
            let previousInterval = cal.dateInterval(of: .month, for: previousDate) {
             let previous = transactions.filter {
                 $0.timestamp >= previousInterval.start && $0.timestamp < previousInterval.end &&
-                $0.amount.isFinite && $0.amount > 0 && $0.category.canonical != .savings
+                $0.amount.isFinite && $0.amount > 0 && $0.category.canonical != .savings &&
+                !$0.isUnresolvedForeign
             }
             let previousTotal = previous.reduce(0) { $0 + $1.amount }
             if previousTotal > 0 {

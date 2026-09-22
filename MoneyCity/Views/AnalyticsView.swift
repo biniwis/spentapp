@@ -100,6 +100,7 @@ public struct AnalyticsView: View {
     }
 
     private func countsTowardStats(_ tx: Transaction) -> Bool {
+        if tx.isUnresolvedForeign { return false }
         if tx.category.canonical == .savings { return false }
         if excludeHousing && tx.category.canonical == .housing { return false }
         return true

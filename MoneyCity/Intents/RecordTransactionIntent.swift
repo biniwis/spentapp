@@ -49,12 +49,17 @@ public struct RecordTransactionIntent: AppIntent {
     @Parameter(title: "Currency", description: "Defaults to the base currency selected in the app")
     public var currency: String?
 
+    /// Structured currency amount supplied by Apple Pay / Shortcuts (when available on iOS)
+    @Parameter(title: "Currency Amount", description: "Optional structured monetary amount with ISO currency code")
+    public var currencyAmount: IntentCurrencyAmount?
+
     @Parameter(title: "Date and Time", description: "When the transaction took place")
     public var transactionDate: Date?
 
     public static var parameterSummary: some ParameterSummary {
         Summary("Record payment of \(\.$amount) at \(\.$merchant)") {
             \.$currency
+            \.$currencyAmount
             \.$transactionDate
             \.$amountText
         }
@@ -67,18 +72,29 @@ public struct RecordTransactionIntent: AppIntent {
         merchant: String?,
         amountText: String? = nil,
         currency: String? = nil,
-        date: Date? = nil
+        date: Date? = nil,
+        currencyAmount: IntentCurrencyAmount? = nil
     ) {
         self.amount = amount
         self.amountText = amountText
         self.merchant = merchant
         self.currency = currency
         self.transactionDate = date
+        self.currencyAmount = currencyAmount
     }
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        let effectiveAmount = amount
+        var effectiveAmount = amount
+        var structuredCurrency: String? = nil
+
+        if let ca = currencyAmount {
+            if effectiveAmount == nil || effectiveAmount == 0 {
+                effectiveAmount = NSDecimalNumber(decimal: ca.amount).doubleValue
+            }
+            structuredCurrency = ca.currencyCode
+        }
+
         var effectiveMerchant = merchant
 
         if (effectiveMerchant == nil || effectiveMerchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true) && (effectiveAmount != nil && effectiveAmount! > 0) {
@@ -90,6 +106,7 @@ public struct RecordTransactionIntent: AppIntent {
         • amount received: \(effectiveAmount != nil ? "\(effectiveAmount!)" : "nil")
         • merchant received: \(effectiveMerchant != nil ? "\"\(effectiveMerchant!)\"" : "nil")
         • currency received: \(currency != nil ? "\"\(currency!)\"" : "nil")
+        • structured currency: \(structuredCurrency != nil ? "\"\(structuredCurrency!)\"" : "nil")
         • transactionDate received: \(transactionDate != nil ? "\(transactionDate!)" : "nil")
         • amountText received: \(amountText != nil ? "\"\(amountText!)\"" : "nil")
         """
@@ -101,7 +118,8 @@ public struct RecordTransactionIntent: AppIntent {
             merchant: effectiveMerchant,
             currency: currency,
             transactionDate: transactionDate,
-            intentName: "RecordTransactionIntent"
+            intentName: "RecordTransactionIntent",
+            structuredCurrency: structuredCurrency
         )
 
         guard result.succeeded else {

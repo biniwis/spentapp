@@ -181,6 +181,12 @@
 		7F020069E4680C1F9B1BD614 = {isa = PBXBuildFile; fileRef = 9C2E806A681D7E1D5F5C9539; };
 		3F53B25034B05E8BE10F8D75 = {isa = PBXBuildFile; fileRef = 91C4335FCD9490427BB05C91; };
 		ABB633D59B4EF1BF131CACB0 = {isa = PBXBuildFile; fileRef = 5AC141236FC48C41E5582044; };
+		CA2026092200000000000002 /* ScheduledExpense.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092200000000000001; };
+		CA2026092200000000000004 /* ScheduledExpenseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092200000000000003; };
+		CA2026092200000000000006 /* ScheduledExpenseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092200000000000005; };
+		CA2026092200000000000012 /* CurrencyResolutionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092200000000000011; };
+		CA2026092200000000000014 /* BaseCurrencyMigrationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092200000000000013; };
+		CA2026092200000000000016 /* CurrencyHandlingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092200000000000015; };
 		A10CA1100000000000000101 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A10CA1100000000000000001; };
 		A10CA1100000000000000102 /* AppShortcuts.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A10CA1100000000000000002; };
 		A10CA1100000000000000201 /* Localizable.xcstrings in Widget Resources */ = {isa = PBXBuildFile; fileRef = A10CA1100000000000000001; };
@@ -391,6 +397,12 @@
 		C5EC5C01A8307CA97AB50E34 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; path = MoneyCityTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10CA1100000000000000001 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "MoneyCity/Resources/Localizable.xcstrings"; sourceTree = "<group>"; };
 		A10CA1100000000000000002 /* AppShortcuts.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = "MoneyCity/Resources/AppShortcuts.xcstrings"; sourceTree = "<group>"; };
+		CA2026092200000000000001 /* ScheduledExpense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ScheduledExpense.swift"; path = "MoneyCity/Models/ScheduledExpense.swift"; sourceTree = "<group>"; };
+		CA2026092200000000000003 /* ScheduledExpenseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "ScheduledExpenseService.swift"; path = "MoneyCity/Services/ScheduledExpenseService.swift"; sourceTree = "<group>"; };
+		CA2026092200000000000005 /* ScheduledExpenseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ScheduledExpenseTests.swift"; sourceTree = "<group>"; };
+		CA2026092200000000000011 /* CurrencyResolutionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "CurrencyResolutionService.swift"; path = "MoneyCity/Services/CurrencyResolutionService.swift"; sourceTree = "<group>"; };
+		CA2026092200000000000013 /* BaseCurrencyMigrationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "BaseCurrencyMigrationService.swift"; path = "MoneyCity/Services/BaseCurrencyMigrationService.swift"; sourceTree = "<group>"; };
+		CA2026092200000000000015 /* CurrencyHandlingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CurrencyHandlingTests.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -432,6 +444,7 @@
 				86FEEC26E45B40D68DB52C64 /* MonthlyCity.swift */,
 				EACE09162026000000000002 /* CityLifeState.swift */,
 				271C8D61870B4A5084FEA764 /* RecurringExpense.swift */,
+				CA2026092200000000000001 /* ScheduledExpense.swift */,
 				D94C6D7DF81243B0AC25D1C9 /* SavingsGoal.swift */,
 				7BC9F341A191433A9672C93C /* SpendingCategory.swift */,
 				D1FA2370D13747B6917A8C5F /* Theme.swift */,
@@ -533,6 +546,9 @@
 				A0B6B08368E34CE0814898AB /* NotificationService.swift */,
 				1C8C4A6B57BE4EEB8C03FC6F /* ReceiptOCRService.swift */,
 				89D03BDB0DD743D1AA3D1FF7 /* RecurringExpenseService.swift */,
+				CA2026092200000000000003 /* ScheduledExpenseService.swift */,
+				CA2026092200000000000011 /* CurrencyResolutionService.swift */,
+				CA2026092200000000000013 /* BaseCurrencyMigrationService.swift */,
 				394E605D6BC84270BF983A00 /* SavingsGoalService.swift */,
 				690E29F7F0014916B6CFB608 /* StoreSnapshotService.swift */,
 				CB2026092100000000000002 /* CloudBackupService.swift */,
@@ -570,7 +586,7 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		54CA73502A42DDEADEAAE764 = {isa = PBXGroup; children = (C17009200000000000000004 /* CityMapSelectionTests.swift */,CA2026091700000000000013 /* SecurityHardeningTests.swift */,CA2026091300000000000006,A6D6DAC99E25F61D0EEBA899,812AA25EB770AA5A12EB0D90,CA2026091600000000000005 /* AutomaticCaptureStateStoreTests.swift */,CA2026091700000000000007 /* RemoteConfigTests.swift */,A1000032B2C3D4E5F6000032,A1000028B2C3D4E5F6000028,A3A0FBD724F1834D0AE1FF7E,AFD4AC61703C6708D133095B,3363D11BCF07C2282139328C,CA2026091300000000000004,54B813209ABA95695325783A,0514DD20C153FC99C102AABA,02F07D7A29E9726EA0F2788E,486270466A72197B7682EA85,CA2026091800000000000011 /* MerchantCanonicalizerTests.swift */,0E5BB538AFB6F673B4BA24DD,F1E2E3E4E5F6040400000003,F1E2E3E4E5F7050500000003,F1E2E3E4E5FA080800000001,C99C86634638301BC4E5E350,085700DD5AA169854BC62CB4,CE5AC91893AE5F5289557FD2,2407CB5B9FBF38B4735DBF74,1F7AA212E6A4140DD7559B5F,1D158C97601388626E06600A,5AA635C3BF7E81DED78952D0,9C2E806A681D7E1D5F5C9539,91C4335FCD9490427BB05C91,5AC141236FC48C41E5582044,); path = MoneyCityTests; sourceTree = "<group>"; };
+		54CA73502A42DDEADEAAE764 = {isa = PBXGroup; children = (C17009200000000000000004 /* CityMapSelectionTests.swift */,CA2026091700000000000013 /* SecurityHardeningTests.swift */,CA2026091300000000000006,A6D6DAC99E25F61D0EEBA899,812AA25EB770AA5A12EB0D90,CA2026091600000000000005 /* AutomaticCaptureStateStoreTests.swift */,CA2026091700000000000007 /* RemoteConfigTests.swift */,A1000032B2C3D4E5F6000032,A1000028B2C3D4E5F6000028,A3A0FBD724F1834D0AE1FF7E,AFD4AC61703C6708D133095B,3363D11BCF07C2282139328C,CA2026091300000000000004,54B813209ABA95695325783A,0514DD20C153FC99C102AABA,02F07D7A29E9726EA0F2788E,486270466A72197B7682EA85,CA2026091800000000000011 /* MerchantCanonicalizerTests.swift */,0E5BB538AFB6F673B4BA24DD,F1E2E3E4E5F6040400000003,F1E2E3E4E5F7050500000003,F1E2E3E4E5FA080800000001,C99C86634638301BC4E5E350,085700DD5AA169854BC62CB4,CE5AC91893AE5F5289557FD2,2407CB5B9FBF38B4735DBF74,1F7AA212E6A4140DD7559B5F,1D158C97601388626E06600A,5AA635C3BF7E81DED78952D0,9C2E806A681D7E1D5F5C9539,91C4335FCD9490427BB05C91,5AC141236FC48C41E5582044,CA2026092200000000000005 /* ScheduledExpenseTests.swift */,CA2026092200000000000015 /* CurrencyHandlingTests.swift */,); path = MoneyCityTests; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -814,6 +830,10 @@
 				CA2026091700000000000002 /* RemoteConfigService.swift in Sources */,
 				CA2026091700000000000012 /* InputSanitizer.swift in Sources */,
 				CA2026091700000000000004 /* RemoteAnnouncementBanner.swift in Sources */,
+				CA2026092200000000000002 /* ScheduledExpense.swift in Sources */,
+				CA2026092200000000000004 /* ScheduledExpenseService.swift in Sources */,
+				CA2026092200000000000012 /* CurrencyResolutionService.swift in Sources */,
+				CA2026092200000000000014 /* BaseCurrencyMigrationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -827,7 +847,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E8751535E2602D32F2EF8382 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C17009200000000000000003 /* CityMapSelectionTests.swift in Sources */,CA2026091700000000000014 /* SecurityHardeningTests.swift in Sources */,CA2026091300000000000005,C1BBE086E50CAA810632A3C0,B25AB9A470966166DBBEB816,CA2026091600000000000006 /* AutomaticCaptureStateStoreTests.swift in Sources */,CA2026091700000000000008 /* RemoteConfigTests.swift in Sources */,B1000032B2C3D4E5F6000032,B1000028B2C3D4E5F6000028,D50289DCC48AF52C63E65356,A35A333E17ACFBFC8F2ECEF8,289436770CEB5658078FEF9C,CA2026091300000000000003,8A1874F4FE2263344A67090B,F26DA2FE95A3E00B13D6E01B,6E9C726B4EEEECA7D3AC4E96,340BE1526620B9C4F2E72EA9,CA2026091800000000000012 /* MerchantCanonicalizerTests.swift in Sources */,242A3D9E3568703E41752317,F1E2E3E4E5F6040400000004,
-				F1E2E3E4E5F7050500000004,810BA085A0205DE5871BC3A2,D67913940EF202311AA9536B,BCEE548C914DE1EBF294536C,F083E1A409AA1CC0D0AACA30,B1A15D8934E3F6E73FB3FED4,12968A4927D731876AAE0FF9,096EEF053248DEB1601AF50C,7F020069E4680C1F9B1BD614,3F53B25034B05E8BE10F8D75,ABB633D59B4EF1BF131CACB0,F1E2E3E4E5FA080800000002,); runOnlyForDeploymentPostprocessing = 0; };
+				F1E2E3E4E5F7050500000004,810BA085A0205DE5871BC3A2,D67913940EF202311AA9536B,BCEE548C914DE1EBF294536C,F083E1A409AA1CC0D0AACA30,B1A15D8934E3F6E73FB3FED4,12968A4927D731876AAE0FF9,096EEF053248DEB1601AF50C,7F020069E4680C1F9B1BD614,3F53B25034B05E8BE10F8D75,ABB633D59B4EF1BF131CACB0,F1E2E3E4E5FA080800000002,CA2026092200000000000006 /* ScheduledExpenseTests.swift in Sources */,CA2026092200000000000016 /* CurrencyHandlingTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

@@ -149,7 +149,7 @@ public final class CitySimulationEngine: Sendable {
         var activeSubs = 0
         var groceryBags = 0
         
-        for t in transactions {
+        for t in transactions where !t.isUnresolvedForeign {
             totals[t.category, default: 0.0] += t.amount
             let bId = t.buildingId
             buildingTotals[bId, default: 0.0] += t.amount
@@ -186,7 +186,7 @@ public final class CitySimulationEngine: Sendable {
         }
         woltTotalSpend = max(0, woltTotalSpend)
         
-        let spendingTransactions = transactions.filter { $0.category != .savings }
+        let spendingTransactions = transactions.filter { $0.category != .savings && !$0.isUnresolvedForeign }
         let totalSpent = spendingTransactions.reduce(0.0) { $0 + $1.amount }
         let directSavings = totals[.savings] ?? 0.0
 

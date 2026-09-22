@@ -13,6 +13,8 @@ public struct QuickAddSheet: View {
     public let initialCategoryIsExplicit: Bool
     public let initialMerchant: String?
     public let initialBuildingId: String?
+    public let initialDate: Date
+    public let allowsDateEditing: Bool
     public typealias OnSaveAction = (
         _ amount: Double,
         _ category: SpendingCategory,
@@ -21,7 +23,8 @@ public struct QuickAddSheet: View {
         _ originalCurrency: String?,
         _ exchangeRate: Double?,
         _ buildingId: String?,
-        _ isCategoryExplicit: Bool
+        _ isCategoryExplicit: Bool,
+        _ transactionDate: Date
     ) -> Void
 
     public let titleOverride: String?
@@ -33,6 +36,8 @@ public struct QuickAddSheet: View {
         initialCurrency: CurrencyType? = nil,
         initialMerchant: String? = nil,
         initialBuildingId: String? = nil,
+        initialDate: Date = Date(),
+        allowsDateEditing: Bool = true,
         titleOverride: String? = nil,
         onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
@@ -40,11 +45,14 @@ public struct QuickAddSheet: View {
         self.initialCategoryIsExplicit = initialCategoryIsExplicit
         self.initialMerchant = initialMerchant
         self.initialBuildingId = initialBuildingId
+        self.initialDate = initialDate
+        self.allowsDateEditing = allowsDateEditing
         self.titleOverride = titleOverride
-        self.onSave = { amount, cat, merch, origAmt, origCurr, rate, bId, _ in
+        self.onSave = { amount, cat, merch, origAmt, origCurr, rate, bId, _, _ in
             onSave(amount, cat, merch, origAmt, origCurr, rate, bId)
         }
         _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        _transactionDate = State(initialValue: initialDate)
         if let initialMerchant, !initialMerchant.isEmpty {
             _note = State(initialValue: initialMerchant)
         }
@@ -59,6 +67,8 @@ public struct QuickAddSheet: View {
         initialCurrency: CurrencyType? = nil,
         initialMerchant: String? = nil,
         initialBuildingId: String? = nil,
+        initialDate: Date = Date(),
+        allowsDateEditing: Bool = true,
         titleOverride: String? = nil,
         onSaveWithExplicitFlag: @escaping OnSaveAction
     ) {
@@ -66,9 +76,12 @@ public struct QuickAddSheet: View {
         self.initialCategoryIsExplicit = initialCategoryIsExplicit
         self.initialMerchant = initialMerchant
         self.initialBuildingId = initialBuildingId
+        self.initialDate = initialDate
+        self.allowsDateEditing = allowsDateEditing
         self.titleOverride = titleOverride
         self.onSave = onSaveWithExplicitFlag
         _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        _transactionDate = State(initialValue: initialDate)
         if let initialMerchant, !initialMerchant.isEmpty {
             _note = State(initialValue: initialMerchant)
         }
@@ -89,7 +102,8 @@ public struct QuickAddSheet: View {
     @State private var showAdvancedOptions = false
     @State private var cursorVisible = true
     @State private var transactionDate = Date()
-    @State private var showDatePicker = false
+    @State private var tempSelectedDate = Date()
+    @State private var showDatePickerOverlay = false
     @State private var showCategoryPickerSheet = false
     @State private var categoryPickerSubcategoryCategory: SpendingCategory? = nil
     @State private var amountPunchScale: CGFloat = 1.0
@@ -253,17 +267,6 @@ public struct QuickAddSheet: View {
                         utilityRow
                             .padding(.top, 10)
 
-                        if showDatePicker {
-                            DatePicker("", selection: $transactionDate, displayedComponents: [.date, .hourAndMinute])
-                                .datePickerStyle(.graphical)
-                                .padding(12)
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .shadow(color: Color.black.opacity(0.025), radius: 6, y: 1.5)
-                                .padding(.horizontal, 20)
-                                .padding(.top, 8)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
-                        }
-
                         if showAdvancedOptions {
                             expandableMoreOptionsSection
                                 .padding(.horizontal, 20)
@@ -299,6 +302,22 @@ public struct QuickAddSheet: View {
                         .transition(.opacity)
 
                     categoryPickerModalView
+                        .transition(.scale(scale: 0.94).combined(with: .opacity))
+                        .zIndex(100)
+                }
+
+                // Modal Popup Overlay for Date Selection (no page scrolling, fast modal popup)
+                if showDatePickerOverlay {
+                    Color.black.opacity(0.28)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                showDatePickerOverlay = false
+                            }
+                        }
+                        .transition(.opacity)
+
+                    datePickerModalView
                         .transition(.scale(scale: 0.94).combined(with: .opacity))
                         .zIndex(100)
                 }
@@ -378,6 +397,8 @@ public struct QuickAddSheet: View {
             return l10n.language == .hebrew ? "היום" : "Today"
         } else if Calendar.current.isDateInYesterday(date) {
             return l10n.language == .hebrew ? "אתמול" : "Yesterday"
+        } else if Calendar.current.isDateInTomorrow(date) {
+            return l10n.language == .hebrew ? "מחר" : "Tomorrow"
         } else {
             formatter.dateStyle = .medium
             return formatter.string(from: date)
@@ -430,6 +451,132 @@ public struct QuickAddSheet: View {
             .padding(.horizontal, 2)
             .padding(.vertical, 2)
         }
+    }
+
+    // MARK: - Date Picker Popup Modal Overlay
+    @ViewBuilder @MainActor
+    private var datePickerModalView: some View {
+        VStack(spacing: 12) {
+            // Header: Title + Close Button
+            HStack {
+                Text(l10n.language == .hebrew ? "בחר תאריך" : "Select Date")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+
+                Spacer()
+
+                Button(action: {
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        showDatePickerOverlay = false
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(width: 32, height: 32)
+                        .background(Color.black.opacity(0.05), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.92)
+                .accessibilityLabel(l10n.language == .hebrew ? "סגור" : "Close")
+            }
+            .padding(.horizontal, 2)
+
+            // Quick shortcut chips (Today, Yesterday, Tomorrow)
+            quickDateShortcutsRow
+                .padding(.top, 2)
+
+            // Graphical Calendar Picker
+            DatePicker(
+                "",
+                selection: $tempSelectedDate,
+                displayedComponents: [.date]
+            )
+            .datePickerStyle(.graphical)
+            .labelsHidden()
+            .tint(Color.primaryBlue)
+            .environment(\.locale, l10n.language == .hebrew ? Locale(identifier: "he_IL") : Locale(identifier: "en_US"))
+
+            // Save / Confirm Button
+            Button(action: {
+                Haptics.impact(.medium)
+                transactionDate = tempSelectedDate
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                    showDatePickerOverlay = false
+                }
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 15, weight: .bold))
+                    Text(l10n.language == .hebrew ? "אישור" : "Done")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 13)
+                .background(Color.deepNavy)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .bouncyPress(scale: 0.97)
+        }
+        .padding(18)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.12), radius: 24, y: 10)
+        .frame(maxWidth: 360)
+        .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder @MainActor
+    private var quickDateShortcutsRow: some View {
+        let cal = Calendar.current
+        let today = Date()
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
+
+        let isToday = cal.isDate(tempSelectedDate, inSameDayAs: today)
+        let isYesterday = cal.isDate(tempSelectedDate, inSameDayAs: yesterday)
+        let isTomorrow = cal.isDate(tempSelectedDate, inSameDayAs: tomorrow)
+
+        HStack(spacing: 8) {
+            shortcutDateChip(title: l10n.language == .hebrew ? "היום" : "Today", isSelected: isToday) {
+                Haptics.selection()
+                tempSelectedDate = today
+            }
+
+            shortcutDateChip(title: l10n.language == .hebrew ? "אתמול" : "Yesterday", isSelected: isYesterday) {
+                Haptics.selection()
+                tempSelectedDate = yesterday
+            }
+
+            shortcutDateChip(title: l10n.language == .hebrew ? "מחר" : "Tomorrow", isSelected: isTomorrow) {
+                Haptics.selection()
+                tempSelectedDate = tomorrow
+            }
+        }
+    }
+
+    @ViewBuilder @MainActor
+    private func shortcutDateChip(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                .foregroundColor(isSelected ? Color.white : Color.deepNavy)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(isSelected ? Color.primaryBlue : Color.black.opacity(0.04))
+                )
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.95)
     }
 
     // MARK: - Category Picker Popup Modal (Responsive Content Height)
@@ -810,7 +957,9 @@ public struct QuickAddSheet: View {
     // MARK: - Utility Row (Date + More Options)
     private var utilityRow: some View {
         HStack(spacing: 10) {
-            dateButton
+            if allowsDateEditing {
+                dateButton
+            }
             moreOptionsButton
             Spacer()
         }
@@ -820,21 +969,26 @@ public struct QuickAddSheet: View {
     private var dateButton: some View {
         Button(action: {
             dismissKeyboard()
-            withAnimation(.spring(response: 0.3)) {
-                showDatePicker.toggle()
+            tempSelectedDate = transactionDate
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                showDatePickerOverlay = true
             }
         }) {
             HStack(spacing: 5) {
-                MoneyIcon(.calendar, size: 12, color: showDatePicker ? Color.deepNavy : Color.textSecondary)
+                MoneyIcon(
+                    .calendar,
+                    size: 12,
+                    color: isFutureDate ? Color.primaryBlue : (showDatePickerOverlay ? Color.deepNavy : Color.textSecondary)
+                )
                 Text(formattedDateString(transactionDate))
                     .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(showDatePicker ? Color.deepNavy : Color.textSecondary)
+                    .foregroundColor(isFutureDate ? Color.primaryBlue : (showDatePickerOverlay ? Color.deepNavy : Color.textSecondary))
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(showDatePicker ? Color.black.opacity(0.07) : Color.black.opacity(0.03))
+                    .fill(isFutureDate ? Color.primaryBlue.opacity(0.12) : (showDatePickerOverlay ? Color.black.opacity(0.07) : Color.black.opacity(0.03)))
             )
         }
         .buttonStyle(.plain)
@@ -920,11 +1074,23 @@ public struct QuickAddSheet: View {
         }
     }
 
+    private var isFutureDate: Bool {
+        let cal = Calendar.current
+        return cal.startOfDay(for: transactionDate) > cal.startOfDay(for: Date())
+    }
+
     // MARK: - 4. Big Save Button
     @ViewBuilder @MainActor
     private var saveTransactionButton: some View {
         let parsed = parseAmount(amountText)
         let canSave = (parsed ?? 0) > 0 && selectedCategory != nil
+        let saveTitle: String = {
+            if isFutureDate {
+                return l10n.language == .hebrew ? "תזמן הוצאה" : "Schedule Expense"
+            } else {
+                return l10n.language == .hebrew ? "שמור הוצאה" : "Save Transaction"
+            }
+        }()
         Button(action: {
             dismissKeyboard()
             if let cat = selectedCategory {
@@ -937,7 +1103,7 @@ public struct QuickAddSheet: View {
             HStack(spacing: 8) {
                 MoneyIcon(.checkCircle, size: 20, color: canSave ? Color.white : Color.white.opacity(0.60))
                     .opacity(canSave ? 1.0 : 0.60)
-                Text(l10n.language == .hebrew ? "שמור הוצאה" : "Save Transaction")
+                Text(saveTitle)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
             }
             .foregroundColor(canSave ? Color.white : Color.white.opacity(0.60))
@@ -978,11 +1144,11 @@ public struct QuickAddSheet: View {
         }()
         let merchant = typed.isEmpty ? fallbackMerchant : typed
         let origAmt: Double? = isForeign ? amount : nil
-        let origCurr: String? = isForeign ? selectedCurrency.symbol : nil
+        let origCurr: String? = isForeign ? selectedCurrency.rawValue : nil
         let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
 
         let isCategoryExplicit = userExplicitlySelectedCategory || (initialCategory != nil && initialCategoryIsExplicit)
-        onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId, isCategoryExplicit)
+        onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId, isCategoryExplicit, transactionDate)
         Haptics.notify(.success)
         dismiss()
     }
@@ -994,7 +1160,7 @@ public struct QuickAddSheet: View {
         let isForeign = selectedCurrency != l10n.baseCurrency
         let converted = isForeign ? CurrencyType.convert(amount: total, from: selectedCurrency, to: l10n.baseCurrency) : total
         let origAmt: Double? = isForeign ? total : nil
-        let origCurr: String? = isForeign ? selectedCurrency.symbol : nil
+        let origCurr: String? = isForeign ? selectedCurrency.rawValue : nil
         let rate: Double? = isForeign ? CurrencyType.convert(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency) : nil
         let typed = note.trimmingCharacters(in: .whitespacesAndNewlines)
         let fallbackMerchant: String = {
@@ -1012,7 +1178,7 @@ public struct QuickAddSheet: View {
             totalAmount: converted,
             currency: l10n.baseCurrency.symbol,
             numberOfPayments: paymentCount,
-            firstChargeDate: Date(),
+            firstChargeDate: transactionDate,
             category: category,
             lastMaterializedIndex: 0,
             buildingIdRaw: selectedBuildingId

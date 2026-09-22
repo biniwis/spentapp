@@ -71,7 +71,7 @@ final class IngestStateMachineTests: XCTestCase {
             categoryRawValue: SpendingCategory.other.rawValue, buildingId: nil, date: Date()).ingest
         guard case .finalized(let tx) = try receive(machine, amount: 12, date: pending.timestamp, pending: pending.id) else { return XCTFail() }
         XCTAssertEqual(tx.originalAmount, 12)
-        XCTAssertEqual(tx.originalCurrency, "$")
+        XCTAssertEqual(tx.originalCurrency, "USD")
         XCTAssertFalse(tx.isConfirmed)
         guard case .duplicate = try machine.receive(amount: 12, amountText: nil, merchant: pending.merchant,
             currency: "USD", date: pending.timestamp, source: "retry") else { return XCTFail("FX retry") }

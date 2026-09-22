@@ -52,50 +52,158 @@ public enum AppLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
 
 // MARK: - Currency Types & Rates
 
-public enum CurrencyType: String, CaseIterable, Identifiable, Codable, Sendable {
-    case ils = "ILS"
-    case usd = "USD"
-    case eur = "EUR"
-    case gbp = "GBP"
+public struct CurrencyType: Hashable, Identifiable, Codable, Sendable, RawRepresentable {
+    public let rawValue: String
 
     public var id: String { rawValue }
+    public var code: String { rawValue }
+
+    public init(rawValue: String) {
+        let clean = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        self.rawValue = clean.isEmpty ? "ILS" : clean
+    }
+
+    public init(_ code: String) {
+        self.init(rawValue: code)
+    }
+
+    // Standard static constants for backward-compatibility
+    public static let ils = CurrencyType(rawValue: "ILS")
+    public static let usd = CurrencyType(rawValue: "USD")
+    public static let eur = CurrencyType(rawValue: "EUR")
+    public static let gbp = CurrencyType(rawValue: "GBP")
+    public static let `try` = CurrencyType(rawValue: "TRY")
+    public static let jpy = CurrencyType(rawValue: "JPY")
+    public static let chf = CurrencyType(rawValue: "CHF")
+    public static let cad = CurrencyType(rawValue: "CAD")
+    public static let aud = CurrencyType(rawValue: "AUD")
+    public static let aed = CurrencyType(rawValue: "AED")
+    public static let thb = CurrencyType(rawValue: "THB")
+    public static let pln = CurrencyType(rawValue: "PLN")
+    public static let czk = CurrencyType(rawValue: "CZK")
+    public static let huf = CurrencyType(rawValue: "HUF")
+    public static let sek = CurrencyType(rawValue: "SEK")
+    public static let nok = CurrencyType(rawValue: "NOK")
+    public static let dkk = CurrencyType(rawValue: "DKK")
+    public static let cny = CurrencyType(rawValue: "CNY")
+    public static let hkd = CurrencyType(rawValue: "HKD")
+    public static let sgd = CurrencyType(rawValue: "SGD")
+    public static let krw = CurrencyType(rawValue: "KRW")
+
+    public static var allCases: [CurrencyType] {
+        [
+            .ils, .usd, .eur, .gbp, .try, .jpy, .chf, .cad, .aud, .aed,
+            .thb, .pln, .czk, .huf, .sek, .nok, .dkk, .cny, .hkd, .sgd, .krw
+        ]
+    }
 
     public var symbol: String {
-        switch self {
-        case .ils: return "₪"
-        case .usd: return "$"
-        case .eur: return "€"
-        case .gbp: return "£"
+        switch rawValue {
+        case "ILS": return "₪"
+        case "USD": return "$"
+        case "EUR": return "€"
+        case "GBP": return "£"
+        case "TRY": return "₺"
+        case "JPY": return "¥"
+        case "CNY": return "¥"
+        case "CHF": return "CHF"
+        case "CAD": return "CA$"
+        case "AUD": return "AU$"
+        case "AED": return "AED"
+        case "THB": return "฿"
+        case "PLN": return "zł"
+        case "CZK": return "Kč"
+        case "HUF": return "Ft"
+        case "SEK": return "kr"
+        case "NOK": return "kr"
+        case "DKK": return "kr"
+        case "HKD": return "HK$"
+        case "SGD": return "SG$"
+        case "KRW": return "₩"
+        default:
+            let loc = Locale(identifier: "en_US@currency=\(rawValue)")
+            return loc.currencySymbol ?? rawValue
         }
     }
 
     public var displayNameHebrew: String {
-        switch self {
-        case .ils: return "שקל ישראלי (₪)"
-        case .usd: return "דולר ארה״ב ($)"
-        case .eur: return "אירו אירופי (€)"
-        case .gbp: return "לירה שטרלינג (£)"
+        switch rawValue {
+        case "ILS": return "שקל ישראלי (₪)"
+        case "USD": return "דולר ארה״ב ($)"
+        case "EUR": return "אירו אירופי (€)"
+        case "GBP": return "לירה שטרלינג (£)"
+        case "TRY": return "לירה טורקית (₺)"
+        case "JPY": return "ין יפני (¥)"
+        case "CHF": return "פרנק שוויצרי (CHF)"
+        case "CAD": return "דולר קנדי (CA$)"
+        case "AUD": return "דולר אוסטרלי (AU$)"
+        case "AED": return "דירהם איחוד האמירויות (AED)"
+        case "THB": return "באט תאילנדי (฿)"
+        case "PLN": return "זלוטי פולני (zł)"
+        case "CZK": return "קורונה צ'כית (Kč)"
+        case "HUF": return "פורינט הונגרי (Ft)"
+        case "SEK": return "קרונה שוודית (kr)"
+        case "NOK": return "קרונה נורווגית (kr)"
+        case "DKK": return "קרונה דנית (kr)"
+        case "CNY": return "יואן סיני (¥)"
+        case "HKD": return "דולר הונג קונג (HK$)"
+        case "SGD": return "דולר סינגפורי (SG$)"
+        case "KRW": return "וון דרום קוריאני (₩)"
+        default:
+            let locName = Locale(identifier: "he_IL").localizedString(forCurrencyCode: rawValue) ?? rawValue
+            return "\(locName) (\(symbol))"
         }
     }
 
     public var displayNameEnglish: String {
-        switch self {
-        case .ils: return "Israeli Shekel (₪)"
-        case .usd: return "US Dollar ($)"
-        case .eur: return "Euro (€)"
-        case .gbp: return "British Pound (£)"
+        switch rawValue {
+        case "ILS": return "Israeli Shekel (₪)"
+        case "USD": return "US Dollar ($)"
+        case "EUR": return "Euro (€)"
+        case "GBP": return "British Pound (£)"
+        case "TRY": return "Turkish Lira (₺)"
+        case "JPY": return "Japanese Yen (¥)"
+        case "CHF": return "Swiss Franc (CHF)"
+        case "CAD": return "Canadian Dollar (CA$)"
+        case "AUD": return "Australian Dollar (AU$)"
+        case "AED": return "UAE Dirham (AED)"
+        case "THB": return "Thai Baht (฿)"
+        case "PLN": return "Polish Zloty (zł)"
+        case "CZK": return "Czech Koruna (Kč)"
+        case "HUF": return "Hungarian Forint (Ft)"
+        case "SEK": return "Swedish Krona (kr)"
+        case "NOK": return "Norwegian Krone (kr)"
+        case "DKK": return "Danish Krone (kr)"
+        case "CNY": return "Chinese Yuan (¥)"
+        case "HKD": return "Hong Kong Dollar (HK$)"
+        case "SGD": return "Singapore Dollar (SG$)"
+        case "KRW": return "South Korean Won (₩)"
+        default:
+            let locName = Locale(identifier: "en_US").localizedString(forCurrencyCode: rawValue) ?? rawValue
+            return "\(locName) (\(symbol))"
         }
     }
 
     public init?(symbolOrCode: String) {
-        let clean = symbolOrCode.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        switch clean {
-        case "₪", "ILS", "NIS", "ש״ח", "שח": self = .ils
-        case "$", "USD", "DOLLAR", "דולר": self = .usd
-        case "€", "EUR", "EURO", "אירו": self = .eur
-        case "£", "GBP", "POUND", "פאונד", "ליש״ט": self = .gbp
-        default: return nil
+        guard let code = CurrencyResolutionService.normalizeToISOCode(symbolOrCode) else {
+            return nil
         }
+        self.init(rawValue: code)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        self.init(rawValue: raw)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+
+    public static func ~= (pattern: CurrencyType, value: CurrencyType) -> Bool {
+        pattern.rawValue == value.rawValue
     }
 
     /// Rate relative to base ILS (1 unit of currency = X Shekels)
@@ -152,6 +260,11 @@ public final class LocalizationManager: ObservableObject {
                 LocalizationManager.shared.currentLanguageRaw = newValue.rawValue
             }
         }
+    }
+
+    nonisolated public static var currentBaseCurrency: CurrencyType {
+        let raw = UserDefaults.standard.string(forKey: "app_currency_pref") ?? CurrencyType.ils.rawValue
+        return CurrencyType(rawValue: raw) ?? .ils
     }
 
     public var baseCurrency: CurrencyType {

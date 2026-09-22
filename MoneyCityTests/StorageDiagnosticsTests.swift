@@ -80,7 +80,7 @@ final class MoneyCitySchemaTests: XCTestCase {
         XCTAssertEqual(MoneyCitySchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
     }
 
-    func testSchemaV2IsTheLatestAndAddsRecapSnapshot() {
+    func testSchemaV2AddsRecapSnapshot() {
         XCTAssertEqual(MoneyCitySchemaV2.versionIdentifier, Schema.Version(2, 0, 0))
         let v1Names = MoneyCitySchemaV1.models.map { String(describing: $0) }
         let v2Names = MoneyCitySchemaV2.models.map { String(describing: $0) }
@@ -88,14 +88,22 @@ final class MoneyCitySchemaTests: XCTestCase {
         XCTAssertEqual(Set(v2Names).subtracting(Set(v1Names)), ["RecapSnapshot"])
     }
 
+    func testSchemaV3IsTheLatestAndAddsScheduledExpense() {
+        XCTAssertEqual(MoneyCitySchemaV3.versionIdentifier, Schema.Version(3, 0, 0))
+        let v2Names = MoneyCitySchemaV2.models.map { String(describing: $0) }
+        let v3Names = MoneyCitySchemaV3.models.map { String(describing: $0) }
+        XCTAssertEqual(Set(v2Names).subtracting(Set(v3Names)), [])
+        XCTAssertEqual(Set(v3Names).subtracting(Set(v2Names)), ["ScheduledExpense"])
+    }
+
     func testMigrationPlanListsEveryVersionInOrder() {
         // Compared by name rather than by metatype: existential metatype equality is
         // fragile across toolchains, and the name is what actually has to stay stable.
         XCTAssertEqual(
             MoneyCityMigrationPlan.schemas.map { String(describing: $0) },
-            ["MoneyCitySchemaV1", "MoneyCitySchemaV2"]
+            ["MoneyCitySchemaV1", "MoneyCitySchemaV2", "MoneyCitySchemaV3"]
         )
-        XCTAssertEqual(MoneyCityMigrationPlan.stages.count, 1)
+        XCTAssertEqual(MoneyCityMigrationPlan.stages.count, 2)
     }
 
     func testEveryPersistedModelIsListedExactlyOnce() {

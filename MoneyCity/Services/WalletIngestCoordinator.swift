@@ -34,7 +34,8 @@ public final class IngestStateMachine {
     }
 
     public func receive(amount: Double?, amountText: String?, merchant: String?, currency: String?,
-                        date: Date?, source: String, pendingID: String? = nil) throws -> Outcome {
+                        date: Date?, source: String, pendingID: String? = nil,
+                        structuredCurrency: String? = nil) throws -> Outcome {
         states = [.received]
         guard !DatabaseService.shared.isEphemeral else {
             states.append(.failed)
@@ -59,7 +60,6 @@ public final class IngestStateMachine {
         }
         let resolvedDate = pending?.timestamp ?? TransactionIngest.sanitizedDate(date) ?? Date()
         let resolvedCurrency = pending?.currency ?? TransactionIngest.sanitizedCurrency(currency)
-            ?? LocalizationManager.shared.baseCurrency.symbol
         let salvaged = TransactionIngest.salvage(amount: amount, amountText: amountText,
                                                  merchant: pending?.merchant ?? merchant)
         states.append(.normalized)
@@ -73,7 +73,7 @@ public final class IngestStateMachine {
             let transaction = try TransactionIngest.makeTransaction(
                 amount: salvaged.amount, amountText: amountText, merchant: salvaged.merchant,
                 currency: resolvedCurrency, date: resolvedDate, existing: recent,
-                isRefundHint: salvaged.isRefund, rules: rules)
+                isRefundHint: salvaged.isRefund, rules: rules, structuredCurrency: structuredCurrency)
             transaction.id = ingestID
             // Stable identity protects completion retries even if a saved transaction was edited.
             let identity = ingestID
@@ -100,7 +100,8 @@ public final class IngestStateMachine {
             let name = salvaged.merchant ?? AppLanguage.localized("תשלום Apple Pay", "Apple Pay payment")
             let rules = try context.fetch(FetchDescriptor<MerchantRule>())
             let classification = MerchantRuleService.classify(merchant: name, amount: 0, rules: rules)
-            let registration = pendingStore.findOrRegister(merchant: name, currency: resolvedCurrency,
+            let pendingCurrency = resolvedCurrency ?? LocalizationManager.currentBaseCurrency.symbol
+            let registration = pendingStore.findOrRegister(merchant: name, currency: pendingCurrency,
                 categoryRawValue: classification.category.rawValue, buildingId: classification.buildingId,
                 date: resolvedDate, source: source, id: ingestID.uuidString)
             ingestID = UUID(uuidString: registration.ingest.id) ?? ingestID
@@ -121,13 +122,13 @@ public enum WalletIngestCoordinator {
     @MainActor
     public static func run(amount: Double?, amountText: String?, merchant: String?, currency: String?,
                            transactionDate: Date?, intentName: String = "RecordTransactionIntent",
-                           pendingID: String? = nil) async -> WalletIngestResult {
+                           pendingID: String? = nil, structuredCurrency: String? = nil) async -> WalletIngestResult {
         let context = ModelContext(DatabaseService.shared.container)
         context.autosaveEnabled = false
         let machine = IngestStateMachine(context: context)
         let log = IngestLogEntry(receivedAt: Date(), rawAmount: IngestLogEntry.describe(amount),
             rawAmountText: IngestLogEntry.describe(amountText), rawMerchant: IngestLogEntry.describe(merchant),
-            rawCurrency: IngestLogEntry.describe(currency), rawDate: IngestLogEntry.describe(transactionDate),
+            rawCurrency: IngestLogEntry.describe(currency ?? structuredCurrency), rawDate: IngestLogEntry.describe(transactionDate),
             intentName: intentName)
         DatabaseService.shared.record(log)
         if AutomaticCaptureStateStore.isAutomaticCaptureIntent(intentName) {
@@ -139,7 +140,8 @@ public enum WalletIngestCoordinator {
         }
         do {
             let outcome = try machine.receive(amount: amount, amountText: amountText, merchant: merchant,
-                currency: currency, date: transactionDate, source: intentName, pendingID: pendingID)
+                currency: currency, date: transactionDate, source: intentName, pendingID: pendingID,
+                structuredCurrency: structuredCurrency)
             switch outcome {
             case .duplicate:
                 log.outcome = "כפילות: לא נשמר שוב"

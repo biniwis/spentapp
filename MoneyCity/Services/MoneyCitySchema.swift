@@ -51,12 +51,35 @@ public enum MoneyCitySchemaV2: VersionedSchema {
     }
 }
 
+/// V3: adds `ScheduledExpense`, one-time scheduled expenses not yet materialized. Adding one new
+/// model is lightweight, so the stage between V2 and V3 carries no custom transform.
+public enum MoneyCitySchemaV3: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(3, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        [
+            Transaction.self,
+            CityEnrichment.self,
+            RecurringExpense.self,
+            IncomeSource.self,
+            CategoryBudget.self,
+            MerchantRule.self,
+            InstallmentPlan.self,
+            SavingsGoal.self,
+            IngestLogEntry.self,
+            RecapSnapshot.self,
+            ScheduledExpense.self
+        ]
+    }
+}
+
 /// The ordered history of schema versions.
 public enum MoneyCityMigrationPlan: SchemaMigrationPlan {
-    public static var schemas: [any VersionedSchema.Type] { [MoneyCitySchemaV1.self, MoneyCitySchemaV2.self] }
+    public static var schemas: [any VersionedSchema.Type] { [MoneyCitySchemaV1.self, MoneyCitySchemaV2.self, MoneyCitySchemaV3.self] }
     public static var stages: [MigrationStage] {
         [
-            .lightweight(fromVersion: MoneyCitySchemaV1.self, toVersion: MoneyCitySchemaV2.self)
+            .lightweight(fromVersion: MoneyCitySchemaV1.self, toVersion: MoneyCitySchemaV2.self),
+            .lightweight(fromVersion: MoneyCitySchemaV2.self, toVersion: MoneyCitySchemaV3.self)
         ]
     }
 }

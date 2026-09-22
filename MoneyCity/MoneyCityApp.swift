@@ -434,6 +434,9 @@ struct MoneyCityApp: App {
         // Post any installment charges that came due while the app was closed/backgrounded.
         InstallmentService.materializeDue(context: DatabaseService.shared.context)
 
+        // Post any one-time scheduled expenses that came due while the app was closed/backgrounded.
+        ScheduledExpenseService.materializeDue(context: DatabaseService.shared.context)
+
         // Reconcile savings goals in background to ensure 100% parity with ledger.
         SavingsGoalService.reconcileAll(context: DatabaseService.shared.context)
 

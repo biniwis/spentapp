@@ -425,22 +425,53 @@ public enum TransactionIngest {
         merchant: String,
         amount: Double,
         currency: String = "₪",
+        originalAmount: Double? = nil,
+        originalCurrency: String? = nil,
         date: Date,
         in existing: [Transaction]
     ) -> Bool {
         let key = MerchantCanonicalizer.canonicalKey(for: merchant)
         return existing.contains { tx in
+            guard MerchantCanonicalizer.canonicalKey(for: tx.merchant) == key else { return false }
+            guard abs(tx.timestamp.timeIntervalSince(date)) <= duplicateWindow else { return false }
+
+            // 1. If both have original foreign currency/amount, match on those
+            if let txOrigAmt = tx.originalAmount, let txOrigCurr = tx.originalCurrency,
+               let inOrigAmt = originalAmount, let inOrigCurr = originalCurrency {
+                let txSignedOrig = tx.amount < 0 ? -abs(txOrigAmt) : abs(txOrigAmt)
+                let inSignedOrig = amount < 0 ? -abs(inOrigAmt) : abs(inOrigAmt)
+                if currencyKey(txOrigCurr) == currencyKey(inOrigCurr) && abs(txSignedOrig - inSignedOrig) < 0.005 {
+                    return true
+                }
+            }
+
+            // 2. Compare incoming against stored original if incoming currency matches original
+            if let txOrigAmt = tx.originalAmount, let txOrigCurr = tx.originalCurrency {
+                let txSignedOrig = tx.amount < 0 ? -abs(txOrigAmt) : abs(txOrigAmt)
+                if currencyKey(txOrigCurr) == currencyKey(currency) && abs(txSignedOrig - amount) < 0.005 {
+                    return true
+                }
+            }
+
+            // 3. Stored amount vs incoming amount
             let storedAmount = tx.originalAmount.map { tx.amount < 0 ? -abs($0) : abs($0) } ?? tx.amount
             let storedCurrency = tx.originalCurrency ?? tx.currency
-            return MerchantCanonicalizer.canonicalKey(for: tx.merchant) == key
-                && currencyKey(storedCurrency) == currencyKey(currency)
-                && abs(storedAmount - amount) < 0.005
-                && abs(tx.timestamp.timeIntervalSince(date)) <= duplicateWindow
+            if currencyKey(storedCurrency) == currencyKey(currency) && abs(storedAmount - amount) < 0.005 {
+                return true
+            }
+
+            // 4. Base converted amount comparison
+            if currencyKey(tx.currency) == currencyKey(currency) && abs(tx.amount - amount) < 0.005 {
+                return true
+            }
+
+            return false
         }
     }
 
     public static func currencyKey(_ value: String) -> String {
-        CurrencyType(symbolOrCode: value)?.rawValue
+        CurrencyResolutionService.normalizeToISOCode(value)
+            ?? CurrencyType(symbolOrCode: value)?.rawValue
             ?? value.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
     }
 
@@ -451,49 +482,107 @@ public enum TransactionIngest {
         amount: Double?,
         amountText: String?,
         merchant: String?,
-        currency: String,
+        currency: String?,
         date: Date,
         existing: [Transaction],
         allowZeroFallback: Bool = false,
         isRefundHint: Bool = false,
-        rules: [MerchantRule] = []
+        rules: [MerchantRule] = [],
+        structuredCurrency: String? = nil
     ) throws -> Transaction {
-        // 1. Recover amount from numeric parameter, text parameter, or embedded within merchant string
-        var cleanAmount = normalizedAmount(amount, amountText)
-        var isRefund = isRefundHint
-        if cleanAmount == nil {
-            // Check if it was a negative amount (refund)
-            if let a = amount, a < 0, a.isFinite {
-                cleanAmount = abs(a)
-                isRefund = true
-            } else if let raw = amountText?.trimmingCharacters(in: .whitespacesAndNewlines),
-                      raw.hasPrefix("-") || raw.hasPrefix("\u{2212}") || raw.hasPrefix("\u{2013}") || raw.hasPrefix("(") {
-                let stripped = raw.trimmingCharacters(in: CharacterSet(charactersIn: "-–—() \t\n\u{2212}\u{2013}"))
-                if let parsed = normalizedAmount(nil, stripped) {
-                    cleanAmount = parsed
-                    isRefund = true
-                }
-            } else if let rawM = merchant {
-                cleanAmount = normalizedAmount(nil, rawM)
-            }
-        }
+        // 1. Recover amount and merchant using salvage
+        let salvaged = salvage(amount: amount, amountText: amountText, merchant: merchant)
+        let cleanAmount = salvaged.amount
+        let isRefund = isRefundHint || salvaged.isRefund
 
         guard let finalParsedAmount = cleanAmount ?? (allowZeroFallback ? 0.0 : nil) else {
             throw TransactionIngestError.missingAmount
         }
 
         // 2. Recover merchant name
-        let hasExplicitMerchant = (normalizedMerchant(merchant) != nil)
-        let cleanMerchant = normalizedMerchant(merchant) ?? "לא זוהה"
+        let hasExplicitMerchant = (salvaged.merchant != nil)
+        let cleanMerchant = salvaged.merchant ?? "לא זוהה"
 
+        // 3. Centralized safe currency resolution
+        let defaults = UserDefaults.standard
+        let baseRaw = defaults.string(forKey: "app_currency_pref") ?? CurrencyType.ils.rawValue
+        let baseCurrType = CurrencyType(rawValue: baseRaw)
+
+        let currencyResolution = CurrencyResolutionService.resolve(
+            structuredCurrencyCode: structuredCurrency,
+            explicitCurrencyParam: currency,
+            merchantText: merchant,
+            amountText: amountText,
+            payloadText: nil,
+            baseCurrencyCode: baseCurrType.rawValue
+        )
+
+        var finalAmount = finalParsedAmount
+        var finalCurrency = baseCurrType.symbol
+        var originalAmount: Double? = nil
+        var originalCurrency: String? = nil
+        var exchangeRate: Double? = nil
+        var needsCurrencyReview = false
+
+        let autoConvert = defaults.object(forKey: "auto_convert_fx") as? Bool ?? true
+
+        if currencyResolution.isForeignExplicitlyDetected {
+            let foreignISO = currencyResolution.currencyCode
+            if let converted = FXService.convert(amount: finalParsedAmount, from: foreignISO, to: baseCurrType.rawValue) {
+                if autoConvert {
+                    finalAmount = (converted * 100).rounded() / 100
+                    finalCurrency = baseCurrType.symbol
+                    originalAmount = finalParsedAmount
+                    originalCurrency = foreignISO
+                    exchangeRate = finalParsedAmount > 0 ? finalAmount / finalParsedAmount : nil
+                    needsCurrencyReview = false
+                } else {
+                    finalAmount = finalParsedAmount
+                    finalCurrency = foreignISO
+                    originalAmount = finalParsedAmount
+                    originalCurrency = foreignISO
+                    exchangeRate = nil
+                    needsCurrencyReview = true
+                }
+            } else {
+                // FX FAILURE POLICY:
+                // If an explicitly identified foreign currency has no usable conversion rate:
+                // Do NOT invent a rate. Do NOT convert 1:1.
+                // Do NOT silently turn: 100 TRY into ₪100 just because conversion failed.
+                finalAmount = finalParsedAmount
+                finalCurrency = foreignISO
+                originalAmount = finalParsedAmount
+                originalCurrency = foreignISO
+                exchangeRate = nil
+                needsCurrencyReview = true
+            }
+        } else {
+            // Normal base currency (domestic ILS or base fallback)
+            finalAmount = finalParsedAmount
+            finalCurrency = baseCurrType.symbol
+            originalAmount = nil
+            originalCurrency = nil
+            exchangeRate = nil
+            needsCurrencyReview = false
+        }
+
+        // 4. Duplicate check with original currency and amount support
         if finalParsedAmount > 0 {
-            guard !isDuplicate(merchant: cleanMerchant, amount: isRefund ? -finalParsedAmount : finalParsedAmount, currency: currency, date: date, in: existing) else {
+            let dupAmount = isRefund ? -finalAmount : finalAmount
+            guard !isDuplicate(
+                merchant: cleanMerchant,
+                amount: dupAmount,
+                currency: finalCurrency,
+                originalAmount: originalAmount.map { isRefund ? -abs($0) : abs($0) },
+                originalCurrency: originalCurrency,
+                date: date,
+                in: existing
+            ) else {
                 throw TransactionIngestError.duplicate
             }
         }
 
-        // The user's own corrections win over keyword guessing — a rule the user set is
-        // knowledge, not a guess, so it also lands at full confidence.
+        // 5. Merchant classification
         let classification: ClassificationResult
         if hasExplicitMerchant {
             classification = MerchantRuleService.classify(
@@ -517,58 +606,13 @@ public enum TransactionIngest {
 
         let isRecognized = (finalParsedAmount > 0) && hasExplicitMerchant && (classification.confidence >= 0.8)
 
-        // Currency FX conversion
-        var finalAmount = finalParsedAmount
-        let defaults = UserDefaults.standard
-        let baseRaw = defaults.string(forKey: "app_currency_pref") ?? CurrencyType.ils.rawValue
-        let baseCurrType = CurrencyType(rawValue: baseRaw) ?? .ils
-        var finalCurrency = baseCurrType.symbol
-        var originalAmount: Double? = nil
-        var originalCurrency: String? = nil
-        var exchangeRate: Double? = nil
-
-        let autoConvert = defaults.object(forKey: "auto_convert_fx") as? Bool ?? true
-
-        // A charge that is not in the base currency and was not converted must never be filed
-        // as though it were. Nothing downstream looks at the currency field: budgets, the
-        // month total and the city all just add `amount` up. So keeping the face value and
-        // swapping the label meant one ₺2,400 dinner in Istanbul raised the Israeli month by
-        // 2,400 shekels, with the stored currency correctly reading "TRY" and nothing
-        // anywhere looking wrong.
-        var needsCurrencyReview = false
-
-        if let rawCurrType = CurrencyType(symbolOrCode: currency) {
-            if rawCurrType == baseCurrType {
-                finalCurrency = baseCurrType.symbol
-            } else if autoConvert {
-                finalAmount = FXService.convert(amount: finalParsedAmount, from: rawCurrType, to: baseCurrType)
-                finalCurrency = baseCurrType.symbol
-                originalAmount = finalParsedAmount
-                originalCurrency = rawCurrType.symbol
-                exchangeRate = finalParsedAmount > 0 ? finalAmount / finalParsedAmount : nil
-            } else {
-                finalAmount = finalParsedAmount
-                finalCurrency = rawCurrType.symbol
-                originalAmount = finalParsedAmount
-                originalCurrency = rawCurrType.symbol
-                needsCurrencyReview = true
-            }
-        } else if !currency.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                  currency != baseCurrType.symbol {
-            finalAmount = finalParsedAmount
-            finalCurrency = currency
-            originalAmount = finalParsedAmount
-            originalCurrency = currency
-            needsCurrencyReview = true
-        } else {
-            finalCurrency = baseCurrType.symbol
-        }
-
         let isConfirmed = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? false : (isLearnedRule ? true : isRecognized)
         let confidenceScore: Double = (isRefund || needsCurrencyReview || !hasExplicitMerchant) ? 0.5 : (isLearnedRule ? 1.0 : (isRecognized ? classification.confidence : 0.0))
         let note: String? = isRefund
             ? "זיכוי / החזר מ-Apple Pay (ממתין לבדיקתך)"
-            : (!hasExplicitMerchant ? "Apple Pay (בית עסק לא זוהה - ממתין למיון)" : nil)
+            : (needsCurrencyReview
+                ? "עסקה במטבע זר (\(originalCurrency ?? finalCurrency)) — ממתינה לאישור המרה"
+                : (!hasExplicitMerchant ? "Apple Pay (בית עסק לא זוהה - ממתין למיון)" : nil))
 
         return Transaction(
             amount: isRefund ? -finalAmount : finalAmount,

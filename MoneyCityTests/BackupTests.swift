@@ -284,7 +284,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         let encoded = try DataPortabilityService.makeEncoder().encode(envelope)
         let decoded = try DataPortabilityService.validateBackupData(encoded)
 
-        XCTAssertEqual(decoded.formatVersion, 2)
+        XCTAssertEqual(decoded.formatVersion, DataPortabilityService.formatVersion)
         XCTAssertEqual(decoded.recaps.count, 1)
         XCTAssertEqual(decoded.recaps[0].monthId, "2026-08")
         XCTAssertEqual(decoded.recaps[0].payloadJSON, "{\"totalSpent\": 2450.0}")
@@ -323,7 +323,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         let envelope = try DataPortabilityService.validateBackupData(data)
 
         XCTAssertEqual(envelope.format, "moneycity.backup")
-        XCTAssertEqual(envelope.formatVersion, 2) // Migrated to current portable envelope format
+        XCTAssertEqual(envelope.formatVersion, DataPortabilityService.formatVersion) // Migrated to current portable envelope format
         XCTAssertTrue(envelope.recaps.isEmpty)
         XCTAssertNil(envelope.preferences)
     }
@@ -584,7 +584,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         let migrated = try DataPortabilityService.validateBackupData(data)
 
         XCTAssertEqual(migrated.format, "moneycity.backup")
-        XCTAssertEqual(migrated.formatVersion, 2)
+        XCTAssertEqual(migrated.formatVersion, DataPortabilityService.formatVersion)
         XCTAssertEqual(migrated.transactions.count, 1)
         XCTAssertEqual(migrated.transactions[0].merchant, "Aroma")
         XCTAssertEqual(migrated.transactions[0].amount, 89.90)
@@ -597,7 +597,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
         let futureJSON = """
         {
           "format": "moneycity.backup",
-          "formatVersion": 3,
+          "formatVersion": 99,
           "appVersion": "2.0",
           "appBuild": "100",
           "exportedAt": "2026-10-01T12:00:00Z",
@@ -610,7 +610,7 @@ final class PersistenceAndCloudBackupTests: XCTestCase {
                 XCTFail("Expected futureFormat error, got: \(error)")
                 return
             }
-            XCTAssertEqual(v, 3)
+            XCTAssertEqual(v, 99)
         }
     }
 

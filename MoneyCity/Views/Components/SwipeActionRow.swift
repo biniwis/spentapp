@@ -33,7 +33,7 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
 
     let id: ID
     @Binding var openSwipeRowID: ID?
-    let onEdit: () -> Void
+    let onEdit: (() -> Void)?
     let onDelete: () -> Void
     @ViewBuilder let content: () -> Content
 
@@ -54,7 +54,7 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
     public init(
         id: ID,
         openSwipeRowID: Binding<ID?>,
-        onEdit: @escaping () -> Void,
+        onEdit: (() -> Void)? = nil,
         onDelete: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -70,7 +70,8 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
     }
 
     private var isEditActive: Bool {
-        isRTL ? (offset < 0) : (offset > 0)
+        guard onEdit != nil else { return false }
+        return isRTL ? (offset < 0) : (offset > 0)
     }
 
     private var isDeleteActive: Bool {
@@ -166,6 +167,10 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                             let dragMagnitude = abs(rawTarget)
 
                             if isEditDirection {
+                                guard onEdit != nil else {
+                                    offset = 0
+                                    return
+                                }
                                 // EDIT DIRECTION - Supports full swipe commit
                                 if dragMagnitude >= openThreshold && !didFireOpenHaptic {
                                     Haptics.selection()
@@ -239,6 +244,12 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                             isDragging = false
 
                             if isEditDirection {
+                                guard let onEdit = onEdit else {
+                                    withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                                        offset = 0
+                                    }
+                                    return
+                                }
                                 let isVelocityCommit = dragMagnitude >= 65 && predictedMagnitude >= 140
                                 if wasArmed || isVelocityCommit {
                                     // AUTO-COMMIT EDIT!
@@ -303,7 +314,7 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                 offset = 0
                 openSwipeRowID = nil
             }
-            onEdit()
+            onEdit?()
         }) {
             VStack(spacing: 3) {
                 MoneyIcon(.pencil, size: 20, color: .white)

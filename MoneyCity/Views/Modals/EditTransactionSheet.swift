@@ -18,6 +18,8 @@ public struct EditTransactionSheet: View {
     @State private var showAmountError: Bool = false
     @State private var showDeleteConfirm: Bool = false
     @State private var showMerchantDetails: Bool = false
+    @State private var transactionDate: Date = Date()
+    @State private var showDatePicker: Bool = false
 
     @FocusState private var isMerchantFocused: Bool
     @State private var isEditingAmount: Bool = false
@@ -218,6 +220,44 @@ public struct EditTransactionSheet: View {
                             }
                         }
                         .id("amountRow")
+
+                        // Date picker
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(l10n.language == .hebrew ? "תאריך" : "Date")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.textMuted)
+                                .padding(.leading, 4)
+
+                            Button(action: {
+                                isMerchantFocused = false
+                                withAnimation(.spring(response: 0.3)) {
+                                    showDatePicker.toggle()
+                                }
+                            }) {
+                                HStack(spacing: 8) {
+                                    MoneyIcon(.calendar, size: 16, color: showDatePicker ? Color.deepNavy : Color.textSecondary)
+                                    Text(formattedDateString(transactionDate))
+                                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                                        .foregroundColor(showDatePicker ? Color.deepNavy : Color.deepNavy)
+                                    Spacer()
+                                    MoneyIcon(showDatePicker ? .chevronUp : .chevronDown, size: 12, color: Color.textSecondary)
+                                }
+                                .padding(14)
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .shadow(color: Color.black.opacity(0.03), radius: 4, y: 1)
+                            }
+                            .buttonStyle(.plain)
+
+                            if showDatePicker {
+                                DatePicker("", selection: $transactionDate, displayedComponents: [.date])
+                                    .datePickerStyle(.graphical)
+                                    .padding(12)
+                                    .background(Color.white, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .shadow(color: Color.black.opacity(0.025), radius: 6, y: 1.5)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+                        }
 
                         // Category picker
                         VStack(alignment: .leading, spacing: 10) {
@@ -433,6 +473,7 @@ public struct EditTransactionSheet: View {
             amountText = formatAmount(abs(transaction.amount))
             selectedCategory = transaction.category
             selectedBuildingId = transaction.buildingIdRaw ?? transaction.buildingId
+            transactionDate = transaction.timestamp
         }
     }
 
@@ -488,6 +529,7 @@ public struct EditTransactionSheet: View {
             return
         }
         let isRefund = transaction.note?.contains("זיכוי") == true || transaction.amount < 0
+        let isAmountChanged = abs(amount - abs(transaction.amount)) > 0.005
         let finalMerchant = merchantText.trimmingCharacters(in: .whitespaces).isEmpty ? transaction.merchant : merchantText.trimmingCharacters(in: .whitespaces)
         transaction.merchant = finalMerchant
         transaction.amount = isRefund ? -amount : amount
@@ -505,11 +547,36 @@ public struct EditTransactionSheet: View {
                 buildingId: selectedBuildingId
             )
         }
-        transaction.category = selectedCategory
-        transaction.buildingIdRaw = selectedBuildingId
-        transaction.currency = l10n.baseCurrency.symbol
-        transaction.isConfirmed = true
-        transaction.confidenceScore = 1.0
+        let cal = Calendar.current
+        let isFutureDay = cal.startOfDay(for: transactionDate) > cal.startOfDay(for: Date())
+        if isFutureDay {
+            let scheduled = ScheduledExpense(
+                merchant: finalMerchant,
+                amount: isRefund ? -amount : amount,
+                currency: transaction.currency,
+                category: selectedCategory,
+                scheduledFor: transactionDate,
+                createdAt: Date(),
+                buildingIdRaw: selectedBuildingId,
+                originalAmount: transaction.originalAmount,
+                originalCurrency: transaction.originalCurrency,
+                exchangeRate: transaction.exchangeRate
+            )
+            modelContext.insert(scheduled)
+            modelContext.delete(transaction)
+        } else {
+            transaction.timestamp = transactionDate
+            transaction.category = selectedCategory
+            transaction.buildingIdRaw = selectedBuildingId
+            // Preserve foreign currency metadata unless amount was explicitly altered
+            if isAmountChanged {
+                if let rate = transaction.exchangeRate, rate > 0 {
+                    transaction.originalAmount = (amount / rate * 100).rounded() / 100
+                }
+            }
+            transaction.isConfirmed = true
+            transaction.confidenceScore = 1.0
+        }
         guard DatabaseService.safeSave(modelContext) else {
             Haptics.notify(.error)
             return
@@ -537,6 +604,21 @@ public struct EditTransactionSheet: View {
         }
         Haptics.notify(.success)
         dismiss()
+    }
+
+    private func formattedDateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
+        if Calendar.current.isDateInToday(date) {
+            return l10n.language == .hebrew ? "היום" : "Today"
+        } else if Calendar.current.isDateInYesterday(date) {
+            return l10n.language == .hebrew ? "אתמול" : "Yesterday"
+        } else if Calendar.current.isDateInTomorrow(date) {
+            return l10n.language == .hebrew ? "מחר" : "Tomorrow"
+        } else {
+            formatter.dateStyle = .medium
+            return formatter.string(from: date)
+        }
     }
 
     private func formatAmount(_ v: Double) -> String {

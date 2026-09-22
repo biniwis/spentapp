@@ -46,7 +46,7 @@ public final class DatabaseService {
     public var isEphemeral: Bool { storageMode == .memoryOnly }
 
     private init() {
-        let schema = Schema(versionedSchema: MoneyCitySchemaV2.self)
+        let schema = Schema(versionedSchema: MoneyCitySchemaV3.self)
         let outcome: (container: ModelContainer, mode: StorageMode, failure: String?)
         do {
             let support = Self.authoritativeStoreDirectoryURL()
@@ -156,7 +156,8 @@ public final class DatabaseService {
                     InstallmentPlan.self,
                     SavingsGoal.self,
                     IngestLogEntry.self,
-                    RecapSnapshot.self
+                    RecapSnapshot.self,
+                    ScheduledExpense.self
                 ])
                 let config = ModelConfiguration(schema: bareSchema, url: storeURL, cloudKitDatabase: .none)
                 let container = try ModelContainer(for: bareSchema, configurations: [config])

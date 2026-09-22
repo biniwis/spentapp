@@ -21,30 +21,68 @@ public final class FXService: ObservableObject {
         self.session = session
     }
 
-    /// Rate relative to 1 ILS (Shekel) — how many shekels is 1 unit of currency worth
-    nonisolated public static func rateToILS(for currency: CurrencyType) -> Double {
+    public static let defaultRatesToILS: [String: Double] = [
+        "ILS": 1.00,
+        "USD": 3.65,
+        "EUR": 3.95,
+        "GBP": 4.65
+    ]
+
+    private static let ratesCacheKey = "fx_rates_cache_dict"
+
+    /// Rate relative to 1 ILS (Shekel) — how many shekels is 1 unit of foreign currency worth.
+    /// Returns nil if no rate is known for this currency code.
+    nonisolated public static func rateToILS(for currencyCode: String) -> Double? {
+        let code = CurrencyResolutionService.normalizeToISOCode(currencyCode) ?? currencyCode.uppercased()
+        if code == "ILS" { return 1.00 }
+
         let defaults = UserDefaults.standard
-        switch currency {
-        case .ils: return 1.00
-        case .usd:
+        if code == "USD" {
             let v = defaults.double(forKey: "fx_rate_usd_ils")
-            return v > 0 ? v : 3.65
-        case .eur:
+            if v > 0 { return v }
+        } else if code == "EUR" {
             let v = defaults.double(forKey: "fx_rate_eur_ils")
-            return v > 0 ? v : 3.95
-        case .gbp:
+            if v > 0 { return v }
+        } else if code == "GBP" {
             let v = defaults.double(forKey: "fx_rate_gbp_ils")
-            return v > 0 ? v : 4.65
+            if v > 0 { return v }
         }
+
+        if let dict = defaults.dictionary(forKey: ratesCacheKey) as? [String: Double],
+           let r = dict[code], r > 0 {
+            return r
+        }
+
+        return defaultRatesToILS[code]
     }
 
-    /// Convert amount between any two supported currencies
+    /// Rate relative to 1 ILS for a given CurrencyType.
+    nonisolated public static func rateToILS(for currency: CurrencyType) -> Double {
+        rateToILS(for: currency.rawValue) ?? 1.00
+    }
+
+    /// Convert amount between any two currencies. Returns nil if conversion rate is unavailable.
+    nonisolated public static func convert(amount: Double, from fromCurrency: String, to toCurrency: String) -> Double? {
+        let fromCode = CurrencyResolutionService.normalizeToISOCode(fromCurrency) ?? fromCurrency.uppercased()
+        let toCode = CurrencyResolutionService.normalizeToISOCode(toCurrency) ?? toCurrency.uppercased()
+        if fromCode == toCode { return amount }
+
+        guard let rateFrom = rateToILS(for: fromCode),
+              let rateTo = rateToILS(for: toCode),
+              rateTo > 0 else {
+            return nil
+        }
+        let amountInILS = amount * rateFrom
+        return amountInILS / rateTo
+    }
+
+    /// Convert amount between any two supported CurrencyTypes.
     nonisolated public static func convert(amount: Double, from: CurrencyType, to: CurrencyType) -> Double {
         if from == to { return amount }
-        let amountInILS = amount * rateToILS(for: from)
-        let targetRate = rateToILS(for: to)
-        guard targetRate > 0 else { return amount }
-        return amountInILS / targetRate
+        guard let converted = convert(amount: amount, from: from.rawValue, to: to.rawValue) else {
+            return amount
+        }
+        return converted
     }
 
     /// Human-friendly last updated string
@@ -99,17 +137,23 @@ public final class FXService: ObservableObject {
                 return
             }
 
-            // The API returns rates relative to base ILS (e.g. rates["USD"] = 0.273 -> 1 USD = 1/0.273 ILS)
-            if let usd = decoded.rates["USD"], usd > 0 {
-                self.usdRate = (1.0 / usd).rounded(to: 4)
-            }
-            if let eur = decoded.rates["EUR"], eur > 0 {
-                self.eurRate = (1.0 / eur).rounded(to: 4)
-            }
-            if let gbp = decoded.rates["GBP"], gbp > 0 {
-                self.gbpRate = (1.0 / gbp).rounded(to: 4)
+            var newCache: [String: Double] = [:]
+            for (curr, val) in decoded.rates where val > 0 {
+                let rateInILS = (1.0 / val).rounded(to: 4)
+                newCache[curr.uppercased()] = rateInILS
             }
 
+            if let usd = newCache["USD"], usd > 0 {
+                self.usdRate = usd
+            }
+            if let eur = newCache["EUR"], eur > 0 {
+                self.eurRate = eur
+            }
+            if let gbp = newCache["GBP"], gbp > 0 {
+                self.gbpRate = gbp
+            }
+
+            UserDefaults.standard.set(newCache, forKey: Self.ratesCacheKey)
             self.lastUpdatedTimestamp = Date().timeIntervalSince1970
             objectWillChange.send()
         } catch {

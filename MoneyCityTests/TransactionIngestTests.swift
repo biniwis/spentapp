@@ -270,7 +270,7 @@ final class TransactionIngestTests: XCTestCase {
             amount: 12, amountText: nil, merchant: "Netflix",
             currency: "$", date: Date(), existing: []
         )
-        XCTAssertEqual(tx.originalCurrency, "$")
+        XCTAssertEqual(tx.originalCurrency, "USD")
         XCTAssertEqual(tx.originalAmount, 12.0)
         XCTAssertEqual(tx.currency, "₪")
         XCTAssertGreaterThan(tx.amount, 12.0)

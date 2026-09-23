@@ -114,16 +114,12 @@ struct SharedWorkspaceView: View {
                 default: cityView
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
-            HStack {
-                tab("city", "building.2", store.text("עיר", "City"))
-                tab("history", "list.bullet", store.text("היסטוריה", "History"))
-                Button { adding = true } label: {
-                    Image(systemName: "plus").font(.title2.weight(.semibold)).foregroundStyle(.white)
-                        .frame(width: 50, height: 50).background(MoneyCityTheme.brandPrimary, in: Circle())
-                }.disabled(!store.canWrite(space.id)).accessibilityLabel(store.text("הוצאה משותפת חדשה", "New shared expense"))
-                tab("analytics", "chart.bar", store.text("ניתוח", "Analytics"))
-                tab("profile", "person.crop.circle", store.text("ניהול", "Manage"))
-            }.padding(.horizontal, 12).padding(.vertical, 8).background(MoneyCityTheme.appBackground)
+            FloatingBottomBar(activeTab: $activeTab, onQuickAdd: {
+                if store.canWrite(space.id) { adding = true }
+                else { store.errorMessage = SharedLedgerError.noAccess.localizedDescription }
+            }, onTabTapped: { tab in
+                if tab == "city" { month = Date(); inspecting = nil }
+            })
         }
         .background(MoneyCityTheme.appBackground)
         .sheet(isPresented: $adding) { SharedExpenseEditor(space: space) }
@@ -273,7 +269,7 @@ struct SharedWorkspaceView: View {
                     }
                 }.frame(height: 180)
             }
-        }.listStyle(.insetGrouped).scrollContentBackground(.hidden)
+        }.listStyle(.plain).scrollContentBackground(.hidden)
     }
 }
 
@@ -459,7 +455,7 @@ struct SharedSpaceManagement: View {
                                     "\(store.conflictCount) edits conflicted with shared changes. The server version is shown; local copies are preserved for recovery."))
                 }
             }
-        }.listStyle(.insetGrouped).scrollContentBackground(.hidden)
+        }.listStyle(.plain).scrollContentBackground(.hidden)
         .sheet(item: $share, onDismiss: { store.perform { try await store.refresh() } }) { item in
             SharedSharingController(share: item.share, container: store.cloud)
         }

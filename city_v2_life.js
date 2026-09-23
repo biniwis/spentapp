@@ -26,6 +26,10 @@ function syncVenueStates(raw) {
     const amount = Math.max(0, Number.isFinite(state.amount) ? state.amount : 0);
     venueStates[state.id] = {
       id: state.id, amount: amount, share: finiteUnit(state.share),
+      memberShares: (Array.isArray(state.memberShares) ? state.memberShares : []).filter(function (member) {
+        return member && typeof member.memberID === 'string' && /^#[0-9a-f]{6}$/i.test(member.color)
+          && Number.isFinite(member.share) && member.share > 0;
+      }).map(function (member) { return { memberID: member.memberID, color: member.color, share: finiteUnit(member.share) }; }),
       purchaseCount: Math.max(0, Math.floor(Number.isFinite(state.purchaseCount) ? state.purchaseCount : 0)),
       activity: amount > 0 ? finiteUnit(state.activity) : 0,
       presence: amount > 0 ? finiteUnit(state.presence) : 0,

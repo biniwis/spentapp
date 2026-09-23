@@ -55,7 +55,8 @@ enum SharedMoney {
 
     static func minor(_ text: String, currency: String) throws -> Int64 {
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: ",", with: ".")
-        guard let value = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")),
+        guard normalized.range(of: "^-?[0-9]+(?:\\.[0-9]+)?$", options: .regularExpression) != nil,
+              let value = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")),
               value != 0, abs(value) <= Decimal(100_000_000) else { throw SharedLedgerError.invalidAmount }
         var scaled = value * pow(Decimal(10), digits(currency))
         var rounded = Decimal()

@@ -7,6 +7,39 @@ let crowdSnapshot = [];
 const recentCrowdProfiles = [];   // crowd-specific clone-prevention window
 const CROWD_RECENT_WINDOW = 6;
 
+// Contributions assign identity after demand; they never create additional visitors.
+function sharedCrowdColors(venue, count) {
+  const members = venueStates[venue] && venueStates[venue].memberShares || [];
+  const total = members.reduce(function (sum, member) { return sum + member.share; }, 0);
+  if (!total || !count) return new Array(count).fill(null);
+  const slots = members.map(function (member) {
+    const exact = member.share / total * count;
+    return { id: member.memberID, color: member.color, count: Math.floor(exact), remainder: exact - Math.floor(exact) };
+  });
+  let spare = count - slots.reduce(function (sum, slot) { return sum + slot.count; }, 0);
+  slots.sort(function (a, b) { return b.remainder - a.remainder || a.id.localeCompare(b.id); });
+  slots.forEach(function (slot) { if (spare > 0) { slot.count++; spare--; } });
+  slots.sort(function (a, b) { return a.id.localeCompare(b.id); });
+  return slots.flatMap(function (slot) { return new Array(slot.count).fill(slot.color); });
+}
+
+function accentCrowdFigure(figure, color) {
+  const ud = figure.userData;
+  if (!ud.shirtMeshes) return;
+  ud.shirtMeshes.forEach(function (part) {
+    if (!part.userData.sharedOriginalMaterial || part.material !== part.userData.sharedAccentMaterial) {
+      part.userData.sharedOriginalMaterial = part.material;
+    }
+    if (color) {
+      part.userData.sharedAccentMaterial = citizenMat(parseInt(color.slice(1), 16), 0.76);
+      part.material = part.userData.sharedAccentMaterial;
+    } else {
+      part.material = part.userData.sharedOriginalMaterial;
+      part.userData.sharedAccentMaterial = null;
+    }
+  });
+}
+
 // Each route is an authored, unobstructed frontage strip, separate from the door/table
 // zone. u runs along the pavement; v points towards its outer edge.
 const CROWD_FRONTAGES = {
@@ -98,13 +131,20 @@ function ensureCrowdBatches() {
       if (figure.userData.armL) figure.userData.armL.rotation.x = 0.20;
       if (figure.userData.torso) { figure.userData.torso.rotation.z = 0.05; figure.userData.torso.rotation.x = 0.04; }
     }
+    const shirtMaterials = new Set((figure.userData.shirtMeshes || []).map(function (part) { return part.material; }));
     packRigidModel(figure); figure.updateMatrixWorld(true);
     const parts = [];
     figure.traverse(function (part) {
       if (!part.isMesh || !part.visible) return;
       // Bake each prototype part once; all waiting people share its geometry/material.
       const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld);
-      const batch = new THREE.InstancedMesh(geometry, part.material, CROWD_LIMITS.waiting);
+      const isShirt = shirtMaterials.has(part.material);
+      const material = isShirt ? part.material.clone() : part.material;
+      const baseColor = material.color.clone();
+      if (isShirt) material.color.set(0xffffff);
+      const batch = new THREE.InstancedMesh(geometry, material, CROWD_LIMITS.waiting);
+      batch.userData.sharedShirt = isShirt;
+      batch.userData.baseColor = baseColor;
       batch.name = "venue-crowd:" + variant;
       batch.count = 0; batch.visible = false; batch.frustumCulled = false;
       batch.castShadow = false; batch.receiveShadow = true;
@@ -235,8 +275,10 @@ function applyVenueCrowds() {
   crowdWalkers.forEach(function (c) { c.obj.visible = used.has(c); });
   const byKey = new Map(Array.from(used, function (c) { return [c.crowdKey, c]; }));
   crowdSnapshot.forEach(function (entry) {
+    const colors = sharedCrowdColors(entry.id, entry.walkers);
     for (let i = 0; i < entry.walkers; i++) {
       const c = byKey.get(entry.id + ":" + i);
+      accentCrowdFigure(c.obj, colors[i]);
       if (c.crowdCount !== entry.walkers || c.crowdVenue !== entry.id) {
         placeCrowdWalker(c, crowdRoute(CROWD_FRONTAGES[entry.id]), (i + 0.35) / entry.walkers);
         c.crowdCount = entry.walkers; c.crowdVenue = entry.id;
@@ -249,6 +291,7 @@ function applyVenueCrowds() {
 
   const waiting = [];
   crowdSnapshot.forEach(function (entry) {
+    const colors = sharedCrowdColors(entry.id, entry.waiting);
     for (let i = 0; i < entry.waiting; i++) {
       const pose = waitingPose(CROWD_FRONTAGES[entry.id], i);
       if (i === 0) {
@@ -258,10 +301,11 @@ function applyVenueCrowds() {
           hero.obj.rotation.y = pose.yaw;
           hero.obj.visible = true;
           hero.active = true;
+          accentCrowdFigure(hero.obj, colors[i]);
           continue;
         }
       }
-      waiting.push({ pose: pose, index: i });
+      waiting.push({ pose: pose, index: i, color: colors[i] });
     }
   });
   if (waiting.length) ensureCrowdBatches();
@@ -271,7 +315,13 @@ function applyVenueCrowds() {
     const variant = hashCitizenKey('waiting:' + pose.x + ':' + pose.z) % 8;
     transform.position.set(pose.x, Y_WALK, pose.z); transform.rotation.y = pose.yaw;
     transform.scale.setScalar(0.96 + (item.index % 3) * 0.035); transform.updateMatrix();
-    crowdBatches[variant].forEach(function (batch) { batch.setMatrixAt(counts[variant], transform.matrix); });
+    crowdBatches[variant].forEach(function (batch) {
+      batch.setMatrixAt(counts[variant], transform.matrix);
+      if (batch.userData.sharedShirt) {
+        batch.setColorAt(counts[variant], item.color ? new THREE.Color(item.color) : batch.userData.baseColor);
+        batch.instanceColor.needsUpdate = true;
+      }
+    });
     instancedWaitingRecords.push({
       variant: variant,
       batchIndex: counts[variant],

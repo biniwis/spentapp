@@ -150,6 +150,17 @@ public struct DioramaReadyWrapper: View {
         .onReceive(NotificationCenter.default.publisher(for: .dioramaReady)) { _ in
             withAnimation(.easeOut(duration: 0.4)) { isLoaded = true }
         }
+        // A killed Web Content Process triggers a renderer recovery reload; bring the skeleton
+        // back while the scene rebuilds. The fallback reveal prevents a permanently stuck
+        // skeleton if recovery never finishes.
+        .onReceive(NotificationCenter.default.publisher(for: .dioramaRecoveryStarted)) { _ in
+            withAnimation(.easeOut(duration: 0.3)) { isLoaded = false }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
+                if !isLoaded {
+                    withAnimation(.easeOut(duration: 0.4)) { isLoaded = true }
+                }
+            }
+        }
         // A world switch replaces the WebView via .id(mapStyle); reset the loading state
         // so the skeleton appears while the new WebGL context initializes.
         .onChange(of: mapStyle) { _, _ in isLoaded = false }
@@ -159,4 +170,5 @@ public struct DioramaReadyWrapper: View {
 // Notification name ThreeDioramaView will post when ready
 public extension Notification.Name {
     static let dioramaReady = Notification.Name("com.moneycity.dioramaReady")
+    static let dioramaRecoveryStarted = Notification.Name("com.moneycity.dioramaRecoveryStarted")
 }

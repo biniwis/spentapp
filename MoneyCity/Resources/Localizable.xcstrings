@@ -22,42 +22,12 @@
     "%@" : {
 
     },
-    "%@ — %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ — %2$@"
-          }
-        }
-      }
-    },
     "%@ · %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ · %2$@"
-          }
-        }
-      }
-    },
-    "%@ · %lld %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · %2$lld %3$@"
-          }
-        }
-      }
-    },
-    "%@ · %lld basis" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$@ · %2$lld basis"
           }
         }
       }
@@ -347,15 +317,6 @@
         }
       }
     },
-    "%lld/1" : {
-
-    },
-    "%lld/2" : {
-
-    },
-    "%lld/4" : {
-
-    },
     "%lld%%" : {
 
     },
@@ -421,52 +382,19 @@
     "≈ %@" : {
 
     },
-    "▲" : {
-
-    },
-    "▼" : {
-
-    },
-    "☕" : {
-
-    },
     "✦ MONTHLY RECAP" : {
 
     },
     "✦ סיכום חודשי" : {
 
     },
-    "🍷" : {
-
-    },
-    "🛍️" : {
-
-    },
     "$" : {
-
-    },
-    "₪" : {
-
-    },
-    "₪480 Saved" : {
-
-    },
-    "₪650 over monthly plan" : {
 
     },
     "0" : {
 
     },
-    "00:00" : {
-
-    },
-    "1 → 5" : {
-
-    },
     "1x" : {
-
-    },
-    "6 / 6" : {
 
     },
     "6-Month Overview" : {
@@ -476,9 +404,6 @@
 
     },
     "12-Month Overview" : {
-
-    },
-    "24:00" : {
 
     },
     "A goal gives you a reason to open the app on a day you bought nothing." : {
@@ -496,16 +421,10 @@
     "About SPENT" : {
 
     },
-    "Actions are safely stored on-device and will sync once online." : {
-
-    },
     "Active Streak" : {
 
     },
     "Active Today! 🔥" : {
-
-    },
-    "Activity & People" : {
 
     },
     "Add" : {
@@ -586,9 +505,6 @@
     "All" : {
 
     },
-    "All Additions Unlocked State" : {
-
-    },
     "All sorted & clean!" : {
 
     },
@@ -635,9 +551,6 @@
         }
       }
     },
-    "Amount must be a positive number greater than 0" : {
-
-    },
     "Analytics" : {
 
     },
@@ -660,9 +573,6 @@
 
     },
     "Automatic Capture" : {
-
-    },
-    "Automatic Capture Guide Previews:" : {
 
     },
     "Automatic Capture is Working" : {
@@ -707,9 +617,6 @@
     "Base Currency" : {
 
     },
-    "Biggest Story District + Meaningful Moment" : {
-
-    },
     "Breakdown for %@:" : {
 
     },
@@ -722,13 +629,13 @@
     "Calendar & Jump to Date" : {
 
     },
+    "Can't convert yet" : {
+
+    },
     "Can't find how to add SPENT?" : {
 
     },
     "Cancel" : {
-
-    },
-    "Candidate Inspector" : {
 
     },
     "Capture Apple Pay Payment (Simple)" : {
@@ -786,9 +693,6 @@
     "Charged on day" : {
 
     },
-    "Check state when all 6 additions have already joined the city" : {
-
-    },
     "Checking for iCloud backup…" : {
 
     },
@@ -804,9 +708,6 @@
     "City" : {
 
     },
-    "City Archive" : {
-
-    },
     "City companions — weekly addition" : {
 
     },
@@ -816,13 +717,7 @@
     "City routine" : {
 
     },
-    "City Worlds" : {
-
-    },
     "Close" : {
-
-    },
-    "Close building details" : {
 
     },
     "Confirm category" : {
@@ -846,7 +741,7 @@
     "Continue without restore" : {
 
     },
-    "Could not extract receipt" : {
+    "Convert now" : {
 
     },
     "Couldn't create the portrait" : {
@@ -856,9 +751,6 @@
 
     },
     "Create" : {
-
-    },
-    "Curator — curate" : {
 
     },
     "Currency" : {
@@ -881,7 +773,7 @@
     "Currency Amount" : {
 
     },
-    "Current spending exceeds planned income. Nature Reserve growth slows down." : {
+    "Currency Change" : {
 
     },
     "Current: %@" : {
@@ -908,12 +800,6 @@
       }
     },
     "Day %lld each month" : {
-
-    },
-    "DEBUG" : {
-
-    },
-    "DEBUG ONLY" : {
 
     },
     "Defaults to the base currency selected in the app" : {
@@ -951,9 +837,6 @@
     "Deleted: %@" : {
 
     },
-    "Deleted: Zara — ₪199.90" : {
-
-    },
     "Deposit" : {
 
     },
@@ -967,12 +850,6 @@
 
     },
     "Deposits & funds" : {
-
-    },
-    "Design Lab 🧪" : {
-
-    },
-    "DEVELOPMENT & DESIGN" : {
 
     },
     "Did you add the SPENT shortcut?" : {
@@ -1007,9 +884,6 @@
         }
       }
     },
-    "Drag to rotate · Pinch to zoom · Tap to inspect" : {
-
-    },
     "Edit" : {
 
     },
@@ -1025,19 +899,7 @@
     "Edit Transaction" : {
 
     },
-    "Empty States" : {
-
-    },
     "Enable Automatic Capture" : {
-
-    },
-    "Engine — generateCandidates" : {
-
-    },
-    "Engine + Curator ↗" : {
-
-    },
-    "Ensure the receipt is flat, well-lit, and the total line is clearly visible." : {
 
     },
     "Enter an expense in an on-screen prompt without opening the app." : {
@@ -1057,22 +919,13 @@
         }
       }
     },
-    "Enter Manually" : {
-
-    },
     "Enter Payment Amount" : {
-
-    },
-    "Error States" : {
 
     },
     "Every building has a story" : {
 
     },
     "Every transaction, the city you built, your instalment plans and the rules the app learned will be deleted. Your budget, income, recurring expenses and savings goals stay — the goals reset to zero." : {
-
-    },
-    "family=%@" : {
 
     },
     "Filter to This Day Only" : {
@@ -1090,19 +943,10 @@
     "Fixed monthly total" : {
 
     },
-    "Flow wiring caps dynamic at 3 (2 on archive index) — the count above is the theoretical ceiling." : {
-
-    },
     "From %@" : {
 
     },
-    "Full journey from city concept to reveal, with all transitions" : {
-
-    },
     "Full Map View" : {
-
-    },
-    "Full Onboarding Flow" : {
 
     },
     "Future transactions at %@ will auto-categorize" : {
@@ -1222,9 +1066,6 @@
         }
       }
     },
-    "Image is blurry or amount is unreadable" : {
-
-    },
     "Immediate push alert when a purchase is logged" : {
 
     },
@@ -1249,12 +1090,6 @@
     "Income sources" : {
 
     },
-    "Individual Step Previews:" : {
-
-    },
-    "Inspect engine candidates, the curated story, rejections & scores per preset" : {
-
-    },
     "Installments" : {
 
     },
@@ -1262,12 +1097,6 @@
 
     },
     "Interface Language" : {
-
-    },
-    "Internal lab · Same demo data in every world · Selection is not saved" : {
-
-    },
-    "Isolated Preview Sandbox" : {
 
     },
     "Keep streak tomorrow" : {
@@ -1279,19 +1108,7 @@
     "Limited Time" : {
 
     },
-    "Live 3D City Density Lab" : {
-
-    },
-    "Live Archive" : {
-
-    },
     "Live exchange rates (estimated)" : {
-
-    },
-    "Live interactive 3D diorama lab with real-time density switching from Day 1 to Mega Metropolis:" : {
-
-    },
-    "Loading world…" : {
 
     },
     "Main Category" : {
@@ -1400,9 +1217,6 @@
     "Next" : {
 
     },
-    "Night" : {
-
-    },
     "No backup yet" : {
 
     },
@@ -1425,9 +1239,6 @@
 
     },
     "No snapshots yet." : {
-
-    },
-    "No story — nothing cleared the bars." : {
 
     },
     "Not in use — the ceilings below take over" : {
@@ -1454,19 +1265,10 @@
     "On the budget screen" : {
 
     },
-    "One demo city, two worlds. Rotate, zoom and inspect in live 3D." : {
-
-    },
-    "Open 3D ↗" : {
-
-    },
     "Open Automations" : {
 
     },
     "Open Shortcuts App" : {
-
-    },
-    "Operating in Offline Mode" : {
 
     },
     "Optional fallback if the numeric amount is empty" : {
@@ -1513,18 +1315,6 @@
     "Please try sharing again." : {
 
     },
-    "Postcards (Mock)" : {
-
-    },
-    "Preview" : {
-
-    },
-    "Preview could not load" : {
-
-    },
-    "Preview weekly companion rewards, unlock flow, and animated join ceremonies:" : {
-
-    },
     "Previous" : {
 
     },
@@ -1564,13 +1354,7 @@
         }
       }
     },
-    "Raw reports (Engine + Curator)" : {
-
-    },
     "Reading the amount and merchant from your receipt…" : {
-
-    },
-    "Real Time" : {
 
     },
     "Recaps Archive" : {
@@ -1647,9 +1431,6 @@
         }
       }
     },
-    "Reload preview" : {
-
-    },
     "Remaining in budget" : {
 
     },
@@ -1675,12 +1456,6 @@
 
     },
     "Reset All Transactions & Data" : {
-
-    },
-    "Reset camera" : {
-
-    },
-    "Reset Confirmation Banner" : {
 
     },
     "Reset Filters" : {
@@ -1749,9 +1524,6 @@
     "Savings History" : {
 
     },
-    "Scan Again" : {
-
-    },
     "Scan Screenshot or Receipt in SPENT" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1811,10 +1583,10 @@
     "Select Category" : {
 
     },
-    "Select Date" : {
+    "Select Currency" : {
 
     },
-    "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
+    "Select Date" : {
 
     },
     "Set a goal for emergencies, vacation, or investments — and watch the Nature Reserve grow." : {
@@ -1851,15 +1623,6 @@
 
     },
     "Show Less" : {
-
-    },
-    "Show Recap Banner Again" : {
-
-    },
-    "Show Undo Toast" : {
-
-    },
-    "Simulates positive weekly progress (₪480 saved), interactive selection & join animation" : {
 
     },
     "Something new in the city" : {
@@ -1934,9 +1697,6 @@
     "Step %lld of 5" : {
 
     },
-    "Tap any preset to view the full story & editorial animations with mock data:" : {
-
-    },
     "Tap for Quick Add +" : {
 
     },
@@ -1967,9 +1727,6 @@
     "Target amount" : {
 
     },
-    "Test any map style (Modern, Medieval, Arctic, Israeli) across all build & density stages" : {
-
-    },
     "The amount you paid" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1993,6 +1750,9 @@
     "The Nature Reserve changes with your budget and savings." : {
 
     },
+    "There's no exchange rate for this currency yet. The transaction was not changed." : {
+
+    },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
 
     },
@@ -2003,9 +1763,6 @@
 
     },
     "This posts automatically each month on the chosen day. If a charge with the same name already exists that month, it will not be duplicated." : {
-
-    },
-    "Time of Day" : {
 
     },
     "To have the Nature Reserve reflect your monthly pace, set your estimated monthly spending." : {
@@ -2147,9 +1904,6 @@
     "Upcoming" : {
 
     },
-    "Urban · Medieval" : {
-
-    },
     "Version, copyright & details" : {
 
     },
@@ -2159,22 +1913,13 @@
     "View ✨" : {
 
     },
-    "View Story" : {
-
-    },
     "Waiting for the first capture" : {
-
-    },
-    "Walkers: ~%lld" : {
 
     },
     "We'll open the Automations area in Shortcuts, and simply turn on the shortcut you just added." : {
 
     },
     "We'll set up your iPhone to pass transaction amounts and merchants to SPENT after every Apple Pay purchase." : {
-
-    },
-    "Weekly Addition Ceremony" : {
 
     },
     "Welcome" : {
@@ -2249,9 +1994,6 @@
     "Without income, the savings figure rests on a number the app invented." : {
 
     },
-    "World" : {
-
-    },
     "You can change your target later" : {
 
     },
@@ -2277,12 +2019,6 @@
 
     },
     "Your name" : {
-
-    },
-    "Zero writes to SwiftData. Does not modify real transactions, budget, city progression, or onboarding completion flags." : {
-
-    },
-    "Σ %@" : {
 
     },
     "אגלה בעצמי" : {
@@ -2315,9 +2051,6 @@
     "אין הוצאות בחודש הזה" : {
 
     },
-    "אין סיפור — שום מועמדות לא עברה את הרף." : {
-
-    },
     "אין עדיין יעדים" : {
 
     },
@@ -2327,25 +2060,16 @@
     "אין עדיין תצלומים." : {
 
     },
-    "אין שמירה ב־SwiftData, אין שינוי בהוצאות אמיתיות, בתקציב, בהתקדמות העיר או בדגל השלמת ה־Onboarding." : {
-
-    },
     "איפה נמצא ׳הפעלה מיידית׳?" : {
 
     },
     "איפוס" : {
 
     },
-    "איפוס והצגת באנר קליטה" : {
-
-    },
     "איפוס כל העסקאות והנתונים" : {
 
     },
     "איפוס מבט" : {
-
-    },
-    "איפוס מצלמה" : {
 
     },
     "איפוס סינונים" : {
@@ -2387,13 +2111,7 @@
     "אפשרויות נוספות" : {
 
     },
-    "ארכיון מקומי (SwiftData)" : {
-
-    },
     "ארכיון סיכומים" : {
-
-    },
-    "ארכיון עיר" : {
 
     },
     "אשר את הסיווג" : {
@@ -2408,18 +2126,6 @@
     "באפליקציה ׳קיצורים׳: עבור ללשונית פעולות אוטומטיות, לחץ על + ובחר ׳ארנק׳." : {
 
     },
-    "בדיקת טקסי הבונוס וההתקדמות השבועית, בחירת דמויות ואנימציות הצטרפות לעיר:" : {
-
-    },
-    "בדיקת כל סגנון מפה (מודרנית, ימי הביניים, קרח, ישראלית) בכל שלבי הבנייה והצפיפות" : {
-
-    },
-    "בדיקת מסך ההודעה כאשר המשתמש פתח כבר את כל 6 התוספות בעיר" : {
-
-    },
-    "בדיקת מסכים בודדים:" : {
-
-    },
     "בוא לראות איך החודש קיבל צורה בעיר" : {
 
     },
@@ -2430,6 +2136,9 @@
 
     },
     "בחר איך העיר שלך תיראה" : {
+
+    },
+    "בחר מטבע" : {
 
     },
     "בחר קטגוריה" : {
@@ -2481,16 +2190,7 @@
     "גיבוי ושחזור" : {
 
     },
-    "גלויות חודשיות (Mock)" : {
-
-    },
-    "גרירה לסיבוב · צביטה לזום · הקשה לבחינת מבנה" : {
-
-    },
     "גרסה, זכויות יוצרים ומידע" : {
-
-    },
-    "דוחות גלם (Engine + Curator)" : {
 
     },
     "דיווח על באגים, שאלות והצעות" : {
@@ -2532,12 +2232,6 @@
     "הגיבוי מכיל %lld רשומות, הגדרות, יעדים והיסטוריית עיר שנשמרו ב־iCloud שלך." : {
 
     },
-    "הדמיה" : {
-
-    },
-    "הדמיית התקדמות שבועית חיובית (₪480 חיסכון), בחירה אינטראקטיבית ואנימציית הצטרפות" : {
-
-    },
     "הדרכת פתיחה והיכרות" : {
 
     },
@@ -2545,9 +2239,6 @@
 
     },
     "ההוצאה תיווצר אוטומטית בכל חודש ביום שנבחר. אם כבר רשומה הוצאה מאותו שם באותו חודש, היא לא תיווצר פעמיים." : {
-
-    },
-    "הולכים: ~%lld" : {
 
     },
     "הוסף" : {
@@ -2599,9 +2290,6 @@
 
     },
     "הושלם" : {
-
-    },
-    "הזן ידנית" : {
 
     },
     "הזנת סכום לתשלום" : {
@@ -2667,6 +2355,9 @@
     "המצב הנוכחי יישמר כגיבוי נוסף לפני ההחלפה, כך שאפשר יהיה לחזור ממנו." : {
 
     },
+    "המר עכשיו" : {
+
+    },
     "המרת מטבע אוטומטית" : {
 
     },
@@ -2682,9 +2373,6 @@
     "הסיכום של %@ מוכן!" : {
 
     },
-    "הסכום חייב להיות מספר חיובי הגדול מ-0" : {
-
-    },
     "הסכום יירשם גם כהפקדה לחיסכון ויצמיח את שמורת הטבע בעיר." : {
 
     },
@@ -2698,9 +2386,6 @@
 
     },
     "העיר שלך החודש" : {
-
-    },
-    "הערה: הדינמי בקצה ה־Flow מוגבל ל־3, וגם ל־2 בכרטיסי אינדקס – החישוב כאן הוא התקרה התיאורטית." : {
 
     },
     "הפעל" : {
@@ -2736,12 +2421,6 @@
     "הצג את כל העסקאות" : {
 
     },
-    "הצג באנר ביטול מחיקה" : {
-
-    },
-    "הצג באנר סיכום שוב" : {
-
-    },
     "הצג הכל" : {
 
     },
@@ -2772,9 +2451,6 @@
     "הקש על הבניין המסומן בעיר כדי לגלות אילו הוצאות בנו אותו." : {
 
     },
-    "הקש על כל Preset כדי להריץ את הסטורי והאנימציות האמיתיות עם נתוני Mock:" : {
-
-    },
     "הקש פעמיים לפתיחת סיכום חודשי" : {
 
     },
@@ -2802,13 +2478,7 @@
     "התמונה לא נוצרה" : {
 
     },
-    "התמונה מטושטשת או שהסכום אינו קריא" : {
-
-    },
     "התפלגות הוצאות" : {
-
-    },
-    "התצוגה לא נטענה" : {
 
     },
     "התקדמות בהגדרת קליטה אוטומטית, שלב %lld מתוך %lld" : {
@@ -2824,12 +2494,6 @@
     "התראות" : {
 
     },
-    "התראות מערכת" : {
-
-    },
-    "ודא שהחשבונית מונחת על משטח שטוח, מוארת היטב וששורת הסך לתשלום נראית בבירור." : {
-
-    },
     "זוהה זיכוי / החזר מ-Apple Pay" : {
 
     },
@@ -2840,12 +2504,6 @@
 
     },
     "זמין לזמן מוגבל" : {
-
-    },
-    "זמן אמת" : {
-
-    },
-    "זרימה מלאה מקונספט העיר ועד פתיחת הדלתות, כולל מעברים ואנימציות" : {
 
     },
     "חודש חדש בעיר" : {
@@ -2863,25 +2521,10 @@
     "חזרה לעיר" : {
 
     },
-    "חיסכון ₪480" : {
-
-    },
     "חפש עסקה או קטגוריה..." : {
 
     },
-    "חריגה של ₪650 מהתכנון החודשי" : {
-
-    },
-    "טוען עולם…" : {
-
-    },
     "טיול ליפן" : {
-
-    },
-    "טען מחדש" : {
-
-    },
-    "טקס תוספת שבועית לעיר" : {
 
     },
     "טרם בוצע גיבוי" : {
@@ -2947,10 +2590,10 @@
     "לא בשימוש — התקרות למטה גוברות" : {
 
     },
-    "לא הצלחנו לפענח את החשבונית" : {
+    "לא מוצא איך להוסיף את SPENT?" : {
 
     },
-    "לא מוצא איך להוסיף את SPENT?" : {
+    "לא ניתן להמיר עכשיו" : {
 
     },
     "לא עובד?" : {
@@ -2969,9 +2612,6 @@
 
     },
     "לחץ על שדה ׳שם בית העסק׳ בתוך הפעולה של SPENT ← בחר ׳קלט של קיצור׳ ← בחר ׳בית העסק׳ מתוך פרטי העסקה." : {
-
-    },
-    "לילה" : {
 
     },
     "לכל בניין יש סיפור" : {
@@ -2999,9 +2639,6 @@
 
     },
     "מדריך הגדרה ידנית" : {
-
-    },
-    "מדריך קליטה אוטומטית (Automatic Capture Guide):" : {
 
     },
     "מה נוסף לעיר?" : {
@@ -3058,15 +2695,6 @@
     "ממוצע: %@/חודש" : {
 
     },
-    "מנוע + אוצר ↗" : {
-
-    },
-    "מעבדה פנימית בלבד · אותם נתוני דוגמה בכל העולמות · הבחירה לא נשמרת" : {
-
-    },
-    "מעבדת תלת-ממד אינטראקטיבית" : {
-
-    },
     "מעל היעד: %@" : {
 
     },
@@ -3076,25 +2704,10 @@
     "מפענח סכום ופרטי עסק מתמונת הקבלה..." : {
 
     },
-    "מפקח מועמדויות" : {
-
-    },
-    "מפקח מועמדויות (Candidate Inspector)" : {
-
-    },
     "מצאנו גיבוי של SPENT" : {
 
     },
     "מצב גיבוי" : {
-
-    },
-    "מצב סיום: כל התוספות כבר בעיר" : {
-
-    },
-    "מצבי ריקון" : {
-
-    },
-    "מצבי שגיאה" : {
 
     },
     "מצטרפים לעיר — תוספת שבועית" : {
@@ -3158,9 +2771,6 @@
     "נמחקה: %@" : {
 
     },
-    "נמחקה: זארה — ₪199.90" : {
-
-    },
     "נסה שוב" : {
 
     },
@@ -3170,16 +2780,7 @@
     "נקלטה עסקה • יש לערוך ולהזין סכום" : {
 
     },
-    "סביבת בדיקות מבודדת" : {
-
-    },
-    "סביבת פיתוח ועיצוב" : {
-
-    },
     "סגור" : {
-
-    },
-    "סגור פרטי מבנה" : {
 
     },
     "סגירה" : {
@@ -3210,9 +2811,6 @@
 
     },
     "סיום" : {
-
-    },
-    "סיור Onboarding מלא" : {
 
     },
     "סיימתי" : {
@@ -3254,9 +2852,6 @@
     "עזרה ומשוב" : {
 
     },
-    "עיר לדוגמה, שני עולמות. סיבוב, זום ובחינת מבנים בתלת־ממד." : {
-
-    },
     "עכשיו מפעילים את קיצור SPENT" : {
 
     },
@@ -3267,9 +2862,6 @@
 
     },
     "עסקאות החודש" : {
-
-    },
-    "עסקאות ופעולות נשמרות מקומית על המכשיר ויעודכנו כשהרשת תחזור." : {
 
     },
     "עסקאות לא מסווגות" : {
@@ -3311,9 +2903,6 @@
     "עריכת סכום" : {
 
     },
-    "פועל במצב לא מקוון (Offline)" : {
-
-    },
     "פירוט עבור %@:" : {
 
     },
@@ -3341,28 +2930,16 @@
     "פתח פעולות אוטומטיות" : {
 
     },
-    "פתח תלת-ממד ↗" : {
-
-    },
     "פתרון בעיות" : {
 
     },
     "צור" : {
 
     },
-    "צלם שוב" : {
-
-    },
     "צפה" : {
 
     },
     "צפה ✨" : {
-
-    },
-    "צפה בסטורי" : {
-
-    },
-    "צפייה במועמדויות המנוע, הסיפור המעוצב, הדחיות והניקוד לכל Preset" : {
 
     },
     "צפייה מחדש בסיור העיר וההגדרות" : {
@@ -3386,22 +2963,10 @@
     "קליטה אוטומטית" : {
 
     },
-    "קצב ההוצאות הנוכחי גבוה מההכנסה המוגדרת. שמורת הטבע בעיר מאטה את צמיחתה עד לאיזון." : {
-
-    },
     "קצב ההוצאות של החודש" : {
 
     },
-    "רובע סיפור + רגע משמעותי" : {
-
-    },
-    "רמת פעילות ואנשים" : {
-
-    },
     "רצף ימים פעיל" : {
-
-    },
-    "רצף: פתיחה + סה״כ + פעילות + רובע + דינמי⁽≤4⁾ + הבחנות + דיוקן" : {
 
     },
     "שגיאה בשחזור" : {
@@ -3436,6 +3001,9 @@
 
     },
     "שיוך קטגוריה וזיכרון" : {
+
+    },
+    "שינוי מטבע" : {
 
     },
     "שיתוף" : {
@@ -3489,19 +3057,16 @@
     "שמורת הטבע משתנה לפי התקציב והחיסכון שלך." : {
 
     },
-    "שערי יציג עדכניים (הערכה)" : {
+    "שער ההמרה של המטבע הזה עדיין לא זמין. העסקה לא שונתה." : {
 
     },
-    "שעת היממה" : {
+    "שערי יציג עדכניים (הערכה)" : {
 
     },
     "שפת ממשק" : {
 
     },
     "תאריך" : {
-
-    },
-    "תצוגת 3D אינטראקטיבית עם החלפת מצבי צפיפות בזמן אמת – מתחילת חודש ועד מגה-מטרופולין:" : {
 
     },
     "תצוגת מפה מלאה" : {

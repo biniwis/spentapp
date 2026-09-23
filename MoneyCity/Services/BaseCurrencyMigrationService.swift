@@ -8,8 +8,9 @@ import SwiftData
 /// If no data exists, allows immediate change.
 ///
 /// ATOMICITY INVARIANT: if any read, conversion, validation, or save fails, the entire
-/// financial database and the base-currency preference stay unchanged. The preference is
-/// only written AFTER every model has been migrated and persisted successfully.
+/// financial database, the base-currency preference, AND the monthly budget stay unchanged.
+/// The preference and the converted budget are only written AFTER every model has been
+/// migrated and persisted successfully.
 public enum BaseCurrencyMigrationService {
 
     public enum MigrationError: Error, LocalizedError {
@@ -36,6 +37,29 @@ public enum BaseCurrencyMigrationService {
         }
     }
 
+    /// The monthly budget lives in the standard UserDefaults, backed by @AppStorage.
+    /// It is financial data the user will notice losing, so the migration treats it the same
+    /// way it treats a CategoryBudget row: convert it, or abort without touching it.
+    private static let monthlyBudgetKey = "monthly_budget"
+
+    nonisolated private static func readMonthlyBudget(defaults: UserDefaults) -> Double {
+        let v = defaults.double(forKey: monthlyBudgetKey)
+        return v.isFinite && v > 0 ? v : 0
+    }
+
+    nonisolated private static func writeMonthlyBudget(_ value: Double, defaults: UserDefaults) {
+        let v = value.isFinite && value > 0 ? (value * 100).rounded() / 100 : 0
+        defaults.set(v, forKey: monthlyBudgetKey)
+    }
+
+    private static func restoreMonthlyBudget(_ oldValue: Double, defaults: UserDefaults) {
+        if oldValue > 0 {
+            defaults.set(oldValue, forKey: monthlyBudgetKey)
+        } else {
+            defaults.removeObject(forKey: monthlyBudgetKey)
+        }
+    }
+
     /// Checks whether any user financial data currently exists in the store.
     ///
     /// A database read error must NOT be interpreted as "the user has no financial data":
@@ -49,13 +73,18 @@ public enum BaseCurrencyMigrationService {
         if try context.fetchCount(FetchDescriptor<InstallmentPlan>()) > 0 { return true }
         if try context.fetchCount(FetchDescriptor<SavingsGoal>()) > 0 { return true }
         if try context.fetchCount(FetchDescriptor<ScheduledExpense>()) > 0 { return true }
+        // A stored monthly budget is financial data even when the store itself is empty.
+        if readMonthlyBudget(defaults: .standard) > 0 { return true }
         return false
     }
 
     /// Performs the safe currency migration across all monetary models.
     ///
     /// `rateProvider` is injectable for tests: it returns how many units of `to` one unit
-    /// of `from` is worth. Defaults to the canonical `FXService.convert` path (rate 1 for 1).
+    /// of `from` is worth. Defaults to the canonical `FXService.convert` path.
+    ///
+    /// `markBackupDirty` is called ONLY after everything else has been persisted, so the
+    /// next iCloud backup reflects the freshly migrated ledger rather than a half-written one.
     @MainActor
     public static func migrateBaseCurrency(
         from oldBase: CurrencyType,
@@ -63,9 +92,12 @@ public enum BaseCurrencyMigrationService {
         context: ModelContext,
         rateProvider: (String, String) -> Double? = { from, to in
             FXService.convert(amount: 1.0, from: from, to: to)
-        }
+        },
+        markBackupDirty: (() -> Void)? = nil
     ) throws {
         guard oldBase != newBase else { return }
+
+        let oldMonthlyBudget = readMonthlyBudget(defaults: .standard)
 
         let hasData: Bool
         do {
@@ -91,7 +123,7 @@ public enum BaseCurrencyMigrationService {
             // 1. Transactions
             let transactions = try context.fetch(FetchDescriptor<Transaction>())
             for tx in transactions {
-                migrateTransaction(tx, rate: rate, newBase: newBase)
+                try migrateTransaction(tx, rate: rate, newBase: newBase, rateProvider: rateProvider)
             }
 
             // 2. CategoryBudgets
@@ -117,8 +149,7 @@ public enum BaseCurrencyMigrationService {
             // 5. InstallmentPlans
             let plans = try context.fetch(FetchDescriptor<InstallmentPlan>())
             for p in plans {
-                p.totalAmount = rounded(p.totalAmount * rate)
-                p.currency = newBase.symbol
+                try migrateInstallmentPlan(p, rate: rate, newBase: newBase, rateProvider: rateProvider)
             }
 
             // 6. SavingsGoals
@@ -136,10 +167,17 @@ public enum BaseCurrencyMigrationService {
                 // Transaction is the authoritative financial record and gets migrated
                 // above. Only unmaterialized scheduled expenses are future ledger data.
                 guard !s.isMaterialized else { continue }
-                migrateScheduledExpense(s, rate: rate, newBase: newBase)
+                try migrateScheduledExpense(s, rate: rate, newBase: newBase, rateProvider: rateProvider)
             }
+        } catch let error as MigrationError {
+            // A real MigrationError (e.g. a missing direct rate for a foreign row) must be
+            // rethrown as-is so the caller knows exactly why the migration aborted.
+            context.rollback()
+            restoreMonthlyBudget(oldMonthlyBudget, defaults: .standard)
+            throw error
         } catch {
             context.rollback()
+            restoreMonthlyBudget(oldMonthlyBudget, defaults: .standard)
             throw MigrationError.dataMigrationFailed
         }
 
@@ -148,17 +186,49 @@ public enum BaseCurrencyMigrationService {
             try context.save()
         } catch {
             context.rollback()
+            restoreMonthlyBudget(oldMonthlyBudget, defaults: .standard)
             throw MigrationError.saveFailed
         }
 
-        // ONLY AFTER successful persistence: update the active base currency.
+        // ONLY AFTER successful persistence: convert the stored monthly budget, then update
+        // the active base currency. The budget is written before the preference so a system
+        // snapshot immediately after either write is still internally consistent.
+        if oldMonthlyBudget > 0 {
+            writeMonthlyBudget(rounded(oldMonthlyBudget * rate), defaults: .standard)
+        }
         LocalizationManager.shared.baseCurrency = newBase
+        markBackupDirty?()
     }
 
     /// Converts a single Transaction into the new base currency.
     /// If it was originally entered in the destination currency, its exact original value
     /// is restored rather than doing an unnecessary round-trip conversion.
-    private static func migrateTransaction(_ tx: Transaction, rate: Double, newBase: CurrencyType) {
+    private static func migrateTransaction(
+        _ tx: Transaction,
+        rate: Double,
+        newBase: CurrencyType,
+        rateProvider: (String, String) -> Double?
+    ) throws {
+        // An unresolved foreign transaction is still sitting in its own currency with no
+        // rate. The only honest conversion is its original currency -> new base directly.
+        // A stand-in old-base -> new-base rate would fabricate a value that never existed.
+        if tx.isUnresolvedForeign {
+            let resolved = try resolveUnresolvedForeign(
+                amount: tx.amount,
+                currency: tx.currency,
+                originalAmount: tx.originalAmount,
+                originalCurrency: tx.originalCurrency,
+                newBase: newBase,
+                rateProvider: rateProvider
+            )
+            tx.amount = resolved.amount
+            tx.currency = newBase.symbol
+            tx.exchangeRate = resolved.exchangeRate
+            tx.originalAmount = resolved.originalAmount
+            tx.originalCurrency = resolved.originalCurrency
+            return
+        }
+
         if let origAmt = tx.originalAmount,
            let origCurr = tx.originalCurrency,
            CurrencyResolutionService.normalizeToISOCode(origCurr) == newBase.rawValue {
@@ -178,7 +248,30 @@ public enum BaseCurrencyMigrationService {
 
     /// Converts an unmaterialized ScheduledExpense into the new base currency, keeping the
     /// same semantics as Transaction: sign preserved, foreign metadata restored or rebuilt.
-    private static func migrateScheduledExpense(_ s: ScheduledExpense, rate: Double, newBase: CurrencyType) {
+    private static func migrateScheduledExpense(
+        _ s: ScheduledExpense,
+        rate: Double,
+        newBase: CurrencyType,
+        rateProvider: (String, String) -> Double?
+    ) throws {
+        // Same unresolved-foreign rule as Transactions: never a stand-in rate.
+        if s.isUnresolvedForeign {
+            let resolved = try resolveUnresolvedForeign(
+                amount: s.amount,
+                currency: s.currency,
+                originalAmount: s.originalAmount,
+                originalCurrency: s.originalCurrency,
+                newBase: newBase,
+                rateProvider: rateProvider
+            )
+            s.amount = resolved.amount
+            s.currency = newBase.symbol
+            s.exchangeRate = resolved.exchangeRate
+            s.originalAmount = resolved.originalAmount
+            s.originalCurrency = resolved.originalCurrency
+            return
+        }
+
         if let origAmt = s.originalAmount,
            let origCurr = s.originalCurrency,
            CurrencyResolutionService.normalizeToISOCode(origCurr) == newBase.rawValue {
@@ -194,6 +287,102 @@ public enum BaseCurrencyMigrationService {
                 s.exchangeRate = abs(s.amount) / origAmt
             }
         }
+    }
+
+    /// Converts an InstallmentPlan into the new base currency.
+    ///
+    /// A plan with foreign metadata holds a fixed original total in its own currency: that
+    /// total is converted directly so the parts keep adding up to the purchase in the
+    /// currency it was made in. A plan entered in the destination currency restores its
+    /// exact original total. A domestic plan is multiplied by the old-base -> new-base rate.
+    private static func migrateInstallmentPlan(
+        _ p: InstallmentPlan,
+        rate: Double,
+        newBase: CurrencyType,
+        rateProvider: (String, String) -> Double?
+    ) throws {
+        if let origTotal = p.originalTotalAmount, origTotal > 0,
+           let origCurr = p.originalCurrency,
+           CurrencyResolutionService.normalizeToISOCode(origCurr) == newBase.rawValue {
+            p.totalAmount = rounded(origTotal)
+            p.currency = newBase.symbol
+            p.originalTotalAmount = nil
+            p.originalCurrency = nil
+            p.exchangeRate = nil
+            return
+        }
+
+        if let origTotal = p.originalTotalAmount, origTotal > 0,
+           let origCurr = p.originalCurrency {
+            let origISO = CurrencyResolutionService.normalizeToISOCode(origCurr) ?? origCurr.uppercased()
+            guard let directRate = rateProvider(origISO, newBase.rawValue),
+                  directRate > 0, directRate.isFinite else {
+                throw MigrationError.rateUnavailable(from: origISO, to: newBase.rawValue)
+            }
+            let newTotal = rounded(origTotal * directRate)
+            p.totalAmount = newTotal
+            p.currency = newBase.symbol
+            p.exchangeRate = newTotal / origTotal
+            return
+        }
+
+        p.totalAmount = rounded(p.totalAmount * rate)
+        p.currency = newBase.symbol
+        if let origTotal = p.originalTotalAmount, origTotal > 0 {
+            p.exchangeRate = abs(p.totalAmount) / origTotal
+        }
+    }
+
+    private struct ResolvedForeignAmount {
+        let amount: Double
+        let exchangeRate: Double?
+        let originalAmount: Double?
+        let originalCurrency: String?
+    }
+
+    /// Converts an unresolved foreign amount directly from its own currency to the new base.
+    ///
+    /// Never multiplies by the old-base -> new-base rate, never invents a 1:1 rate, and
+    /// never persists unless a real direct rate exists. Throws so the whole migration aborts
+    /// and every previous mutation is rolled back.
+    private static func resolveUnresolvedForeign(
+        amount: Double,
+        currency: String,
+        originalAmount: Double?,
+        originalCurrency: String?,
+        newBase: CurrencyType,
+        rateProvider: (String, String) -> Double?
+    ) throws -> ResolvedForeignAmount {
+        let sign = amount < 0 ? -1.0 : 1.0
+        let magnitude = abs(originalAmount ?? amount)
+        let foreignISO = CurrencyResolutionService.normalizeToISOCode(originalCurrency)
+            ?? CurrencyResolutionService.normalizeToISOCode(currency)
+            ?? currency.uppercased()
+
+        // The "foreign" currency turns out to be the new base: restore the exact value the
+        // move to this currency would have produced anyway.
+        guard foreignISO != newBase.rawValue else {
+            let restored = rounded(magnitude)
+            return ResolvedForeignAmount(
+                amount: restored * sign,
+                exchangeRate: nil,
+                originalAmount: nil,
+                originalCurrency: nil
+            )
+        }
+
+        guard let directRate = rateProvider(foreignISO, newBase.rawValue),
+              directRate > 0, directRate.isFinite else {
+            throw MigrationError.rateUnavailable(from: foreignISO, to: newBase.rawValue)
+        }
+        let converted = rounded(magnitude * directRate)
+        let exRate = magnitude > 0 ? converted / magnitude : nil
+        return ResolvedForeignAmount(
+            amount: converted * sign,
+            exchangeRate: exRate,
+            originalAmount: magnitude,
+            originalCurrency: foreignISO
+        )
     }
 
     private static func rounded(_ v: Double) -> Double {

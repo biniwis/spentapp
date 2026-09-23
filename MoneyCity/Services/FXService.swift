@@ -56,9 +56,10 @@ public final class FXService: ObservableObject {
         return defaultRatesToILS[code]
     }
 
-    /// Rate relative to 1 ILS for a given CurrencyType.
-    nonisolated public static func rateToILS(for currency: CurrencyType) -> Double {
-        rateToILS(for: currency.rawValue) ?? 1.00
+    /// Rate relative to 1 ILS for a given CurrencyType. Returns `nil` when no rate exists —
+    /// there is no 1:1 stand-in for a missing rate.
+    nonisolated public static func rateToILS(for currency: CurrencyType) -> Double? {
+        rateToILS(for: currency.rawValue)
     }
 
     /// Convert amount between any two currencies. Returns nil if conversion rate is unavailable.

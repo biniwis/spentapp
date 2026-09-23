@@ -27,7 +27,7 @@ public struct ScanReceiptIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
-        guard RemoteConfigService.shared.isFeatureEnabled("receiptScanner", default: true) else {
+        guard RemoteConfigService.shared.isFeatureEnabled("receiptScanner", default: false) else {
             return .result(
                 value: AppLanguage.localized("סורק הקבלות מושבת זמנית", "Receipt scanner is temporarily disabled"),
                 dialog: IntentDialog(stringLiteral: AppLanguage.localized("סורק הקבלות מושבת זמנית על ידי המערכת.", "Receipt scanner is temporarily disabled."))

@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Sources of currency resolution, ordered from strongest structured evidence to conservative fallback.
 public enum CurrencyResolutionSource: String, Codable, Sendable {
@@ -208,6 +209,81 @@ public enum CurrencyResolutionService {
             confidence: 1.0,
             isForeignExplicitlyDetected: false
         )
+    }
+
+    // MARK: - Stored Unresolved Foreign Resolution
+
+    /// Outcome of attempting to resolve a stored unresolved foreign transaction.
+    public enum ForeignResolutionOutcome: Equatable {
+        case notForeign
+        case resolved
+        /// No direct rate exists from the transaction's own currency — nothing changed.
+        case rateUnavailable
+        /// Persisting the resolved value failed — rolled back, nothing changed.
+        case saveFailed
+    }
+
+    /// Resolves a stored transaction that is still recorded in a foreign currency.
+    ///
+    /// The conversion is always direct from the transaction's own original currency to the
+    /// base currency — never a stand-in rate, never an invented 1:1. The change is persisted
+    /// atomically: if saving fails the in-memory object is rolled back unchanged.
+    @MainActor
+    public static func resolveStoredForeignTransactionIfPossible(
+        _ tx: Transaction,
+        context: ModelContext,
+        baseCurrency: CurrencyType? = nil,
+        rateProvider: (String, String) -> Double? = { from, to in
+            FXService.convert(amount: 1.0, from: from, to: to)
+        }
+    ) -> ForeignResolutionOutcome {
+        guard tx.isUnresolvedForeign else { return .notForeign }
+        let base = baseCurrency ?? LocalizationManager.shared.baseCurrency
+        guard let foreignISO = normalizeToISOCode(tx.originalCurrency) ?? normalizeToISOCode(tx.currency),
+              foreignISO != base.rawValue else {
+            return .notForeign
+        }
+
+        guard let rate = rateProvider(foreignISO, base.rawValue),
+              rate > 0, rate.isFinite else {
+            return .rateUnavailable
+        }
+
+        let sign = tx.amount < 0 ? -1.0 : 1.0
+        let magnitude = abs(tx.originalAmount ?? tx.amount)
+        let converted = (magnitude * rate * 100).rounded() / 100
+
+        tx.amount = converted * sign
+        tx.currency = base.symbol
+        tx.exchangeRate = magnitude > 0 ? converted / magnitude : nil
+        tx.originalAmount = magnitude
+        tx.originalCurrency = foreignISO
+        tx.isConfirmed = true
+        tx.confidenceScore = max(tx.confidenceScore, 0.9)
+
+        do {
+            try context.save()
+            return .resolved
+        } catch {
+            context.rollback()
+            return .saveFailed
+        }
+    }
+
+    /// Lightweight post-refresh reconciliation: resolves every stored unresolved foreign
+    /// transaction for which a direct rate now exists, without touching rows that still lack
+    /// a rate. Each resolution persists atomically and never triggers notifications.
+    @MainActor
+    @discardableResult
+    public static func reconcileUnresolvedForeignIfRateNowAvailable(context: ModelContext) -> Int {
+        guard let all = try? context.fetch(FetchDescriptor<Transaction>()) else { return 0 }
+        var count = 0
+        for tx in all where tx.isUnresolvedForeign {
+            if resolveStoredForeignTransactionIfPossible(tx, context: context) == .resolved {
+                count += 1
+            }
+        }
+        return count
     }
 
     // MARK: - Text Extraction Helpers

@@ -89,8 +89,12 @@ public enum InstallmentService {
             merchant: plan.merchant
         )
         // Each payment carries its own share of the original amount, so the parts still add
-        // up to the purchase in the currency it was made in.
-        let shareOfOriginal: [Double]? = originalAmount.map {
+        // up to the purchase in the currency it was made in. Explicit call-site values win;
+        // otherwise the plan's own foreign metadata keeps later months honest.
+        let shareSource = originalAmount ?? plan.originalTotalAmount
+        let shareCurrency = originalCurrency ?? plan.originalCurrency
+        let shareRate = exchangeRate ?? plan.exchangeRate
+        let shareOfOriginal: [Double]? = shareSource.map {
             paymentAmounts(total: $0, count: plan.numberOfPayments)
         }
 
@@ -108,8 +112,8 @@ public enum InstallmentService {
                 note: "תשלום \(index + 1) מתוך \(plan.numberOfPayments)",
                 buildingId: building,
                 originalAmount: shareOfOriginal.map { $0[index] },
-                originalCurrency: originalCurrency,
-                exchangeRate: exchangeRate,
+                originalCurrency: shareCurrency,
+                exchangeRate: shareRate,
                 installmentPlanId: plan.id,
                 installmentIndex: index + 1
             )

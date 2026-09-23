@@ -422,7 +422,13 @@ struct MoneyCityApp: App {
     private func performAppMaintenance() {
         // Background fetch latest currency exchange rates
         Task {
+            let timestampBefore = FXService.shared.lastUpdatedTimestamp
             await FXService.shared.fetchLatestRatesIfNeeded()
+            // Only when a refresh actually landed: reconcile any unresolved foreign rows a
+            // direct rate may now exist for. Rate-less rows are left untouched.
+            if FXService.shared.lastUpdatedTimestamp > timestampBefore {
+                CurrencyResolutionService.reconcileUnresolvedForeignIfRateNowAvailable(context: DatabaseService.shared.context)
+            }
         }
 
         // Age out stale raw payloads even if no new one has arrived.

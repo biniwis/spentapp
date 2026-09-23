@@ -1245,7 +1245,10 @@ public struct QuickAddSheet: View {
             firstChargeDate: transactionDate,
             category: category,
             lastMaterializedIndex: 0,
-            buildingIdRaw: selectedBuildingId
+            buildingIdRaw: selectedBuildingId,
+            originalTotalAmount: origAmt,
+            originalCurrency: origCurr,
+            exchangeRate: rate
         )
         modelContext.insert(plan)
 

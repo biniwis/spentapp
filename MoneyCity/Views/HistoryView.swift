@@ -37,6 +37,7 @@ public struct HistoryView: View {
     @State private var editingTx: Transaction? = nil
     @State private var selectedMerchantForDetails: String? = nil
     @State private var openSwipeRowID: UUID? = nil
+    @State private var showConversionError: Bool = false
 
     @State private var isSearchExpanded: Bool = false
     @State private var isUpcomingExpanded: Bool = false
@@ -513,6 +514,16 @@ public struct HistoryView: View {
                     }
                 }
             }
+            .alert(
+                l10n.language == .hebrew ? "לא ניתן להמיר עכשיו" : "Can't convert yet",
+                isPresented: $showConversionError
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(l10n.language == .hebrew
+                     ? "שער ההמרה של המטבע הזה עדיין לא זמין. העסקה לא שונתה."
+                     : "There's no exchange rate for this currency yet. The transaction was not changed.")
+            }
         }
     }
 
@@ -611,6 +622,17 @@ public struct HistoryView: View {
                         Text(l10n.language == .hebrew ? "אשר את הסיווג" : "Confirm category")
                     } icon: {
                         MoneyIcon(.checkCircle, size: 18)
+                    }
+                }
+            }
+            if tx.isUnresolvedForeign {
+                Button {
+                    convertNow(tx)
+                } label: {
+                    Label {
+                        Text(l10n.language == .hebrew ? "המר עכשיו" : "Convert now")
+                    } icon: {
+                        MoneyIcon(.exchange, size: 18)
                     }
                 }
             }
@@ -713,6 +735,20 @@ public struct HistoryView: View {
             f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
             f.setLocalizedDateFormatFromTemplate("EdMMM")
             return f.string(from: date)
+        }
+    }
+
+    /// Converts an unresolved foreign transaction on demand. A successful conversion is
+    /// persisted immediately; a missing rate leaves the row untouched and tells the user.
+    private func convertNow(_ tx: Transaction) {
+        switch CurrencyResolutionService.resolveStoredForeignTransactionIfPossible(tx, context: modelContext) {
+        case .resolved:
+            Haptics.notify(.success)
+        case .rateUnavailable, .saveFailed:
+            showConversionError = true
+            Haptics.notify(.warning)
+        case .notForeign:
+            break
         }
     }
 

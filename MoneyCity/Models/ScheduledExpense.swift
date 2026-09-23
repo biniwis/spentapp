@@ -27,6 +27,19 @@ public final class ScheduledExpense: Identifiable {
         materializedAt != nil
     }
 
+    /// Same semantics as `Transaction.isUnresolvedForeign`: still recorded in a foreign
+    /// currency with no verified rate, so it has not been converted into the base currency.
+    public var isUnresolvedForeign: Bool {
+        guard let origCurr = originalCurrency, !origCurr.isEmpty else { return false }
+        let baseCode = UserDefaults.standard.string(forKey: "app_currency_pref") ?? "ILS"
+        let baseSymbol = CurrencyType(rawValue: baseCode).symbol
+        let origNormalized = CurrencyResolutionService.normalizeToISOCode(origCurr) ?? origCurr.uppercased()
+        if origNormalized != baseCode && (exchangeRate == nil || exchangeRate == 0) && currency != baseSymbol && currency != baseCode {
+            return true
+        }
+        return false
+    }
+
     public var buildingId: String {
         if let raw = buildingIdRaw, !raw.isEmpty {
             return CityBuilding.normalizeBuildingId(raw, for: category)

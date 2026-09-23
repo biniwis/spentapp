@@ -82,7 +82,12 @@ public struct SettingsSheet: View {
                                         let old = l10n.baseCurrency
                                         guard old != newCurr else { return }
                                         do {
-                                            try BaseCurrencyMigrationService.migrateBaseCurrency(from: old, to: newCurr, context: modelContext)
+                                            try BaseCurrencyMigrationService.migrateBaseCurrency(
+    from: old,
+    to: newCurr,
+    context: modelContext,
+    markBackupDirty: { CloudBackupService.shared.markDirty() }
+)
                                             Haptics.notify(.success)
                                         } catch {
                                             // The picker stays on the old currency: migrateBaseCurrency writes the

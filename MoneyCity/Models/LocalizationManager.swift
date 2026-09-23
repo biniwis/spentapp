@@ -206,8 +206,8 @@ public struct CurrencyType: Hashable, Identifiable, Codable, Sendable, RawRepres
         pattern.rawValue == value.rawValue
     }
 
-    /// Rate relative to base ILS (1 unit of currency = X Shekels)
-    public var rateToILS: Double {
+    /// Rate relative to base ILS (1 unit of currency = X Shekels). Returns nil when no rate exists.
+    public var rateToILS: Double? {
         FXService.rateToILS(for: self)
     }
 

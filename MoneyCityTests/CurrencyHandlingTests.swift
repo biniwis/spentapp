@@ -9,12 +9,14 @@ final class CurrencyHandlingTests: XCTestCase {
         await MainActor.run { LocalizationManager.shared.baseCurrency = .ils }
         UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
         UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+        UserDefaults.standard.removeObject(forKey: "monthly_budget")
     }
 
     override func tearDown() async throws {
         await MainActor.run { LocalizationManager.shared.baseCurrency = .ils }
         UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
         UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+        UserDefaults.standard.removeObject(forKey: "monthly_budget")
         try await super.tearDown()
     }
 
@@ -367,7 +369,7 @@ final class CurrencyHandlingTests: XCTestCase {
         // The transaction amount must NOT remain 10,000 when currency becomes EUR
         XCTAssertEqual(tx.currency, "€")
         XCTAssertNotEqual(tx.amount, 10_000.0, "10,000 ILS must not be relabeled as €10,000")
-        let eurRate = FXService.rateToILS(for: .eur)
+        let eurRate = FXService.rateToILS(for: "EUR") ?? 3.95
         let expectedAmount = (10_000.0 / eurRate * 100).rounded() / 100
         XCTAssertEqual(tx.amount, expectedAmount, accuracy: 1.0)
     }
@@ -558,6 +560,293 @@ final class CurrencyHandlingTests: XCTestCase {
         XCTAssertEqual(scheduled.currency, "€")
         XCTAssertEqual(budget.monthlyLimit, 100.0, accuracy: 0.01)
         XCTAssertEqual(LocalizationManager.shared.baseCurrency, .eur)
+    }
+
+    // MARK: - 22. Monthly budget migrates with the base currency
+
+    @MainActor
+    func testMonthlyBudgetMigratesWithBaseCurrency() throws {
+        let container = try Self.migrationContainer()
+        let context = container.mainContext
+        UserDefaults.standard.set(8000.0, forKey: "monthly_budget")
+
+        try BaseCurrencyMigrationService.migrateBaseCurrency(
+            from: .ils,
+            to: .eur,
+            context: context,
+            rateProvider: { _, _ in 0.25 }
+        )
+
+        XCTAssertEqual(UserDefaults.standard.double(forKey: "monthly_budget"), 2000.0, accuracy: 0.01)
+        XCTAssertEqual(LocalizationManager.shared.baseCurrency, .eur)
+    }
+
+    // MARK: - 23. Monthly budget alone counts as financial data
+
+    @MainActor
+    func testMonthlyBudgetOnlyCountsAsFinancialData() throws {
+        let container = try Self.migrationContainer()
+        let context = container.mainContext
+        XCTAssertFalse(try BaseCurrencyMigrationService.hasFinancialData(context: context))
+
+        UserDefaults.standard.set(8000.0, forKey: "monthly_budget")
+        XCTAssertTrue(try BaseCurrencyMigrationService.hasFinancialData(context: context))
+    }
+
+    // MARK: - 24. Monthly budget restored untouched when migration fails
+
+    @MainActor
+    func testMonthlyBudgetRestoredWhenMigrationFails() throws {
+        let container = try Self.migrationContainer()
+        let context = container.mainContext
+        UserDefaults.standard.set(8000.0, forKey: "monthly_budget")
+        let tx = Transaction(amount: 10_000.0, currency: "₪", merchant: "Rent", category: .housing)
+        context.insert(tx)
+        try context.save()
+
+        do {
+            try BaseCurrencyMigrationService.migrateBaseCurrency(
+                from: .ils,
+                to: CurrencyType(rawValue: "XYZ"),
+                context: context,
+                rateProvider: { _, _ in nil }
+            )
+            XCTFail("Migration with no rate must throw")
+        } catch BaseCurrencyMigrationService.MigrationError.rateUnavailable {
+            // Expected.
+        }
+
+        XCTAssertEqual(UserDefaults.standard.double(forKey: "monthly_budget"), 8000.0)
+        XCTAssertEqual(tx.amount, 10_000.0)
+        XCTAssertEqual(tx.currency, "₪")
+        XCTAssertEqual(LocalizationManager.shared.baseCurrency, .ils)
+    }
+
+    // MARK: - 25. Unresolved foreign converts from its own currency during migration
+
+    @MainActor
+    func testUnresolvedForeignUsesOriginalCurrencyDuringBaseMigration() throws {
+        let container = try Self.migrationContainer()
+        let context = container.mainContext
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+
+        // A TRY transaction that entered with no usable rate is still sitting in ₺.
+        let tx = Transaction(
+            amount: 500.0,
+            currency: "₺",
+            merchant: "Taxi Bodrum",
+            category: .transport,
+            originalAmount: 500.0,
+            originalCurrency: "TRY",
+            exchangeRate: nil
+        )
+        context.insert(tx)
+        try context.save()
+        XCTAssertTrue(tx.isUnresolvedForeign)
+
+        // TRY -> EUR has a direct rate; the old-base (ILS -> EUR) rate must NOT be applied
+        // to an unresolved transaction as a stand-in.
+        try BaseCurrencyMigrationService.migrateBaseCurrency(
+            from: .ils,
+            to: .eur,
+            context: context,
+            rateProvider: { from, to in
+                if from == "TRY" && to == "EUR" { return 1.0 }
+                if from == "ILS" { return 0.25 }
+                return nil
+            }
+        )
+
+        XCTAssertEqual(tx.currency, "€")
+        XCTAssertEqual(tx.amount, 500.0, accuracy: 0.01)
+        XCTAssertNotNil(tx.exchangeRate)
+        XCTAssertEqual(tx.originalAmount, 500.0)
+        XCTAssertEqual(tx.originalCurrency, "TRY")
+        XCTAssertFalse(tx.isUnresolvedForeign)
+        XCTAssertEqual(LocalizationManager.shared.baseCurrency, .eur)
+    }
+
+    // MARK: - 26. Unresolved foreign with no direct rate aborts the whole migration
+
+    @MainActor
+    func testUnresolvedForeignBlocksBaseMigrationWhenDirectRateUnavailable() throws {
+        let container = try Self.migrationContainer()
+        let context = container.mainContext
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+
+        let tx = Transaction(
+            amount: 500.0,
+            currency: "₺",
+            merchant: "Taxi Bodrum",
+            category: .transport,
+            originalAmount: 500.0,
+            originalCurrency: "TRY",
+            exchangeRate: nil
+        )
+        context.insert(tx)
+        let scheduled = ScheduledExpense(
+            merchant: "Hotel Bodrum",
+            amount: 200.0,
+            currency: "₺",
+            category: .housing,
+            scheduledFor: Self.futureDate(),
+            originalAmount: 200.0,
+            originalCurrency: "TRY",
+            exchangeRate: nil
+        )
+        context.insert(scheduled)
+        try context.save()
+
+        // The direct TRY -> EUR leg has no rate: the migration must abort rather than apply
+        // an invented or stand-in conversion.
+        do {
+            try BaseCurrencyMigrationService.migrateBaseCurrency(
+                from: .ils,
+                to: .eur,
+                context: context,
+                rateProvider: { from, to in
+                    if from == "ILS" { return 0.25 }
+                    return nil
+                }
+            )
+            XCTFail("Migration with an unresolved foreign row lacking a direct rate must abort")
+        } catch BaseCurrencyMigrationService.MigrationError.rateUnavailable {
+            // Expected.
+        }
+
+        XCTAssertEqual(tx.amount, 500.0)
+        XCTAssertEqual(tx.currency, "₺")
+        XCTAssertEqual(scheduled.amount, 200.0)
+        XCTAssertEqual(scheduled.currency, "₺")
+        XCTAssertEqual(LocalizationManager.shared.baseCurrency, .ils)
+    }
+
+    // MARK: - 27. Resolve a stored foreign transaction once a rate becomes available
+
+    @MainActor
+    func testResolveStoredForeignTransactionWhenRateBecomesAvailable() throws {
+        let schema = Schema([Transaction.self])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = container.mainContext
+
+        let tx = Transaction(
+            amount: 500.0,
+            currency: "₺",
+            merchant: "Taxi Bodrum",
+            category: .transport,
+            confidenceScore: 0.4,
+            isConfirmed: false,
+            originalAmount: 500.0,
+            originalCurrency: "TRY",
+            exchangeRate: nil
+        )
+        context.insert(tx)
+        try context.save()
+
+        let outcome = CurrencyResolutionService.resolveStoredForeignTransactionIfPossible(
+            tx,
+            context: context,
+            baseCurrency: .eur,
+            rateProvider: { from, to in
+                if from == "TRY" && to == "EUR" { return 1.0 }
+                return nil
+            }
+        )
+
+        XCTAssertEqual(outcome, .resolved)
+        XCTAssertEqual(tx.amount, 500.0, accuracy: 0.01)
+        XCTAssertEqual(tx.currency, "€")
+        XCTAssertNotNil(tx.exchangeRate)
+        XCTAssertFalse(tx.isUnresolvedForeign)
+        XCTAssertTrue(tx.isConfirmed)
+    }
+
+    // MARK: - 28. Resolution leaves data untouched when the rate is still missing
+
+    @MainActor
+    func testResolveStoredForeignTransactionLeavesDataUntouchedWhenRateMissing() throws {
+        let schema = Schema([Transaction.self])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let context = container.mainContext
+
+        let tx = Transaction(
+            amount: 500.0,
+            currency: "₺",
+            merchant: "Taxi Bodrum",
+            category: .transport,
+            confidenceScore: 0.4,
+            isConfirmed: false,
+            originalAmount: 500.0,
+            originalCurrency: "TRY",
+            exchangeRate: nil
+        )
+        context.insert(tx)
+        try context.save()
+
+        let outcome = CurrencyResolutionService.resolveStoredForeignTransactionIfPossible(
+            tx,
+            context: context,
+            baseCurrency: .eur,
+            rateProvider: { _, _ in nil }
+        )
+
+        XCTAssertEqual(outcome, .rateUnavailable)
+        XCTAssertEqual(tx.amount, 500.0)
+        XCTAssertEqual(tx.currency, "₺")
+        XCTAssertNil(tx.exchangeRate)
+        XCTAssertEqual(tx.originalCurrency, "TRY")
+        XCTAssertFalse(tx.isConfirmed)
+        XCTAssertTrue(tx.isUnresolvedForeign)
+    }
+
+    // MARK: - 29. CurrencyType rate must never fall back to 1.0
+
+    func testCurrencyTypeRateDoesNotFallbackToOne() {
+        let unknown = CurrencyType(rawValue: "XYZ")
+        XCTAssertNil(unknown.rateToILS, "An unknown currency must not report a rate of 1.0")
+        XCTAssertNil(FXService.rateToILS(for: unknown))
+        XCTAssertNil(FXService.rateToILS(for: "XYZ"))
+        // USD always carries a bundled default rate — it is a real currency, not the 1.0 bug.
+        XCTAssertNotNil(FXService.rateToILS(for: "USD"))
+    }
+
+    // MARK: - 30. Successful migration marks the backup dirty; failed migration does not
+
+    @MainActor
+    func testSuccessfulMigrationMarksBackupDirty() throws {
+        let container = try Self.migrationContainer()
+        let context = container.mainContext
+
+        let tx = Transaction(amount: 10_000.0, currency: "₪", merchant: "Rent", category: .housing)
+        context.insert(tx)
+        try context.save()
+
+        var dirtyCalls = 0
+        try BaseCurrencyMigrationService.migrateBaseCurrency(
+            from: .ils,
+            to: .eur,
+            context: context,
+            rateProvider: { _, _ in 0.25 },
+            markBackupDirty: { dirtyCalls += 1 }
+        )
+        XCTAssertEqual(dirtyCalls, 1)
+
+        dirtyCalls = 0
+        do {
+            try BaseCurrencyMigrationService.migrateBaseCurrency(
+                from: .eur,
+                to: .ils,
+                context: context,
+                rateProvider: { _, _ in nil },
+                markBackupDirty: { dirtyCalls += 1 }
+            )
+            XCTFail("Expected migration to fail")
+        } catch BaseCurrencyMigrationService.MigrationError.rateUnavailable {
+            // Expected.
+        }
+        XCTAssertEqual(dirtyCalls, 0, "A failed migration must not mark the backup dirty")
     }
 
     // MARK: - Helpers

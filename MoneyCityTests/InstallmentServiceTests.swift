@@ -164,4 +164,47 @@ final class InstallmentServiceTests: XCTestCase {
         let dueStillInMarch = InstallmentService.makeDueTransactions(for: plan, asOf: date(2026, 3, 25), calendar: cal)
         XCTAssertTrue(dueStillInMarch.isEmpty)
     }
+
+    // MARK: - Foreign-purchase metadata survives into later materializations
+
+    func testFutureInstallmentPreservesOriginalCurrencyMetadata() {
+        let plan = InstallmentPlan(
+            merchant: "Apple Store",
+            totalAmount: 3000,
+            currency: "₪",
+            numberOfPayments: 3,
+            firstChargeDate: date(2026, 3, 10),
+            category: .shopping,
+            originalTotalAmount: 800.0,
+            originalCurrency: "USD",
+            exchangeRate: 3.75
+        )
+
+        let txs = InstallmentService.makeTransactions(for: plan, calendar: cal)
+        XCTAssertEqual(txs.count, 3)
+        XCTAssertEqual(txs.reduce(0) { $0 + $1.amount }, 3000.0, accuracy: 0.0001)
+
+        // Every payment — including future months that were materialized after the plan was
+        // created — carries its share of the original purchase in its original currency. The
+        // shares follow the same agorah-split convention as the local amounts (first payment
+        // absorbs the rounding remainder).
+        let originalShares = InstallmentService.paymentAmounts(total: 800.0, count: 3)
+        for (index, tx) in txs.enumerated() {
+            XCTAssertEqual(tx.originalCurrency, "USD")
+            XCTAssertEqual(tx.exchangeRate, 3.75)
+            XCTAssertEqual(tx.originalAmount ?? 0, originalShares[index], accuracy: 0.0001)
+        }
+        XCTAssertEqual(txs.reduce(0) { $0 + ($1.originalAmount ?? 0) }, 800.0, accuracy: 0.0001)
+
+        // A domestic plan with no metadata must stay clean (no fabricated metadata).
+        let domestic = InstallmentPlan(
+            merchant: "KSP",
+            totalAmount: 600,
+            numberOfPayments: 3,
+            firstChargeDate: date(2026, 3, 10),
+            category: .shopping
+        )
+        let domesticTxs = InstallmentService.makeTransactions(for: domestic, calendar: cal)
+        XCTAssertTrue(domesticTxs.allSatisfy { $0.originalCurrency == nil && $0.exchangeRate == nil })
+    }
 }

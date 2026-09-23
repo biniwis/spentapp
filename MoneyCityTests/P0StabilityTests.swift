@@ -210,7 +210,9 @@ final class P0StabilityTests: XCTestCase {
         let res3_isForeign = CurrencyType.ils != CurrencyType.usd
         let res3_amount = res3_isForeign ? (CurrencyType.convert(amount: 100, from: .ils, to: .usd) ?? 0) : 100.0
         let res3_curr = CurrencyType.usd.symbol
-        let expectedUSD = 100.0 / FXService.rateToILS(for: .usd)
+        // USD always has the bundled default rate 3.65 when no cached rate exists.
+        let usdRate = FXService.rateToILS(for: "USD") ?? 3.65
+        let expectedUSD = 100.0 / usdRate
         XCTAssertEqual(res3_amount, expectedUSD, accuracy: 0.001)
         XCTAssertEqual(res3_curr, "$")
         XCTAssertTrue(res3_isForeign)
@@ -219,7 +221,7 @@ final class P0StabilityTests: XCTestCase {
         let res4_isForeign = CurrencyType.usd != CurrencyType.ils
         let res4_amount = res4_isForeign ? (CurrencyType.convert(amount: 100, from: .usd, to: .ils) ?? 0) : 100.0
         let res4_curr = CurrencyType.ils.symbol
-        let expectedILS = 100.0 * FXService.rateToILS(for: .usd)
+        let expectedILS = 100.0 * usdRate
         XCTAssertEqual(res4_amount, expectedILS, accuracy: 0.001)
         XCTAssertEqual(res4_curr, "₪")
         XCTAssertTrue(res4_isForeign)
@@ -228,7 +230,8 @@ final class P0StabilityTests: XCTestCase {
         let res5_isForeign = CurrencyType.usd != CurrencyType.eur
         let res5_amount = res5_isForeign ? (CurrencyType.convert(amount: 100, from: .usd, to: .eur) ?? 0) : 100.0
         let res5_curr = CurrencyType.eur.symbol
-        let expectedEUR = (100.0 * FXService.rateToILS(for: .usd)) / FXService.rateToILS(for: .eur)
+        let eurRate = FXService.rateToILS(for: "EUR") ?? 3.95
+        let expectedEUR = (100.0 * usdRate) / eurRate
         XCTAssertEqual(res5_amount, expectedEUR, accuracy: 0.001)
         XCTAssertEqual(res5_curr, "€")
         XCTAssertTrue(res5_isForeign)

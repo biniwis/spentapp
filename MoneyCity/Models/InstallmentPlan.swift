@@ -21,6 +21,13 @@ public final class InstallmentPlan: Identifiable {
     /// The building assigned in the 3D diorama.
     public var buildingIdRaw: String? = nil
 
+    // Foreign-currency metadata for the whole purchase, mirroring Transaction. Without it a
+    // plan entered in a foreign currency remembered its original amount only for the first
+    // due payments; the later months decayed into plain base-currency charges.
+    public var originalTotalAmount: Double? = nil
+    public var originalCurrency: String? = nil
+    public var exchangeRate: Double? = nil
+
     public var category: SpendingCategory {
         get { SpendingCategory(rawValue: categoryRawValue) ?? .shopping }
         set { categoryRawValue = newValue.rawValue }
@@ -40,7 +47,10 @@ public final class InstallmentPlan: Identifiable {
         category: SpendingCategory,
         createdAt: Date = Date(),
         lastMaterializedIndex: Int = 0,
-        buildingIdRaw: String? = nil
+        buildingIdRaw: String? = nil,
+        originalTotalAmount: Double? = nil,
+        originalCurrency: String? = nil,
+        exchangeRate: Double? = nil
     ) {
         self.id = id
         self.merchant = InputSanitizer.sanitizeSingleLine(merchant, maxLength: InputSanitizer.maxMerchantLength)
@@ -52,5 +62,8 @@ public final class InstallmentPlan: Identifiable {
         self.createdAt = createdAt
         self.lastMaterializedIndex = max(0, min(self.numberOfPayments, lastMaterializedIndex))
         self.buildingIdRaw = buildingIdRaw.map { InputSanitizer.sanitizeIdentifier($0) }
+        self.originalTotalAmount = originalTotalAmount.flatMap { MoneyAmount.sanitized($0) }
+        self.originalCurrency = originalCurrency.map { InputSanitizer.sanitizeSingleLine($0, maxLength: InputSanitizer.maxCurrencyLength) }
+        self.exchangeRate = exchangeRate.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
     }
 }

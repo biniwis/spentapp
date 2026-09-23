@@ -489,6 +489,9 @@ public enum DataPortabilityService {
         public var createdAt: Date
         public var lastMaterializedIndex: Int?
         public var buildingId: String?
+        public var originalTotalAmount: Double?
+        public var originalCurrency: String?
+        public var exchangeRate: Double?
 
         public init(
             id: UUID,
@@ -500,7 +503,10 @@ public enum DataPortabilityService {
             category: String,
             createdAt: Date,
             lastMaterializedIndex: Int? = nil,
-            buildingId: String? = nil
+            buildingId: String? = nil,
+            originalTotalAmount: Double? = nil,
+            originalCurrency: String? = nil,
+            exchangeRate: Double? = nil
         ) {
             self.id = id
             self.merchant = merchant
@@ -512,6 +518,9 @@ public enum DataPortabilityService {
             self.createdAt = createdAt
             self.lastMaterializedIndex = lastMaterializedIndex
             self.buildingId = buildingId
+            self.originalTotalAmount = originalTotalAmount
+            self.originalCurrency = originalCurrency
+            self.exchangeRate = exchangeRate
         }
     }
 
@@ -805,7 +814,10 @@ public enum DataPortabilityService {
                     firstChargeDate: $0.firstChargeDate, category: $0.categoryRawValue,
                     createdAt: $0.createdAt,
                     lastMaterializedIndex: $0.lastMaterializedIndex,
-                    buildingId: $0.buildingIdRaw
+                    buildingId: $0.buildingIdRaw,
+                    originalTotalAmount: $0.originalTotalAmount,
+                    originalCurrency: $0.originalCurrency,
+                    exchangeRate: $0.exchangeRate
                 )
             },
             savingsGoals: try all(SavingsGoal.self).map {
@@ -1118,7 +1130,10 @@ public enum DataPortabilityService {
                 category: category,
                 createdAt: createdDate,
                 lastMaterializedIndex: lastMat,
-                buildingIdRaw: validBuildingId
+                buildingIdRaw: validBuildingId,
+                originalTotalAmount: dto.originalTotalAmount,
+                originalCurrency: dto.originalCurrency,
+                exchangeRate: dto.exchangeRate
             )
             context.insert(p)
             planIds.insert(dto.id)

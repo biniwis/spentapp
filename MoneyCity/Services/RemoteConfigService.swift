@@ -41,7 +41,7 @@ public struct RemoteConfigRoot: Codable, Equatable, Sendable {
             features: [
                 "notifications": true,
                 "automaticCapture": true,
-                "receiptScanner": true,
+                "receiptScanner": false,
                 "weeklyAdditions": true,
                 "savingsGoals": true
             ],

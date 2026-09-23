@@ -406,10 +406,8 @@ public struct ThreeDioramaView: ViewRepresentable {
         let webView = DioramaWebView(frame: .zero, configuration: config)
         context.coordinator.observeLifecycle(of: webView)
         webView.navigationDelegate = context.coordinator
-        var resourceName = mapStyle.resourceName
         #if DEBUG
         if let session = worldPreviewSession {
-            resourceName = session.world.resourceName
             session.attach(webView)
         }
         #endif
@@ -424,6 +422,27 @@ public struct ThreeDioramaView: ViewRepresentable {
         #endif
         
         // Load with explicit UTF-8 encoding so Hebrew and non-ASCII strings never degrade to question marks
+        loadDioramaResource(into: webView, resourceName: resolvedResourceName)
+        
+        return webView
+    }
+    
+    /// The bundled HTML the current view must use — the map's own resource, or the
+    /// Design Lab override when one is active. Recovery must never fall back to a
+    /// hard-coded default world.
+    private var resolvedResourceName: String {
+        var resourceName = mapStyle.resourceName
+        #if DEBUG
+        if let session = worldPreviewSession {
+            resourceName = session.world.resourceName
+        }
+        #endif
+        return resourceName
+    }
+    
+    /// Single place that loads the bundled city HTML into a web view. Both the initial
+    /// creation and renderer recovery go through here so they can never drift apart.
+    private func loadDioramaResource(into webView: WKWebView, resourceName: String) {
         if let htmlURL = Bundle.main.url(forResource: resourceName, withExtension: "html"),
            let htmlData = try? Data(contentsOf: htmlURL) {
             webView.load(htmlData, mimeType: "text/html", characterEncodingName: "UTF-8", baseURL: htmlURL.deletingLastPathComponent())
@@ -441,13 +460,17 @@ public struct ThreeDioramaView: ViewRepresentable {
             }
             #endif
         }
-        
-        return webView
     }
     
     private func updateData(in webView: WKWebView, coordinator: Coordinator) {
         guard !coordinator.isDisposed else { return }
         let paused = isPaused || !coordinator.appIsActive
+        // The renderer died while the city was hidden; do not send JS into a dead
+        // Web Content Process. Restore the scene now that the city is actually visible.
+        if coordinator.needsRendererRecovery && !paused {
+            coordinator.recoverRendererIfNeeded()
+            return
+        }
         let currentHour = timeOfDayOverride ?? Self.currentDeviceLocalHour
         let isOverride = timeOfDayOverride != nil
         let animateTime = !isOverride && !coordinator.isInitialDelivery
@@ -503,10 +526,25 @@ public struct ThreeDioramaView: ViewRepresentable {
         js += "\nwindow._districtSample = \(isDistrictSample ? "true" : "false"); if(window.setDistrictSample){window.setDistrictSample(window._districtSample);}"
         guard coordinator.lastSentPayload != js else { return }
         coordinator.lastSentPayload = js
+        let recoveryGenerationAtSend = coordinator.recoveryGeneration
         webView.evaluateJavaScript(js) { [weak coordinator] _, error in
             if let error {
                 if coordinator?.lastSentPayload == js { coordinator?.lastSentPayload = nil }
                 MoneyCityLog.error("Diorama delivery failed: \(error.localizedDescription)")
+                // Only a dead Web Content Process / invalidated web view justifies a reload.
+                // Any other JS error is a regular bug and must not trigger recovery, or a
+                // transient JS mistake could cause an endless reload loop.
+                guard let coordinator else { return }
+                // If a recovery reload already started after this script was sent, the error
+                // is stale — ignore it instead of reloading a scene that is being restored.
+                guard coordinator.recoveryGeneration == recoveryGenerationAtSend else { return }
+                let nsError = error as NSError
+                if nsError.domain == WKErrorDomain,
+                   let code = WKError.Code(rawValue: nsError.code),
+                   code == .webContentProcessTerminated || code == .webViewInvalidated {
+                    coordinator.needsRendererRecovery = true
+                    coordinator.recoverRendererIfNeeded()
+                }
             }
         }
     }
@@ -520,6 +558,14 @@ public struct ThreeDioramaView: ViewRepresentable {
         private var timeTimer: Timer?
         private weak var observedWebView: WKWebView?
         private(set) var isDisposed = false
+        /// Set when the Web Content Process died and the scene needs a reload before it can
+        /// render again. Stays set while recovery is deferred (app background / city hidden).
+        var needsRendererRecovery = false
+        /// Set only while a recovery reload is actually in flight; blocks duplicate reloads.
+        var isRecoveringRenderer = false
+        /// Bumped every time a recovery reload starts. A JS delivery error that belongs to a
+        /// script sent before a reload must be ignored — the reload already superseded it.
+        var recoveryGeneration = 0
         private(set) var appIsActive: Bool = {
             #if canImport(UIKit)
             return UIApplication.shared.applicationState == .active
@@ -535,7 +581,7 @@ public struct ThreeDioramaView: ViewRepresentable {
 
         func startTimeTimer() {
             stopTimeTimer()
-            guard !isDisposed, appIsActive, !parent.isPaused else { return }
+            guard !isDisposed, appIsActive, !parent.isPaused, !isRecoveringRenderer else { return }
             timeTimer = Timer.scheduledTimer(withTimeInterval: 300.0, repeats: true) { [weak self] _ in
                 guard let self = self, !self.isDisposed, self.appIsActive, !self.parent.isPaused else { return }
                 guard self.parent.timeOfDayOverride == nil else { return }
@@ -573,7 +619,12 @@ public struct ThreeDioramaView: ViewRepresentable {
         }
         @objc private func appDidBecomeActive() {
             appIsActive = true
-            refreshLifecycle()
+            if needsRendererRecovery {
+                recoverRendererIfNeeded()
+            } else {
+                refreshLifecycle()
+            }
+            // The timer guard keeps it off while a recovery reload is in flight.
             startTimeTimer()
         }
         @objc private func powerChanged() {
@@ -584,8 +635,53 @@ public struct ThreeDioramaView: ViewRepresentable {
             guard !isDisposed, let webView = observedWebView else { return }
             parent.updateData(in: webView, coordinator: self)
         }
+        /// Pure gate for renderer recovery. Kept internal (not private) so the decision matrix
+        /// can be unit-tested without faking a WKWebView.
+        static func shouldRecover(
+            isDisposed: Bool,
+            needsRendererRecovery: Bool,
+            isRecoveringRenderer: Bool,
+            appIsActive: Bool,
+            isPaused: Bool
+        ) -> Bool {
+            guard !isDisposed, needsRendererRecovery, !isRecoveringRenderer, appIsActive, !isPaused else { return false }
+            return true
+        }
+        /// Reloads the same bundled HTML after the Web Content Process was killed, but only
+        /// while the city is actually visible and the app is active. When it is not, the
+        /// pending flag stays set so the scene restores the moment it should be seen again.
+        func recoverRendererIfNeeded() {
+            guard !isDisposed else { return }
+            guard Self.shouldRecover(
+                isDisposed: isDisposed,
+                needsRendererRecovery: needsRendererRecovery,
+                isRecoveringRenderer: isRecoveringRenderer,
+                appIsActive: appIsActive,
+                isPaused: parent.isPaused
+            ) else { return }
+            guard let webView = observedWebView else { return }
+
+            needsRendererRecovery = false
+            isRecoveringRenderer = true
+            recoveryGeneration &+= 1
+            lastSentPayload = nil
+            isInitialDelivery = true
+
+            MoneyCityLog.error("Diorama renderer recovery started")
+            DispatchQueue.main.async { [weak self] in
+                NotificationCenter.default.post(name: .dioramaRecoveryStarted, object: nil)
+            }
+
+            // Reload the bundled HTML directly (never webView.reload), so recovery reuses the
+            // exact same resource and map style the view was created with. The configuration's
+            // atDocumentStart user script re-injects the seed payload on this load, and the
+            // didFinish handler re-delivers all current city state.
+            parent.loadDioramaResource(into: webView, resourceName: parent.resolvedResourceName)
+        }
         func tearDown(_ webView: WKWebView) {
             isDisposed = true
+            needsRendererRecovery = false
+            isRecoveringRenderer = false
             stopTimeTimer()
             NotificationCenter.default.removeObserver(self)
             webView.evaluateJavaScript("if(window.disposeDioramaRendering){window.disposeDioramaRendering();}", completionHandler: nil)
@@ -605,6 +701,13 @@ public struct ThreeDioramaView: ViewRepresentable {
         }
         
         public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // A recovery reload finished: release the in-flight guard so a future
+            // termination can be handled, and let updateData re-deliver all current state.
+            if isRecoveringRenderer {
+                isRecoveringRenderer = false
+                needsRendererRecovery = false
+                MoneyCityLog.error("Diorama renderer recovery completed")
+            }
             // The page was (re)loaded, so whatever was sent before is gone.
             lastSentPayload = nil
             parent.updateData(in: webView, coordinator: self)
@@ -635,16 +738,52 @@ public struct ThreeDioramaView: ViewRepresentable {
         #if DEBUG
         public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             parent.worldPreviewSession?.fail(error.localizedDescription)
+            didFailRecoveryLoadIfNeeded(error)
         }
 
         public func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             parent.worldPreviewSession?.fail(error.localizedDescription)
-        }
-
-        public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-            parent.worldPreviewSession?.fail("The 3D renderer stopped. Reload the preview to continue.")
+            didFailRecoveryLoadIfNeeded(error)
         }
         #endif
+
+        /// A recovery reload that failed must leave recovery pending again so the next visible
+        /// city update retries — without queuing an immediate second reload (no reload loop).
+        private func didFailRecoveryLoadIfNeeded(_ error: Error) {
+            guard !isDisposed, isRecoveringRenderer else { return }
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled { return }
+            isRecoveringRenderer = false
+            needsRendererRecovery = true
+            MoneyCityLog.error("Diorama renderer recovery failed: \(error.localizedDescription)")
+        }
+
+        /// iOS can kill the Web Content Process while the app is backgrounded or under memory
+        /// pressure. Detection runs in production: the surviving SwiftUI view would otherwise
+        /// keep sending JavaScript into a dead renderer and show a blank city until the app is
+        /// force-quit. Recovery itself is deferred until the city is genuinely visible again.
+        public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            guard !isDisposed else { return }
+
+            lastSentPayload = nil
+            needsRendererRecovery = true
+            isRecoveringRenderer = false
+            stopTimeTimer()
+
+            MoneyCityLog.error("Diorama renderer process terminated")
+
+            #if DEBUG
+            parent.worldPreviewSession?.fail("The 3D renderer stopped. Automatic recovery scheduled.")
+            #endif
+
+            recoverRendererIfNeeded()
+            if needsRendererRecovery {
+                let reason = parent.isPaused
+                    ? "because scene is paused"
+                    : (!appIsActive ? "because app is inactive" : "because renderer is unavailable")
+                MoneyCityLog.error("Diorama recovery deferred \(reason)")
+            }
+        }
         
         public func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "dioramaError" {

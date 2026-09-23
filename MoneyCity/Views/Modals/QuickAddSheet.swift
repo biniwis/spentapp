@@ -104,6 +104,7 @@ public struct QuickAddSheet: View {
     @State private var transactionDate = Date()
     @State private var tempSelectedDate = Date()
     @State private var showDatePickerOverlay = false
+    @State private var showCurrencyPickerSheet = false
     @State private var showCategoryPickerSheet = false
     @State private var categoryPickerSubcategoryCategory: SpendingCategory? = nil
     @State private var amountPunchScale: CGFloat = 1.0
@@ -200,23 +201,13 @@ public struct QuickAddSheet: View {
                     VStack(spacing: 0) {
                         // ── 1. Hero Amount Display (Reference: ₪0.00 with cursor) ──
                         HStack(alignment: .center, spacing: 6) {
-                            Menu {
-                                ForEach(CurrencyType.allCases) { curr in
-                                    Button {
-                                        Haptics.selection()
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                            selectedCurrency = curr
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Text(l10n.language == .hebrew ? curr.displayNameHebrew : curr.displayNameEnglish)
-                                            if selectedCurrency == curr {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
+                            Button(action: {
+                                Haptics.selection()
+                                dismissKeyboard()
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                    showCurrencyPickerSheet = true
                                 }
-                            } label: {
+                            }) {
                                 HStack(spacing: 3) {
                                     Text(selectedCurrency.symbol)
                                         .font(.system(size: displayAmountFontSize, weight: .bold, design: .rounded))
@@ -233,6 +224,7 @@ public struct QuickAddSheet: View {
                                 .padding(.vertical, 2)
                                 .background(Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
                             }
+                            .buttonStyle(.plain)
                             .bouncyPress(scale: 0.94)
                             .accessibilityLabel(l10n.language == .hebrew ? "החלף מטבע" : "Change currency")
 
@@ -321,6 +313,22 @@ public struct QuickAddSheet: View {
                     }
                 }
                 .scrollDismissesKeyboard(.immediately)
+
+                // Modal Popup Overlay for Currency Selection (no page scrolling, fast modal popup)
+                if showCurrencyPickerSheet {
+                    Color.black.opacity(0.28)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                showCurrencyPickerSheet = false
+                            }
+                        }
+                        .transition(.opacity)
+
+                    currencyPickerModalView
+                        .transition(.scale(scale: 0.94).combined(with: .opacity))
+                        .zIndex(100)
+                }
 
                 // Modal Popup Overlay for Category Selection (fast popup, no page scrolling)
                 if showCategoryPickerSheet {
@@ -609,6 +617,105 @@ public struct QuickAddSheet: View {
         }
         .buttonStyle(.plain)
         .bouncyPress(scale: 0.95)
+    }
+
+    // MARK: - Currency Picker Popup Modal (Responsive Content Height)
+    @ViewBuilder @MainActor
+    private var currencyPickerModalView: some View {
+        VStack(spacing: 0) {
+            // Header: Editorial Title + Close Button
+            HStack {
+                Text(l10n.language == .hebrew ? "בחר מטבע" : "Select Currency")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+
+                Spacer()
+
+                Button(action: {
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        showCurrencyPickerSheet = false
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(width: 32, height: 32)
+                        .background(Color.black.opacity(0.05), in: Circle())
+                }
+                .buttonStyle(.plain)
+                .bouncyPress(scale: 0.92)
+                .accessibilityLabel(l10n.language == .hebrew ? "סגור" : "Close")
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 2)
+            .padding(.bottom, 12)
+
+            // Scrollable Vertical Currency List (ScrollView outside the sheet's own ScrollView)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 8) {
+                    ForEach(CurrencyType.allCases) { curr in
+                        currencyRow(for: curr)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .padding(20)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(Color.black.opacity(0.04), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.09), radius: 24, y: 10)
+        .frame(maxWidth: 420)
+        .padding(.horizontal, 20)
+        .frame(maxHeight: min(UIScreen.main.bounds.height * 0.78, 600))
+    }
+
+    @ViewBuilder @MainActor
+    private func currencyRow(for curr: CurrencyType) -> some View {
+        Button(action: {
+            Haptics.selection()
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                selectedCurrency = curr
+            }
+            showCurrencyPickerSheet = false
+        }) {
+            HStack(spacing: 16) {
+                Text(curr.symbol)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .frame(width: 44, height: 44)
+                    .background(Color.primaryBlue.opacity(0.08), in: Circle())
+
+                Text(l10n.language == .hebrew ? curr.displayNameHebrew : curr.displayNameEnglish)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+
+                Spacer()
+
+                if selectedCurrency == curr {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(Color.primaryBlue)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(minHeight: 56)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(Color.black.opacity(0.04), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.97)
     }
 
     // MARK: - Category Picker Popup Modal (Responsive Content Height)

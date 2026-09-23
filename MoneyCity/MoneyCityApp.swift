@@ -6,14 +6,12 @@ import UserNotifications
 #endif
 
 class AppDelegate: NSObject, UIApplicationDelegate {
-    #if DEBUG
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession,
                      options: UIScene.ConnectionOptions) -> UISceneConfiguration {
         let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
-        configuration.delegateClass = SharedLabSceneDelegate.self
+        configuration.delegateClass = SharedSpaceSceneDelegate.self
         return configuration
     }
-    #endif
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -388,6 +386,7 @@ struct MoneyCityApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var l10n = LocalizationManager.shared
+    @ObservedObject private var sharedWorkspace = SharedWorkspaceStore.shared
     #if DEBUG
     @ObservedObject private var sharedLab = SharedCloudLab.shared
     #endif
@@ -395,6 +394,18 @@ struct MoneyCityApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView()
+                .sheet(isPresented: $sharedWorkspace.showSetup) { SharedSpacesSetupView() }
+                .alert(l10n.language == .hebrew ? "מרחב משותף" : "Shared space", isPresented: Binding(
+                    get: { sharedWorkspace.errorMessage != nil },
+                    set: { if !$0 { sharedWorkspace.errorMessage = nil } })) {
+                        Button(l10n.language == .hebrew ? "סגירה" : "Dismiss") { sharedWorkspace.errorMessage = nil }
+                    } message: { Text(sharedWorkspace.errorMessage ?? "") }
+                .task {
+                    if UserDefaults.standard.bool(forKey: "shared_spaces_enabled") {
+                        do { try await sharedWorkspace.refresh() }
+                        catch { sharedWorkspace.errorMessage = error.localizedDescription }
+                    }
+                }
                 #if DEBUG
                 .sheet(isPresented: $sharedLab.presentRequested) { SharedCloudLabView() }
                 .onAppear {

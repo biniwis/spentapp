@@ -223,6 +223,14 @@ public struct ProfileView: View {
 
                     // ── Management Navigation Menu Cards (Inset Grouped) ──
                     managementMenuCard
+                    #if !SWIFT_PACKAGE
+                    Button {
+                        SharedWorkspaceStore.shared.showSetup = true
+                    } label: {
+                        Label(l10n.language == .hebrew ? "מרחב משותף" : "Shared space", systemImage: "person.2")
+                            .font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(20)
+                    }.foregroundStyle(MoneyCityTheme.brandSecondary)
+                    #endif
 
                     #if DEBUG
                     // ── Internal Development & Design Lab (Debug Only) ──
@@ -1092,4 +1100,3 @@ public struct ProfileView: View {
         AutomaticCaptureStateStore.markBootstrapped()
     }
 }
-

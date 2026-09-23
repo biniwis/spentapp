@@ -115,6 +115,21 @@ public final class CitySimulationEngine: Sendable {
         historicalWoltSpends: [Double] = [],
         now: Date = Date()
     ) -> MonthlyCity {
+        generateCity(for: monthDate, expenses: transactions.map(ExpenseSnapshot.init),
+                     estimatedMonthlyBudget: estimatedMonthlyBudget, typicalMonthlySpend: typicalMonthlySpend,
+                     typicalEverydaySpend: typicalEverydaySpend, typicalCommittedSpend: typicalCommittedSpend,
+                     everydayBudget: everydayBudget, budgetedEverydayCategories: budgetedEverydayCategories,
+                     historicalWoltCounts: historicalWoltCounts, historicalWoltSpends: historicalWoltSpends, now: now)
+    }
+
+    public func generateCity(
+        for monthDate: Date, expenses transactions: [ExpenseSnapshot],
+        estimatedMonthlyBudget: Double = 0, typicalMonthlySpend: Double = 0,
+        typicalEverydaySpend: Double = 0, typicalCommittedSpend: Double = 0,
+        everydayBudget: Double = 0, budgetedEverydayCategories: Set<SpendingCategory> = [],
+        historicalWoltCounts: [Int] = [], historicalWoltSpends: [Double] = [],
+        now: Date = Date(), calendar: Calendar = .current
+    ) -> MonthlyCity {
         var totals: [SpendingCategory: Double] = [:]
         for cat in SpendingCategory.allCases {
             totals[cat] = 0.0
@@ -161,7 +176,7 @@ public final class CitySimulationEngine: Sendable {
                 if isPositive {
                     woltCount += 1
                     // Track distinct calendar days using "yyyy-MM-dd" key
-                    let dayKey = Calendar.current.startOfDay(for: t.timestamp).description
+                    let dayKey = calendar.startOfDay(for: t.timestamp).description
                     woltActiveDaysSet.insert(dayKey)
                 }
                 woltTotalSpend += t.amount
@@ -198,7 +213,7 @@ public final class CitySimulationEngine: Sendable {
         //
         // Spending less than planned is still rewarded — by the garden, which is the right
         // medium for a soft signal. Numbers stay literal.
-        let accruedFraction = CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now)
+        let accruedFraction = CitySimulationEngine.budgetAccruedFraction(for: monthDate, now: now, calendar: calendar)
         let baseline = estimatedMonthlyBudget > 0 ? estimatedMonthlyBudget : typicalMonthlySpend
         let totalSavings = directSavings
 
@@ -269,7 +284,7 @@ public final class CitySimulationEngine: Sendable {
         
         // Compute elapsed days in the current month for partial-month confidence gating.
         let elapsedDays: Int = {
-            let cal = Calendar.current
+            let cal = calendar
             if !cal.isDate(monthDate, equalTo: now, toGranularity: .month) { return 30 }
             return max(1, cal.component(.day, from: now))
         }()
@@ -298,7 +313,7 @@ public final class CitySimulationEngine: Sendable {
         let venueStates = CityLifeEngine.states(for: transactions.map {
             CityLifeEvent(id: $0.id.uuidString, venueID: $0.buildingId, amount: $0.amount,
                           date: $0.timestamp, merchant: $0.merchant)
-        }, in: monthDate)
+        }, in: monthDate, calendar: calendar)
         
         var tiles: [BuildingTile] = []
         

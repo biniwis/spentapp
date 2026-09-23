@@ -4,6 +4,9 @@ import Combine
 
 /// The main edge-to-edge view showcasing the real-time 3D living diorama with Multi-Building Neighborhood Deep-Dive and Spatial Inspection.
 public struct MainCityView: View {
+    #if !SWIFT_PACKAGE
+    @ObservedObject private var sharedStore = SharedWorkspaceStore.shared
+    #endif
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -316,6 +319,22 @@ public struct MainCityView: View {
     }
     
     public var body: some View {
+        #if !SWIFT_PACKAGE
+        Group {
+            if let space = sharedStore.activeSpace {
+                SharedWorkspaceView(space: space, activeTab: $activeTab).id(space.id)
+            } else {
+                personalBody.safeAreaInset(edge: .top, spacing: 0) {
+                    if !sharedStore.spaces.isEmpty { SharedScopePicker().frame(maxWidth: .infinity).background(MoneyCityTheme.appBackground) }
+                }
+            }
+        }
+        #else
+        personalBody
+        #endif
+    }
+
+    private var personalBody: some View {
         ZStack {
             MoneyCityTheme.appBackground.ignoresSafeArea()
 

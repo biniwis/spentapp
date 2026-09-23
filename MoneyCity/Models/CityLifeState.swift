@@ -12,6 +12,13 @@ public struct CityVenueState: Codable, Equatable, Sendable, Identifiable {
     public let activity: Double
     public let presence: Double
     public let additionalPlaces: Int
+    public var memberShares: [CityMemberShare]? = nil
+}
+
+public struct CityMemberShare: Codable, Equatable, Sendable {
+    public let memberID: String
+    public let color: String
+    public let share: Double
 }
 
 /// A small value type keeps the rules independent of SwiftData, WebKit and rendering.

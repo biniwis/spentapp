@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CB2026092300000000000001 = {isa = PBXBuildFile; fileRef = CB2026092300000000000011; };
+		CB2026092300000000000002 = {isa = PBXBuildFile; fileRef = CB2026092300000000000012; };
+		CB2026092300000000000003 = {isa = PBXBuildFile; fileRef = CB2026092300000000000013; };
+		CB2026092300000000000004 = {isa = PBXBuildFile; fileRef = CB2026092300000000000014; };
 		CA2026092300000000000002 /* SharedCloudLab.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092300000000000001; };
 		CA2026092300000000000004 /* SharedCloudLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092300000000000003; };
 		CA2026091700000000000014 /* SecurityHardeningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000013 /* SecurityHardeningTests.swift */; };
@@ -220,6 +224,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CB2026092300000000000011 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyCity/Models/SharedLedger.swift; sourceTree = "<group>"; };
+		CB2026092300000000000012 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyCity/Models/ExpenseSnapshot.swift; sourceTree = "<group>"; };
+		CB2026092300000000000013 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyCity/Services/SharedWorkspaceStore.swift; sourceTree = "<group>"; };
+		CB2026092300000000000014 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoneyCity/Views/SharedWorkspaceView.swift; sourceTree = "<group>"; };
 		CA2026092300000000000001 /* SharedCloudLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SharedCloudLab.swift; path = MoneyCity/Services/SharedCloudLab.swift; sourceTree = "<group>"; };
 		CA2026092300000000000003 /* SharedCloudLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SharedCloudLabView.swift; path = MoneyCity/Views/SharedCloudLabView.swift; sourceTree = "<group>"; };
 		CA2026091700000000000013 /* SecurityHardeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SecurityHardeningTests.swift"; sourceTree = "<group>"; };
@@ -463,6 +471,10 @@
 				3225D5DDF8E5432FAD54EDBF /* HistoryView.swift */,
 				55DD1EFCAD0A43778BCC023E /* MainCityView.swift */,
 				80E6E3ECB6084B3A895ABC20 /* ProfileView.swift */,
+				CB2026092300000000000011,
+				CB2026092300000000000012,
+				CB2026092300000000000013,
+				CB2026092300000000000014,
 				CA2026092300000000000001 /* SharedCloudLab.swift */,
 				CA2026092300000000000003 /* SharedCloudLabView.swift */,
 				2C7BC2EA8CE14D27950A321D /* ApplePayDiagnosticsView.swift */,
@@ -707,6 +719,10 @@
 			files = (
 				A561507A7EB34A6AA2F48637 /* Sources */,
 				EACE09162026000000000001 /* CityLifeState.swift in Sources */,
+				CB2026092300000000000001,
+				CB2026092300000000000002,
+				CB2026092300000000000003,
+				CB2026092300000000000004,
 				CA2026092300000000000002 /* SharedCloudLab.swift in Sources */,
 				CA2026092300000000000004 /* SharedCloudLabView.swift in Sources */,
 				26C68BE33B43437C851D67E7 /* Sources */,

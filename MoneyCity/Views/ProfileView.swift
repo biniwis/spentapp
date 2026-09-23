@@ -227,6 +227,11 @@ public struct ProfileView: View {
                     #if DEBUG
                     // ── Internal Development & Design Lab (Debug Only) ──
                     designLabSection
+                    #if !SWIFT_PACKAGE
+                    Button("Shared Cloud Lab · Phase 1") {
+                        SharedCloudLab.shared.presentRequested = true
+                    }
+                    #endif
                     #endif
 
                     Spacer(minLength: 120)
@@ -1087,5 +1092,4 @@ public struct ProfileView: View {
         AutomaticCaptureStateStore.markBootstrapped()
     }
 }
-
 

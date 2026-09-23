@@ -6,6 +6,14 @@ import UserNotifications
 #endif
 
 class AppDelegate: NSObject, UIApplicationDelegate {
+    #if DEBUG
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession,
+                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        configuration.delegateClass = SharedLabSceneDelegate.self
+        return configuration
+    }
+    #endif
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -380,10 +388,21 @@ struct MoneyCityApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var l10n = LocalizationManager.shared
+    #if DEBUG
+    @ObservedObject private var sharedLab = SharedCloudLab.shared
+    #endif
 
     var body: some Scene {
         WindowGroup {
             AppRootView()
+                #if DEBUG
+                .sheet(isPresented: $sharedLab.presentRequested) { SharedCloudLabView() }
+                .onAppear {
+                    if ProcessInfo.processInfo.arguments.contains("--shared-cloud-lab") {
+                        sharedLab.presentRequested = true
+                    }
+                }
+                #endif
                 .preferredColorScheme(.light)
                 .moneyCityFont()
                 .environment(\.layoutDirection, l10n.layoutDirection)

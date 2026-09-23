@@ -448,6 +448,9 @@
     "₪" : {
 
     },
+    "₪%.2f" : {
+
+    },
     "₪480 Saved" : {
 
     },
@@ -496,6 +499,9 @@
     "About SPENT" : {
 
     },
+    "Accept invitation" : {
+
+    },
     "Actions are safely stored on-device and will sync once online." : {
 
     },
@@ -509,6 +515,9 @@
 
     },
     "Add" : {
+
+    },
+    "Add ₪1" : {
 
     },
     "Add a goal" : {
@@ -558,6 +567,9 @@
       }
     },
     "Add fixed expenses" : {
+
+    },
+    "Add sample ₪1 (local)" : {
 
     },
     "Add Shortcut Again" : {
@@ -722,6 +734,9 @@
     "Calendar & Jump to Date" : {
 
     },
+    "Can't convert yet" : {
+
+    },
     "Can't find how to add SPENT?" : {
 
     },
@@ -825,6 +840,9 @@
     "Close building details" : {
 
     },
+    "CloudKit invitation URL" : {
+
+    },
     "Confirm category" : {
 
     },
@@ -832,6 +850,9 @@
 
     },
     "Confirming will deduct this amount from your monthly spending" : {
+
+    },
+    "Connect / refresh" : {
 
     },
     "Consistent tracking unlocks small gifts that bring more life to your city." : {
@@ -846,6 +867,9 @@
     "Continue without restore" : {
 
     },
+    "Convert now" : {
+
+    },
     "Could not extract receipt" : {
 
     },
@@ -856,6 +880,9 @@
 
     },
     "Create" : {
+
+    },
+    "Create test space" : {
 
     },
     "Curator — curate" : {
@@ -879,6 +906,9 @@
       }
     },
     "Currency Amount" : {
+
+    },
+    "Currency Change" : {
 
     },
     "Current spending exceeds planned income. Nature Reserve growth slows down." : {
@@ -940,6 +970,9 @@
 
     },
     "Delete goal" : {
+
+    },
+    "Delete sample" : {
 
     },
     "Delete this transaction?" : {
@@ -1267,7 +1300,16 @@
     "Internal lab · Same demo data in every world · Selection is not saved" : {
 
     },
+    "Invitation received — accept below." : {
+
+    },
+    "Invite / manage access" : {
+
+    },
     "Isolated Preview Sandbox" : {
+
+    },
+    "Join" : {
 
     },
     "Keep streak tomorrow" : {
@@ -1498,6 +1540,12 @@
     "Overall" : {
 
     },
+    "Owner" : {
+
+    },
+    "Participant" : {
+
+    },
     "Pause" : {
 
     },
@@ -1505,6 +1553,9 @@
 
     },
     "PAYMENT" : {
+
+    },
+    "Phase 1 · Development only" : {
 
     },
     "Please enter a valid amount" : {
@@ -1728,6 +1779,9 @@
     "Salary" : {
 
     },
+    "Sample expenses" : {
+
+    },
     "Save" : {
 
     },
@@ -1844,6 +1898,12 @@
     "Share" : {
 
     },
+    "Shared Cloud Lab" : {
+
+    },
+    "Shared Cloud Lab · Phase 1" : {
+
+    },
     "Show All Transactions" : {
 
     },
@@ -1934,6 +1994,9 @@
     "Step %lld of 5" : {
 
     },
+    "Sync now · %lld pending" : {
+
+    },
     "Tap any preset to view the full story & editorial animations with mock data:" : {
 
     },
@@ -1970,6 +2033,12 @@
     "Test any map style (Modern, Medieval, Arctic, Israeli) across all build & density stages" : {
 
     },
+    "Test records only. Personal expenses and backups are not used. Use two iCloud accounts on signed Debug builds." : {
+
+    },
+    "Test spaces" : {
+
+    },
     "The amount you paid" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1991,6 +2060,9 @@
 
     },
     "The Nature Reserve changes with your budget and savings." : {
+
+    },
+    "There's no exchange rate for this currency yet. The transaction was not changed." : {
 
     },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
@@ -2667,6 +2739,9 @@
     "המצב הנוכחי יישמר כגיבוי נוסף לפני ההחלפה, כך שאפשר יהיה לחזור ממנו." : {
 
     },
+    "המר עכשיו" : {
+
+    },
     "המרת מטבע אוטומטית" : {
 
     },
@@ -2951,6 +3026,9 @@
 
     },
     "לא מוצא איך להוסיף את SPENT?" : {
+
+    },
+    "לא ניתן להמיר עכשיו" : {
 
     },
     "לא עובד?" : {
@@ -3438,6 +3516,9 @@
     "שיוך קטגוריה וזיכרון" : {
 
     },
+    "שינוי מטבע" : {
+
+    },
     "שיתוף" : {
 
     },
@@ -3487,6 +3568,9 @@
 
     },
     "שמורת הטבע משתנה לפי התקציב והחיסכון שלך." : {
+
+    },
+    "שער ההמרה של המטבע הזה עדיין לא זמין. העסקה לא שונתה." : {
 
     },
     "שערי יציג עדכניים (הערכה)" : {

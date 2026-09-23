@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		CA2026092300000000000002 /* SharedCloudLab.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092300000000000001; };
+		CA2026092300000000000004 /* SharedCloudLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026092300000000000003; };
 		CA2026091700000000000014 /* SecurityHardeningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000013 /* SecurityHardeningTests.swift */; };
 		CA2026091700000000000012 /* InputSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091700000000000011 /* InputSanitizer.swift */; };
 		CA2026091600000000000002 /* AutomaticCaptureStateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2026091600000000000001 /* AutomaticCaptureStateStore.swift */; };
@@ -218,6 +220,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CA2026092300000000000001 /* SharedCloudLab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SharedCloudLab.swift; path = MoneyCity/Services/SharedCloudLab.swift; sourceTree = "<group>"; };
+		CA2026092300000000000003 /* SharedCloudLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SharedCloudLabView.swift; path = MoneyCity/Views/SharedCloudLabView.swift; sourceTree = "<group>"; };
 		CA2026091700000000000013 /* SecurityHardeningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SecurityHardeningTests.swift"; sourceTree = "<group>"; };
 		CA2026091700000000000011 /* InputSanitizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "InputSanitizer.swift"; path = "MoneyCity/Services/InputSanitizer.swift"; sourceTree = "<group>"; };
 		CA2026091600000000000001 /* AutomaticCaptureStateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "AutomaticCaptureStateStore.swift"; path = "MoneyCity/Services/AutomaticCaptureStateStore.swift"; sourceTree = "<group>"; };
@@ -459,6 +463,8 @@
 				3225D5DDF8E5432FAD54EDBF /* HistoryView.swift */,
 				55DD1EFCAD0A43778BCC023E /* MainCityView.swift */,
 				80E6E3ECB6084B3A895ABC20 /* ProfileView.swift */,
+				CA2026092300000000000001 /* SharedCloudLab.swift */,
+				CA2026092300000000000003 /* SharedCloudLabView.swift */,
 				2C7BC2EA8CE14D27950A321D /* ApplePayDiagnosticsView.swift */,
 				B9607352E83847FB83645E01 /* BackupSheet.swift */,
 				22ED14B0BFB64C5599249560 /* BudgetSheet.swift */,
@@ -701,6 +707,8 @@
 			files = (
 				A561507A7EB34A6AA2F48637 /* Sources */,
 				EACE09162026000000000001 /* CityLifeState.swift in Sources */,
+				CA2026092300000000000002 /* SharedCloudLab.swift in Sources */,
+				CA2026092300000000000004 /* SharedCloudLabView.swift in Sources */,
 				26C68BE33B43437C851D67E7 /* Sources */,
 				DE34D4DC171C4A5CA80240B1 /* Sources */,
 				C88F8B45524948BCB6D2296C /* Sources */,
@@ -931,13 +939,13 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_ENTITLEMENTS = MoneyCity/MoneyCity.entitlements;
+				CODE_SIGN_ENTITLEMENTS = MoneyCity/SharedLab.entitlements;
 				CURRENT_PROJECT_VERSION = 38;
 				DEVELOPMENT_TEAM = GGPYC8B9YV;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_DEBUG_DYLIB = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "MoneyCity/Info.plist";
+				INFOPLIST_FILE = "MoneyCity/SharedLab-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "SPENT";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSRequiresIPhoneOS = YES;

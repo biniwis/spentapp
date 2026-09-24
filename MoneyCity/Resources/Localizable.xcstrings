@@ -1315,6 +1315,9 @@
     "Map Style" : {
 
     },
+    "Mark as Shekels (remove FX)" : {
+
+    },
     "Maybe later" : {
 
     },
@@ -1655,6 +1658,9 @@
           }
         }
       }
+    },
+    "Recorded with foreign currency (%@)" : {
+
     },
     "Reload preview" : {
 
@@ -2184,6 +2190,9 @@
 
     },
     "Walkers: ~%lld" : {
+
+    },
+    "Was this in Shekels? Cancel conversion" : {
 
     },
     "We'll open the Automations area in Shortcuts, and simply turn on the shortcut you just added." : {
@@ -2725,6 +2734,15 @@
 
     },
     "העיר שלך החודש" : {
+
+    },
+    "העסקה בוצעה בשקלים (בטל המרה)" : {
+
+    },
+    "העסקה בוצעה בשקלים? בטל המרה" : {
+
+    },
+    "העסקה נרשמה במטבע חוץ (%@)" : {
 
     },
     "הערה: הדינמי בקצה ה־Flow מוגבל ל־3, וגם ל־2 בכרטיסי אינדקס – החישוב כאן הוא התקרה התיאורטית." : {

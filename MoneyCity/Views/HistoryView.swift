@@ -647,6 +647,16 @@ public struct HistoryView: View {
                         MoneyIcon(.exchange, size: 18)
                     }
                 }
+            } else if tx.originalCurrency != nil || tx.originalAmount != nil || tx.exchangeRate != nil {
+                Button {
+                    revertForeignTransaction(tx)
+                } label: {
+                    Label {
+                        Text(l10n.language == .hebrew ? "העסקה בוצעה בשקלים (בטל המרה)" : "Mark as Shekels (remove FX)")
+                    } icon: {
+                        Image(systemName: "sheqelsign.circle")
+                    }
+                }
             }
             Divider()
             Button(role: .destructive) {
@@ -762,6 +772,23 @@ public struct HistoryView: View {
         case .notForeign:
             break
         }
+    }
+
+    private func revertForeignTransaction(_ tx: Transaction) {
+        withAnimation {
+            if let orig = tx.originalAmount {
+                tx.amount = tx.amount < 0 ? -abs(orig) : abs(orig)
+            }
+            tx.originalAmount = nil
+            tx.originalCurrency = nil
+            tx.exchangeRate = nil
+            tx.currency = l10n.baseCurrency.symbol
+            try? modelContext.save()
+            if tx.savingsGoalId != nil {
+                SavingsGoalService.reconcileAll(context: modelContext)
+            }
+        }
+        Haptics.notify(.success)
     }
 
     private func delete(_ tx: Transaction) {

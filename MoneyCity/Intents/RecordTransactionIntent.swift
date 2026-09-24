@@ -86,13 +86,13 @@ public struct RecordTransactionIntent: AppIntent {
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
         var effectiveAmount = amount
-        var structuredCurrency: String? = nil
 
-        if let ca = currencyAmount {
-            if effectiveAmount == nil || effectiveAmount == 0 {
-                effectiveAmount = NSDecimalNumber(decimal: ca.amount).doubleValue
+        // If amount was empty, check if currencyAmount provided a positive amount value
+        if let ca = currencyAmount, (effectiveAmount == nil || effectiveAmount == 0) {
+            let decimalVal = NSDecimalNumber(decimal: ca.amount).doubleValue
+            if decimalVal > 0 {
+                effectiveAmount = decimalVal
             }
-            structuredCurrency = ca.currencyCode
         }
 
         var effectiveMerchant = merchant
@@ -105,21 +105,27 @@ public struct RecordTransactionIntent: AppIntent {
         [SPENT Ingest Debug]
         • amount received: \(effectiveAmount != nil ? "\(effectiveAmount!)" : "nil")
         • merchant received: \(effectiveMerchant != nil ? "\"\(effectiveMerchant!)\"" : "nil")
-        • currency received: \(currency != nil ? "\"\(currency!)\"" : "nil")
-        • structured currency: \(structuredCurrency != nil ? "\"\(structuredCurrency!)\"" : "nil")
+        • currency parameter: \(currency != nil ? "\"\(currency!)\"" : "nil")
         • transactionDate received: \(transactionDate != nil ? "\(transactionDate!)" : "nil")
         • amountText received: \(amountText != nil ? "\"\(amountText!)\"" : "nil")
         """
         MoneyCityLog.sensitive(debugRaw)
 
+        // PRODUCT SAFETY DECISION:
+        // Shortcuts / iOS often synthesizes unreliable default currency metadata (e.g. synthetic USD
+        // on devices or unconfigured shortcut parameters), which previously caused domestic Shekel (₪)
+        // transactions in Israel to be misclassified and converted as USD (e.g. ₪34.50 becoming $34.50 -> ₪104).
+        // To strictly protect domestic capture, automatic Wallet capture intentionally ignores any
+        // shortcut-supplied currency or structured currency metadata and relies exclusively on the user's
+        // configured base currency in SPENT (passing currency: nil and structuredCurrency: nil).
         let result = await WalletIngestCoordinator.run(
             amount: effectiveAmount,
             amountText: amountText,
             merchant: effectiveMerchant,
-            currency: currency,
+            currency: nil,
             transactionDate: transactionDate,
             intentName: "RecordTransactionIntent",
-            structuredCurrency: structuredCurrency
+            structuredCurrency: nil
         )
 
         guard result.succeeded else {

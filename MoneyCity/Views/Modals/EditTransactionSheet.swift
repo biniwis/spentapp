@@ -21,6 +21,7 @@ public struct EditTransactionSheet: View {
     @State private var showMerchantDetails: Bool = false
     @State private var transactionDate: Date = Date()
     @State private var showDatePicker: Bool = false
+    @State private var isForeignCleared: Bool = false
 
     @FocusState private var isMerchantFocused: Bool
     @State private var isEditingAmount: Bool = false
@@ -111,6 +112,46 @@ public struct EditTransactionSheet: View {
                             }
                             .padding(12)
                             .background(Color.themeMintSoft)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                        }
+
+                        // Foreign Currency Review Banner
+                        if (transaction.originalCurrency != nil || transaction.originalAmount != nil || transaction.exchangeRate != nil) && !isForeignCleared {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.orange.opacity(0.15))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: "dollarsign.arrow.trianglehead.counterclockwise.rotate.90")
+                                        .font(.system(size: 16, weight: .bold))
+                                        .foregroundColor(.orange)
+                                }
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(l10n.language == .hebrew ? "העסקה נרשמה במטבע חוץ (\(transaction.displayOriginalText ?? ""))" : "Recorded with foreign currency (\(transaction.displayOriginalText ?? ""))")
+                                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+
+                                    Button {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            isForeignCleared = true
+                                            if let orig = transaction.originalAmount {
+                                                let formatted = orig.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", orig) : String(format: "%.2f", orig)
+                                                amountText = formatted
+                                            }
+                                        }
+                                        Haptics.notify(.success)
+                                    } label: {
+                                        Text(l10n.language == .hebrew ? "העסקה בוצעה בשקלים? בטל המרה" : "Was this in Shekels? Cancel conversion")
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color.primaryBlue)
+                                            .underline()
+                                    }
+                                }
+                                Spacer()
+                            }
+                            .padding(12)
+                            .background(Color.orange.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
 
@@ -593,8 +634,13 @@ public struct EditTransactionSheet: View {
             transaction.timestamp = transactionDate
             transaction.category = selectedCategory
             transaction.buildingIdRaw = selectedBuildingId
-            // Preserve foreign currency metadata unless amount was explicitly altered
-            if isAmountChanged {
+            // Clear or update foreign currency metadata
+            if isForeignCleared {
+                transaction.originalAmount = nil
+                transaction.originalCurrency = nil
+                transaction.exchangeRate = nil
+                transaction.currency = l10n.baseCurrency.symbol
+            } else if isAmountChanged {
                 if let rate = transaction.exchangeRate, rate > 0 {
                     transaction.originalAmount = (amount / rate * 100).rounded() / 100
                 }

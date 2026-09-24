@@ -6,6 +6,7 @@ import Combine
 public struct MainCityView: View {
     #if !SWIFT_PACKAGE
     @ObservedObject private var sharedStore = SharedWorkspaceStore.shared
+    @ObservedObject private var scopeContext = AppScopeContext.shared
     #endif
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
@@ -191,7 +192,10 @@ public struct MainCityView: View {
     }
 
     private var canPresentCityLesson: Bool {
-        hasCompletedOnboarding && activeTab == "city" && !isChromeHidden
+        #if !SWIFT_PACKAGE
+        guard !scopeContext.capabilities.isShared else { return false }
+        #endif
+        return hasCompletedOnboarding && activeTab == "city" && !isChromeHidden
             && companionScenePhase == .active && !showBrandSplash
             && !showQuickAdd && !showFeed && !showProgressSheet
             && !showSortingHubSheet && !showReserveSanctuarySheet
@@ -205,6 +209,32 @@ public struct MainCityView: View {
     }
 
     private var currentCity: MonthlyCity {
+        #if !SWIFT_PACKAGE
+        if scopeContext.activeScope.isShared, let space = scopeContext.currentSpace {
+            let monthExpenses = scopeContext.expenses(for: currentDate, personalTransactions: allTransactions)
+            var city = CitySimulationEngine.shared.generateCity(
+                for: currentDate,
+                expenses: monthExpenses,
+                estimatedMonthlyBudget: 0,
+                calendar: space.calendar
+            )
+            city.parkHealth = CitySimulationEngine.healthyParkLevel
+            let participants = scopeContext.participants
+            city.venueStates = city.venueStates.map { venue in
+                var result = venue
+                let values = participants.map { member in
+                    (member, max(0, monthExpenses.filter { $0.buildingId == venue.id && $0.paidBy == member.id }.reduce(0) { $0 + $1.amount }))
+                }
+                let sum = values.reduce(0) { $0 + $1.1 }
+                result.memberShares = values.compactMap { member, value in
+                    guard sum > 0, value > 0 else { return nil }
+                    return CityMemberShare(memberID: member.id, color: member.colorHex, share: value / sum)
+                }
+                return result
+            }
+            return city
+        }
+        #endif
         let historicalDelivery = DeliveryHistoryHelper.completedHistoricalWoltData(
             from: allTransactions,
             relativeTo: currentDate
@@ -319,19 +349,7 @@ public struct MainCityView: View {
     }
     
     public var body: some View {
-        #if !SWIFT_PACKAGE
-        Group {
-            if let space = sharedStore.activeSpace {
-                SharedWorkspaceView(space: space, activeTab: $activeTab).id(space.id)
-            } else {
-                personalBody.safeAreaInset(edge: .top, spacing: 0) {
-                    if !sharedStore.spaces.isEmpty { SharedScopePicker().frame(maxWidth: .infinity).background(MoneyCityTheme.appBackground) }
-                }
-            }
-        }
-        #else
         personalBody
-        #endif
     }
 
     private var personalBody: some View {
@@ -670,6 +688,22 @@ public struct MainCityView: View {
                 closeQuickAction()
             }
         }
+        #if !SWIFT_PACKAGE
+        .onChange(of: scopeContext.activeScope) { _, _ in
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                selectedDistrict = nil
+                inspectedBuilding = nil
+                animatedSpentValue = nil
+                scheduledConfirmationMessage = nil
+                quickActionBuilding = nil
+                isQuickActionActive = false
+                monthSnapshot = nil
+                currentDate = Date()
+                derived.reset()
+                cityViewResetToken &+= 1
+            }
+        }
+        #endif
         .onReceive(confirmationCoordinator.$activeConfirmation) { newConf in
             if newConf != nil {
                 consumeQueuedConfirmationsIfNeeded()
@@ -1381,9 +1415,15 @@ public struct MainCityView: View {
                 }
                 CityHeroKpiRow(spentValue: animatedSpentValue ?? currentCity.totalSpent)
                 confirmationBannerView
+                #if !SWIFT_PACKAGE
+                if !scopeContext.capabilities.isShared, let pending = pendingWalletItems.first {
+                    pendingApplePayBanner(pending: pending)
+                }
+                #else
                 if let pending = pendingWalletItems.first {
                     pendingApplePayBanner(pending: pending)
                 }
+                #endif
                 districtSelectorRow
             }
             .frame(maxWidth: .infinity)
@@ -1645,7 +1685,7 @@ public struct MainCityView: View {
                         insertion: .move(edge: .bottom).combined(with: .opacity),
                         removal: .opacity
                     ))
-            } else if displayTransactions.isEmpty && !isSnapshotMode {
+            } else if (scopeContext.capabilities.isShared ? currentCity.totalSpent == 0 : displayTransactions.isEmpty) && !isSnapshotMode {
                 firstTransactionCard
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {

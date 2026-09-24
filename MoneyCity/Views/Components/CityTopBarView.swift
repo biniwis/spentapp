@@ -18,11 +18,15 @@ public struct CityTopBarView: View {
     }
 
     public var body: some View {
-        HStack(alignment: .center) {
+        HStack(alignment: .center, spacing: 8) {
             Text("SPENT")
                 .font(.system(size: 20, weight: .black, design: .rounded))
                 .foregroundColor(Color.deepNavy)
                 .tracking(0.5)
+
+            #if !SWIFT_PACKAGE
+            ScopeSelectorMenu()
+            #endif
 
             Spacer()
 
@@ -154,3 +158,78 @@ public struct CityHeroKpiRow: View {
         .padding(.horizontal, 20)
     }
 }
+
+#if !SWIFT_PACKAGE
+public struct ScopeSelectorMenu: View {
+    @ObservedObject private var scopeContext = AppScopeContext.shared
+    @ObservedObject private var sharedStore = SharedWorkspaceStore.shared
+    @EnvironmentObject private var l10n: LocalizationManager
+
+    public init() {}
+
+    public var body: some View {
+        Menu {
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    scopeContext.selectPersonal()
+                }
+            } label: {
+                Label(
+                    l10n.isHebrew ? "העיר שלי" : "My City",
+                    systemImage: scopeContext.activeScope == .personal ? "checkmark" : "person"
+                )
+            }
+
+            if !sharedStore.spaces.isEmpty {
+                Section(l10n.isHebrew ? "מרחבים משותפים" : "Shared Spaces") {
+                    ForEach(sharedStore.spaces) { space in
+                        Button {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                scopeContext.selectShared(spaceID: space.id)
+                            }
+                        } label: {
+                            Label(
+                                space.name,
+                                systemImage: scopeContext.activeScope.spaceID == space.id ? "checkmark" : "person.2"
+                            )
+                        }
+                    }
+                }
+            }
+
+            Divider()
+
+            Button {
+                sharedStore.showSetup = true
+            } label: {
+                Label(
+                    l10n.isHebrew ? "ניהול מרחבים..." : "Manage Spaces...",
+                    systemImage: "gearshape"
+                )
+            }
+        } label: {
+            HStack(spacing: 5) {
+                if scopeContext.capabilities.isShared {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(MoneyCityTheme.brandPrimary)
+                }
+                Text(scopeContext.displayName)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(scopeContext.capabilities.isShared ? MoneyCityTheme.brandPrimary : MoneyCityTheme.textSecondary)
+                    .lineLimit(1)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(MoneyCityTheme.textSecondary.opacity(0.7))
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(
+                Capsule()
+                    .fill(scopeContext.capabilities.isShared ? MoneyCityTheme.brandPrimary.opacity(0.12) : Color.black.opacity(0.04))
+            )
+        }
+        .accessibilityLabel(l10n.isHebrew ? "בחירת מרחב עבודה" : "Choose workspace")
+    }
+}
+#endif

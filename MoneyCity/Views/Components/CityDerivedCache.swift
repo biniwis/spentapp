@@ -57,4 +57,15 @@ final class CityDerivedCache {
         cachedSplit = value
         return value
     }
+
+    func reset() {
+        monthKey = nil
+        monthRows = nil
+        cityKey = nil
+        cachedCity = nil
+        reportKey = nil
+        cachedReport = nil
+        splitKey = nil
+        cachedSplit = nil
+    }
 }

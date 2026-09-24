@@ -460,6 +460,9 @@ struct MoneyCityApp: App {
             await RemoteConfigService.shared.refreshIfNeeded()
         }
         Task {
+            await CommunityMerchantService.shared.performMaintenanceRefresh()
+        }
+        Task {
             await CloudBackupService.shared.refreshStatus()
             await CloudBackupService.shared.bootstrapFirstBackupIfNeeded(context: DatabaseService.shared.context)
             _ = try? await CloudBackupService.shared.performBackupIfNeeded(context: DatabaseService.shared.context)

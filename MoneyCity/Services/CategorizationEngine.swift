@@ -6,6 +6,8 @@ public enum ClassificationSource: String, Sendable, Codable {
     case historyRecovery
     case learnedAlias
     case remoteOverride
+    case communityConfirmed
+    case communitySuggestion
     case heuristic
     case unknown
 }

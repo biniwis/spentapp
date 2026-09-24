@@ -828,6 +828,16 @@
     "Close building details" : {
 
     },
+    "Confirm %@ as %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Confirm %1$@ as %2$@"
+          }
+        }
+      }
+    },
     "Confirm category" : {
 
     },
@@ -2416,6 +2426,16 @@
     },
     "אשר קטגוריה" : {
 
+    },
+    "אשר ש-%@ שייך לקטגוריית %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "אשר ש-%1$@ שייך לקטגוריית %2$@"
+          }
+        }
+      }
     },
     "ב-SPENT, ההוצאות, התקציבים ונתוני העיר שלך נשמרים ומעובדים מקומית במכשירך בלבד עם גיבוי פרטי ב-iCloud האישי שלך." : {
 

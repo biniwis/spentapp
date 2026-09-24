@@ -74,13 +74,16 @@ public enum MerchantRuleService {
     /// 1. User's own learned rule always wins (confidence: 1.0)
     /// 2. Previously confirmed manual history recovery (confidence: 1.0)
     /// 3. Global Remote Merchant Overrides applied third (confidence: 0.98)
-    /// 4. Built-in keyword categorization engine fourth
-    /// 5. Unknown / requires review fallback
+    /// 4. Cached Community Confirmed Merchant applied fourth (confidence: 0.95)
+    /// 5. Cached Community Suggestion applied fifth (confidence: 0.85)
+    /// 6. Built-in keyword categorization engine sixth
+    /// 7. Unknown / requires review fallback
     public static func classify(
         merchant: String,
         amount: Double,
         rules: [MerchantRule],
         remoteConfig: RemoteConfigService = .shared,
+        communityCache: CommunityMerchantCache = .shared,
         historyFallback: ((String) -> (category: SpendingCategory, buildingId: String)?)? = nil
     ) -> ClassificationResult {
         // 1. User's own rule always wins
@@ -116,7 +119,25 @@ public enum MerchantRuleService {
             return ClassificationResult(category: remoteCategory, buildingId: building, confidence: 0.98, source: .remoteOverride)
         }
 
-        // 4. Built-in Categorization Engine
+        // 4 & 5. Community Knowledge (if feature enabled and present in local cache)
+        let isCommunityEnabled = remoteConfig.isFeatureEnabled("communityMerchantLearning", default: false)
+        if isCommunityEnabled, let cached = communityCache.entry(forMerchant: merchant) {
+            if cached.status == .confirmed, let category = cached.winnerCategory {
+                let building = CategorizationEngine.shared.mapToBuildingId(
+                    category: category,
+                    merchant: merchant
+                )
+                return ClassificationResult(category: category, buildingId: building, confidence: 0.95, source: .communityConfirmed)
+            } else if cached.status == .suggestion, let category = cached.winnerCategory {
+                let building = CategorizationEngine.shared.mapToBuildingId(
+                    category: category,
+                    merchant: merchant
+                )
+                return ClassificationResult(category: category, buildingId: building, confidence: 0.85, source: .communitySuggestion)
+            }
+        }
+
+        // 6. Built-in Categorization Engine
         return CategorizationEngine.shared.classify(merchant: merchant, amount: amount)
     }
 

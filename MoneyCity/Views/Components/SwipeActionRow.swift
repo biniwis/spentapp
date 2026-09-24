@@ -114,6 +114,7 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                 .contentShape(Rectangle())
                 .offset(x: offset)
                 .onTapGesture {
+                    guard !SwipeActionRowTapSuppressor.shouldSuppress() else { return }
                     if offset != 0 || openSwipeRowID != nil {
                         withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
                             offset = 0

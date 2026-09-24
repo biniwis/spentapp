@@ -6,10 +6,12 @@ public struct HistoryView: View {
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @Query(sort: \ScheduledExpense.scheduledFor, order: .forward) private var allScheduledExpenses: [ScheduledExpense]
+    @Query private var allMerchantRules: [MerchantRule]
 
     @State private var searchText: String = ""
     @State private var selectedCategory: SpendingCategory? = nil
     @State private var showOnlyUnconfirmed: Bool = false
+    @State private var confirmedTxIDs: Set<UUID> = []
 
     /// Everything needed to put a deleted transaction back.
     private struct DeletedSnapshot: Equatable {
@@ -65,6 +67,14 @@ public struct HistoryView: View {
 
     private var unconfirmedCount: Int {
         displayTransactions.filter { !$0.isConfirmed }.count
+    }
+
+    private var eligibleConfirmationTxIDs: Set<UUID> {
+        let eligible = MerchantConfirmationPolicy.eligibleTransactionIDs(
+            in: displayTransactions,
+            rules: allMerchantRules
+        )
+        return eligible.subtracting(confirmedTxIDs)
     }
 
     private var filtered: [Transaction] {
@@ -234,6 +244,19 @@ public struct HistoryView: View {
                 }
             )
             .environmentObject(l10n)
+        }
+        .onAppear {
+            Task {
+                let candidateHashes = displayTransactions.compactMap { tx -> String? in
+                    guard MerchantConfirmationPolicy.isEligible(
+                        transaction: tx,
+                        rules: allMerchantRules
+                    ) else { return nil }
+                    let hash = CommunityMerchantIdentity.merchantHash(for: tx.merchant)
+                    return hash.isEmpty ? nil : hash
+                }
+                await CommunityMerchantService.shared.refreshCandidateMerchants(merchantHashes: candidateHashes)
+            }
         }
     }
 
@@ -558,14 +581,29 @@ public struct HistoryView: View {
                             MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 9, color: Color(red: 245/255, green: 158/255, blue: 11/255))
                         }
                     } else {
-                        Text(tx.category.displayName)
-                            .font(.system(size: 12.5, weight: .regular, design: .default))
-                            .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+                        let isEligibleForConfirmation = eligibleConfirmationTxIDs.contains(tx.id)
+                        if isEligibleForConfirmation {
+                            HStack(spacing: 5) {
+                                Text(tx.category.displayName)
+                                    .font(.system(size: 12.5, weight: .regular, design: .default))
+                                    .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
 
-                        if !tx.isConfirmed {
-                            Text(l10n.language == .hebrew ? "• לאישור" : "• Needs review")
-                                .font(.system(size: 11, weight: .semibold, design: .default))
-                                .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                                Text("?")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+
+                                inlineConfirmationCheck(for: tx)
+                            }
+                        } else {
+                            Text(tx.category.displayName)
+                                .font(.system(size: 12.5, weight: .regular, design: .default))
+                                .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+
+                            if !tx.isConfirmed {
+                                Text(l10n.language == .hebrew ? "• לאישור" : "• Needs review")
+                                    .font(.system(size: 11, weight: .semibold, design: .default))
+                                    .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                            }
                         }
                     }
                 }
@@ -622,13 +660,9 @@ public struct HistoryView: View {
             } label: {
                 Text(l10n.language == .hebrew ? "פרטי בית עסק (\(displayTitle))" : "Merchant Details (\(displayTitle))")
             }
-            if !tx.isConfirmed {
+            if !tx.isConfirmed || eligibleConfirmationTxIDs.contains(tx.id) {
                 Button {
-                    DatabaseService.shared.rememberCorrection(merchant: tx.merchant, category: tx.category)
-                    tx.isConfirmed = true
-                    tx.confidenceScore = 1.0
-                    try? modelContext.save()
-                    Haptics.impact(.light)
+                    confirmCategory(for: tx, source: .contextMenuConfirmation)
                 } label: {
                     Label {
                         Text(l10n.language == .hebrew ? "אשר קטגוריה" : "Confirm category")
@@ -647,6 +681,16 @@ public struct HistoryView: View {
                         MoneyIcon(.exchange, size: 18)
                     }
                 }
+            } else if tx.originalCurrency != nil {
+                Button {
+                    revertForeignTransaction(tx)
+                } label: {
+                    Label {
+                        Text(l10n.language == .hebrew ? "העסקה בוצעה בשקלים (בטל המרה)" : "Mark as Shekels (remove FX)")
+                    } icon: {
+                        Image(systemName: "sheqelsign.circle")
+                    }
+                }
             }
             Divider()
             Button(role: .destructive) {
@@ -655,6 +699,47 @@ public struct HistoryView: View {
                 Text(l10n.language == .hebrew ? "מחק עסקה" : "Delete Transaction")
             }
         }
+    }
+
+    private func confirmCategory(for tx: Transaction, source: MerchantLearningCoordinator.LearningSource) {
+        SwipeActionRowTapSuppressor.suppressNext()
+        withAnimation(.easeOut(duration: 0.2)) {
+            confirmedTxIDs.insert(tx.id)
+        }
+        MerchantLearningCoordinator.shared.confirm(
+            merchant: tx.merchant,
+            category: tx.category,
+            buildingId: tx.buildingIdRaw,
+            transaction: tx,
+            context: modelContext,
+            source: source
+        )
+    }
+
+    private func inlineConfirmationCheck(for tx: Transaction) -> some View {
+        Button(action: {
+            confirmCategory(for: tx, source: .inlineHistoryConfirmation)
+        }) {
+            Image(systemName: "checkmark")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(Color.primaryBlue)
+                .frame(width: 22, height: 22)
+                .background(Color.primaryBlue.opacity(0.12))
+                .clipShape(Circle())
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .highPriorityGesture(
+            TapGesture().onEnded {
+                confirmCategory(for: tx, source: .inlineHistoryConfirmation)
+            }
+        )
+        .accessibilityLabel(
+            l10n.language == .hebrew
+                ? "אשר ש-\(tx.merchant) שייך לקטגוריית \(tx.category.displayName)"
+                : "Confirm \(tx.merchant) as \(tx.category.displayName)"
+        )
     }
 
     /// Returns the primary title to display for a transaction in the history feed.
@@ -762,6 +847,20 @@ public struct HistoryView: View {
         case .notForeign:
             break
         }
+    }
+
+    private func revertForeignTransaction(_ tx: Transaction) {
+        withAnimation {
+            if let orig = tx.originalAmount {
+                tx.amount = tx.amount < 0 ? -abs(orig) : abs(orig)
+            }
+            tx.originalAmount = nil
+            tx.originalCurrency = nil
+            tx.exchangeRate = nil
+            tx.currency = l10n.baseCurrency.symbol
+            try? modelContext.save()
+        }
+        Haptics.notify(.success)
     }
 
     private func delete(_ tx: Transaction) {

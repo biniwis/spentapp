@@ -263,11 +263,11 @@ public struct CityBuilding: Identifiable, Hashable, Sendable {
                 CityBuilding(
                     id: "city_sorting_hub",
                     category: .other,
-                    nameHe: "לא מסווג",
+                    nameHe: "ללא קטגוריה",
                     nameEn: "Uncategorized",
                     emoji: "📮",
                     sfSymbol: "shippingbox.fill",
-                    descriptionHe: "עסקאות שממתינות לסיווג",
+                    descriptionHe: "עסקאות שממתינות להגדרה",
                     descriptionEn: "Transactions waiting to be categorized"
                 )
             ]

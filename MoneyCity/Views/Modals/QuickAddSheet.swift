@@ -110,6 +110,7 @@ public struct QuickAddSheet: View {
     @State private var amountPunchScale: CGFloat = 1.0
 
     @Environment(\.modelContext) private var modelContext
+    @Query private var rules: [MerchantRule]
     @FocusState private var isAmountFocused: Bool
     @FocusState private var isNoteFocused: Bool
     
@@ -392,6 +393,28 @@ public struct QuickAddSheet: View {
                 }
                 if let initialBuildingId, selectedBuildingId == nil {
                     selectedBuildingId = initialBuildingId
+                }
+                if let initialMerchant, !initialMerchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !initialCategoryIsExplicit {
+                    let res = MerchantRuleService.classify(merchant: initialMerchant, amount: parseAmount(amountText) ?? 0, rules: rules)
+                    if res.category != .other {
+                        selectedCategory = res.category
+                        if selectedBuildingId == nil {
+                            selectedBuildingId = res.buildingId
+                        }
+                    }
+                }
+            }
+            .onChange(of: note) { _, newNote in
+                guard !userExplicitlySelectedCategory else { return }
+                let clean = newNote.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !clean.isEmpty else { return }
+                let amt = parseAmount(amountText) ?? 0
+                let res = MerchantRuleService.classify(merchant: clean, amount: amt, rules: rules)
+                if res.category != .other {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                        selectedCategory = res.category
+                        selectedBuildingId = res.buildingId
+                    }
                 }
             }
             .task(id: scenePhase == .active && !reduceMotion) {

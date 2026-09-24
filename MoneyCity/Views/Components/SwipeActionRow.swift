@@ -33,6 +33,7 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
 
     let id: ID
     @Binding var openSwipeRowID: ID?
+    let onTap: (() -> Void)?
     let onEdit: (() -> Void)?
     let onDelete: () -> Void
     @ViewBuilder let content: () -> Content
@@ -54,12 +55,14 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
     public init(
         id: ID,
         openSwipeRowID: Binding<ID?>,
+        onTap: (() -> Void)? = nil,
         onEdit: (() -> Void)? = nil,
         onDelete: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.id = id
         self._openSwipeRowID = openSwipeRowID
+        self.onTap = onTap
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.content = content
@@ -116,6 +119,8 @@ public struct SwipeActionRow<ID: Hashable, Content: View>: View {
                             offset = 0
                             openSwipeRowID = nil
                         }
+                    } else {
+                        onTap?()
                     }
                 }
                 .simultaneousGesture(

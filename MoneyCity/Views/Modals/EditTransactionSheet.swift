@@ -7,6 +7,7 @@ public struct EditTransactionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
+    @Query private var rules: [MerchantRule]
 
     let transaction: Transaction
 
@@ -474,6 +475,29 @@ public struct EditTransactionSheet: View {
             selectedCategory = transaction.category
             selectedBuildingId = transaction.buildingIdRaw ?? transaction.buildingId
             transactionDate = transaction.timestamp
+
+            // If transaction currently has no category (.other), auto-classify merchant if recognized
+            let clean = transaction.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+            if transaction.category == .other && !clean.isEmpty {
+                let res = MerchantRuleService.classify(merchant: clean, amount: abs(transaction.amount), rules: rules)
+                if res.category != .other {
+                    selectedCategory = res.category
+                    selectedBuildingId = res.buildingId
+                }
+            }
+        }
+        .onChange(of: merchantText) { _, newMerchant in
+            guard !hasUserExplicitlySelectedCategory else { return }
+            let clean = newMerchant.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !clean.isEmpty else { return }
+            let amt = liveAmount ?? abs(transaction.amount)
+            let res = MerchantRuleService.classify(merchant: clean, amount: amt, rules: rules)
+            if res.category != .other {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) {
+                    selectedCategory = res.category
+                    selectedBuildingId = res.buildingId
+                }
+            }
         }
     }
 

@@ -503,6 +503,9 @@ public struct HistoryView: View {
                     SwipeActionRow(
                         id: tx.id,
                         openSwipeRowID: $openSwipeRowID,
+                        onTap: {
+                            editingTx = tx
+                        },
                         onEdit: {
                             editingTx = tx
                         },
@@ -542,19 +545,28 @@ public struct HistoryView: View {
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
-                    Text(tx.category.displayName)
-                        .font(.system(size: 12.5, weight: .regular, design: .default))
-                        .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
-
                     let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
                     if isRefund {
                         Text(l10n.language == .hebrew ? "• ↩️ זיכוי" : "• ↩️ Refund")
                             .font(.system(size: 11, weight: .semibold, design: .default))
                             .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                    } else if !tx.isConfirmed {
-                        Text(l10n.language == .hebrew ? "• סיווג לא ודאי" : "• unverified")
-                            .font(.system(size: 11, weight: .semibold, design: .default))
-                            .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                    } else if tx.category == .other {
+                        HStack(spacing: 3) {
+                            Text(l10n.language == .hebrew ? "הגדר קטגוריה" : "Set category")
+                                .font(.system(size: 11.5, weight: .semibold, design: .default))
+                                .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                            MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 9, color: Color(red: 245/255, green: 158/255, blue: 11/255))
+                        }
+                    } else {
+                        Text(tx.category.displayName)
+                            .font(.system(size: 12.5, weight: .regular, design: .default))
+                            .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+
+                        if !tx.isConfirmed {
+                            Text(l10n.language == .hebrew ? "• לאישור" : "• Needs review")
+                                .font(.system(size: 11, weight: .semibold, design: .default))
+                                .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                        }
                     }
                 }
             }
@@ -619,7 +631,7 @@ public struct HistoryView: View {
                     Haptics.impact(.light)
                 } label: {
                     Label {
-                        Text(l10n.language == .hebrew ? "אשר את הסיווג" : "Confirm category")
+                        Text(l10n.language == .hebrew ? "אשר קטגוריה" : "Confirm category")
                     } icon: {
                         MoneyIcon(.checkCircle, size: 18)
                     }

@@ -64,9 +64,10 @@ struct SharedSpacesSetupView: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(Color.textSecondary)
+                                .foregroundColor(Color.deepNavy)
                                 .frame(width: 34, height: 34)
-                                .background(Color(red: 243/255, green: 244/255, blue: 247/255), in: Circle())
+                                .background(Color.white, in: Circle())
+                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
@@ -117,7 +118,7 @@ struct SharedSpacesSetupView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(4)
-                    .background(Color(red: 244/255, green: 245/255, blue: 248/255))
+                    .background(MoneyCityTheme.babyBlue.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .padding(.horizontal, 24)
 
@@ -135,7 +136,7 @@ struct SharedSpacesSetupView: View {
                 }
                 .padding(.bottom, 36)
             }
-            .background(Color.white.ignoresSafeArea())
+            .background(Color(red: 248/255, green: 249/255, blue: 251/255).ignoresSafeArea())
             .disabled(store.busy)
             .overlay {
                 if store.busy {
@@ -172,29 +173,31 @@ struct SharedSpacesSetupView: View {
             // Space name field
             VStack(alignment: .leading, spacing: 8) {
                 Text(store.text("שם המרחב", "Space Name"))
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
                 TextField(store.text("הבית שלנו", "Our Home"), text: $name)
                     .font(.system(size: 16, weight: .medium, design: .default))
                     .foregroundColor(Color.deepNavy)
                     .padding(.horizontal, 16)
                     .frame(height: 52)
-                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
             }
 
             // Member name field
             VStack(alignment: .leading, spacing: 8) {
                 Text(store.text("השם שלך", "Your Name"))
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundColor(Color.textSecondary)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
                 TextField(store.text("איך יראו אותך במרחב", "How members will see you"), text: $memberName)
                     .font(.system(size: 16, weight: .medium, design: .default))
                     .foregroundColor(Color.deepNavy)
                     .padding(.horizontal, 16)
                     .frame(height: 52)
-                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
             }
 
             // Currency & City Map Style side-by-side selection pills
@@ -204,25 +207,33 @@ struct SharedSpacesSetupView: View {
                     Haptics.selection()
                     showCurrencyPicker = true
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(store.text("מטבע", "Currency"))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
-                        HStack {
-                            Text(selectedCurrency.symbol + " " + selectedCurrency.rawValue)
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(MoneyCityTheme.babyBlue.opacity(0.55))
+                                .frame(width: 32, height: 32)
+                            Text(selectedCurrency.symbol)
+                                .font(.system(size: 14, weight: .black, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(store.text("מטבע", "Currency"))
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                            Text(selectedCurrency.rawValue)
                                 .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color.textMuted)
                         }
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color.textMuted)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .padding(.horizontal, 14)
+                    .frame(height: 56)
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                 }
                 .buttonStyle(.plain)
 
@@ -231,26 +242,34 @@ struct SharedSpacesSetupView: View {
                     Haptics.selection()
                     showMapStylePicker = true
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(store.text("סגנון עיר", "City Style"))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
-                        HStack {
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(MoneyCityTheme.spentGreenSoft)
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "map.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(MoneyCityTheme.brandPrimary)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(store.text("סגנון עיר", "City Style"))
+                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
                             Text(selectedStyle.title(isHebrew: AppLanguage.current == .hebrew))
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
                                 .lineLimit(1)
-                            Spacer()
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color.textMuted)
                         }
+                        Spacer()
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color.textMuted)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .padding(.horizontal, 14)
+                    .frame(height: 56)
+                    .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                 }
                 .buttonStyle(.plain)
             }
@@ -276,7 +295,7 @@ struct SharedSpacesSetupView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
-                        .background(canCreate ? Color.deepNavy : Color.deepNavy.opacity(0.35))
+                        .background(canCreate ? MoneyCityTheme.brandPrimary : MoneyCityTheme.brandPrimary.opacity(0.35))
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -295,7 +314,7 @@ struct SharedSpacesSetupView: View {
                             Image(systemName: "sparkles")
                                 .font(.system(size: 13, weight: .semibold))
                             Text(store.text("התנסות במרחב הדגמה", "Try Demo Space"))
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
                         }
                         .foregroundColor(MoneyCityTheme.brandPrimary)
                         .padding(.vertical, 8)
@@ -329,15 +348,16 @@ struct SharedSpacesSetupView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.text("השם שלך", "Your Name"))
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
                         TextField(store.text("איך יראו אותך במרחב", "How others will see you"), text: $memberName)
                             .font(.system(size: 16, weight: .medium, design: .default))
                             .foregroundColor(Color.deepNavy)
                             .padding(.horizontal, 16)
                             .frame(height: 52)
-                            .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                            .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                     }
 
                     Button {
@@ -353,40 +373,46 @@ struct SharedSpacesSetupView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
-                            .background(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.deepNavy.opacity(0.35) : Color.deepNavy)
+                            .background(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? MoneyCityTheme.brandPrimary.opacity(0.35) : MoneyCityTheme.brandPrimary)
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .disabled(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
+                .padding(20)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
             } else {
                 // Join via Link
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.text("קישור הזמנה", "Invitation Link"))
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
                         TextField("https://www.icloud.com/share/...", text: $url)
                             .font(.system(size: 14, weight: .regular, design: .monospaced))
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .padding(.horizontal, 16)
                             .frame(height: 52)
-                            .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                            .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.text("השם שלך", "Your Name"))
-                            .font(.system(size: 13, weight: .semibold, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
                         TextField(store.text("איך יראו אותך במרחב", "How others will see you"), text: $memberName)
                             .font(.system(size: 16, weight: .medium, design: .default))
                             .foregroundColor(Color.deepNavy)
                             .padding(.horizontal, 16)
                             .frame(height: 52)
-                            .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                            .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                     }
 
                     let canJoin = !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -405,7 +431,7 @@ struct SharedSpacesSetupView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
-                            .background(canJoin ? Color.deepNavy : Color.deepNavy.opacity(0.35))
+                            .background(canJoin ? MoneyCityTheme.brandPrimary : MoneyCityTheme.brandPrimary.opacity(0.35))
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -456,8 +482,9 @@ struct SharedSpacesSetupView: View {
                             }
                         }
                         .padding(14)
-                        .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                        .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                     }
                     .buttonStyle(.plain)
                 }

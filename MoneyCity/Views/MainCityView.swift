@@ -784,7 +784,15 @@ public struct MainCityView: View {
             QuickAddSheet(
                 initialCategory: quickAddPreselectedCategory,
                 initialCategoryIsExplicit: quickAddPreselectedCategory != nil,
-                initialCurrency: l10n.baseCurrency,
+                initialCurrency: {
+                    #if !SWIFT_PACKAGE
+                    if let id = selectedSharedSpaceID,
+                       let space = sharedStore.spaces.first(where: { $0.id == id }) {
+                        return CurrencyType(rawValue: space.currencyCode)
+                    }
+                    #endif
+                    return l10n.baseCurrency
+                }(),
                 sharedSpaceID: selectedSharedSpaceID,
                 onSaveWithExplicitFlag: { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit, transactionDate in
                     let cal = Calendar.current

@@ -88,7 +88,16 @@ public struct QuickAddSheet: View {
         self.onSave = { amount, cat, merch, origAmt, origCurr, rate, bId, _, _ in
             onSave(amount, cat, merch, origAmt, origCurr, rate, bId)
         }
+        #if !SWIFT_PACKAGE
+        if let id = sharedSpaceID,
+           let space = SharedWorkspaceStore.shared.spaces.first(where: { $0.id == id }) {
+            _selectedCurrency = State(initialValue: CurrencyType(rawValue: space.currencyCode))
+        } else {
+            _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        }
+        #else
         _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        #endif
         _transactionDate = State(initialValue: initialDate)
         if let initialMerchant, !initialMerchant.isEmpty {
             _note = State(initialValue: initialMerchant)
@@ -121,7 +130,16 @@ public struct QuickAddSheet: View {
         self.allowsDateEditing = allowsDateEditing
         self.titleOverride = titleOverride
         self.onSave = onSaveWithExplicitFlag
+        #if !SWIFT_PACKAGE
+        if let id = sharedSpaceID,
+           let space = SharedWorkspaceStore.shared.spaces.first(where: { $0.id == id }) {
+            _selectedCurrency = State(initialValue: CurrencyType(rawValue: space.currencyCode))
+        } else {
+            _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        }
+        #else
         _selectedCurrency = State(initialValue: initialCurrency ?? LocalizationManager.shared.baseCurrency)
+        #endif
         _transactionDate = State(initialValue: initialDate)
         if let initialMerchant, !initialMerchant.isEmpty {
             _note = State(initialValue: initialMerchant)
@@ -244,6 +262,7 @@ public struct QuickAddSheet: View {
                         // ── 1. Hero Amount Display (Reference: ₪0.00 with cursor) ──
                         HStack(alignment: .center, spacing: 6) {
                             Button(action: {
+                                guard sharedSpaceID == nil else { return }
                                 Haptics.selection()
                                 dismissKeyboard()
                                 withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
@@ -255,19 +274,22 @@ public struct QuickAddSheet: View {
                                         .font(.system(size: displayAmountFontSize, weight: .bold, design: .rounded))
                                         .foregroundColor(Color.deepNavy)
 
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                                        .foregroundColor(Color.primaryBlue)
-                                        .padding(4)
-                                        .background(Color.primaryBlue.opacity(0.10), in: Circle())
-                                        .offset(y: 2)
+                                    if sharedSpaceID == nil {
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundColor(Color.primaryBlue)
+                                            .padding(4)
+                                            .background(Color.primaryBlue.opacity(0.10), in: Circle())
+                                            .offset(y: 2)
+                                    }
                                 }
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.black.opacity(0.03), in: RoundedRectangle(cornerRadius: 12))
+                                .background(sharedSpaceID == nil ? Color.black.opacity(0.03) : Color.clear, in: RoundedRectangle(cornerRadius: 12))
                             }
                             .buttonStyle(.plain)
-                            .bouncyPress(scale: 0.94)
+                            .bouncyPress(scale: sharedSpaceID == nil ? 0.94 : 1.0)
+                            .disabled(sharedSpaceID != nil)
                             .accessibilityLabel(l10n.language == .hebrew ? "החלף מטבע" : "Change currency")
 
                             Text(displayAmountString)

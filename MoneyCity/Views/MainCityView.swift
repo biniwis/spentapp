@@ -21,6 +21,9 @@ public struct MainCityView: View {
     @AppStorage("userName") private var userName = ""
 
     private var currentMapStyle: CityMapStyle {
+        #if !SWIFT_PACKAGE
+        if let space = scopeContext.currentSpace { return CityMapStyle(rawValue: space.mapStyle) ?? .urban }
+        #endif
         _ = mapSelectionRevision // explicit read — SwiftUI sees this dependency
         return CityMapSelection.currentStyle()
     }
@@ -147,7 +150,26 @@ public struct MainCityView: View {
     }
     
     private var displayTransactions: [Transaction] {
-        currentMonthTransactions
+        #if !SWIFT_PACKAGE
+        if scopeContext.activeScope.isShared { return [] }
+        #endif
+        return currentMonthTransactions
+    }
+
+    private var scopedExpenses: [ExpenseSnapshot] {
+        #if !SWIFT_PACKAGE
+        return scopeContext.expenses(for: currentDate, personalTransactions: allTransactions)
+        #else
+        return displayTransactions.map(ExpenseSnapshot.init)
+        #endif
+    }
+
+    private var selectedSharedSpaceID: UUID? {
+        #if !SWIFT_PACKAGE
+        return scopeContext.activeScope.spaceID
+        #else
+        return nil
+        #endif
     }
 
     /// The lesson points at a place the user actually built, preferring the venue with the
@@ -326,7 +348,8 @@ public struct MainCityView: View {
     }
 
     private var activeEnrichmentIds: [String] {
-        allEnrichments.filter { $0.isApplied }.map { $0.itemId }
+        if selectedSharedSpaceID != nil { return [] }
+        return allEnrichments.filter { $0.isApplied }.map { $0.itemId }
     }
     
     private var companionFirstUse: Date { Date(timeIntervalSince1970: companionsStartedAt > 0 ? companionsStartedAt : companionNow.timeIntervalSince1970) }
@@ -337,19 +360,29 @@ public struct MainCityView: View {
             .max()
     }
     private var weeklyRewardOptions: [ProgressRewardOption] {
-        guard hasCompletedOnboarding, rewardEngine.state.pending != nil else { return [] }
+        guard selectedSharedSpaceID == nil, hasCompletedOnboarding, rewardEngine.state.pending != nil else { return [] }
         let unlockedIds = Set(allEnrichments.filter { $0.isApplied }.map { $0.itemId })
         return CityProgressEngine.shared.availableWeeklyOptions(unlockedItemIds: unlockedIds)
     }
     
     private var currentSlotPlacements: [String: String] {
-        CitySlot.resolvedPlacements(allEnrichments.filter { !CityCompanions.ids.contains($0.itemId) }.map {
+        if selectedSharedSpaceID != nil { return [:] }
+        return CitySlot.resolvedPlacements(allEnrichments.filter { !CityCompanions.ids.contains($0.itemId) }.map {
             CityPlacement(itemId: $0.itemId, slotId: $0.placedSlotId, isApplied: $0.isApplied)
         })
     }
     
     public var body: some View {
         personalBody
+            #if !SWIFT_PACKAGE
+            .id(scopeContext.activeScope)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack { ScopeSelectorMenu(); Spacer() }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 4)
+                    .background(Color.appBackground)
+            }
+            #endif
     }
 
     private var personalBody: some View {
@@ -448,8 +481,8 @@ public struct MainCityView: View {
                                         Text(monthYearString)
                                             .font(.system(size: 13.5, weight: .black, design: .rounded))
                                         Text(l10n.language == .hebrew
-                                             ? "\(l10n.format(amount: currentCity.totalSpent.rounded())) הוצאות"
-                                             : "\(l10n.format(amount: currentCity.totalSpent.rounded())) spent")
+                                             ? "\(l10n.formatScoped(amount: currentCity.totalSpent.rounded())) הוצאות"
+                                             : "\(l10n.formatScoped(amount: currentCity.totalSpent.rounded())) spent")
                                             .font(.system(size: 10.5, weight: .semibold, design: .rounded))
                                             .opacity(0.75)
                                     }
@@ -691,10 +724,19 @@ public struct MainCityView: View {
         #if !SWIFT_PACKAGE
         .onChange(of: scopeContext.activeScope) { _, _ in
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                showQuickAdd = false
+                showFeed = false
+                showBudgetSheet = false
+                showProgressSheet = false
+                showSortingHubSheet = false
+                showReserveSanctuarySheet = false
+                showRecurringExpensesSheet = false
+                isDetailsExpanded = false
                 selectedDistrict = nil
                 inspectedBuilding = nil
                 animatedSpentValue = nil
                 scheduledConfirmationMessage = nil
+                visibleConfirmationBanner = nil
                 quickActionBuilding = nil
                 isQuickActionActive = false
                 monthSnapshot = nil
@@ -743,6 +785,7 @@ public struct MainCityView: View {
                 initialCategory: quickAddPreselectedCategory,
                 initialCategoryIsExplicit: quickAddPreselectedCategory != nil,
                 initialCurrency: l10n.baseCurrency,
+                sharedSpaceID: selectedSharedSpaceID,
                 onSaveWithExplicitFlag: { amount, cat, note, origAmount, origCurrency, exchangeRate, buildingId, isCategoryExplicit, transactionDate in
                     let cal = Calendar.current
                     let isFutureDay = cal.startOfDay(for: transactionDate) > cal.startOfDay(for: Date())
@@ -864,11 +907,13 @@ public struct MainCityView: View {
             // The sheet used to take an onUpdateCategory closure it never called — tapping a
             // row opens the edit sheet, which does this work itself. The parameter is gone
             // rather than kept as nine lines that look wired up and are not.
-            TransactionFeedSheet(
-                title: feedSheetTitle,
-                transactions: feedFilteredTransactions
-            )
-            .environmentObject(l10n)
+            if selectedSharedSpaceID != nil {
+                TransactionFeedSheet(title: feedSheetTitle, expenses: sharedFeedExpenses)
+                    .environmentObject(l10n)
+            } else {
+                TransactionFeedSheet(title: feedSheetTitle, transactions: feedFilteredTransactions)
+                    .environmentObject(l10n)
+            }
         }
         .fullScreenCover(isPresented: $showApplePayGuideSheet) {
             ApplePayGuideSheet()
@@ -1085,6 +1130,7 @@ public struct MainCityView: View {
     }
     
     private func syncWidgetData() {
+        guard selectedSharedSpaceID == nil else { return }
         #if canImport(WidgetKit)
         let spent = currentCity.totalSpent
         let budget = effectiveMonthlyBudget
@@ -1156,6 +1202,7 @@ public struct MainCityView: View {
 
     /// Consumes all queued payment confirmations from disk and displays an aggregated roll animation.
     private func consumeQueuedConfirmationsIfNeeded() {
+        guard selectedSharedSpaceID == nil else { return }
         let list = confirmationCoordinator.consumeAllPendingConfirmations()
         guard !list.isEmpty else { return }
 
@@ -1241,8 +1288,8 @@ public struct MainCityView: View {
                 districtId: building.districtId,
                 name: building.name,
                 amount: currentCity.buildingTotals[building.id] ?? 0,
-                visitCount: DistrictDataHelper.buildingVisitCount(for: building.id, transactions: displayTransactions),
-                trendText: DistrictDataHelper.buildingTrendText(for: building.id, transactions: displayTransactions, language: l10n.language)
+                visitCount: DistrictDataHelper.buildingVisitCount(for: building.id, transactions: scopedExpenses),
+                trendText: DistrictDataHelper.buildingTrendText(for: building.id, transactions: scopedExpenses, language: l10n.language)
             )
         }
     }
@@ -1395,6 +1442,7 @@ public struct MainCityView: View {
             VStack(spacing: 6) {
                 CityTopBarView(
                     hasWeeklyReward: !weeklyRewardOptions.isEmpty,
+                    allowsCompanions: selectedSharedSpaceID == nil,
                     isZenMode: $isZenMode,
                     onOpenCompanions: {
                         companionNow = Date()
@@ -1403,7 +1451,7 @@ public struct MainCityView: View {
                         showProgressSheet = true
                     }
                 )
-                if let recap = pendingRecapForNewMonth, visibleConfirmationBanner == nil {
+                if let recap = pendingRecapForNewMonth, visibleConfirmationBanner == nil, selectedSharedSpaceID == nil {
                     CityNewMonthRecapBanner(
                         recap: recap,
                         onOpen: {
@@ -1517,6 +1565,7 @@ public struct MainCityView: View {
     }
 
     private func handleLongPressAdd() {
+        if selectedSharedSpaceID != nil { showQuickAdd = true; return }
         quickActionAmountText = ""
         withAnimation(.spring(response: 0.32, dampingFraction: 0.72)) {
             quickActionBuilding = nil
@@ -1533,6 +1582,12 @@ public struct MainCityView: View {
     }
 
     private func submitQuickAction() {
+        if selectedSharedSpaceID != nil {
+            quickAddPreselectedCategory = quickActionBuilding?.category
+            closeQuickAction()
+            showQuickAdd = true
+            return
+        }
         guard let building = quickActionBuilding,
               let amt = Double(quickActionAmountText.replacingOccurrences(of: ",", with: ".")),
               amt > 0 else {
@@ -1621,7 +1676,7 @@ public struct MainCityView: View {
     // MARK: - Active City Card Modular View
     @ViewBuilder
     private var cityActiveCardView: some View {
-        if let b = inspectedBuilding, b.id == "savings_sanctuary" {
+        if let b = inspectedBuilding, b.id == "savings_sanctuary", selectedSharedSpaceID == nil {
             ReserveModalView(
                 snapshot: reserveSnapshot,
                 onClose: {
@@ -1650,7 +1705,7 @@ public struct MainCityView: View {
                     }
                 }
             }, onShowFeed: {
-                if b.id == "city_sorting_hub" {
+                if b.id == "city_sorting_hub" && selectedSharedSpaceID == nil {
                     showSortingHubSheet = true
                 } else {
                     showFeed = true
@@ -1744,7 +1799,7 @@ public struct MainCityView: View {
         DistrictDataHelper.districtBuildingPills(
             for: dist,
             currentCity: currentCity,
-            transactions: displayTransactions,
+            transactions: scopedExpenses,
             language: l10n.language
         )
     }
@@ -1754,7 +1809,7 @@ public struct MainCityView: View {
             currentCity: currentCity,
             selectedDistrict: selectedDistrict,
             isDetailsExpanded: $isDetailsExpanded,
-            displayTransactions: displayTransactions,
+            displayTransactions: scopedExpenses,
             onSelectDistrict: handleSelectDistrict
         )
     }
@@ -1891,6 +1946,25 @@ public struct MainCityView: View {
             }
         }
         return displayTransactions
+    }
+
+    private var sharedFeedExpenses: [ExpenseSnapshot] {
+        scopedExpenses.filter { tx in
+            if let building = inspectedBuilding { return tx.buildingId == building.id }
+            guard let district = selectedDistrict else { return true }
+            switch district {
+            case "food": return [.food, .groceries, .coffee].contains(tx.category)
+            case "shopping": return [.shopping, .entertainment].contains(tx.category)
+            case "housing": return [.housing, .subscriptions].contains(tx.category)
+            case "savings": return tx.category == .savings
+            case "transport": return tx.category == .transport
+            case "finance": return tx.category == .finance
+            case "health": return tx.category == .health
+            case "miscellaneous": return [.miscellaneous, .misc].contains(tx.category)
+            case "other": return tx.category == .other
+            default: return false
+            }
+        }
     }
 
     private var feedSheetTitle: String {

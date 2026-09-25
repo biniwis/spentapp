@@ -96,7 +96,7 @@ public struct InspectorModalView: View {
                     .foregroundColor(Color.deepNavy)
                 if isSortingHub {
                     if info.amount > 0 {
-                        Text("\(l10n.format(amount: info.amount)) \(l10n.language == .hebrew ? "לסיווג" : "to categorize") • \(info.visitCount) \(l10n.language == .hebrew ? "עסקאות" : "transactions")")
+                        Text("\(l10n.formatScoped(amount: info.amount)) \(l10n.language == .hebrew ? "לסיווג" : "to categorize") • \(info.visitCount) \(l10n.language == .hebrew ? "עסקאות" : "transactions")")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 234/255, green: 88/255, blue: 12/255))
                     } else {
@@ -108,11 +108,11 @@ public struct InspectorModalView: View {
                         }
                     }
                 } else if info.amount > 0 {
-                    Text("\(l10n.format(amount: info.amount)) \(l10n.language == .hebrew ? "החודש" : "this month") • \(info.visitCount) \(l10n.language == .hebrew ? "פעולות" : "items")")
+                    Text("\(l10n.formatScoped(amount: info.amount)) \(l10n.language == .hebrew ? "החודש" : "this month") • \(info.visitCount) \(l10n.language == .hebrew ? "פעולות" : "items")")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(Color.primaryBlue)
                 } else {
-                    Text(l10n.language == .hebrew ? "ללא הוצאות החודש • \(l10n.format(amount: 0))" : "No expenses this month • \(l10n.baseCurrency.symbol)0")
+                    Text(l10n.language == .hebrew ? "ללא הוצאות החודש • \(l10n.formatScoped(amount: 0))" : "No expenses this month • \(l10n.baseCurrency.symbol)0")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textMuted)
                 }

@@ -4,8 +4,35 @@ import SwiftData
 public struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
-    @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
+    @Query(sort: \Transaction.timestamp, order: .reverse) private var personalTransactions: [Transaction]
     @Query(sort: \ScheduledExpense.scheduledFor, order: .forward) private var allScheduledExpenses: [ScheduledExpense]
+
+    #if !SWIFT_PACKAGE
+    @ObservedObject private var scope = AppScopeContext.shared
+    @State private var editingShared: SharedExpense?
+    #endif
+
+    private var allTransactions: [ExpenseSnapshot] {
+        #if !SWIFT_PACKAGE
+        return scope.allExpenses(personalTransactions: personalTransactions)
+        #else
+        return personalTransactions.map(ExpenseSnapshot.init)
+        #endif
+    }
+    private var scopeCalendar: Calendar {
+        #if !SWIFT_PACKAGE
+        return scope.calendar
+        #else
+        return .current
+        #endif
+    }
+    private var isShared: Bool {
+        #if !SWIFT_PACKAGE
+        return scope.activeScope.isShared
+        #else
+        return false
+        #endif
+    }
 
     @State private var searchText: String = ""
     @State private var selectedCategory: SpendingCategory? = nil
@@ -46,16 +73,16 @@ public struct HistoryView: View {
     @State private var selectedSpecificDate: Date? = nil
     @FocusState private var isSearchFocused: Bool
 
-    private var monthTransactions: [Transaction] {
-        let cal = Calendar.current
+    private var monthTransactions: [ExpenseSnapshot] {
+        let cal = scopeCalendar
         return allTransactions.filter {
             cal.isDate($0.timestamp, equalTo: currentDate, toGranularity: .month)
         }
     }
 
-    private var displayTransactions: [Transaction] {
+    private var displayTransactions: [ExpenseSnapshot] {
         if let specific = selectedSpecificDate {
-            let cal = Calendar.current
+            let cal = scopeCalendar
             return allTransactions.filter {
                 cal.isDate($0.timestamp, inSameDayAs: specific)
             }
@@ -67,7 +94,7 @@ public struct HistoryView: View {
         displayTransactions.filter { !$0.isConfirmed }.count
     }
 
-    private var filtered: [Transaction] {
+    private var filtered: [ExpenseSnapshot] {
         displayTransactions.filter { tx in
             if showOnlyUnconfirmed && tx.isConfirmed { return false }
             let catMatch = selectedCategory == nil || tx.category == selectedCategory
@@ -90,7 +117,7 @@ public struct HistoryView: View {
     }
 
     private var isCurrentMonth: Bool {
-        Calendar.current.isDate(currentDate, equalTo: Date(), toGranularity: .month)
+        scopeCalendar.isDate(currentDate, equalTo: Date(), toGranularity: .month)
     }
 
     private var upcomingExpenses: [ScheduledExpense] {
@@ -98,12 +125,12 @@ public struct HistoryView: View {
     }
 
     private var showUpcomingSection: Bool {
-        isCurrentMonth && selectedSpecificDate == nil && !upcomingExpenses.isEmpty && !hasActiveFilters
+        !isShared && isCurrentMonth && selectedSpecificDate == nil && !upcomingExpenses.isEmpty && !hasActiveFilters
     }
 
-    private var groupedByDay: [(date: Date, txs: [Transaction])] {
-        let cal = Calendar.current
-        var groups: [Date: [Transaction]] = [:]
+    private var groupedByDay: [(date: Date, txs: [ExpenseSnapshot])] {
+        let cal = scopeCalendar
+        var groups: [Date: [ExpenseSnapshot]] = [:]
         for tx in filtered {
             let day = cal.startOfDay(for: tx.timestamp)
             groups[day, default: []].append(tx)
@@ -203,10 +230,22 @@ public struct HistoryView: View {
             get: { selectedMerchantForDetails.map { IdentifiableMerchant(name: $0) } },
             set: { selectedMerchantForDetails = $0?.name }
         )) { item in
-            MerchantDetailSheet(merchantName: item.name)
-                .presentationDetents([.medium, .large])
-                .environmentObject(l10n)
+            if isShared {
+                TransactionFeedSheet(title: item.name, expenses: allTransactions.filter { displayMerchantTitle(for: $0) == item.name })
+                    .environmentObject(l10n)
+            } else {
+                MerchantDetailSheet(merchantName: item.name)
+                    .presentationDetents([.medium, .large])
+                    .environmentObject(l10n)
+            }
         }
+        #if !SWIFT_PACKAGE
+        .sheet(item: $editingShared) { expense in
+            if let space = scope.currentSpace {
+                SharedExpenseEditor(space: space, expense: expense).environmentObject(l10n)
+            }
+        }
+        #endif
         .sheet(isPresented: $showCalendarPicker) {
             HistoryCalendarSheet(
                 calendarPickerDate: $calendarPickerDate,
@@ -453,7 +492,7 @@ public struct HistoryView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(l10n.format(amount: expense.amount, showDecimals: true))
+                Text(l10n.formatScoped(amount: expense.amount, showDecimals: true))
                     .font(.system(size: 16.5, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 
@@ -476,7 +515,7 @@ public struct HistoryView: View {
 
     // MARK: - Day Section (Direct on Background, Editorial Ledger)
 
-    private func daySection(_ date: Date, txs: [Transaction]) -> some View {
+    private func daySection(_ date: Date, txs: [ExpenseSnapshot]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             // Day Header Row: Left Sum ("סה״כ ₪130.00"), Right Title ("היום")
             HStack(alignment: .firstTextBaseline) {
@@ -488,7 +527,7 @@ public struct HistoryView: View {
                     Text(l10n.language == .hebrew ? "סה״כ" : "Total")
                         .font(.system(size: 12, weight: .regular, design: .default))
                         .foregroundColor(Color.textMuted)
-                    Text(l10n.format(amount: txs.reduce(0) { $0 + $1.amount }, showDecimals: true))
+                    Text(l10n.formatScoped(amount: txs.reduce(0) { $0 + $1.amount }, showDecimals: true))
                         .font(.system(size: 13.5, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.textSecondary)
                 }
@@ -504,7 +543,7 @@ public struct HistoryView: View {
                         id: tx.id,
                         openSwipeRowID: $openSwipeRowID,
                         onEdit: {
-                            editingTx = tx
+                            edit(tx)
                         },
                         onDelete: {
                             delete(tx)
@@ -527,7 +566,7 @@ public struct HistoryView: View {
         }
     }
 
-    private func txRow(_ tx: Transaction) -> some View {
+    private func txRow(_ tx: ExpenseSnapshot) -> some View {
         let displayTitle = displayMerchantTitle(for: tx)
 
         return HStack(alignment: .top, spacing: 12) {
@@ -546,6 +585,19 @@ public struct HistoryView: View {
                         .font(.system(size: 12.5, weight: .regular, design: .default))
                         .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
 
+                    #if !SWIFT_PACKAGE
+                    if let payer = scope.participants.first(where: { $0.id == tx.paidBy }) {
+                        HStack(spacing: 4) {
+                            SharedMemberMark(colorHex: payer.colorHex, size: 18)
+                            Text(payer.name)
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(MoneyCityTheme.textSecondary)
+                                .lineLimit(1)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel((l10n.isHebrew ? "שילם/ה: " : "Paid by: ") + payer.name)
+                    }
+                    #endif
                     let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
                     if isRefund {
                         Text(l10n.language == .hebrew ? "• ↩️ זיכוי" : "• ↩️ Refund")
@@ -576,13 +628,13 @@ public struct HistoryView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     } else if isRefund {
-                        Text("+\(l10n.format(amount: abs(tx.amount), showDecimals: true))")
+                        Text("+\(l10n.formatScoped(amount: abs(tx.amount), showDecimals: true))")
                             .font(.system(size: 15.5, weight: .bold, design: .rounded))
                             .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     } else {
-                        Text(l10n.format(amount: tx.amount, showDecimals: true))
+                        Text(l10n.formatScoped(amount: tx.amount, showDecimals: true))
                             .font(.system(size: 15.5, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
@@ -601,7 +653,7 @@ public struct HistoryView: View {
         .contentShape(Rectangle())
         .contextMenu {
             Button {
-                editingTx = tx
+                edit(tx)
             } label: {
                 Text(l10n.language == .hebrew ? "ערוך עסקה" : "Edit Transaction")
             }
@@ -612,9 +664,10 @@ public struct HistoryView: View {
             }
             if !tx.isConfirmed {
                 Button {
+                    guard !isShared, let original = personalTransactions.first(where: { $0.id == tx.id }) else { return }
                     DatabaseService.shared.rememberCorrection(merchant: tx.merchant, category: tx.category)
-                    tx.isConfirmed = true
-                    tx.confidenceScore = 1.0
+                    original.isConfirmed = true
+                    original.confidenceScore = 1.0
                     try? modelContext.save()
                     Haptics.impact(.light)
                 } label: {
@@ -627,7 +680,7 @@ public struct HistoryView: View {
             }
             if tx.isUnresolvedForeign {
                 Button {
-                    convertNow(tx)
+                    if let original = personalTransactions.first(where: { $0.id == tx.id }), !isShared { convertNow(original) }
                 } label: {
                     Label {
                         Text(l10n.language == .hebrew ? "המר עכשיו" : "Convert now")
@@ -648,7 +701,7 @@ public struct HistoryView: View {
     /// Returns the primary title to display for a transaction in the history feed.
     /// If no merchant was entered or if merchant equals category name, resolves to the subcategory name
     /// (e.g. "סופר ומכולת", "בתי קפה", "מסעדות") so the user doesn't see duplicate category names.
-    private func displayMerchantTitle(for tx: Transaction) -> String {
+    private func displayMerchantTitle(for tx: ExpenseSnapshot) -> String {
         let rawMerchant = tx.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let cat = tx.category
         let isHebrew = l10n.language == .hebrew
@@ -707,7 +760,7 @@ public struct HistoryView: View {
     }
 
     private func shiftMonth(_ delta: Int) {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         if let next = cal.date(byAdding: .month, value: delta, to: currentDate) {
             // Never navigate into the future — clamp to the current month
             let clamped = next > Date() ? Date() : next
@@ -719,19 +772,23 @@ public struct HistoryView: View {
 
     private func shortMonth(_ date: Date) -> String {
         let f = DateFormatter()
+        f.calendar = scopeCalendar
+        f.timeZone = scopeCalendar.timeZone
         f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
         f.dateFormat = "LLLL yyyy"
         return f.string(from: date)
     }
 
     private func dayLabel(_ date: Date) -> String {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         if cal.isDateInToday(date) {
             return l10n.language == .hebrew ? "היום" : "Today"
         } else if cal.isDateInYesterday(date) {
             return l10n.language == .hebrew ? "אתמול" : "Yesterday"
         } else {
             let f = DateFormatter()
+        f.calendar = scopeCalendar
+        f.timeZone = scopeCalendar.timeZone
             f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
             f.setLocalizedDateFormatFromTemplate("EdMMM")
             return f.string(from: date)
@@ -750,6 +807,30 @@ public struct HistoryView: View {
         case .notForeign:
             break
         }
+    }
+
+    private func edit(_ tx: ExpenseSnapshot) {
+        #if !SWIFT_PACKAGE
+        if let spaceID = scope.activeScope.spaceID {
+            editingShared = SharedWorkspaceStore.shared.expenses.first { $0.id == tx.id && $0.spaceID == spaceID }
+            return
+        }
+        #endif
+        editingTx = personalTransactions.first { $0.id == tx.id }
+    }
+
+    private func delete(_ tx: ExpenseSnapshot) {
+        #if !SWIFT_PACKAGE
+        if let spaceID = scope.activeScope.spaceID {
+            let store = SharedWorkspaceStore.shared
+            guard let expense = store.expenses.first(where: { $0.id == tx.id && $0.spaceID == spaceID }) else { return }
+            do { try store.deleteExpense(expense) }
+            catch { store.errorMessage = error.localizedDescription }
+            return
+        }
+        #endif
+        guard let original = personalTransactions.first(where: { $0.id == tx.id }) else { return }
+        delete(original)
     }
 
     private func delete(_ tx: Transaction) {

@@ -211,7 +211,7 @@ public struct CategoryBadge: View {
         self.isSelected = isSelected
     }
 
-    public init(transaction: Transaction, size: CGFloat = 40, isSelected: Bool = false) {
+    public init(transaction: some ExpenseReadable, size: CGFloat = 40, isSelected: Bool = false) {
         self.category = transaction.category.canonical
         self.iconOverride = SubcategoryBreakdownService.shared.subcategoryIcon(for: transaction)
         self.size = size

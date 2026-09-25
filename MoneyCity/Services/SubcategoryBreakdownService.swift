@@ -39,7 +39,7 @@ public final class SubcategoryBreakdownService: Sendable {
     /// Breaks down transactions of a specific category into sub-types or merchants
     public func breakdown(
         for category: SpendingCategory,
-        transactions: [Transaction],
+        transactions: [some ExpenseReadable],
         isHebrew: Bool
     ) -> [SubcategoryBreakdownItem] {
         let catTxs = transactions.filter { $0.category.canonical == category.canonical }
@@ -106,17 +106,17 @@ public final class SubcategoryBreakdownService: Sendable {
     }
 
     /// Returns the subcategory display name for a given transaction.
-    public func subcategoryName(for tx: Transaction, isHebrew: Bool) -> String {
+    public func subcategoryName(for tx: some ExpenseReadable, isHebrew: Bool) -> String {
         subcategory(for: tx, isHebrew: isHebrew).name
     }
 
     /// Returns the MoneyCity signature icon type for a given transaction.
-    public func subcategoryIcon(for tx: Transaction) -> MoneyIconType {
+    public func subcategoryIcon(for tx: some ExpenseReadable) -> MoneyIconType {
         subcategory(for: tx, isHebrew: true).icon
     }
 
     /// Returns the complete subcategory metadata (name, icon, thematic color) for a transaction.
-    public func subcategory(for tx: Transaction, isHebrew: Bool) -> (name: String, icon: MoneyIconType, color: Color) {
+    public func subcategory(for tx: some ExpenseReadable, isHebrew: Bool) -> (name: String, icon: MoneyIconType, color: Color) {
         // 1. If explicit buildingIdRaw is set and matches CityBuilding, use its display name & icon
         if let raw = tx.buildingIdRaw, !raw.isEmpty, let b = CityBuilding.find(id: raw) {
             let info = subcategoryInfo(for: tx, category: tx.category.canonical, isHebrew: isHebrew)
@@ -131,7 +131,7 @@ public final class SubcategoryBreakdownService: Sendable {
     // MARK: - Subcategory Classification Rules
 
     private func subcategoryInfo(
-        for tx: Transaction,
+        for tx: some ExpenseReadable,
         category: SpendingCategory,
         isHebrew: Bool
     ) -> (id: String, name: String, icon: MoneyIconType, color: Color) {

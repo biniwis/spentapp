@@ -4,15 +4,18 @@ import SwiftUI
 public struct CityTopBarView: View {
     @EnvironmentObject private var l10n: LocalizationManager
     let hasWeeklyReward: Bool
+    let allowsCompanions: Bool
     @Binding var isZenMode: Bool
     let onOpenCompanions: () -> Void
 
     public init(
         hasWeeklyReward: Bool,
+        allowsCompanions: Bool = true,
         isZenMode: Binding<Bool>,
         onOpenCompanions: @escaping () -> Void
     ) {
         self.hasWeeklyReward = hasWeeklyReward
+        self.allowsCompanions = allowsCompanions
         self._isZenMode = isZenMode
         self.onOpenCompanions = onOpenCompanions
     }
@@ -24,13 +27,10 @@ public struct CityTopBarView: View {
                 .foregroundColor(Color.deepNavy)
                 .tracking(0.5)
 
-            #if !SWIFT_PACKAGE
-            ScopeSelectorMenu()
-            #endif
 
             Spacer()
 
-            if RemoteConfigService.shared.isFeatureEnabled("weeklyAdditions") {
+            if allowsCompanions && RemoteConfigService.shared.isFeatureEnabled("weeklyAdditions") {
                 Button {
                     onOpenCompanions()
                 } label: {
@@ -208,28 +208,151 @@ public struct ScopeSelectorMenu: View {
                 )
             }
         } label: {
-            HStack(spacing: 5) {
-                if scopeContext.capabilities.isShared {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(MoneyCityTheme.brandPrimary)
-                }
-                Text(scopeContext.displayName)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundColor(scopeContext.capabilities.isShared ? MoneyCityTheme.brandPrimary : MoneyCityTheme.textSecondary)
-                    .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(MoneyCityTheme.textSecondary.opacity(0.7))
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(scopeContext.capabilities.isShared ? MoneyCityTheme.brandPrimary.opacity(0.12) : Color.black.opacity(0.04))
+            AccountIdentityLabel(
+                title: scopeContext.displayName,
+                subtitle: scopeContext.activeScope.isShared
+                    ? (l10n.isHebrew ? "חשבון משותף" : "Shared account")
+                    : (l10n.isHebrew ? "חשבון אישי" : "Personal account"),
+                members: scopeContext.participants,
+                showsChevron: true
             )
         }
-        .accessibilityLabel(l10n.isHebrew ? "בחירת מרחב עבודה" : "Choose workspace")
+        .frame(minHeight: 44)
+        .accessibilityLabel(l10n.isHebrew ? "בחירת חשבון" : "Choose account")
+        .accessibilityValue(scopeContext.displayName)
     }
+}
+
+/// Member colors match the city shirts; names remain the primary identifier.
+struct SharedMemberMark: View {
+    let colorHex: String
+    var size: CGFloat = 28
+
+    var body: some View {
+        Image(systemName: "tshirt.fill")
+            .font(.system(size: size * 0.48, weight: .semibold))
+            .foregroundStyle(Color(hex: colorHex))
+            .frame(width: size, height: size)
+            .background(Color(hex: colorHex).opacity(0.10), in: Circle())
+            .overlay(Circle().stroke(MoneyCityTheme.appBackground, lineWidth: 2))
+            .accessibilityHidden(true)
+    }
+}
+
+/// Same identity treatment in the shell and on the pinned expense destination.
+struct AccountIdentityLabel: View {
+    let title: String
+    let subtitle: String
+    let members: [SharedMember]
+    var showsChevron = false
+
+    var body: some View {
+        HStack(spacing: 10) {
+            if members.isEmpty {
+                Image(systemName: "person.crop.circle")
+                    .font(.title3)
+                    .foregroundStyle(MoneyCityTheme.textSecondary)
+                    .frame(width: 36, height: 36)
+            } else {
+                HStack(spacing: -8) {
+                    ForEach(members.prefix(2)) { member in
+                        SharedMemberMark(colorHex: member.colorHex, size: 32)
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(subtitle)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(MoneyCityTheme.textSecondary)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(MoneyCityTheme.textPrimary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            if showsChevron {
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(MoneyCityTheme.textSecondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .frame(minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Selection uses a checkmark and border, not color alone. Large text stacks the choices.
+struct SharedPayerSelection: View {
+    let title: String
+    let members: [SharedMember]
+    @Binding var selection: String
+    var isEnabled = true
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(MoneyCityTheme.textPrimary)
+            if dynamicTypeSize.isAccessibilitySize || members.count > 2 {
+                VStack(spacing: 8) { choices }
+            } else {
+                HStack(spacing: 8) { choices }
+            }
+        }
+    }
+
+    private var choices: some View {
+        ForEach(members) { member in
+            let selected = selection == member.id
+            Button {
+                Haptics.selection()
+                selection = member.id
+            } label: {
+                HStack(spacing: 8) {
+                    SharedMemberMark(colorHex: member.colorHex)
+                    Text(member.name)
+                        .font(.subheadline.weight(selected ? .semibold : .regular))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 0)
+                    Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        .foregroundStyle(selected ? MoneyCityTheme.brandPrimary : MoneyCityTheme.textMuted)
+                }
+                .foregroundStyle(MoneyCityTheme.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .background(selected ? MoneyCityTheme.brandPrimary.opacity(0.06) : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .stroke(selected ? MoneyCityTheme.brandPrimary : MoneyCityTheme.borderSubtle, lineWidth: 1))
+                .contentShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(!isEnabled)
+            .opacity(isEnabled ? 1 : 0.55)
+            .accessibilityLabel(member.name)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+        }
+    }
+}
+
+#Preview("Shared identity · RTL") {
+    let spaceID = UUID()
+    let members = [
+        SharedMember(id: "one", spaceID: spaceID, name: "בנימין", colorHex: "#5653E8", isActive: true),
+        SharedMember(id: "two", spaceID: spaceID, name: "מאיה", colorHex: "#FF6446", isActive: true)
+    ]
+    VStack(alignment: .leading, spacing: 24) {
+        AccountIdentityLabel(title: "הבית שלנו", subtitle: "חשבון משותף", members: members, showsChevron: true)
+        Divider()
+        SharedPayerSelection(title: "מי שילם?", members: members, selection: .constant("one"))
+    }
+    .padding(20)
+    .background(MoneyCityTheme.appBackground)
+    .environment(\.layoutDirection, .rightToLeft)
 }
 #endif

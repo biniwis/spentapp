@@ -30,7 +30,7 @@ public struct DistrictDeepDiveCard: View {
                     Text(districtTitle)
                         .font(.system(size: 16, weight: .black, design: .rounded))
                         .foregroundColor(Color.deepNavy)
-                    Text(l10n.format(amount: total))
+                    Text(l10n.formatScoped(amount: total))
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(Color.primaryBlue)
                 }
@@ -70,7 +70,7 @@ public struct DistrictDeepDiveCard: View {
                             Spacer()
 
                             if pill.amount > 0 {
-                                Text(l10n.format(amount: pill.amount))
+                                Text(l10n.formatScoped(amount: pill.amount))
                                     .font(.system(size: 13, weight: .bold, design: .rounded))
                                     .foregroundColor(Color.textSecondary)
                             }

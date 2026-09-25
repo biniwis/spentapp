@@ -15,7 +15,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     @Published private(set) var pendingCount = 0
     @Published private(set) var conflictCount = 0
     @Published private(set) var demo = false
-    @Published var activeSpaceID: UUID?
+    @Published private(set) var activeSpaceID: UUID?
     @Published var showSetup = false
     @Published var busy = false
     @Published var errorMessage: String?

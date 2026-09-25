@@ -17,16 +17,16 @@ public struct AnalyticsDonutCard: View {
     @EnvironmentObject private var l10n: LocalizationManager
     let categoryTotals: [AnalyticsCategoryTotal]
     let totalSpent: Double
-    let displayTransactions: [Transaction]
+    let displayTransactions: [ExpenseSnapshot]
     @Binding var selectedSlice: SpendingCategory?
-    let countsTowardStats: (Transaction) -> Bool
+    let countsTowardStats: (ExpenseSnapshot) -> Bool
 
     public init(
         categoryTotals: [AnalyticsCategoryTotal],
         totalSpent: Double,
-        displayTransactions: [Transaction],
+        displayTransactions: [ExpenseSnapshot],
         selectedSlice: Binding<SpendingCategory?>,
-        countsTowardStats: @escaping (Transaction) -> Bool
+        countsTowardStats: @escaping (ExpenseSnapshot) -> Bool
     ) {
         self.categoryTotals = categoryTotals
         self.totalSpent = totalSpent
@@ -231,7 +231,7 @@ public struct AnalyticsDonutCard: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text(l10n.format(amount: match.amount.rounded()))
+                Text(l10n.formatScoped(amount: match.amount.rounded()))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(sel.themeColor)
                     .lineLimit(1)
@@ -250,7 +250,7 @@ public struct AnalyticsDonutCard: View {
                     .font(.system(size: 10, weight: .medium, design: .default))
                     .foregroundColor(Color.textSecondary)
 
-                Text(l10n.format(amount: totalSpent.rounded()))
+                Text(l10n.formatScoped(amount: totalSpent.rounded()))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .lineLimit(1)
@@ -359,7 +359,7 @@ public struct AnalyticsDonutCard: View {
                                 .foregroundColor(Color.deepNavy)
                                 .lineLimit(1)
                             Spacer()
-                            Text(l10n.format(amount: sub.amount.rounded()))
+                            Text(l10n.formatScoped(amount: sub.amount.rounded()))
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
                             Text("(\(Int(round(sub.fraction * 100)))%)")

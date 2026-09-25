@@ -75,26 +75,26 @@ public enum DistrictDataHelper {
         }
     }
 
-    public static func sortingHubTransactions(from transactions: [Transaction]) -> [Transaction] {
+    public static func sortingHubTransactions<T: ExpenseReadable>(from transactions: [T]) -> [T] {
         transactions.filter(\.needsCategorization)
     }
 
-    public static func sortingHubCount(from transactions: [Transaction]) -> Int {
+    public static func sortingHubCount<T: ExpenseReadable>(from transactions: [T]) -> Int {
         sortingHubTransactions(from: transactions).count
     }
 
-    public static func sortingHubAmount(from transactions: [Transaction]) -> Double {
+    public static func sortingHubAmount<T: ExpenseReadable>(from transactions: [T]) -> Double {
         sortingHubTransactions(from: transactions).reduce(0.0) { $0 + $1.amount }
     }
 
-    public static func buildingVisitCount(for bId: String, transactions: [Transaction]) -> Int {
+    public static func buildingVisitCount<T: ExpenseReadable>(for bId: String, transactions: [T]) -> Int {
         if bId == "city_sorting_hub" {
             return sortingHubCount(from: transactions)
         }
         return transactions.filter { $0.buildingId == bId }.count
     }
 
-    public static func buildingTrendText(for bId: String, transactions: [Transaction], language: AppLanguage) -> String {
+    public static func buildingTrendText<T: ExpenseReadable>(for bId: String, transactions: [T], language: AppLanguage) -> String {
         let count = buildingVisitCount(for: bId, transactions: transactions)
         if count == 0 {
             return language == .hebrew ? "טרם נרשמו עסקאות החודש" : "No visits this month"
@@ -103,10 +103,10 @@ public enum DistrictDataHelper {
         }
     }
 
-    public static func districtBuildingPills(
+    public static func districtBuildingPills<T: ExpenseReadable>(
         for dist: String,
         currentCity: MonthlyCity,
-        transactions: [Transaction],
+        transactions: [T],
         language: AppLanguage
     ) -> [BuildingPillItem] {
         let isHe = language == .hebrew

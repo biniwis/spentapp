@@ -1,50 +1,58 @@
 import XCTest
 @testable import MoneyCity
 
+#if DEBUG && !SWIFT_PACKAGE
 @MainActor
 final class AppScopeTests: XCTestCase {
+    private var store: SharedWorkspaceStore!
+    private var scope: AppScopeContext!
+
 
     override func setUp() async throws {
         try await super.setUp()
-        AppScopeContext.shared.selectPersonal()
+        store = SharedWorkspaceStore()
+        scope = AppScopeContext(store: store)
     }
 
     override func tearDown() async throws {
-        AppScopeContext.shared.selectPersonal()
+        scope = nil
+        store = nil
         try await super.tearDown()
     }
 
     func testColdLaunchDefaultsStrictlyToPersonal() {
         // Enforce constraint 6: Fresh/cold launch must always enter Personal
-        XCTAssertEqual(AppScopeContext.shared.activeScope, .personal)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.isShared)
-        XCTAssertTrue(AppScopeContext.shared.capabilities.hasBudget)
-        XCTAssertTrue(AppScopeContext.shared.capabilities.hasSavings)
-        XCTAssertTrue(AppScopeContext.shared.capabilities.hasRecurring)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.hasPayerSelection)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.hasMemberManagement)
+        XCTAssertEqual(scope.activeScope, .personal)
+        XCTAssertFalse(scope.capabilities.isShared)
+        XCTAssertTrue(scope.capabilities.hasBudget)
+        XCTAssertTrue(scope.capabilities.hasSavings)
+        XCTAssertTrue(scope.capabilities.hasRecurring)
+        XCTAssertFalse(scope.capabilities.hasPayerSelection)
+        XCTAssertFalse(scope.capabilities.hasMemberManagement)
     }
 
-    func testScopeSwitchingUpdatesCapabilitiesCleanly() {
-        let spaceID = UUID()
-        AppScopeContext.shared.selectShared(spaceID: spaceID)
+    func testScopeSwitchingUpdatesCapabilitiesCleanly() async throws {
+        try await store.startDemo()
+        let spaceID = try XCTUnwrap(store.activeSpaceID)
 
-        XCTAssertEqual(AppScopeContext.shared.activeScope, .shared(spaceID: spaceID))
-        XCTAssertTrue(AppScopeContext.shared.capabilities.isShared)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.hasBudget)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.hasSavings)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.hasRecurring)
-        XCTAssertTrue(AppScopeContext.shared.capabilities.hasPayerSelection)
-        XCTAssertTrue(AppScopeContext.shared.capabilities.hasMemberManagement)
+        XCTAssertEqual(scope.activeScope, .shared(spaceID: spaceID))
+        XCTAssertTrue(scope.capabilities.isShared)
+        XCTAssertFalse(scope.capabilities.hasBudget)
+        XCTAssertFalse(scope.capabilities.hasSavings)
+        XCTAssertFalse(scope.capabilities.hasRecurring)
+        XCTAssertTrue(scope.capabilities.hasPayerSelection)
+        XCTAssertTrue(scope.capabilities.hasMemberManagement)
 
         // Switch back to Personal
-        AppScopeContext.shared.selectPersonal()
-        XCTAssertEqual(AppScopeContext.shared.activeScope, .personal)
-        XCTAssertFalse(AppScopeContext.shared.capabilities.isShared)
-        XCTAssertTrue(AppScopeContext.shared.capabilities.hasBudget)
+        scope.selectPersonal()
+        XCTAssertEqual(scope.activeScope, .personal)
+        XCTAssertFalse(scope.capabilities.isShared)
+        XCTAssertTrue(scope.capabilities.hasBudget)
     }
 
-    func testPersonalDataRemainsStrictlyIsolated() {
+    func testPersonalDataRemainsStrictlyIsolated() async throws {
+        try await store.startDemo()
+        let sharedID = try XCTUnwrap(store.activeSpaceID)
         let now = Date()
         let tx = Transaction(
             amount: 250,
@@ -54,25 +62,32 @@ final class AppScopeTests: XCTestCase {
         )
 
         // In Personal scope
-        AppScopeContext.shared.selectPersonal()
-        let personalExpenses = AppScopeContext.shared.expenses(for: now, personalTransactions: [tx])
+        scope.selectPersonal()
+        let personalExpenses = scope.expenses(for: now, personalTransactions: [tx])
         XCTAssertEqual(personalExpenses.count, 1)
         XCTAssertEqual(personalExpenses.first?.amount, 250)
         XCTAssertEqual(personalExpenses.first?.merchant, "Supermarket")
 
-        // Switch to a dummy Shared Space with no shared expenses
-        let dummySpaceID = UUID()
-        AppScopeContext.shared.selectShared(spaceID: dummySpaceID)
-        let sharedExpenses = AppScopeContext.shared.expenses(for: now, personalTransactions: [tx])
+        // Switch to the in-memory shared ledger
+        let dummySpaceID = sharedID
+        scope.selectShared(spaceID: dummySpaceID)
+        let sharedExpenses = scope.expenses(for: now, personalTransactions: [tx])
 
         // Personal transactions must NEVER leak into Shared
-        XCTAssertEqual(sharedExpenses.count, 0)
+        XCTAssertFalse(sharedExpenses.isEmpty)
+        XCTAssertFalse(sharedExpenses.contains { $0.id == tx.id })
 
         // Switch back to Personal - personal data restored immediately
-        AppScopeContext.shared.selectPersonal()
-        let restoredPersonal = AppScopeContext.shared.expenses(for: now, personalTransactions: [tx])
+        scope.selectPersonal()
+        let restoredPersonal = scope.expenses(for: now, personalTransactions: [tx])
         XCTAssertEqual(restoredPersonal.count, 1)
         XCTAssertEqual(restoredPersonal.first?.amount, 250)
+    }
+
+    func testUnknownSpaceCannotChangeSelection() {
+        scope.selectShared(spaceID: UUID())
+        XCTAssertEqual(scope.activeScope, .personal)
+        XCTAssertNil(store.activeSpaceID)
     }
 
     func testDerivedCacheResetOnScopeSwitch() {
@@ -93,3 +108,5 @@ final class AppScopeTests: XCTestCase {
         XCTAssertTrue(calledNewBuild, "Derived cache must invalidate its city upon reset so calculations never leak across scopes.")
     }
 }
+
+#endif

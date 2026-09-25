@@ -4,7 +4,37 @@ import SwiftData
 public struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
-    @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
+    #if !SWIFT_PACKAGE
+    @ObservedObject private var scope = AppScopeContext.shared
+    #endif
+    private var scopeCapabilities: ScopeCapabilities {
+        #if !SWIFT_PACKAGE
+        return scope.capabilities
+        #else
+        return .personal
+        #endif
+    }
+    private var allTransactions: [ExpenseSnapshot] {
+        #if !SWIFT_PACKAGE
+        return scope.allExpenses(personalTransactions: personalTransactions)
+        #else
+        return personalTransactions.map(ExpenseSnapshot.init)
+        #endif
+    }
+    private var scopeCalendar: Calendar {
+        #if !SWIFT_PACKAGE
+        return scope.calendar
+        #else
+        return .current
+        #endif
+    }
+    private var scopeCurrency: CurrencyType {
+        #if !SWIFT_PACKAGE
+        if let space = scope.currentSpace { return CurrencyType(space.currencyCode) }
+        #endif
+        return l10n.baseCurrency
+    }
+    @Query(sort: \Transaction.timestamp, order: .reverse) private var personalTransactions: [Transaction]
     @Query private var allEnrichments: [CityEnrichment]
 
     /// Passed down to the recap archive so its "Back to City" button reaches the tab state,
@@ -53,11 +83,12 @@ public struct ProfileView: View {
     @AppStorage(AutomaticCaptureStateStore.Key.guideLegacyUpdatedAt) private var legacyGuideUpdatedTimestamp: Double = 0
 
     private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus)? {
+        guard !scopeCapabilities.isShared else { return nil }
         let status = MonthlyRecapService.checkRecapWindow()
         guard status.isActive, let targetDate = status.targetMonthDate else { return nil }
         let recap = MonthlyRecapService.timelineRecap(
             for: targetDate,
-            allTransactions: allTransactions,
+            allTransactions: personalTransactions,
             monthlyBudget: effectiveBudgetLimit > 0 ? effectiveBudgetLimit : nil,
             context: modelContext
         )
@@ -65,8 +96,8 @@ public struct ProfileView: View {
         return (recap, status)
     }
 
-    private var thisMonthTransactions: [Transaction] {
-        let cal = Calendar.current
+    private var thisMonthTransactions: [ExpenseSnapshot] {
+        let cal = scopeCalendar
         let now = Date()
         return allTransactions.filter {
             cal.isDate($0.timestamp, equalTo: now, toGranularity: .month)
@@ -77,8 +108,8 @@ public struct ProfileView: View {
         thisMonthTransactions.filter { $0.category != .savings }.reduce(0) { $0 + $1.amount }
     }
 
-    private var yearTransactions: [Transaction] {
-        let cal = Calendar.current
+    private var yearTransactions: [ExpenseSnapshot] {
+        let cal = scopeCalendar
         let now = Date()
         return allTransactions.filter {
             cal.isDate($0.timestamp, equalTo: now, toGranularity: .year)
@@ -100,7 +131,7 @@ public struct ProfileView: View {
     }
 
     private var monthlyTotals: [(label: String, amount: Double, monthDate: Date)] {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         let now = Date()
         let hebrewMonths = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יוני", "יולי", "אוג", "ספט", "אוק", "נוב", "דצמ"]
         return (0..<12).reversed().map { i in
@@ -160,7 +191,7 @@ public struct ProfileView: View {
     }
 
     private var greetingText: String {
-        let hour = Calendar.current.component(.hour, from: Date())
+        let hour = scopeCalendar.component(.hour, from: Date())
         let isHe = l10n.language == .hebrew
         let name = displayName
         let base: String
@@ -222,7 +253,7 @@ public struct ProfileView: View {
                     yearChartCard
 
                     // ── Management Navigation Menu Cards (Inset Grouped) ──
-                    managementMenuCard
+                    if !scopeCapabilities.isShared { managementMenuCard }
                     #if !SWIFT_PACKAGE
                     Button {
                         SharedWorkspaceStore.shared.showSetup = true
@@ -417,7 +448,7 @@ public struct ProfileView: View {
                 HStack(spacing: 6) {
                     HStack(spacing: 4) {
                         MoneyIcon(.calendar, size: 12)
-                        Text(l10n.language == .hebrew ? "החודש: \(l10n.format(amount: totalThisMonth))" : "This month: \(l10n.format(amount: totalThisMonth))")
+                        Text(l10n.language == .hebrew ? "החודש: \(l10n.formatScoped(amount: totalThisMonth))" : "This month: \(l10n.formatScoped(amount: totalThisMonth))")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(Color.deepNavy)
@@ -462,10 +493,10 @@ public struct ProfileView: View {
             monthTransactionsMetricTile
 
             // 3. Active Streak 🔥 (Tap triggers flame pulse and streak status)
-            streakMetricTile
+            if !scopeCapabilities.isShared { streakMetricTile }
 
             // 4. Budget Goal 🎯 (Tap toggles percentage vs remaining amount; edit pill opens BudgetSheet)
-            budgetMetricTile
+            if scopeCapabilities.hasBudget { budgetMetricTile }
         }
         .padding(.horizontal, 16)
     }
@@ -494,19 +525,19 @@ public struct ProfileView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     if showDetailedYear {
-                        Text(l10n.format(amount: totalThisYear, showDecimals: false))
+                        Text(l10n.formatScoped(amount: totalThisYear, showDecimals: false))
                             .font(.system(size: 18.5, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
-                        let currentMonthIdx = max(1, Calendar.current.component(.month, from: Date()))
+                        let currentMonthIdx = max(1, scopeCalendar.component(.month, from: Date()))
                         let monthlyAvg = totalThisYear / Double(currentMonthIdx)
-                        Text(l10n.language == .hebrew ? "ממוצע: \(l10n.format(amount: monthlyAvg, showDecimals: false))/חודש" : "Avg: \(l10n.format(amount: monthlyAvg, showDecimals: false))/mo")
+                        Text(l10n.language == .hebrew ? "ממוצע: \(l10n.formatScoped(amount: monthlyAvg, showDecimals: false))/חודש" : "Avg: \(l10n.formatScoped(amount: monthlyAvg, showDecimals: false))/mo")
                             .font(.system(size: 11, weight: .medium, design: .default))
                             .foregroundColor(Color.spentGreen)
                             .lineLimit(1)
                     } else {
-                        Text("\(l10n.baseCurrency.symbol)\(shortAmt(totalThisYear))")
+                        Text("\(scopeCurrency.symbol)\(shortAmt(totalThisYear))")
                             .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                         Text(l10n.language == .hebrew ? "סך הכל השנה" : "Total This Year")
@@ -550,7 +581,7 @@ public struct ProfileView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     if showDetailedTransactions {
                         let avgTx = thisMonthTransactions.isEmpty ? 0 : (totalThisMonth / Double(thisMonthTransactions.count))
-                        Text(l10n.format(amount: avgTx, showDecimals: false))
+                        Text(l10n.formatScoped(amount: avgTx, showDecimals: false))
                             .font(.system(size: 18.5, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
@@ -669,7 +700,7 @@ public struct ProfileView: View {
                             .foregroundColor(Color.deepNavy)
                     } else if showDetailedBudget {
                         let overAmount = totalThisMonth - limit
-                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "מעל היעד: \(l10n.format(amount: overAmount, showDecimals: false))" : "Over target by \(l10n.format(amount: overAmount, showDecimals: false))") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.format(amount: remaining, showDecimals: false))")
+                        Text(totalThisMonth > limit ? (l10n.language == .hebrew ? "מעל היעד: \(l10n.formatScoped(amount: overAmount, showDecimals: false))" : "Over target by \(l10n.formatScoped(amount: overAmount, showDecimals: false))") : "\(l10n.language == .hebrew ? "נותרו" : "Left") \(l10n.formatScoped(amount: remaining, showDecimals: false))")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .lineLimit(1)
@@ -691,7 +722,7 @@ public struct ProfileView: View {
                     .padding(.top, 2)
 
                     if showDetailedBudget && limit > 0 {
-                        Text(l10n.language == .hebrew ? "מתוך \(l10n.format(amount: limit, showDecimals: false)) תקציב" : "of \(l10n.format(amount: limit, showDecimals: false)) budget")
+                        Text(l10n.language == .hebrew ? "מתוך \(l10n.formatScoped(amount: limit, showDecimals: false)) תקציב" : "of \(l10n.formatScoped(amount: limit, showDecimals: false)) budget")
                             .font(.system(size: 11, weight: .medium, design: .default))
                             .foregroundColor(Color.textSecondary)
                             .lineLimit(1)
@@ -724,7 +755,7 @@ public struct ProfileView: View {
                         .font(.system(size: 15, weight: .bold, design: .default))
                         .foregroundColor(Color.deepNavy)
                     Spacer()
-                    Text(l10n.format(amount: m.amount.rounded()))
+                    Text(l10n.formatScoped(amount: m.amount.rounded()))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(Color.spentGreen)
                         .lineLimit(1)
@@ -753,7 +784,7 @@ public struct ProfileView: View {
                         .font(.system(size: 16, weight: .bold, design: .default))
                         .foregroundColor(Color.deepNavy)
                     Spacer()
-                    Text("\(l10n.baseCurrency.symbol)\(shortAmt(total12Months))")
+                    Text("\(scopeCurrency.symbol)\(shortAmt(total12Months))")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(Color.spentGreen)
                 }

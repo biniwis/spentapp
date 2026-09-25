@@ -813,10 +813,10 @@
     "Choose a Category" : {
 
     },
-    "Choose how your city looks" : {
+    "Choose account" : {
 
     },
-    "Choose workspace" : {
+    "Choose how your city looks" : {
 
     },
     "City" : {
@@ -1415,9 +1415,6 @@
     "Merge" : {
 
     },
-    "Month" : {
-
-    },
     "Monthly amount" : {
 
     },
@@ -1556,6 +1553,9 @@
 
     },
     "Owner" : {
+
+    },
+    "Paid by" : {
 
     },
     "Participant" : {
@@ -2522,7 +2522,7 @@
     "בודק גיבויים ב־iCloud…" : {
 
     },
-    "בחירת מרחב עבודה" : {
+    "בחירת חשבון" : {
 
     },
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
@@ -3556,6 +3556,9 @@
 
     },
     "שיוך קטגוריה וזיכרון" : {
+
+    },
+    "שילם/ה" : {
 
     },
     "שינוי מטבע" : {

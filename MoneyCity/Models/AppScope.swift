@@ -51,16 +51,24 @@ public struct ScopeCapabilities: Equatable {
     }
 }
 
+#if !SWIFT_PACKAGE
 @MainActor
 public final class AppScopeContext: ObservableObject {
-    public static let shared = AppScopeContext()
+    public static let shared = AppScopeContext(store: .shared)
 
     /// The active scope. Defaults strictly to .personal on cold launch.
     @Published public private(set) var activeScope: AppScope = .personal
 
-    private init() {
-        // Enforce constraint 6: Fresh/cold launch must always enter Personal.
-        self.activeScope = .personal
+    private let store: SharedWorkspaceStore
+    private var subscriptions = Set<AnyCancellable>()
+    init(store: SharedWorkspaceStore) {
+        self.store = store
+        store.$activeSpaceID.removeDuplicates().sink { [weak self] id in
+            self?.activeScope = id.map { .shared(spaceID: $0) } ?? .personal
+        }.store(in: &subscriptions)
+        store.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &subscriptions)
     }
 
     public var capabilities: ScopeCapabilities {
@@ -68,14 +76,14 @@ public final class AppScopeContext: ObservableObject {
         case .personal:
             return .personal
         case let .shared(spaceID):
-            let canWrite = SharedWorkspaceStore.shared.canWrite(spaceID)
+            let canWrite = store.canWrite(spaceID)
             return .shared(canWrite: canWrite)
         }
     }
 
     var currentSpace: SharedSpace? {
         guard case let .shared(id) = activeScope else { return nil }
-        return SharedWorkspaceStore.shared.spaces.first { $0.id == id }
+        return store.spaces.first { $0.id == id }
     }
 
     public var displayName: String {
@@ -96,13 +104,24 @@ public final class AppScopeContext: ObservableObject {
     }
 
     public func selectPersonal() {
-        activeScope = .personal
-        SharedWorkspaceStore.shared.select(nil)
+        store.select(nil)
     }
 
     public func selectShared(spaceID: UUID) {
-        activeScope = .shared(spaceID: spaceID)
-        SharedWorkspaceStore.shared.select(spaceID)
+        store.select(spaceID)
+    }
+
+    public func allExpenses(personalTransactions: [Transaction]) -> [ExpenseSnapshot] {
+        guard case let .shared(id) = activeScope else { return personalTransactions.map(ExpenseSnapshot.init) }
+        guard let space = currentSpace else { return [] }
+        return store.expenses
+            .filter { $0.spaceID == id && $0.currencyCode == space.currencyCode }
+            .map {
+                var snapshot = ExpenseSnapshot($0)
+                snapshot.timeZoneID = space.timeZoneID
+                return snapshot
+            }
+            .sorted { $0.timestamp > $1.timestamp }
     }
 
     /// Provides normalized ExpenseSnapshots for the active scope and specified month.
@@ -120,15 +139,39 @@ public final class AppScopeContext: ObservableObject {
         case let .shared(spaceID):
             guard let space = currentSpace,
                   let interval = space.calendar.dateInterval(of: .month, for: month) else { return [] }
-            return SharedWorkspaceStore.shared.expenses
+            return store.expenses
                 .filter { $0.spaceID == spaceID && $0.currencyCode == space.currencyCode && interval.contains($0.date) }
-                .map(ExpenseSnapshot.init)
+                .map {
+                var snapshot = ExpenseSnapshot($0)
+                snapshot.timeZoneID = space.timeZoneID
+                return snapshot
+            }
         }
     }
 
     /// Participants for the currently active space (empty for personal).
     var participants: [SharedMember] {
         guard case let .shared(spaceID) = activeScope else { return [] }
-        return SharedWorkspaceStore.shared.members.filter { $0.spaceID == spaceID }
+        return store.members.filter { $0.spaceID == spaceID }
+    }
+}
+
+#endif
+
+extension LocalizationManager {
+    /// Shared amounts already use the ledger currency. Never convert them to the personal currency.
+    public func formatScoped(amount: Double, showDecimals: Bool = false) -> String {
+        #if !SWIFT_PACKAGE
+        if let space = AppScopeContext.shared.currentSpace {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.currencyCode = space.currencyCode
+            formatter.locale = Locale(identifier: isHebrew ? "he_IL" : "en_US")
+            formatter.minimumFractionDigits = showDecimals ? SharedMoney.digits(space.currencyCode) : 0
+            formatter.maximumFractionDigits = formatter.minimumFractionDigits
+            return "\u{2068}" + (formatter.string(from: NSNumber(value: amount)) ?? "\(amount) \(space.currencyCode)") + "\u{2069}"
+        }
+        #endif
+        return format(amount: amount, showDecimals: showDecimals)
     }
 }

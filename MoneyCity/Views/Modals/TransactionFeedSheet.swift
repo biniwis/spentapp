@@ -1,11 +1,27 @@
 import SwiftUI
+import SwiftData
 
 /// Chronological feed of monthly transactions with 1-tap categorization editing.
 public struct TransactionFeedSheet: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var l10n: LocalizationManager
     public let title: String?
-    public let transactions: [Transaction]
+    @Query private var storedTransactions: [Transaction]
+    private let personalTransactions: [Transaction]
+    private let suppliedExpenses: [ExpenseSnapshot]?
+    #if !SWIFT_PACKAGE
+    @ObservedObject private var scope = AppScopeContext.shared
+    @State private var editingShared: SharedExpense?
+    #endif
+    private var transactions: [ExpenseSnapshot] {
+        #if !SWIFT_PACKAGE
+        if let suppliedExpenses, scope.activeScope.isShared {
+            let ids = Set(suppliedExpenses.map(\.id))
+            return scope.allExpenses(personalTransactions: []).filter { ids.contains($0.id) }
+        }
+        #endif
+        return suppliedExpenses ?? personalTransactions.map(ExpenseSnapshot.init)
+    }
     
     @State private var selectedTxToEdit: Transaction? = nil
     
@@ -14,9 +30,16 @@ public struct TransactionFeedSheet: View {
         transactions: [Transaction]
     ) {
         self.title = title
-        self.transactions = transactions
+        self.personalTransactions = transactions
+        self.suppliedExpenses = nil
     }
     
+    public init(title: String? = nil, expenses: [ExpenseSnapshot]) {
+        self.title = title
+        self.personalTransactions = []
+        self.suppliedExpenses = expenses
+    }
+
     private var isHebrew: Bool { l10n.language == .hebrew }
     
     public var body: some View {
@@ -55,25 +78,57 @@ public struct TransactionFeedSheet: View {
                                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                                             .foregroundColor(tx.category.themeColor)
                                     }
+                                    #if !SWIFT_PACKAGE
+                                    if let payer = scope.participants.first(where: { $0.id == tx.paidBy }) {
+                                        HStack(spacing: 4) {
+                                            SharedMemberMark(colorHex: payer.colorHex, size: 18)
+                                            Text(payer.name)
+                                                .font(.caption2.weight(.medium))
+                                                .foregroundStyle(MoneyCityTheme.textSecondary)
+                                        }
+                                        .accessibilityElement(children: .ignore)
+                                        .accessibilityLabel((isHebrew ? "שילם/ה: " : "Paid by: ") + payer.name)
+                                    }
+                                    #endif
                                 }
                                 
                                 Spacer()
                                 
                                 // Amount
-                                Text(l10n.format(amount: tx.amount))
+                                Text(l10n.formatScoped(amount: tx.amount))
                                     .font(.system(size: 15, weight: .black, design: .rounded))
                                     .foregroundColor(Color.deepNavy)
                             }
                             .listRowBackground(Color.cardBackground)
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                selectedTxToEdit = tx
+                                #if !SWIFT_PACKAGE
+                                if let spaceID = scope.activeScope.spaceID {
+                                    editingShared = SharedWorkspaceStore.shared.expenses.first { $0.id == tx.id && $0.spaceID == spaceID }
+                                } else {
+                                    selectedTxToEdit = storedTransactions.first { $0.id == tx.id }
+                                }
+                                #else
+                                selectedTxToEdit = storedTransactions.first { $0.id == tx.id }
+                                #endif
                             }
                         }
                         .onDelete { indexSet in
                             for index in indexSet {
                                 let tx = transactions[index]
-                                DatabaseService.shared.context.delete(tx)
+                                #if !SWIFT_PACKAGE
+                                if let spaceID = scope.activeScope.spaceID {
+                                    let store = SharedWorkspaceStore.shared
+                                    if let expense = store.expenses.first(where: { $0.id == tx.id && $0.spaceID == spaceID }) {
+                                        do { try store.deleteExpense(expense) }
+                                        catch { store.errorMessage = error.localizedDescription }
+                                    }
+                                    continue
+                                }
+                                #endif
+                                if let original = storedTransactions.first(where: { $0.id == tx.id }) {
+                                    DatabaseService.shared.context.delete(original)
+                                }
                             }
                             try? DatabaseService.shared.context.save()
                         }
@@ -96,6 +151,13 @@ public struct TransactionFeedSheet: View {
                         .foregroundColor(Color.primaryBlue)
                 }
             }
+            #if !SWIFT_PACKAGE
+            .sheet(item: $editingShared) { expense in
+                if let space = scope.currentSpace {
+                    SharedExpenseEditor(space: space, expense: expense).environmentObject(l10n)
+                }
+            }
+            #endif
             .sheet(item: $selectedTxToEdit) { tx in
                 EditTransactionSheet(transaction: tx)
                     .presentationDetents([PresentationDetent.medium, PresentationDetent.large])
@@ -104,7 +166,7 @@ public struct TransactionFeedSheet: View {
         }
     }
 
-    private func displayMerchantTitle(for tx: Transaction) -> String {
+    private func displayMerchantTitle(for tx: ExpenseSnapshot) -> String {
         let rawMerchant = tx.merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         let cat = tx.category
 

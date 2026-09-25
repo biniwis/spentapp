@@ -6,7 +6,24 @@ import SwiftData
 public struct AnalyticsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var l10n: LocalizationManager
-    @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
+    @Query(sort: \Transaction.timestamp, order: .reverse) private var personalTransactions: [Transaction]
+    #if !SWIFT_PACKAGE
+    @ObservedObject private var scope = AppScopeContext.shared
+    #endif
+    private var allTransactions: [ExpenseSnapshot] {
+        #if !SWIFT_PACKAGE
+        return scope.allExpenses(personalTransactions: personalTransactions)
+        #else
+        return personalTransactions.map(ExpenseSnapshot.init)
+        #endif
+    }
+    private var scopeCalendar: Calendar {
+        #if !SWIFT_PACKAGE
+        return scope.calendar
+        #else
+        return .current
+        #endif
+    }
     @Query private var categoryBudgets: [CategoryBudget]
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
 
@@ -35,34 +52,41 @@ public struct AnalyticsView: View {
 
     /// The month range the chart is anchored to — follows arrow navigation only, never bar taps.
     private var chartAnchorDate: Date {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         return cal.date(byAdding: .month, value: selectedMonthOffset, to: Date()) ?? Date()
     }
 
     /// The month whose data is shown below the chart — follows bar selection when set, else chart anchor.
     private var targetMonthDate: Date {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         let offset = selectedBarOffset ?? selectedMonthOffset
         return cal.date(byAdding: .month, value: offset, to: Date()) ?? Date()
     }
 
     private var isRecapWindowActiveForTargetMonth: Bool {
+        #if !SWIFT_PACKAGE
+        guard !scope.activeScope.isShared else { return false }
+        #endif
         let status = MonthlyRecapService.checkRecapWindow()
         guard status.isActive, let activeDate = status.targetMonthDate else { return false }
-        return Calendar.current.isDate(activeDate, equalTo: targetMonthDate, toGranularity: .month)
+        return scopeCalendar.isDate(activeDate, equalTo: targetMonthDate, toGranularity: .month)
     }
 
     private var monthYearString: String {
         let f = DateFormatter()
+        f.calendar = scopeCalendar
+        f.timeZone = scopeCalendar.timeZone
         f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
         f.dateFormat = "LLLL yyyy"
         return f.string(from: targetMonthDate)
     }
 
     private var previousMonthName: String {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         let prev = cal.date(byAdding: .month, value: -1, to: targetMonthDate) ?? targetMonthDate
         let f = DateFormatter()
+        f.calendar = scopeCalendar
+        f.timeZone = scopeCalendar.timeZone
         f.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
         f.dateFormat = "LLLL"
         return f.string(from: prev)
@@ -76,30 +100,30 @@ public struct AnalyticsView: View {
     /// Whether the user actually has recorded history for the month prior to targetMonthDate
     private var hasPreviousMonthHistory: Bool {
         guard let earliest = earliestRecordedDate else { return false }
-        let cal = Calendar.current
+        let cal = scopeCalendar
         let prevMonth = cal.date(byAdding: .month, value: -1, to: targetMonthDate) ?? targetMonthDate
         guard let endOfPrevMonth = cal.dateInterval(of: .month, for: prevMonth)?.end else { return false }
         return earliest < endOfPrevMonth
     }
 
     /// Transactions for the currently selected month
-    private var displayTransactions: [Transaction] {
-        let cal = Calendar.current
+    private var displayTransactions: [ExpenseSnapshot] {
+        let cal = scopeCalendar
         return allTransactions.filter {
             cal.isDate($0.timestamp, equalTo: targetMonthDate, toGranularity: .month)
         }
     }
 
     /// Previous month transactions for trend comparison
-    private var previousMonthTransactions: [Transaction] {
-        let cal = Calendar.current
+    private var previousMonthTransactions: [ExpenseSnapshot] {
+        let cal = scopeCalendar
         let prev = cal.date(byAdding: .month, value: -1, to: targetMonthDate) ?? targetMonthDate
         return allTransactions.filter {
             cal.isDate($0.timestamp, equalTo: prev, toGranularity: .month)
         }
     }
 
-    private func countsTowardStats(_ tx: Transaction) -> Bool {
+    private func countsTowardStats(_ tx: ExpenseSnapshot) -> Bool {
         if tx.isUnresolvedForeign { return false }
         if tx.category.canonical == .savings { return false }
         if excludeHousing && tx.category.canonical == .housing { return false }
@@ -131,7 +155,7 @@ public struct AnalyticsView: View {
 
     /// Daily average spending for the target month
     private var dailyAverageSpent: Double {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         let now = Date()
         let daysElapsed: Int
         if cal.isDate(targetMonthDate, equalTo: now, toGranularity: .month) {
@@ -149,7 +173,7 @@ public struct AnalyticsView: View {
     }
 
     /// Single largest transaction this month
-    private var topTransactionThisMonth: Transaction? {
+    private var topTransactionThisMonth: ExpenseSnapshot? {
         displayTransactions.filter(countsTowardStats).max(by: { $0.amount < $1.amount })
     }
 
@@ -165,7 +189,7 @@ public struct AnalyticsView: View {
 
     /// 6 comparative months for the bar chart up to chartAnchorDate
     private var chartMonths: [AnalyticsChartMonth] {
-        let cal = Calendar.current
+        let cal = scopeCalendar
         let isHe = l10n.language == .hebrew
 
         return (0..<6).reversed().map { i in
@@ -176,6 +200,8 @@ public struct AnalyticsView: View {
             }.reduce(0) { $0 + $1.amount }
 
             let f = DateFormatter()
+        f.calendar = scopeCalendar
+        f.timeZone = scopeCalendar.timeZone
             f.locale = Locale(identifier: isHe ? "he_IL" : "en_US")
             f.dateFormat = "MMM"
             let lbl = f.string(from: mDate)
@@ -205,7 +231,7 @@ public struct AnalyticsView: View {
             return (isHe ? "ללא שינוי מ\(previousMonthName)" : "No change from \(previousMonthName)", nil, MoneyCityTheme.textSecondary, MoneyCityTheme.jetBlack.opacity(0.04))
         }
 
-        let formattedDiff = l10n.format(amount: abs(diff).rounded())
+        let formattedDiff = l10n.formatScoped(amount: abs(diff).rounded())
         if diff > 0 {
             let txt = isHe ? "↑ \(formattedDiff) יותר מ\(previousMonthName)" : "↑ \(formattedDiff) more than \(previousMonthName)"
             return (txt, true, MoneyCityTheme.brandSecondary, MoneyCityTheme.surfaceSoft)
@@ -274,7 +300,7 @@ public struct AnalyticsView: View {
             let txs = displayTransactions.filter { $0.category.canonical == cat.canonical }
             TransactionFeedSheet(
                 title: cat.displayName(for: l10n.language),
-                transactions: txs
+                expenses: txs
             )
             .environmentObject(l10n)
         }
@@ -299,7 +325,7 @@ public struct AnalyticsView: View {
                     Haptics.impact(.medium)
                     activeRecap = MonthlyRecapService.timelineRecap(
                         for: targetMonthDate,
-                        allTransactions: allTransactions,
+                        allTransactions: personalTransactions,
                         monthlyBudget: BudgetService.monthlySpendingBudget(
                             categoryBudgets: categoryBudgets,
                             overallBudget: userMonthlyBudget
@@ -382,7 +408,7 @@ public struct AnalyticsView: View {
     private var heroKpiSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(l10n.format(amount: totalSpent))
+                Text(l10n.formatScoped(amount: totalSpent))
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .lineLimit(1)
@@ -518,7 +544,7 @@ public struct AnalyticsView: View {
                             .font(.system(size: 13, weight: .medium, design: .rounded))
                             .foregroundColor(Color.textSecondary)
 
-                        Text(l10n.format(amount: amount))
+                        Text(l10n.formatScoped(amount: amount))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
 
@@ -556,12 +582,12 @@ public struct AnalyticsView: View {
         let dailyAvg = dailyAverageSpent
         let txCount = activeTransactionCount
         let topTx = topTransactionThisMonth
-        let maxTxText = topTx.map { l10n.format(amount: $0.amount.rounded()) } ?? l10n.format(amount: 0)
+        let maxTxText = topTx.map { l10n.formatScoped(amount: $0.amount.rounded()) } ?? l10n.formatScoped(amount: 0)
 
         return ViewThatFits(in: .horizontal) {
             // 3-Column primary layout
             HStack(alignment: .top, spacing: 0) {
-                pulseMetricItem(title: isHe ? "ממוצע ליום" : "Daily Average", value: l10n.format(amount: dailyAvg.rounded()))
+                pulseMetricItem(title: isHe ? "ממוצע ליום" : "Daily Average", value: l10n.formatScoped(amount: dailyAvg.rounded()))
                 Rectangle().fill(Color.borderSubtle.opacity(0.6)).frame(width: 1, height: 26).padding(.horizontal, 10)
                 pulseMetricItem(title: isHe ? "פעילות" : "Activity", value: isHe ? "\(txCount) עסקאות" : "\(txCount) txs")
                 Rectangle().fill(Color.borderSubtle.opacity(0.6)).frame(width: 1, height: 26).padding(.horizontal, 10)
@@ -571,7 +597,7 @@ public struct AnalyticsView: View {
             // 2-Row compact fallback for narrow screens (320pt) / large dynamic type
             VStack(spacing: 8) {
                 HStack(alignment: .top, spacing: 0) {
-                    pulseMetricItem(title: isHe ? "ממוצע ליום" : "Daily Average", value: l10n.format(amount: dailyAvg.rounded()))
+                    pulseMetricItem(title: isHe ? "ממוצע ליום" : "Daily Average", value: l10n.formatScoped(amount: dailyAvg.rounded()))
                     Rectangle().fill(Color.borderSubtle.opacity(0.6)).frame(width: 1, height: 26).padding(.horizontal, 10)
                     pulseMetricItem(title: isHe ? "הוצאת שיא" : "Top Expense", value: maxTxText)
                 }
@@ -626,11 +652,11 @@ public struct AnalyticsView: View {
 
                 Text(excludeHousing
                      ? (isHebrew
-                        ? "\(l10n.format(amount: hiddenHousing.rounded())) מוסתרים מהחישוב"
-                        : "\(l10n.format(amount: hiddenHousing.rounded())) hidden from total")
+                        ? "\(l10n.formatScoped(amount: hiddenHousing.rounded())) מוסתרים מהחישוב"
+                        : "\(l10n.formatScoped(amount: hiddenHousing.rounded())) hidden from total")
                      : (isHebrew
-                        ? "שכירות וחשבונות כלולים (\(l10n.format(amount: housingThisMonth.rounded())))"
-                        : "Rent & utilities included (\(l10n.format(amount: housingThisMonth.rounded())))"))
+                        ? "שכירות וחשבונות כלולים (\(l10n.formatScoped(amount: housingThisMonth.rounded())))"
+                        : "Rent & utilities included (\(l10n.formatScoped(amount: housingThisMonth.rounded())))"))
                     .font(.system(size: 11, weight: .regular, design: .default))
                     .foregroundColor(Color.textMuted)
             }

@@ -9,6 +9,39 @@ public struct QuickAddSheet: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var l10n: LocalizationManager
+    public let sharedSpaceID: UUID?
+    public let sharedExpenseID: UUID?
+    #if !SWIFT_PACKAGE
+    @ObservedObject private var sharedStore = SharedWorkspaceStore.shared
+    #endif
+    @State private var sharedPayer = ""
+    @State private var sharedSaveError: String?
+    @State private var didLoadSharedDraft = false
+
+    private var canWriteDestination: Bool {
+        #if !SWIFT_PACKAGE
+        if let id = sharedSpaceID { return sharedStore.canWrite(id) }
+        #endif
+        return true
+    }
+
+    private var entryCalendar: Calendar {
+        #if !SWIFT_PACKAGE
+        if let id = sharedSpaceID, let space = sharedStore.spaces.first(where: { $0.id == id }) { return space.calendar }
+        #endif
+        return .current
+    }
+
+    private var entryCurrency: CurrencyType {
+        #if !SWIFT_PACKAGE
+        if let id = sharedSpaceID,
+           let code = sharedStore.spaces.first(where: { $0.id == id })?.currencyCode {
+            return CurrencyType(rawValue: code)
+        }
+        #endif
+        return l10n.baseCurrency
+    }
+
     public let initialCategory: SpendingCategory?
     public let initialCategoryIsExplicit: Bool
     public let initialMerchant: String?
@@ -39,8 +72,12 @@ public struct QuickAddSheet: View {
         initialDate: Date = Date(),
         allowsDateEditing: Bool = true,
         titleOverride: String? = nil,
+        sharedSpaceID: UUID? = nil,
+        sharedExpenseID: UUID? = nil,
         onSave: @escaping (_ amount: Double, _ category: SpendingCategory, _ merchant: String, _ originalAmount: Double?, _ originalCurrency: String?, _ exchangeRate: Double?, _ buildingId: String?) -> Void
     ) {
+        self.sharedSpaceID = sharedSpaceID
+        self.sharedExpenseID = sharedExpenseID
         self.initialCategory = initialCategory
         self.initialCategoryIsExplicit = initialCategoryIsExplicit
         self.initialMerchant = initialMerchant
@@ -70,8 +107,12 @@ public struct QuickAddSheet: View {
         initialDate: Date = Date(),
         allowsDateEditing: Bool = true,
         titleOverride: String? = nil,
+        sharedSpaceID: UUID? = nil,
+        sharedExpenseID: UUID? = nil,
         onSaveWithExplicitFlag: @escaping OnSaveAction
     ) {
+        self.sharedSpaceID = sharedSpaceID
+        self.sharedExpenseID = sharedExpenseID
         self.initialCategory = initialCategory
         self.initialCategoryIsExplicit = initialCategoryIsExplicit
         self.initialMerchant = initialMerchant
@@ -123,13 +164,13 @@ public struct QuickAddSheet: View {
     /// Verified rate of the selected currency into the base currency, or `nil` when no rate exists.
     /// For the base currency itself there is nothing to resolve (rate 1:1 by definition).
     private var foreignExchangeRate: Double? {
-        guard selectedCurrency != l10n.baseCurrency else { return nil }
-        return CurrencyType.convertIfAvailable(amount: 1.0, from: selectedCurrency, to: l10n.baseCurrency)
+        guard selectedCurrency != entryCurrency else { return nil }
+        return CurrencyType.convertIfAvailable(amount: 1.0, from: selectedCurrency, to: entryCurrency)
     }
 
     /// Save is only allowed when the entry can be expressed honestly in base currency.
     private var canResolveForeignCurrency: Bool {
-        selectedCurrency == l10n.baseCurrency || foreignExchangeRate != nil
+        selectedCurrency == entryCurrency || foreignExchangeRate != nil
     }
 
     private var foreignConversionUnavailableMessage: String {
@@ -148,7 +189,7 @@ public struct QuickAddSheet: View {
 
     /// The primary distinct categories for user selection (including finance and other/sorting hub)
     private var allCategories: [SpendingCategory] {
-        SpendingCategory.primaryCategories
+        SpendingCategory.primaryCategories.filter { sharedSpaceID == nil || $0.canonical != .savings }
     }
     
     /// Displays the entered amount with thousands separator commas (e.g. 20000 -> 20,000)
@@ -248,12 +289,12 @@ public struct QuickAddSheet: View {
                         .padding(.bottom, 12)
 
                         // Currency switcher pill if foreign
-                        if selectedCurrency != l10n.baseCurrency, let val = parseAmount(amountText), val > 0 {
+                        if selectedCurrency != entryCurrency, let val = parseAmount(amountText), val > 0 {
                             if let rate = foreignExchangeRate {
                                 let inBase = val * rate
                                 HStack(spacing: 4) {
                                     ExchangeVectorIcon(color: Color.themeMint)
-                                    Text("≈ \(l10n.format(amount: inBase, showDecimals: true))")
+                                    Text("≈ \(inBase.formatted(.currency(code: entryCurrency.code)))")
                                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 }
                                 .environment(\.layoutDirection, .leftToRight)
@@ -278,6 +319,30 @@ public struct QuickAddSheet: View {
                         numericKeypadView
                             .environment(\.layoutDirection, .leftToRight)
                             .padding(.horizontal, 20)
+
+                        #if !SWIFT_PACKAGE
+                        if let id = sharedSpaceID, let space = sharedStore.spaces.first(where: { $0.id == id }) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                AccountIdentityLabel(
+                                    title: space.name,
+                                    subtitle: l10n.isHebrew ? "שמירה בחשבון המשותף" : "Saving to shared account",
+                                    members: sharedStore.members.filter { $0.spaceID == id && $0.isActive }
+                                )
+                                SharedPayerSelection(
+                                    title: l10n.isHebrew ? "מי שילם?" : "Who paid?",
+                                    members: sharedStore.members.filter { $0.spaceID == id && $0.isActive },
+                                    selection: $sharedPayer,
+                                    isEnabled: canWriteDestination
+                                )
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 12)
+                        }
+                        #endif
+                        if let sharedSaveError {
+                            Text(sharedSaveError).font(.footnote).foregroundStyle(MoneyCityTheme.destructive)
+                                .padding(.horizontal, 20)
+                        }
 
                         // ── 3. Category Cluster (Category + Subcategory Chips) ──
                         categoryClusterSection
@@ -379,8 +444,19 @@ public struct QuickAddSheet: View {
 
             }
             .onAppear {
-                if amountText.isEmpty && selectedCurrency != l10n.baseCurrency {
-                    selectedCurrency = l10n.baseCurrency
+                #if !SWIFT_PACKAGE
+                if let id = sharedSpaceID, !didLoadSharedDraft {
+                    didLoadSharedDraft = true
+                    selectedCurrency = entryCurrency
+                    sharedPayer = sharedStore.myMemberID(in: id)
+                    if let expense = sharedStore.expenses.first(where: { $0.id == sharedExpenseID && $0.spaceID == id }) {
+                        amountText = String(abs(expense.amount))
+                        sharedPayer = expense.paidBy
+                    }
+                }
+                #endif
+                if amountText.isEmpty && selectedCurrency != entryCurrency {
+                    selectedCurrency = entryCurrency
                 }
                 if let initial = initialCategory {
                     selectedCategory = initial
@@ -433,11 +509,11 @@ public struct QuickAddSheet: View {
     private func formattedDateString(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: l10n.language == .hebrew ? "he_IL" : "en_US")
-        if Calendar.current.isDateInToday(date) {
+        if entryCalendar.isDateInToday(date) {
             return l10n.language == .hebrew ? "היום" : "Today"
-        } else if Calendar.current.isDateInYesterday(date) {
+        } else if entryCalendar.isDateInYesterday(date) {
             return l10n.language == .hebrew ? "אתמול" : "Yesterday"
-        } else if Calendar.current.isDateInTomorrow(date) {
+        } else if entryCalendar.isDateInTomorrow(date) {
             return l10n.language == .hebrew ? "מחר" : "Tomorrow"
         } else {
             formatter.dateStyle = .medium
@@ -531,9 +607,11 @@ public struct QuickAddSheet: View {
             DatePicker(
                 "",
                 selection: $tempSelectedDate,
+                in: ...((sharedSpaceID == nil) ? Date.distantFuture : Date()),
                 displayedComponents: [.date]
             )
             .datePickerStyle(.graphical)
+            .environment(\.timeZone, entryCalendar.timeZone)
             .labelsHidden()
             .tint(Color.primaryBlue)
             .environment(\.locale, l10n.language == .hebrew ? Locale(identifier: "he_IL") : Locale(identifier: "en_US"))
@@ -575,7 +653,7 @@ public struct QuickAddSheet: View {
 
     @ViewBuilder @MainActor
     private var quickDateShortcutsRow: some View {
-        let cal = Calendar.current
+        let cal = entryCalendar
         let today = Date()
         let yesterday = cal.date(byAdding: .day, value: -1, to: today) ?? today
         let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today
@@ -595,9 +673,11 @@ public struct QuickAddSheet: View {
                 tempSelectedDate = yesterday
             }
 
-            shortcutDateChip(title: l10n.language == .hebrew ? "מחר" : "Tomorrow", isSelected: isTomorrow) {
-                Haptics.selection()
-                tempSelectedDate = tomorrow
+            if sharedSpaceID == nil {
+                shortcutDateChip(title: l10n.language == .hebrew ? "מחר" : "Tomorrow", isSelected: isTomorrow) {
+                    Haptics.selection()
+                    tempSelectedDate = tomorrow
+                }
             }
         }
     }
@@ -1099,7 +1179,7 @@ public struct QuickAddSheet: View {
             if allowsDateEditing {
                 dateButton
             }
-            moreOptionsButton
+            if sharedSpaceID == nil { moreOptionsButton }
             Spacer()
         }
         .padding(.horizontal, 20)
@@ -1214,7 +1294,7 @@ public struct QuickAddSheet: View {
     }
 
     private var isFutureDate: Bool {
-        let cal = Calendar.current
+        let cal = entryCalendar
         return cal.startOfDay(for: transactionDate) > cal.startOfDay(for: Date())
     }
 
@@ -1222,7 +1302,7 @@ public struct QuickAddSheet: View {
     @ViewBuilder @MainActor
     private var saveTransactionButton: some View {
         let parsed = parseAmount(amountText)
-        let canSave = (parsed ?? 0) > 0 && selectedCategory != nil && canResolveForeignCurrency
+        let canSave = canWriteDestination && (parsed ?? 0) > 0 && selectedCategory != nil && canResolveForeignCurrency
         let saveTitle: String = {
             if isFutureDate {
                 return l10n.language == .hebrew ? "תזמן הוצאה" : "Schedule Expense"
@@ -1262,17 +1342,17 @@ public struct QuickAddSheet: View {
     }
 
     private func submit(category: SpendingCategory) {
-        guard let amount = parseAmount(amountText), amount > 0 else {
+        guard canWriteDestination, let amount = parseAmount(amountText), amount > 0 else {
             showErrorHint = true
             return
         }
 
-        if paymentCount > 1 {
+        if paymentCount > 1 && sharedSpaceID == nil {
             submitInstallments(category: category, total: amount)
             return
         }
 
-        let isForeign = selectedCurrency != l10n.baseCurrency
+        let isForeign = selectedCurrency != entryCurrency
         guard canResolveForeignCurrency else {
             showErrorHint = true
             Haptics.notify(.warning)
@@ -1283,7 +1363,13 @@ public struct QuickAddSheet: View {
         let origCurr: String?
         let rate: Double?
         if isForeign, let availableRate = foreignExchangeRate {
-            converted = (amount * availableRate * 100).rounded() / 100
+            let factor: Double
+            #if !SWIFT_PACKAGE
+            factor = sharedSpaceID == nil ? 100 : pow(10, Double(SharedMoney.digits(entryCurrency.code)))
+            #else
+            factor = 100
+            #endif
+            converted = (amount * availableRate * factor).rounded() / factor
             origAmt = amount
             origCurr = selectedCurrency.rawValue
             rate = availableRate
@@ -1303,6 +1389,38 @@ public struct QuickAddSheet: View {
         let merchant = typed.isEmpty ? fallbackMerchant : typed
 
         let isCategoryExplicit = userExplicitlySelectedCategory || (initialCategory != nil && initialCategoryIsExplicit)
+        #if !SWIFT_PACKAGE
+        if let spaceID = sharedSpaceID {
+            do {
+                guard let space = sharedStore.spaces.first(where: { $0.id == spaceID }),
+                      CurrencyType(rawValue: space.currencyCode) == entryCurrency,
+                      category.canonical != .savings,
+                      transactionDate <= Date() else { throw SharedLedgerError.invalidInput }
+                let previous = sharedStore.expenses.first { $0.id == sharedExpenseID && $0.spaceID == spaceID }
+                if sharedExpenseID != nil && previous == nil { throw SharedLedgerError.noAccess }
+                let signedAmount = previous.map { $0.amount < 0 ? -converted : converted } ?? converted
+                let minor = try SharedMoney.minor(String(signedAmount), currency: space.currencyCode)
+                let member = sharedStore.myMemberID(in: spaceID)
+                try sharedStore.saveExpense(SharedExpense(
+                    id: previous?.id ?? UUID(), spaceID: spaceID, amountMinor: minor,
+                    currencyCode: space.currencyCode, merchant: merchant, category: category,
+                    buildingID: selectedBuildingId ?? CategorizationEngine.shared.mapToBuildingId(category: category, merchant: merchant),
+                    date: transactionDate, note: previous?.note ?? "", paidBy: sharedPayer,
+                    createdBy: previous?.createdBy ?? member, updatedBy: member,
+                    originalAmount: origAmt.map { String($0) } ?? (previous?.amount == signedAmount ? previous?.originalAmount : nil),
+                    originalCurrency: origCurr ?? (previous?.amount == signedAmount ? previous?.originalCurrency : nil),
+                    exchangeRate: rate.map { String($0) } ?? (previous?.amount == signedAmount ? previous?.exchangeRate : nil),
+                    exchangeRateDate: origAmt == nil ? (previous?.amount == signedAmount ? previous?.exchangeRateDate : nil) : Date()
+                ))
+                Haptics.notify(.success)
+                dismiss()
+            } catch {
+                sharedSaveError = error.localizedDescription
+                Haptics.notify(.error)
+            }
+            return
+        }
+        #endif
         onSave(converted, category, merchant, origAmt, origCurr, rate, selectedBuildingId, isCategoryExplicit, transactionDate)
         Haptics.notify(.success)
         dismiss()
@@ -1312,7 +1430,7 @@ public struct QuickAddSheet: View {
     /// the building they picked, and the currency they entered it in. Both are passed on now,
     /// so a split payment records exactly what a single payment would.
     private func submitInstallments(category: SpendingCategory, total: Double) {
-        let isForeign = selectedCurrency != l10n.baseCurrency
+        let isForeign = selectedCurrency != entryCurrency
         guard canResolveForeignCurrency else {
             showErrorHint = true
             Haptics.notify(.warning)
@@ -1347,7 +1465,7 @@ public struct QuickAddSheet: View {
         let plan = InstallmentPlan(
             merchant: merchant,
             totalAmount: converted,
-            currency: l10n.baseCurrency.symbol,
+            currency: entryCurrency.symbol,
             numberOfPayments: paymentCount,
             firstChargeDate: transactionDate,
             category: category,
@@ -1399,4 +1517,3 @@ private struct SaveButtonInteractiveStyle: ButtonStyle {
     QuickAddSheet { _, _, _, _, _, _, _ in }
         .environmentObject(LocalizationManager.shared)
 }
-

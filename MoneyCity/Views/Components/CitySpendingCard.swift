@@ -4,7 +4,7 @@ public struct CitySpendingCard: View {
     public let currentCity: MonthlyCity
     public let selectedDistrict: String?
     @Binding public var isDetailsExpanded: Bool
-    public let displayTransactions: [Transaction]
+    public let displayTransactions: [ExpenseSnapshot]
     public let onSelectDistrict: (String?) -> Void
     @EnvironmentObject private var l10n: LocalizationManager
 
@@ -12,7 +12,7 @@ public struct CitySpendingCard: View {
         currentCity: MonthlyCity,
         selectedDistrict: String?,
         isDetailsExpanded: Binding<Bool>,
-        displayTransactions: [Transaction],
+        displayTransactions: [ExpenseSnapshot],
         onSelectDistrict: @escaping (String?) -> Void
     ) {
         self.currentCity = currentCity
@@ -124,7 +124,7 @@ public struct CitySpendingCard: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        Text(l10n.format(amount: amount))
+                        Text(l10n.formatScoped(amount: amount))
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
 
@@ -136,8 +136,8 @@ public struct CitySpendingCard: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
                 isDetailsExpanded
-                    ? (l10n.language == .hebrew ? "\(title), סגור פירוט הוצאות, \(l10n.format(amount: amount))" : "\(title), hide spending breakdown, \(l10n.format(amount: amount))")
-                    : (l10n.language == .hebrew ? "\(title), הצג פירוט הוצאות, \(l10n.format(amount: amount))" : "\(title), show spending breakdown, \(l10n.format(amount: amount))")
+                    ? (l10n.language == .hebrew ? "\(title), סגור פירוט הוצאות, \(l10n.formatScoped(amount: amount))" : "\(title), hide spending breakdown, \(l10n.formatScoped(amount: amount))")
+                    : (l10n.language == .hebrew ? "\(title), הצג פירוט הוצאות, \(l10n.formatScoped(amount: amount))" : "\(title), show spending breakdown, \(l10n.formatScoped(amount: amount))")
             )
             .accessibilityHint(
                 isDetailsExpanded
@@ -242,7 +242,7 @@ public struct CitySpendingCard: View {
 
                 Spacer()
 
-                Text(l10n.format(amount: amount))
+                Text(l10n.formatScoped(amount: amount))
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 

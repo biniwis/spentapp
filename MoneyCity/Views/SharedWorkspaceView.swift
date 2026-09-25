@@ -51,33 +51,30 @@ struct SharedSpacesSetupView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
                     // ── Header ──
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(store.text("מרחב משותף", "Shared Space"))
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                            Text(store.text("מעקב וניהול הוצאות משותפות ב־SPENT", "Track and manage shared expenses in SPENT"))
-                                .font(.system(size: 13, weight: .medium, design: .default))
-                                .foregroundColor(Color.textSecondary)
-                        }
+                    HStack(alignment: .center) {
+                        Text(store.text("מרחב משותף", "Shared Space"))
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
                         Spacer()
                         Button {
                             dismiss()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 26))
-                                .foregroundStyle(Color.textMuted.opacity(0.6))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.textSecondary)
+                                .frame(width: 34, height: 34)
+                                .background(Color(red: 243/255, green: 244/255, blue: 247/255), in: Circle())
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
 
                     // ── Segment Switcher ──
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Button {
                             Haptics.selection()
                             withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
@@ -88,9 +85,9 @@ struct SharedSpacesSetupView: View {
                                 .font(.system(size: 14, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
                                 .foregroundColor(selectedTab == .create ? Color.deepNavy : Color.textSecondary)
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
+                                .frame(height: 38)
                                 .background(selectedTab == .create ? Color.white : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                                 .shadow(color: selectedTab == .create ? Color.black.opacity(0.04) : Color.clear, radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
@@ -108,22 +105,23 @@ struct SharedSpacesSetupView: View {
                                 if store.invitation != nil {
                                     Circle()
                                         .fill(MoneyCityTheme.spentGreen)
-                                        .frame(width: 8, height: 8)
+                                        .frame(width: 7, height: 7)
                                 }
                             }
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                            .frame(height: 38)
                             .background(selectedTab == .join ? Color.white : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                             .shadow(color: selectedTab == .join ? Color.black.opacity(0.04) : Color.clear, radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
                     .padding(4)
-                    .background(Color.borderSubtle.opacity(0.5))
+                    .background(Color(red: 244/255, green: 245/255, blue: 248/255))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 24)
 
+                    // ── Active Tab Content ──
                     if selectedTab == .create {
                         createSpaceContent
                     } else {
@@ -134,16 +132,10 @@ struct SharedSpacesSetupView: View {
                     if !store.spaces.isEmpty {
                         existingSpacesCard
                     }
-
-                    #if DEBUG
-                    if store.database == nil {
-                        demoSpaceCard
-                    }
-                    #endif
                 }
-                .padding(.bottom, 32)
+                .padding(.bottom, 36)
             }
-            .background(Color.appBackground.ignoresSafeArea())
+            .background(Color.white.ignoresSafeArea())
             .disabled(store.busy)
             .overlay {
                 if store.busy {
@@ -176,148 +168,152 @@ struct SharedSpacesSetupView: View {
     }
 
     private var createSpaceContent: some View {
-        VStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 14) {
-                Text(store.text("פרטי המרחב החדש", "New Space Details"))
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+        VStack(spacing: 20) {
+            // Space name field
+            VStack(alignment: .leading, spacing: 8) {
+                Text(store.text("שם המרחב", "Space Name"))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+                TextField(store.text("הבית שלנו", "Our Home"), text: $name)
+                    .font(.system(size: 16, weight: .medium, design: .default))
                     .foregroundColor(Color.deepNavy)
+                    .padding(.horizontal, 16)
+                    .frame(height: 52)
+                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
 
-                // Space name field
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(store.text("שם המרחב", "Space Name"))
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                    TextField(store.text("למשל: הבית שלנו, דירת שותפים", "e.g., Our Home, Flatmates"), text: $name)
-                        .font(.system(size: 15, weight: .medium, design: .default))
-                        .padding(12)
-                        .background(Color.appBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
+            // Member name field
+            VStack(alignment: .leading, spacing: 8) {
+                Text(store.text("השם שלך", "Your Name"))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+                TextField(store.text("איך יראו אותך במרחב", "How members will see you"), text: $memberName)
+                    .font(.system(size: 16, weight: .medium, design: .default))
+                    .foregroundColor(Color.deepNavy)
+                    .padding(.horizontal, 16)
+                    .frame(height: 52)
+                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
 
-                // Member name field
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(store.text("השם שלך במרחב", "Your Name in the Space"))
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.textSecondary)
-                    TextField(store.text("איך חברי המרחב יראו אותך", "How members will identify you"), text: $memberName)
-                        .font(.system(size: 15, weight: .medium, design: .default))
-                        .padding(12)
-                        .background(Color.appBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-
-                Divider().padding(.vertical, 4)
-
-                // Currency row
+            // Currency & City Map Style side-by-side selection pills
+            HStack(spacing: 12) {
+                // Currency Button
                 Button {
                     Haptics.selection()
                     showCurrencyPicker = true
                 } label: {
-                    HStack(spacing: 12) {
-                        Text(selectedCurrency.symbol)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                            .frame(width: 36, height: 36)
-                            .background(MoneyCityTheme.babyBlue.opacity(0.6), in: Circle())
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(store.text("מטבע המרחב", "Space Currency"))
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(store.text("מטבע", "Currency"))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                        HStack {
+                            Text(selectedCurrency.symbol + " " + selectedCurrency.rawValue)
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
-                            Text(store.text("נקבע בעת היצירה ולא ניתן לשינוי", "Fixed upon creation"))
-                                .font(.system(size: 11, weight: .regular, design: .default))
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(Color.textMuted)
                         }
-
-                        Spacer()
-
-                        Text(selectedCurrency.rawValue)
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(MoneyCityTheme.brandPrimary)
-
-                        Image(systemName: AppLanguage.current == .hebrew ? "chevron.left" : "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color.textMuted)
                     }
-                    .padding(12)
-                    .background(Color.appBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
-                // City Map style row
+                // City Map Style Button
                 Button {
                     Haptics.selection()
                     showMapStylePicker = true
                 } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "map.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(MoneyCityTheme.brandPrimary)
-                            .frame(width: 36, height: 36)
-                            .background(MoneyCityTheme.spentGreenSoft, in: Circle())
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(store.text("סגנון עיר המרחב", "Space Map Style"))
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(store.text("סגנון עיר", "City Style"))
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                        HStack {
                             Text(selectedStyle.title(isHebrew: AppLanguage.current == .hebrew))
-                                .font(.system(size: 11, weight: .regular, design: .default))
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                                .lineLimit(1)
+                            Spacer()
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(Color.textMuted)
                         }
-
-                        Spacer()
-
-                        Image(systemName: AppLanguage.current == .hebrew ? "chevron.left" : "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(Color.textMuted)
                     }
-                    .padding(12)
-                    .background(Color.appBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
-            .padding(18)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-            .padding(.horizontal, 20)
 
-            // CTA Button
+            // Primary CTA & Optional Demo
             let canCreate = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
                             !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            Button {
-                Haptics.impact(.medium)
-                store.perform {
-                    try await store.create(
-                        name: name,
-                        memberName: memberName,
-                        currency: selectedCurrency.rawValue,
-                        mapStyle: selectedStyle.rawValue
-                    )
-                    dismiss()
+            VStack(spacing: 12) {
+                Button {
+                    Haptics.impact(.medium)
+                    store.perform {
+                        try await store.create(
+                            name: name,
+                            memberName: memberName,
+                            currency: selectedCurrency.rawValue,
+                            mapStyle: selectedStyle.rawValue
+                        )
+                        dismiss()
+                    }
+                } label: {
+                    Text(store.text("יצירת מרחב", "Create Space"))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(canCreate ? Color.deepNavy : Color.deepNavy.opacity(0.35))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
-            } label: {
-                Text(store.text("יצירת מרחב משותף", "Create Shared Space"))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(canCreate ? Color.deepNavy : Color.deepNavy.opacity(0.4))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .buttonStyle(.plain)
+                .disabled(!canCreate)
+
+                #if DEBUG
+                if store.database == nil {
+                    Button {
+                        Haptics.selection()
+                        store.perform {
+                            try await store.startDemo()
+                            dismiss()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 13, weight: .semibold))
+                            Text(store.text("התנסות במרחב הדגמה", "Try Demo Space"))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        }
+                        .foregroundColor(MoneyCityTheme.brandPrimary)
+                        .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                #endif
             }
-            .buttonStyle(.plain)
-            .disabled(!canCreate)
-            .padding(.horizontal, 20)
+            .padding(.top, 8)
         }
+        .padding(.horizontal, 24)
     }
 
     private var joinSpaceContent: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             if store.invitation != nil {
                 // Highlighted Invitation Ready Card
-                VStack(spacing: 14) {
+                VStack(spacing: 16) {
                     ZStack {
                         Circle()
                             .fill(MoneyCityTheme.spentGreenSoft)
@@ -327,24 +323,21 @@ struct SharedSpacesSetupView: View {
                             .foregroundColor(MoneyCityTheme.spentGreen)
                     }
 
-                    VStack(spacing: 4) {
-                        Text(store.text("התקבלה הזמנה למרחב!", "Space Invitation Ready!"))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        Text(store.text("הוזמנת להצטרף למרחב הוצאות משותף", "You've been invited to join a shared expense space"))
-                            .font(.system(size: 13, weight: .medium, design: .default))
-                            .foregroundColor(Color.textSecondary)
-                    }
+                    Text(store.text("התקבלה הזמנה למרחב!", "Space Invitation Ready!"))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(store.text("השם שלך במרחב", "Your Name in Space"))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(store.text("השם שלך", "Your Name"))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundColor(Color.textSecondary)
-                        TextField(store.text("איך תופיע/י בפני שאר החברים", "How others will see you"), text: $memberName)
-                            .font(.system(size: 15, weight: .medium, design: .default))
-                            .padding(12)
-                            .background(Color.appBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        TextField(store.text("איך יראו אותך במרחב", "How others will see you"), text: $memberName)
+                            .font(.system(size: 16, weight: .medium, design: .default))
+                            .foregroundColor(Color.deepNavy)
+                            .padding(.horizontal, 16)
+                            .frame(height: 52)
+                            .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
                     Button {
@@ -359,51 +352,41 @@ struct SharedSpacesSetupView: View {
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(memberName.isEmpty ? Color.deepNavy.opacity(0.4) : Color.deepNavy)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .frame(height: 54)
+                            .background(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? Color.deepNavy.opacity(0.35) : Color.deepNavy)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .disabled(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-                .padding(20)
-                .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
-                .padding(.horizontal, 20)
             } else {
-                // Join via Link Card
-                VStack(alignment: .leading, spacing: 14) {
-                    Text(store.text("הצטרפות באמצעות קישור", "Join via Link"))
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    Text(store.text("אם קיבלת קישור הזמנה ב־iCloud / WhatsApp / הודעות, הדבק/י אותו כאן:", "If you received an invitation link via iCloud, paste it here:"))
-                        .font(.system(size: 13, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(store.text("קישור להזמנה", "Invitation Link"))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                // Join via Link
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(store.text("קישור הזמנה", "Invitation Link"))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundColor(Color.textSecondary)
                         TextField("https://www.icloud.com/share/...", text: $url)
                             .font(.system(size: 14, weight: .regular, design: .monospaced))
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
-                            .padding(12)
-                            .background(Color.appBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .padding(.horizontal, 16)
+                            .frame(height: 52)
+                            .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(store.text("השם שלך במרחב", "Your Name in Space"))
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(store.text("השם שלך", "Your Name"))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundColor(Color.textSecondary)
-                        TextField(store.text("איך תופיע/י בפני שאר החברים", "How others will see you"), text: $memberName)
-                            .font(.system(size: 15, weight: .medium, design: .default))
-                            .padding(12)
-                            .background(Color.appBackground)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        TextField(store.text("איך יראו אותך במרחב", "How others will see you"), text: $memberName)
+                            .font(.system(size: 16, weight: .medium, design: .default))
+                            .foregroundColor(Color.deepNavy)
+                            .padding(.horizontal, 16)
+                            .frame(height: 52)
+                            .background(Color(red: 246/255, green: 247/255, blue: 250/255))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
 
                     let canJoin = !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -421,27 +404,23 @@ struct SharedSpacesSetupView: View {
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(canJoin ? Color.deepNavy : Color.deepNavy.opacity(0.4))
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .frame(height: 54)
+                            .background(canJoin ? Color.deepNavy : Color.deepNavy.opacity(0.35))
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .disabled(!canJoin)
                 }
-                .padding(18)
-                .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                .padding(.horizontal, 20)
             }
         }
+        .padding(.horizontal, 24)
     }
 
     private var existingSpacesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(store.text("המרחבים שלך", "Your Spaces"))
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .foregroundColor(Color.deepNavy)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(Color.textSecondary)
                 .padding(.horizontal, 24)
 
             VStack(spacing: 8) {
@@ -477,51 +456,15 @@ struct SharedSpacesSetupView: View {
                             }
                         }
                         .padding(14)
-                        .background(Color.white)
+                        .background(Color(red: 246/255, green: 247/255, blue: 250/255))
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(isSelected ? MoneyCityTheme.brandPrimary : Color.borderSubtle, lineWidth: isSelected ? 1.5 : 1)
-                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 24)
         }
     }
-
-    #if DEBUG
-    private var demoSpaceCard: some View {
-        Button {
-            Haptics.selection()
-            store.perform {
-                try await store.startDemo()
-                dismiss()
-            }
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 16))
-                    .foregroundColor(MoneyCityTheme.brandPrimary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(store.text("פתיחת מרחב הדגמה מקומי", "Open Local Demo Space"))
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-                    Text(store.text("יוצר מרחב מקומי עם שותף/ה והוצאות לדוגמה", "Creates a local sandbox space with mock partner"))
-                        .font(.system(size: 11, weight: .medium, design: .default))
-                        .foregroundColor(Color.textSecondary)
-                }
-                Spacer()
-            }
-            .padding(14)
-            .background(MoneyCityTheme.babyBlue.opacity(0.35))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 20)
-    }
-    #endif
 }
 
 public struct CurrencyPickerModal: View {

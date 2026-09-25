@@ -867,6 +867,9 @@
     "Continue Setup" : {
 
     },
+    "Continue to Apple Sharing" : {
+
+    },
     "Continue without restore" : {
 
     },
@@ -883,6 +886,9 @@
 
     },
     "Create" : {
+
+    },
+    "Create or Join Space" : {
 
     },
     "Create test space" : {
@@ -1209,6 +1215,9 @@
     "How to create the automation?" : {
 
     },
+    "https://www.icloud.com/share/..." : {
+
+    },
     "I succeeded" : {
 
     },
@@ -1312,6 +1321,12 @@
     "Invite / manage access" : {
 
     },
+    "Invite to %@" : {
+
+    },
+    "Invited members can view shared expenses, add transactions, and see the shared city." : {
+
+    },
     "Isolated Preview Sandbox" : {
 
     },
@@ -1345,7 +1360,10 @@
     "Main Category" : {
 
     },
-    "Manage Spaces..." : {
+    "Manage" : {
+
+    },
+    "Manage: %@" : {
 
     },
     "Manual Setup" : {
@@ -1454,6 +1472,9 @@
     "New Goal" : {
 
     },
+    "New Space" : {
+
+    },
     "Next" : {
 
     },
@@ -1514,6 +1535,9 @@
     "One demo city, two worlds. Rotate, zoom and inspect in live 3D." : {
 
     },
+    "Only expenses saved to this space" : {
+
+    },
     "Open 3D ↗" : {
 
     },
@@ -1558,9 +1582,6 @@
     "Owner" : {
 
     },
-    "Paid by" : {
-
-    },
     "Participant" : {
 
     },
@@ -1571,6 +1592,12 @@
 
     },
     "PAYMENT" : {
+
+    },
+    "Personal account" : {
+
+    },
+    "Personal account, budgets, and savings remain 100% private" : {
 
     },
     "Phase 1 · Development only" : {
@@ -1892,6 +1919,9 @@
     "Select Date" : {
 
     },
+    "Select Space" : {
+
+    },
     "Sequence: opening + total + activity + district + dynamic(≤4) + noticed + portrait" : {
 
     },
@@ -1925,6 +1955,9 @@
     "Share" : {
 
     },
+    "Shared account · %@" : {
+
+    },
     "Shared Cloud Lab" : {
 
     },
@@ -1932,6 +1965,9 @@
 
     },
     "Shared space" : {
+
+    },
+    "Shared Space" : {
 
     },
     "Shared Spaces" : {
@@ -2018,6 +2054,9 @@
     "SPENT מחכה לקליטה הראשונה מהפעולה האוטומטית. אחרי התשלום הבא נדע שהכול מחובר." : {
 
     },
+    "Start ✨" : {
+
+    },
     "Start Fresh" : {
 
     },
@@ -2025,6 +2064,9 @@
 
     },
     "Step %lld of 5" : {
+
+    },
+    "Switch between your personal city and shared spaces" : {
 
     },
     "Sync now · %lld pending" : {
@@ -2098,6 +2140,9 @@
     "There's no exchange rate for this currency yet. The transaction was not changed." : {
 
     },
+    "This currency will be used by all space members" : {
+
+    },
     "This is also recorded as a savings transfer and grows the city's Nature Reserve." : {
 
     },
@@ -2129,6 +2174,9 @@
 
     },
     "Total This Year" : {
+
+    },
+    "Track and manage shared expenses together" : {
 
     },
     "Track Today! ✨" : {
@@ -2292,6 +2340,9 @@
 
     },
     "WELCOME TO THE CITY OF" : {
+
+    },
+    "What is shared?" : {
 
     },
     "What's added to the city?" : {
@@ -2537,6 +2588,12 @@
     "בחירת חשבון" : {
 
     },
+    "בחירת מטבע" : {
+
+    },
+    "בחירת מרחב" : {
+
+    },
     "בחר ׳קיצור חדש׳ או ׳קיצור ריק חדש׳, לחץ על ׳הוסף פעולה׳, חפש SPENT ובחר ׳הקלטת עסקת Apple Pay׳." : {
 
     },
@@ -2718,6 +2775,9 @@
     "הושלם" : {
 
     },
+    "הזמנת חבר/ה ל־%@" : {
+
+    },
     "הזן ידנית" : {
 
     },
@@ -2740,6 +2800,9 @@
 
     },
     "החלפה מוחקת את כל מה שיש כאן. תצלום אוטומטי נשמר בכל בנייה, אבל לא לפני ייבוא — ייצא עותק קודם." : {
+
+    },
+    "החשבון האישי, התקציב, והיעדים נשארים פרטיים לחלוטין" : {
 
     },
     "היי, ברוך הבא" : {
@@ -2769,6 +2832,9 @@
     "הכל" : {
 
     },
+    "המטבע ישמש את כל חברי המרחב" : {
+
+    },
     "המידע הפיננסי נשמר במכשיר שלך" : {
 
     },
@@ -2794,6 +2860,9 @@
 
     },
     "המשך ללא שחזור" : {
+
+    },
+    "המשך לשיתוף של Apple" : {
 
     },
     "הסיכום החודשי הראשון שלך יופיע בסיום החודש" : {
@@ -2931,6 +3000,9 @@
     "התחל מחדש" : {
 
     },
+    "התחלה ✨" : {
+
+    },
     "התמונה לא נוצרה" : {
 
     },
@@ -2980,6 +3052,9 @@
     "זרימה מלאה מקונספט העיר ועד פתיחת הדלתות, כולל מעברים ואנימציות" : {
 
     },
+    "חברים שיוזמנו יוכלו לצפות בהוצאות המרחב, להוסיף עסקאות ולראות את העיר המשותפת." : {
+
+    },
     "חודש חדש בעיר" : {
 
     },
@@ -3002,6 +3077,12 @@
 
     },
     "חריגה של ₪650 מהתכנון החודשי" : {
+
+    },
+    "חשבון אישי" : {
+
+    },
+    "חשבון משותף · %@" : {
 
     },
     "טוען עולם…" : {
@@ -3047,6 +3128,9 @@
 
     },
     "יעדי חיסכון" : {
+
+    },
+    "יצירה או הצטרפות למרחב" : {
 
     },
     "יש לך הוצאות קבועות?" : {
@@ -3139,6 +3223,9 @@
     "מדריך קליטה אוטומטית (Automatic Capture Guide):" : {
 
     },
+    "מה ישותף?" : {
+
+    },
     "מה נוסף לעיר?" : {
 
     },
@@ -3202,10 +3289,16 @@
     "מעבדת תלת-ממד אינטראקטיבית" : {
 
     },
+    "מעבר בין העיר האישית למרחבים משותפים" : {
+
+    },
     "מעל היעד: %@" : {
 
     },
     "מעקב הוצאות שמקבל צורה בעיר" : {
+
+    },
+    "מעקב וניהול הוצאות יחד עם בן/בת זוג או שותפים" : {
 
     },
     "מפענח סכום ופרטי עסק מתמונת הקבלה..." : {
@@ -3239,6 +3332,9 @@
 
     },
     "מרחב משותף" : {
+
+    },
+    "מרחב נוסף" : {
 
     },
     "מרחבים משותפים" : {
@@ -3293,7 +3389,10 @@
     "נחסך החודש" : {
 
     },
-    "ניהול מרחבים..." : {
+    "ניהול" : {
+
+    },
+    "ניהול מרחב: %@" : {
 
     },
     "ניתוח הוצאות" : {
@@ -3548,6 +3647,9 @@
     "רצף: פתיחה + סה״כ + פעילות + רובע + דינמי⁽≤4⁾ + הבחנות + דיוקן" : {
 
     },
+    "רק עסקאות שנשמרות במרחב זה" : {
+
+    },
     "שגיאה בשחזור" : {
 
     },
@@ -3580,9 +3682,6 @@
 
     },
     "שיוך קטגוריה וזיכרון" : {
-
-    },
-    "שילם/ה" : {
 
     },
     "שינוי מטבע" : {

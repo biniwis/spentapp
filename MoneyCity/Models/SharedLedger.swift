@@ -45,6 +45,14 @@ struct SharedExpense: Codable, Identifiable, Equatable {
     var amount: Double { SharedMoney.major(amountMinor, currency: currencyCode) }
 }
 
+struct SharedExpenseConflict: Identifiable, Equatable {
+    var id: String { recordKey }
+    let recordKey: String
+    let spaceID: UUID
+    let serverExpense: SharedExpense
+    let localExpense: SharedExpense
+}
+
 enum SharedMoney {
     static func digits(_ currency: String) -> Int {
         let formatter = NumberFormatter()

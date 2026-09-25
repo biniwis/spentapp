@@ -14,6 +14,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     @Published private(set) var expenses: [SharedExpense] = []
     @Published private(set) var pendingCount = 0
     @Published private(set) var conflictCount = 0
+    @Published private(set) var conflicts: [SharedExpenseConflict] = []
     @Published private(set) var demo = false
     @Published private(set) var activeSpaceID: UUID?
     @Published var showSetup = false
@@ -135,7 +136,23 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         members = nextMembers.sorted { $0.id < $1.id }
         expenses = nextExpenses.sorted { $0.date > $1.date }
         pendingCount = records.filter { $0.localRevision != nil }.count
-        conflictCount = records.filter { $0.recoveryPayload != nil }.count
+        var nextConflicts: [SharedExpenseConflict] = []
+        for row in records where !row.isDeleted && row.kind == "expense" {
+            guard let recPayload = row.recoveryPayload,
+                  let spaceID = UUID(uuidString: row.spaceID),
+                  !revokedSpaces.contains(spaceID) else { continue }
+            if let serverExp = try? JSONDecoder().decode(SharedExpense.self, from: row.payload),
+               let localExp = try? JSONDecoder().decode(SharedExpense.self, from: recPayload) {
+                nextConflicts.append(SharedExpenseConflict(
+                    recordKey: row.key,
+                    spaceID: spaceID,
+                    serverExpense: serverExp,
+                    localExpense: localExp
+                ))
+            }
+        }
+        conflicts = nextConflicts
+        conflictCount = nextConflicts.count
         if let activeSpaceID, !spaces.contains(where: { $0.id == activeSpaceID }) { self.activeSpaceID = nil }
     }
 
@@ -256,8 +273,18 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         let row = try spaceRow(space)
         let db = cloud.database(with: CKDatabase.Scope(rawValue: row.databaseScope) ?? .shared)
         let zone = try await db.recordZone(for: recordID(row).zoneID)
-        guard let id = zone.share?.recordID, let share = try await db.record(for: id) as? CKShare else { throw SharedLedgerError.noAccess }
-        return share
+        if let id = zone.share?.recordID, let share = try? await db.record(for: id) as? CKShare {
+            return share
+        }
+        if row.databaseScope == CKDatabase.Scope.private.rawValue {
+            let spaceObj = spaces.first(where: { $0.id == space }) ?? SharedSpace(id: space, name: "SPENT", currencyCode: "ILS", timeZoneID: TimeZone.current.identifier, mapStyle: "urban", createdAt: Date())
+            let share = CKShare(recordZoneID: zone.zoneID)
+            share[CKShare.SystemFieldKey.title] = spaceObj.name as CKRecordValue
+            share.publicPermission = .none
+            let saved = try await cloud.privateCloudDatabase.save(share)
+            return (saved as? CKShare) ?? share
+        }
+        throw SharedLedgerError.noAccess
     }
 
     func accept(_ metadata: CKShare.Metadata, memberName: String) async throws {
@@ -291,6 +318,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
 
     func deleteSpace(_ id: UUID) async throws {
         try ensureNoPendingChanges(in: id)
+        guard isOwner(id) else { throw SharedLedgerError.noAccess }
         guard let database else { throw SharedLedgerError.storageUnavailable }
         let row = try spaceRow(id)
         if !demo && row.databaseScope == CKDatabase.Scope.private.rawValue {
@@ -310,14 +338,56 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try reload()
     }
 
+    /// Owner stops sharing: participants lose access, but owner retains the space, city, and expenses.
+    func stopSharing(in id: UUID) async throws {
+        try ensureNoPendingChanges(in: id)
+        guard isOwner(id) else { throw SharedLedgerError.noAccess }
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+
+        if !demo {
+            do {
+                let share = try await sharingRecord(in: id)
+                _ = try await cloud.privateCloudDatabase.deleteRecord(withID: share.recordID)
+            } catch let ckError as CKError where ckError.code == .unknownItem {
+                // Already removed from server
+            }
+        }
+
+        // Keep space and expenses for the owner; remove other members from local store
+        let myID = myMemberID(in: id)
+        let records = try database.records()
+        for r in records where r.spaceID == id.uuidString && r.kind == "member" && !r.key.contains("member-\(myID)") {
+            database.context.delete(r)
+        }
+        try database.save()
+        try reload()
+    }
+
+    /// Participant leaves the shared space: removes participation on CloudKit shared database,
+    /// and only after cloud confirmation cleans up local records.
     func leaveSpace(_ id: UUID) async throws {
         try ensureNoPendingChanges(in: id)
+        guard !isOwner(id) else { throw SharedLedgerError.noAccess }
         guard let database else { throw SharedLedgerError.storageUnavailable }
-        let memberID = myMemberID(in: id)
-        if let memberRow = try? database.records().first(where: { $0.spaceID == id.uuidString && $0.key.contains("member-\(memberID)") }) {
-            memberRow.isDeleted = true
-            try database.save()
+
+        if !demo {
+            let row = try spaceRow(id)
+            let zoneID = recordID(row).zoneID
+            do {
+                let share = try await sharingRecord(in: id)
+                _ = try await cloud.sharedCloudDatabase.deleteRecord(withID: share.recordID)
+            } catch let ckError as CKError where ckError.code == .unknownItem {
+                // Already removed on server
+            } catch {
+                do {
+                    _ = try await cloud.sharedCloudDatabase.deleteRecordZone(withID: zoneID)
+                } catch let ckError as CKError where ckError.code == .unknownItem {
+                    // Already removed
+                }
+            }
         }
+
+        // Only executed if cloud removal succeeded
         let records = try database.records()
         for r in records where r.spaceID == id.uuidString {
             database.context.delete(r)
@@ -327,6 +397,27 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         writableSpaces.remove(id)
         if activeSpaceID == id {
             activeSpaceID = nil
+        }
+        try reload()
+    }
+
+    /// Resolves an edit conflict by accepting the server version and discarding the local backup.
+    func keepServerVersion(conflict: SharedExpenseConflict) throws {
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+        if let row = try database.record(conflict.recordKey) {
+            row.recoveryPayload = nil
+            try database.save()
+        }
+        try reload()
+    }
+
+    /// Resolves an edit conflict by applying the user's local edits over the server version.
+    func restoreLocalVersion(conflict: SharedExpenseConflict) throws {
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+        try saveExpense(conflict.localExpense)
+        if let row = try database.record(conflict.recordKey) {
+            row.recoveryPayload = nil
+            try database.save()
         }
         try reload()
     }

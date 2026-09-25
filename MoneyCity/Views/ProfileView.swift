@@ -985,7 +985,7 @@ public struct ProfileView: View {
                         Text(l10n.language == .hebrew ? "מרחב משותף" : "Shared Space")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
-                        Text(l10n.language == .hebrew ? "ניהול תקציב והוצאות יחד עם בן/בת זוג או שותפים" : "Track shared budget & expenses together")
+                        Text(l10n.language == .hebrew ? "מעקב וניהול הוצאות יחד עם בן/בת זוג או שותפים" : "Track and manage shared expenses together")
                             .font(.system(size: 12, weight: .medium, design: .default))
                             .foregroundColor(Color.textSecondary)
                             .lineLimit(2)

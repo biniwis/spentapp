@@ -59,7 +59,7 @@ struct SharedSpacesSetupView: View {
                             Text(store.text("מרחב משותף", "Shared Space"))
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
-                            Text(store.text("ניהול תקציב והוצאות משותפות ב־SPENT", "Manage budget and shared expenses in SPENT"))
+                            Text(store.text("מעקב וניהול הוצאות משותפות ב־SPENT", "Track and manage shared expenses in SPENT"))
                                 .font(.system(size: 13, weight: .medium, design: .default))
                                 .foregroundColor(Color.textSecondary)
                         }
@@ -615,6 +615,8 @@ struct SharedSpaceManagement: View {
     @State private var showPreInvite = false
     @State private var showDeleteConfirm = false
     @State private var showLeaveConfirm = false
+    @State private var showStopSharingConfirm = false
+    @State private var showConflictResolution = false
     private struct SharingItem: Identifiable { let id = UUID(); let share: CKShare }
 
     var body: some View {
@@ -644,22 +646,51 @@ struct SharedSpaceManagement: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
 
-                    // Conflict Alert Banner
-                    if store.conflictCount > 0 {
-                        HStack(spacing: 12) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(Color.orange)
-                            Text(store.text("\(store.conflictCount) עריכות התנגשו עם שינוי במרחב. גרסת השרת מוצגת.",
-                                            "\(store.conflictCount) edits conflicted with shared changes. The server version is shown."))
-                                .font(.system(size: 12, weight: .medium, design: .default))
-                                .foregroundColor(Color.deepNavy)
-                            Spacer()
+                    // Conflict Review Card
+                    let spaceConflicts = store.conflicts.filter { $0.spaceID == space.id }
+                    if !spaceConflicts.isEmpty {
+                        Button {
+                            Haptics.selection()
+                            showConflictResolution = true
+                        } label: {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.orange.opacity(0.15))
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "exclamationmark.arrow.triangle.2.circlepath")
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(Color.orange)
+                                }
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(store.text("נמצאו \(spaceConflicts.count) התנגשויות עריכה", "Found \(spaceConflicts.count) Edit Conflicts"))
+                                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                    Text(store.text("העריכות המקומיות שלך נשמרו. לחץ להשוואה ובחירה.",
+                                                    "Your local edits were saved. Tap to review and resolve."))
+                                        .font(.system(size: 12, weight: .medium, design: .default))
+                                        .foregroundColor(Color.textSecondary)
+                                        .lineLimit(2)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: l10n.isHebrew ? "chevron.left" : "chevron.right")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(Color.orange)
+                            }
+                            .padding(14)
+                            .background(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(Color.orange.opacity(0.35), lineWidth: 1.5)
+                            )
+                            .shadow(color: Color.orange.opacity(0.06), radius: 8, y: 2)
+                            .padding(.horizontal, 20)
                         }
-                        .padding(14)
-                        .background(Color.orange.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .padding(.horizontal, 20)
+                        .buttonStyle(.plain)
                     }
 
                     // Members Card
@@ -772,6 +803,26 @@ struct SharedSpaceManagement: View {
                     VStack(spacing: 12) {
                         let isOwner = store.isOwner(space.id)
                         if isOwner {
+                            // Stop Sharing (Owner only)
+                            Button {
+                                Haptics.impact(.medium)
+                                showStopSharingConfirm = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "person.crop.circle.badge.xmark")
+                                        .font(.system(size: 15, weight: .semibold))
+                                    Text(store.text("עצירת שיתוף המרחב", "Stop Sharing Space"))
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                }
+                                .foregroundColor(Color.deepNavy)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 48)
+                                .background(Color.borderSubtle.opacity(0.6))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+
+                            // Delete Space (Owner only)
                             Button(role: .destructive) {
                                 Haptics.impact(.medium)
                                 showDeleteConfirm = true
@@ -779,7 +830,7 @@ struct SharedSpaceManagement: View {
                                 HStack(spacing: 8) {
                                     Image(systemName: "trash")
                                         .font(.system(size: 14, weight: .semibold))
-                                    Text(store.text("מחיקת המרחב המשותף", "Delete Shared Space"))
+                                    Text(store.text("מחיקת המרחב לצמיתות", "Delete Shared Space"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                 }
                                 .foregroundColor(MoneyCityTheme.destructive)
@@ -790,6 +841,7 @@ struct SharedSpaceManagement: View {
                             }
                             .buttonStyle(.plain)
                         } else {
+                            // Leave Space (Participant only)
                             Button {
                                 Haptics.impact(.medium)
                                 showLeaveConfirm = true
@@ -800,10 +852,10 @@ struct SharedSpaceManagement: View {
                                     Text(store.text("עזיבת המרחב", "Leave Space"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                 }
-                                .foregroundColor(Color.deepNavy)
+                                .foregroundColor(MoneyCityTheme.destructive)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 48)
-                                .background(Color.borderSubtle.opacity(0.6))
+                                .background(MoneyCityTheme.destructive.opacity(0.08))
                                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             }
                             .buttonStyle(.plain)
@@ -814,6 +866,10 @@ struct SharedSpaceManagement: View {
                 .padding(.bottom, 32)
             }
             .background(Color.appBackground.ignoresSafeArea())
+            .sheet(isPresented: $showConflictResolution) {
+                SharedConflictResolutionSheet(spaceID: space.id)
+                    .environmentObject(l10n)
+            }
             .sheet(isPresented: $showPreInvite) {
                 InviteMemberPreSheet(space: space) {
                     showPreInvite = false
@@ -828,20 +884,40 @@ struct SharedSpaceManagement: View {
                 SharedSharingController(share: item.share, container: store.cloud)
             }
             .confirmationDialog(
-                store.text("האם למחוק את המרחב?", "Delete Space?"),
+                store.text("עצירת שיתוף המרחב?", "Stop Sharing Space?"),
+                isPresented: $showStopSharingConfirm,
+                titleVisibility: .visible
+            ) {
+                Button(store.text("עצור שיתוף עם משתתפים", "Stop Sharing"), role: .destructive) {
+                    store.perform {
+                        try await store.stopSharing(in: space.id)
+                    }
+                }
+                Button(store.text("ביטול", "Cancel"), role: .cancel) {}
+            } message: {
+                Text(store.text("כל המשתתפים האחרים יאבדו גישה למרחב. המרחב, העיר וכל ההוצאות יישארו אצלך בלבד ולא יימחקו.",
+                                "All other members will lose access. The space, city, and expenses will remain yours and will not be deleted."))
+            }
+            .confirmationDialog(
+                store.text("האם למחוק את המרחב לצמיתות?", "Delete Space Permanently?"),
                 isPresented: $showDeleteConfirm,
                 titleVisibility: .visible
             ) {
                 Button(store.text("מחק מרחב ונתונים", "Delete Space"), role: .destructive) {
                     store.perform {
                         try await store.deleteSpace(space.id)
+                        #if !SWIFT_PACKAGE
+                        if AppScopeContext.shared.activeScope.spaceID == space.id {
+                            AppScopeContext.shared.selectPersonal()
+                        }
+                        #endif
                         dismiss()
                     }
                 }
                 Button(store.text("ביטול", "Cancel"), role: .cancel) {}
             } message: {
-                Text(store.text("פעולה זו בלתי הפיכה ותמחק את המרחב והנתונים המשותפים לכל המשתתפים. הנתונים האישיים שלך לא ייפגעו.",
-                                "This cannot be undone and deletes the space for all members. Your personal data will not be affected."))
+                Text(store.text("פעולה זו בלתי הפיכה ותמחק את המרחב ואת כל ההוצאות והנתונים המשותפים לצמיתות עבור כל המשתתפים. הנתונים האישיים שלך לא ייפגעו.",
+                                "This cannot be undone and permanently deletes the space and all shared expenses for all members. Your personal data will not be affected."))
             }
             .confirmationDialog(
                 store.text("האם לעזוב את המרחב?", "Leave Space?"),
@@ -851,15 +927,260 @@ struct SharedSpaceManagement: View {
                 Button(store.text("עזוב מרחב", "Leave Space"), role: .destructive) {
                     store.perform {
                         try await store.leaveSpace(space.id)
+                        #if !SWIFT_PACKAGE
+                        if AppScopeContext.shared.activeScope.spaceID == space.id {
+                            AppScopeContext.shared.selectPersonal()
+                        }
+                        #endif
                         dismiss()
                     }
                 }
                 Button(store.text("ביטול", "Cancel"), role: .cancel) {}
             } message: {
-                Text(store.text("הגישה למרחב זה תוסר ממכשירך. הוצאות שהזנת יישארו במרחב.",
-                                "Access to this space will be removed. Your recorded expenses will stay in the space."))
+                Text(store.text("העזיבה תסיר את השיתוף בענן ותמחק את הנתונים המשותפים ממכשיר זה בלבד. הוצאות שהזנת יישארו במרחב.",
+                                "Leaving will remove your participation in iCloud and delete the shared data from this device only. Your recorded expenses will stay in the space."))
             }
         }
+    }
+}
+
+// ── Real Conflict Resolution Sheet (SPENT Native Design) ──
+public struct SharedConflictResolutionSheet: View {
+    let spaceID: UUID
+    @ObservedObject private var store = SharedWorkspaceStore.shared
+    @EnvironmentObject private var l10n: LocalizationManager
+    @Environment(\.dismiss) private var dismiss
+
+    private var spaceConflicts: [SharedExpenseConflict] {
+        store.conflicts.filter { $0.spaceID == spaceID }
+    }
+
+    private var space: SharedSpace? {
+        store.spaces.first(where: { $0.id == spaceID })
+    }
+
+    private var dateFormatter: DateFormatter {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: l10n.isHebrew ? "he_IL" : "en_US")
+        f.dateFormat = "d בMMMM yyyy, HH:mm"
+        return f
+    }
+
+    public var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(store.text("פתרון התנגשויות עריכה", "Resolve Edit Conflicts"))
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Text(store.text("עריכות שבוצעו במקביל במכשירים שונים. בחר עבור כל עסקה איזו גרסה לשמור.",
+                                            "Edits were made concurrently. Choose which version to keep for each expense."))
+                                .font(.system(size: 13, weight: .medium, design: .default))
+                                .foregroundColor(Color.textSecondary)
+                        }
+                        Spacer()
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundStyle(Color.textMuted.opacity(0.6))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                    if spaceConflicts.isEmpty {
+                        // Empty State: All resolved
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(MoneyCityTheme.spentGreenSoft)
+                                    .frame(width: 64, height: 64)
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(MoneyCityTheme.spentGreen)
+                            }
+                            .padding(.top, 40)
+
+                            Text(store.text("כל ההתנגשויות נפתרו!", "All conflicts resolved!"))
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+
+                            Text(store.text("ההוצאות במרחב מעודכנות ומסונכרנות.", "All expenses in the space are up to date and in sync."))
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(Color.textSecondary)
+
+                            Button {
+                                dismiss()
+                            } label: {
+                                Text(store.text("סיום", "Done"))
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 48)
+                                    .background(Color.deepNavy)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 40)
+                            .padding(.top, 12)
+                        }
+                        .padding(.vertical, 30)
+                    } else {
+                        // Conflicts List
+                        VStack(spacing: 18) {
+                            ForEach(spaceConflicts) { conflict in
+                                conflictCard(conflict)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                }
+                .padding(.bottom, 32)
+            }
+            .background(Color.appBackground.ignoresSafeArea())
+        }
+    }
+
+    private func conflictCard(_ conflict: SharedExpenseConflict) -> some View {
+        let server = conflict.serverExpense
+        let local = conflict.localExpense
+        let currency = space?.currencyCode ?? server.currencyCode
+
+        return VStack(alignment: .leading, spacing: 14) {
+            // Title & Date
+            HStack {
+                Text(server.merchant.isEmpty ? server.category.displayName : server.merchant)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                Spacer()
+                Text(dateFormatter.string(from: server.date))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color.textMuted)
+            }
+
+            // Comparison Grid: Server vs Local
+            VStack(spacing: 10) {
+                versionComparisonBox(
+                    title: store.text("גרסת שרת (פעילה כעת)", "Server Version (Current)"),
+                    expense: server,
+                    currency: currency,
+                    isServer: true
+                )
+
+                versionComparisonBox(
+                    title: store.text("העריכה המקומית שלך (שנשמרה)", "Your Local Edit (Saved)"),
+                    expense: local,
+                    currency: currency,
+                    isServer: false
+                )
+            }
+
+            // Resolution Action Buttons
+            HStack(spacing: 10) {
+                Button {
+                    Haptics.selection()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        do {
+                            try store.keepServerVersion(conflict: conflict)
+                        } catch {
+                            store.errorMessage = error.localizedDescription
+                        }
+                    }
+                } label: {
+                    Text(store.text("השאר גרסת שרת", "Keep Server"))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(Color.borderSubtle.opacity(0.7))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    Haptics.impact(.medium)
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        do {
+                            try store.restoreLocalVersion(conflict: conflict)
+                        } catch {
+                            store.errorMessage = error.localizedDescription
+                        }
+                    }
+                } label: {
+                    Text(store.text("שחזר עריכה שלי", "Restore My Edit"))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(Color.primaryBlue)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.borderSubtle, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
+    }
+
+    private func versionComparisonBox(title: String, expense: SharedExpense, currency: String, isServer: Bool) -> some View {
+        let payerMember = store.members.first { $0.id == expense.paidBy && $0.spaceID == spaceID }
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(isServer ? Color.primaryBlue : Color.orange)
+                        .frame(width: 6, height: 6)
+                    Text(title)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(isServer ? Color.primaryBlue : Color.orange)
+                }
+                Spacer()
+                Text("\(String(format: "%.2f", expense.amount)) \(currency)")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+            }
+
+            HStack(spacing: 12) {
+                Text(expense.category.displayName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Color.textSecondary)
+
+                if let payer = payerMember {
+                    Text("·")
+                        .foregroundColor(Color.textMuted)
+                    HStack(spacing: 4) {
+                        SharedMemberMark(colorHex: payer.colorHex, size: 16)
+                        Text(payer.name)
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                }
+
+                if !expense.note.isEmpty {
+                    Text("·")
+                        .foregroundColor(Color.textMuted)
+                    Text(expense.note)
+                        .font(.system(size: 11, weight: .regular))
+                        .foregroundColor(Color.textMuted)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(12)
+        .background(isServer ? Color.primaryBlue.opacity(0.04) : Color.orange.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 

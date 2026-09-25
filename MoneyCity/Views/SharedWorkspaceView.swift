@@ -30,10 +30,21 @@ struct SharedExpenseEditor: View {
     }
 }
 
+private struct TabPressButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+    }
+}
+
 /// An architectural drawing of two shared buildings and a tree in the SPENT Onboarding style.
 struct SharedSpaceHeroIllustration: View {
+    let isJoin: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var bounce = false
+    @State private var smokeTick = false
 
     private let ink = Color.jetBlack
     private let stroke = StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round)
@@ -48,25 +59,34 @@ struct SharedSpaceHeroIllustration: View {
             polygon(&c, [(88, 26), (95, 20), (95, 70), (88, 76)], fill: .jetBlack) // side depth
             rectangle(&c, 32, 26, 56, 50, fill: .babyBlue, radius: 2) // facade
             polygon(&c, [(28, 26), (36, 18), (92, 18), (88, 26)], fill: .white) // roof slab
-            // Windows
-            rectangle(&c, 41, 35, 11, 11, fill: .jetBlack, radius: 1)
-            line(&c, [(44, 37), (44, 43)], color: .white, width: 1.5)
-            rectangle(&c, 64, 35, 11, 11, fill: .jetBlack, radius: 1)
-            line(&c, [(67, 37), (67, 43)], color: .white, width: 1.5)
-            // Door
+
+            // Left Windows (warm glow when in create mode)
+            rectangle(&c, 41, 35, 11, 11, fill: isJoin ? .jetBlack : .warmCream, radius: 1)
+            line(&c, [(44, 37), (44, 43)], color: isJoin ? .white : .jetBlack, width: 1.5)
+            rectangle(&c, 64, 35, 11, 11, fill: isJoin ? .jetBlack : .warmCream, radius: 1)
+            line(&c, [(67, 37), (67, 43)], color: isJoin ? .white : .jetBlack, width: 1.5)
+            // Left Door
             rectangle(&c, 52, 56, 14, 20, fill: .violetBlue, radius: 1)
 
             // Right Building (Partner 2) - Warm Cream with Pitched Roof
+            // Chimney
+            rectangle(&c, 180, 16, 8, 12, fill: .jetBlack, radius: 1)
+            // Animated smoke puffs
+            let smokeY: CGFloat = smokeTick ? -2.5 : 0
+            circle(&c, 184, 11 + smokeY, 2.5, fill: .white)
+            circle(&c, 188, 6 + smokeY, 3.2, fill: .white)
+
             polygon(&c, [(192, 34), (198, 28), (198, 70), (192, 76)], fill: .jetBlack) // side depth
             rectangle(&c, 136, 34, 56, 42, fill: .warmCream, radius: 2) // facade
             // Pitched roof
             polygon(&c, [(132, 34), (164, 14), (196, 34)], fill: .orangeRed)
             line(&c, [(132, 34), (164, 14), (196, 34)])
-            // Windows
-            rectangle(&c, 145, 42, 10, 10, fill: .jetBlack, radius: 1)
-            line(&c, [(148, 44), (148, 49)], color: .white, width: 1.5)
-            rectangle(&c, 171, 42, 10, 10, fill: .jetBlack, radius: 1)
-            line(&c, [(174, 44), (174, 49)], color: .white, width: 1.5)
+
+            // Right Windows (glowing lime when in join mode)
+            rectangle(&c, 145, 42, 10, 10, fill: isJoin ? .neonLime : .jetBlack, radius: 1)
+            line(&c, [(148, 44), (148, 49)], color: isJoin ? .jetBlack : .white, width: 1.5)
+            rectangle(&c, 171, 42, 10, 10, fill: isJoin ? .neonLime : .jetBlack, radius: 1)
+            line(&c, [(174, 44), (174, 49)], color: isJoin ? .jetBlack : .white, width: 1.5)
             // Door
             rectangle(&c, 158, 58, 13, 18, fill: .jetBlack, radius: 1)
 
@@ -79,13 +99,38 @@ struct SharedSpaceHeroIllustration: View {
             circle(&c, 100, 76, 2, fill: .white)
             circle(&c, 124, 76, 2, fill: .white)
 
-            // Sky detail (two minimalist birds / sparkles)
-            line(&c, [(108, 14), (112, 11), (116, 14)], width: 1.8)
+            if isJoin {
+                // Animated invitation envelope flying between them with dashed trajectory
+                var arch = Path()
+                arch.move(to: CGPoint(x: 75, y: 22))
+                arch.addQuadCurve(to: CGPoint(x: 148, y: 24), control: CGPoint(x: 112, y: 4))
+                c.stroke(arch, with: .color(ink), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [3, 3]))
+
+                // Little envelope
+                polygon(&c, [(105, 14), (119, 14), (119, 24), (105, 24)], fill: .white)
+                polygon(&c, [(105, 14), (112, 19), (119, 14)], fill: .orangeRed)
+            } else {
+                // Sky detail (two minimalist birds / sparkles)
+                line(&c, [(108, 14), (112, 11), (116, 14)], width: 1.8)
+                line(&c, [(122, 18), (125, 15), (128, 18)], width: 1.5)
+            }
         }
         .frame(width: 240, height: 88)
-        .scaleEffect(appeared ? 1.0 : 0.88)
+        .scaleEffect(bounce ? 1.06 : (appeared ? 1.0 : 0.88))
         .opacity(appeared ? 1.0 : 0.0)
         .offset(y: appeared ? 0 : 8)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Haptics.impact(.light)
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.52)) {
+                bounce = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    bounce = false
+                }
+            }
+        }
         .onAppear {
             if reduceMotion {
                 appeared = true
@@ -93,8 +138,12 @@ struct SharedSpaceHeroIllustration: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) {
                     appeared = true
                 }
+                withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
+                    smokeTick = true
+                }
             }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isJoin)
         .accessibilityHidden(true)
     }
 
@@ -138,6 +187,7 @@ struct SharedSpacesSetupView: View {
     @ObservedObject private var store = SharedWorkspaceStore.shared
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
+    @Namespace private var toggleNamespace
 
     private enum SetupTab: Int, CaseIterable {
         case create = 0
@@ -177,11 +227,12 @@ struct SharedSpacesSetupView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 16)
 
-                    // ── Centered Compact Capsule Toggle ──
+                    // ── Centered Compact Capsule Toggle with Fluid Sliding Indicator ──
                     HStack(spacing: 0) {
                         Button {
+                            guard selectedTab != .create else { return }
                             Haptics.selection()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
                                 selectedTab = .create
                             }
                         } label: {
@@ -189,22 +240,22 @@ struct SharedSpacesSetupView: View {
                                 .font(.system(size: 13, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
                                 .foregroundColor(selectedTab == .create ? Color.deepNavy : Color.textSecondary)
                                 .frame(width: 96, height: 28)
-                                .background(
-                                    Group {
-                                        if selectedTab == .create {
-                                            Capsule()
-                                                .fill(Color.white)
-                                                .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
-                                        }
+                                .background {
+                                    if selectedTab == .create {
+                                        Capsule()
+                                            .fill(Color.white)
+                                            .matchedGeometryEffect(id: "activeTabPill", in: toggleNamespace)
+                                            .shadow(color: Color.black.opacity(0.08), radius: 3, y: 1.5)
                                     }
-                                )
+                                }
                                 .contentShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(TabPressButtonStyle())
 
                         Button {
+                            guard selectedTab != .join else { return }
                             Haptics.selection()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
                                 selectedTab = .join
                             }
                         } label: {
@@ -219,18 +270,17 @@ struct SharedSpacesSetupView: View {
                                 }
                             }
                             .frame(width: 96, height: 28)
-                            .background(
-                                Group {
-                                    if selectedTab == .join {
-                                        Capsule()
-                                            .fill(Color.white)
-                                            .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
-                                    }
+                            .background {
+                                if selectedTab == .join {
+                                    Capsule()
+                                        .fill(Color.white)
+                                        .matchedGeometryEffect(id: "activeTabPill", in: toggleNamespace)
+                                        .shadow(color: Color.black.opacity(0.08), radius: 3, y: 1.5)
                                 }
-                            )
+                            }
                             .contentShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(TabPressButtonStyle())
                     }
                     .padding(3)
                     .background(
@@ -240,7 +290,7 @@ struct SharedSpacesSetupView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
 
                     // ── Onboarding-style Animated Architectural Hero Illustration ──
-                    SharedSpaceHeroIllustration()
+                    SharedSpaceHeroIllustration(isJoin: selectedTab == .join)
                         .padding(.top, 4)
 
                     // ── Editorial Title & Subtitle ──
@@ -250,23 +300,33 @@ struct SharedSpacesSetupView: View {
                             .tracking(AppLanguage.current == .hebrew ? -0.8 : -1.2)
                             .foregroundColor(Color.deepNavy)
                             .multilineTextAlignment(.center)
-                            .animation(.none, value: selectedTab)
 
                         Text(selectedTab == .create ? store.text("מעקב והוצאות משותפות, בעיר אחת לשניכם", "Track shared expenses together in one city") : store.text("הזינו את הקישור שקיבלתם כדי להצטרף", "Enter the invite link to join your partner"))
                             .font(.system(size: 14, weight: .medium, design: .rounded))
                             .foregroundColor(Color.textSecondary)
                             .multilineTextAlignment(.center)
-                            .animation(.none, value: selectedTab)
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 6)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
 
                     // ── Active Tab Content ──
-                    if selectedTab == .create {
-                        createSpaceContent
-                    } else {
-                        joinSpaceContent
+                    ZStack {
+                        if selectedTab == .create {
+                            createSpaceContent
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .offset(x: -12)),
+                                    removal: .opacity.combined(with: .offset(x: -12))
+                                ))
+                        } else {
+                            joinSpaceContent
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .offset(x: 12)),
+                                    removal: .opacity.combined(with: .offset(x: 12))
+                                ))
+                        }
                     }
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
 
                     // ── Existing Spaces ──
                     if !store.spaces.isEmpty {

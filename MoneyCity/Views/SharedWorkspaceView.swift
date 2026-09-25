@@ -293,22 +293,16 @@ struct SharedSpacesSetupView: View {
                     SharedSpaceHeroIllustration(isJoin: selectedTab == .join)
                         .padding(.top, 4)
 
-                    // ── Editorial Title & Subtitle ──
-                    VStack(spacing: 6) {
-                        Text(selectedTab == .create ? store.text("פותחים מרחב משותף", "Start a Shared Space") : store.text("הצטרפות למרחב", "Join a Shared Space"))
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
-                            .tracking(AppLanguage.current == .hebrew ? -0.8 : -1.2)
-                            .foregroundColor(Color.deepNavy)
-                            .multilineTextAlignment(.center)
-
-                        Text(selectedTab == .create ? store.text("מעקב והוצאות משותפות, בעיר אחת לשניכם", "Track shared expenses together in one city") : store.text("הזינו את הקישור שקיבלתם כדי להצטרף", "Enter the invite link to join your partner"))
-                            .font(.system(size: 14, weight: .medium, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 6)
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
+                    // ── Editorial Title (Punchy onboarding style without redundant subtitle) ──
+                    Text(selectedTab == .create ? store.text("פותחים מרחב משותף", "Start a Shared Space") : store.text("הצטרפות למרחב", "Join a Shared Space"))
+                        .font(.system(size: 32, weight: .heavy, design: .rounded))
+                        .tracking(AppLanguage.current == .hebrew ? -1.0 : -1.5)
+                        .foregroundColor(Color.deepNavy)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
+                        .padding(.bottom, 8)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
 
                     // ── Active Tab Content ──
                     ZStack {
@@ -327,11 +321,6 @@ struct SharedSpacesSetupView: View {
                         }
                     }
                     .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
-
-                    // ── Existing Spaces ──
-                    if !store.spaces.isEmpty {
-                        existingSpacesCard
-                    }
                 }
                 .padding(.bottom, 36)
             }
@@ -372,31 +361,31 @@ struct SharedSpacesSetupView: View {
             // Space name field
             VStack(alignment: .leading, spacing: 8) {
                 Text(store.text("שם המרחב", "Space Name"))
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy.opacity(0.85))
                 TextField(store.text("הבית שלנו", "Our Home"), text: $name)
-                    .font(.system(size: 16, weight: .medium, design: .default))
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .padding(.horizontal, 16)
-                    .frame(height: 52)
+                    .frame(height: 56)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
             }
 
             // Member name field
             VStack(alignment: .leading, spacing: 8) {
                 Text(store.text("השם שלך", "Your Name"))
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                TextField(store.text("איך יראו אותך במרחב", "How members will see you"), text: $memberName)
-                    .font(.system(size: 16, weight: .medium, design: .default))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy.opacity(0.85))
+                TextField(store.text("איך קוראים לך?", "What's your name?"), text: $memberName)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
                     .padding(.horizontal, 16)
-                    .frame(height: 52)
+                    .frame(height: 56)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
             }
 
             // Currency & City Map Style side-by-side selection pills
@@ -431,8 +420,8 @@ struct SharedSpacesSetupView: View {
                     .padding(.horizontal, 14)
                     .frame(height: 56)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                 }
                 .buttonStyle(.plain)
 
@@ -465,8 +454,8 @@ struct SharedSpacesSetupView: View {
                     .padding(.horizontal, 14)
                     .frame(height: 56)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                 }
                 .buttonStyle(.plain)
             }
@@ -488,10 +477,10 @@ struct SharedSpacesSetupView: View {
                     }
                 } label: {
                     Text(store.text("יצירת מרחב", "Create Space"))
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 54)
+                        .frame(height: 56)
                         .background(canCreate ? MoneyCityTheme.brandPrimary : MoneyCityTheme.brandPrimary.opacity(0.35))
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 }
@@ -536,21 +525,21 @@ struct SharedSpacesSetupView: View {
                     }
 
                     Text(store.text("התקבלה הזמנה למרחב!", "Space Invitation Ready!"))
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundColor(Color.deepNavy)
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.text("השם שלך", "Your Name"))
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        TextField(store.text("איך יראו אותך במרחב", "How others will see you"), text: $memberName)
-                            .font(.system(size: 16, weight: .medium, design: .default))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy.opacity(0.85))
+                        TextField(store.text("איך קוראים לך?", "What's your name?"), text: $memberName)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .padding(.horizontal, 16)
-                            .frame(height: 52)
+                            .frame(height: 56)
                             .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     }
 
                     Button {
@@ -562,10 +551,10 @@ struct SharedSpacesSetupView: View {
                         }
                     } label: {
                         Text(store.text("הצטרפות למרחב", "Join Space"))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 54)
+                            .frame(height: 56)
                             .background(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? MoneyCityTheme.brandPrimary.opacity(0.35) : MoneyCityTheme.brandPrimary)
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
@@ -574,38 +563,38 @@ struct SharedSpacesSetupView: View {
                 }
                 .padding(20)
                 .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
             } else {
                 // Join via Link
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.text("קישור הזמנה", "Invitation Link"))
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy.opacity(0.85))
                         TextField("https://www.icloud.com/share/...", text: $url)
-                            .font(.system(size: 14, weight: .regular, design: .monospaced))
+                            .font(.system(size: 15, weight: .medium, design: .monospaced))
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .padding(.horizontal, 16)
-                            .frame(height: 52)
+                            .frame(height: 56)
                             .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.text("השם שלך", "Your Name"))
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        TextField(store.text("איך יראו אותך במרחב", "How others will see you"), text: $memberName)
-                            .font(.system(size: 16, weight: .medium, design: .default))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy.opacity(0.85))
+                        TextField(store.text("איך קוראים לך?", "What's your name?"), text: $memberName)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
                             .padding(.horizontal, 16)
-                            .frame(height: 52)
+                            .frame(height: 56)
                             .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     }
 
                     let canJoin = !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -620,10 +609,10 @@ struct SharedSpacesSetupView: View {
                         }
                     } label: {
                         Text(store.text("הצטרפות למרחב", "Join Space"))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 54)
+                            .frame(height: 56)
                             .background(canJoin ? MoneyCityTheme.brandPrimary : MoneyCityTheme.brandPrimary.opacity(0.35))
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }

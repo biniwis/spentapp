@@ -84,6 +84,7 @@ public final class CategorizationEngine: Sendable {
             "בר", "פאב", "pub", "דיינר", "קנטינה", "קיוסק", "פיצוציה", "ילו", "yellow", "סוגוד", "sogood", "מנטה", "אלונית", "טמפו", "משקאות",
             // English Food, Supermarket & Dining
             "shufersal", "rami levy", "victory", "yohanof", "yohananof", "tiv taam", "carrefour", "osher ad", "am:pm", "mega",
+            "colbo hazi hinam", "hazi hinam", "hazi-hinam", "kolbo hazi hinam", "mamtakei", "ממתקי", "ממתקים",
             "starbucks", "dunkin", "subway", "kfc", "pizzeria", "burgers", "bakery", "boulangerie", "patisserie", "pastry",
             "deli", "delicatessen", "supermarket", "market", "minimarket", "grocery", "groceries", "roastery", "espresso",
             "restaurant", "steakhouse", "shawarma", "falafel", "hummus", "tacos", "ice cream", "gelato", "brewery", "winery",
@@ -93,7 +94,7 @@ public final class CategorizationEngine: Sendable {
         .transport: [
             // Hebrew Parking, Gas & Transit
             "פנגו", "pango", "cellopark", "סלופארק", "חניה", "חניון", "אחוזות החוף", "סנטרל פארק",
-            "דלק", "פז", "paz", "סונול", "sonol", "דור אלון", "doralon", "dor alon", "טן", "ten", "מיקה", "mika",
+            "דלק", "דלק ישראל", "תחנת דלק", "delek", "delek israel", "פז", "paz", "סונול", "sonol", "דור אלון", "דור-אלון", "doralon", "dor alon", "טן", "ten", "מיקה", "mika", "סדש", "sadas",
             "תדלוק", "דלקן", "טעינה", "עמדת טעינה", "טסלה סופרצ'רג'ר", "אפקון", "ev edge",
             "גט", "gett", "אובר", "uber", "יאנגו", "yango", "מוניות", "מונית", "מונית שירות",
             "רב קו", "רב-קו", "rav kav", "moovit", "מוביט", "הופאון", "hopon",
@@ -167,7 +168,7 @@ public final class CategorizationEngine: Sendable {
             "בית מרקחת", "pharmacy", "drugstore",
             "מכבי", "maccabi", "מכבי פארם", "כללית", "clalit", "כללית מושלם", "מאוחדת", "meuhedet", "לאומית", "leumit",
             "טרם", "terem", "אסותא", "assuta", "מדיקל סנטר", "ביקור רופא", "ביקורופא",
-            "איכילוב", "ichilov", "שיבא", "sheba", "תל השומר", "הדסה", "hadassah", "רמב״ם", "rambam", "בילינסון", "beilinson",
+            "איכילוב", "ichilov", "שיבא", "sheba", "תל השומר", "tel hashomer", "הדסה", "hadassah", "רמב״ם", "rambam", "בילינסון", "beilinson",
             "סורוקה", "soroka", "וולפסון", "אסף הרופא", "קפלן", "שניידר", "בית חולים", "hospital",
             "מרפאה", "מרפאת", "קופת חולים", "clinic", "רופא שיניים", "שיניים", "מרפאת שיניים", "דנטל", "dentist", "dental", "רופא", "doctor",
             // Fitness & Wellbeing

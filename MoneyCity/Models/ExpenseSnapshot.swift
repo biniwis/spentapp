@@ -26,6 +26,7 @@ public struct ExpenseSnapshot: Sendable, Identifiable, ExpenseReadable {
     public var currency: String = "ILS"
     public var isConfirmed: Bool = true
     public var displayOriginalText: String? = nil
+    public var canRevertForeign: Bool = false
     public var buildingIdRaw: String? = nil
     public var needsCategorization: Bool = false
     public var timeString: String {
@@ -46,6 +47,7 @@ public struct ExpenseSnapshot: Sendable, Identifiable, ExpenseReadable {
         currency = transaction.currency
         isConfirmed = transaction.isConfirmed
         displayOriginalText = transaction.displayOriginalText
+        canRevertForeign = transaction.originalCurrency != nil || transaction.originalAmount != nil || transaction.exchangeRate != nil
     }
 
     init(_ expense: SharedExpense) {

@@ -91,4 +91,24 @@ final class CategorizationEngineTests: XCTestCase {
         let bit = engine.classify(merchant: "BIT-דומינוס פיצה", amount: 75)
         XCTAssertEqual(bit.category, .food)
     }
+    
+    func testFuelAndTransliteratedIsraeliMerchants() {
+        let engine = CategorizationEngine.shared
+        
+        let delekHeb = engine.classify(merchant: "דלק", amount: 150)
+        XCTAssertEqual(delekHeb.category, .transport)
+        XCTAssertEqual(delekHeb.buildingId, "trans_station")
+        
+        let stationHeb = engine.classify(merchant: "תחנת דלק", amount: 200)
+        XCTAssertEqual(stationHeb.category, .transport)
+        
+        let delekEng = engine.classify(merchant: "Delek Israel", amount: 180)
+        XCTAssertEqual(delekEng.category, .transport)
+        
+        let colboHaziHinam = engine.classify(merchant: "Colbo Hazi Hinam", amount: 400)
+        XCTAssertEqual(colboHaziHinam.category, .food)
+        
+        let mamtakei = engine.classify(merchant: "Mamtakei Tel Hasomer", amount: 19.29)
+        XCTAssertEqual(mamtakei.category, .food)
+    }
 }

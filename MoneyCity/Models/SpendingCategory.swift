@@ -51,7 +51,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .finance: return "עמלות ובנקים"
         case .savings: return "חיסכון והשקעות"
         case .miscellaneous, .misc: return "שונות"
-        case .other: return "לא מסווג"
+        case .other: return "ללא קטגוריה"
         }
     }
 
@@ -93,7 +93,7 @@ public enum SpendingCategory: String, Codable, CaseIterable, Identifiable, Senda
         case .finance: return "בנק ועמלות"
         case .savings: return "חיסכון"
         case .miscellaneous, .misc: return "שונות"
-        case .other: return "לא מסווג"
+        case .other: return "ללא קטגוריה"
         }
     }
 

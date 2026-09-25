@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import AppIntents
 @testable import MoneyCity
 
 final class CurrencyHandlingTests: XCTestCase {
@@ -847,6 +848,167 @@ final class CurrencyHandlingTests: XCTestCase {
             // Expected.
         }
         XCTAssertEqual(dirtyCalls, 0, "A failed migration must not mark the backup dirty")
+    }
+
+    // MARK: - 31. Hotfix: RecordTransactionIntent ignores synthetic USD from Shortcuts
+
+    @MainActor
+    func testRecordTransactionIntentIgnoresSyntheticUSDInCurrencyAmount() async throws {
+        // Test A: Base ILS, amount 34.50, RecordTransactionIntent with currencyAmount USD.
+        // Assert amount == 34.50, currency == "₪", originalAmount == nil, originalCurrency == nil.
+        LocalizationManager.shared.baseCurrency = .ils
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+        UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+
+        let testMerchant = "TestMerchantA_\(UUID().uuidString)"
+        let intent = RecordTransactionIntent(
+            amount: 34.50,
+            merchant: testMerchant,
+            currencyAmount: IntentCurrencyAmount(amount: 0, currencyCode: "USD")
+        )
+
+        _ = try await intent.perform()
+
+        let context = DatabaseService.shared.context
+        let descriptor = FetchDescriptor<Transaction>(predicate: #Predicate { $0.merchant == testMerchant })
+        guard let savedTx = try context.fetch(descriptor).first else {
+            XCTFail("Transaction was not saved by RecordTransactionIntent")
+            return
+        }
+
+        XCTAssertEqual(savedTx.amount, 34.50, accuracy: 0.001)
+        XCTAssertEqual(savedTx.currency, "₪")
+        XCTAssertNil(savedTx.originalAmount)
+        XCTAssertNil(savedTx.originalCurrency)
+        XCTAssertNil(savedTx.exchangeRate)
+
+        context.delete(savedTx)
+        try? context.save()
+    }
+
+    @MainActor
+    func testRecordTransactionIntentWith150AmountAndMisleadingUSDDoesNotConvert() async throws {
+        // Test B: Base ILS, amount 150.0, RecordTransactionIntent with misleading USD metadata.
+        // Assert amount == 150.0, no foreign metadata (not ₪450+).
+        LocalizationManager.shared.baseCurrency = .ils
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+        UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+
+        let testMerchant = "TestMerchantB_\(UUID().uuidString)"
+        let intent = RecordTransactionIntent(
+            amount: 150.0,
+            merchant: testMerchant,
+            currency: "USD",
+            currencyAmount: IntentCurrencyAmount(amount: 150.0, currencyCode: "USD")
+        )
+
+        _ = try await intent.perform()
+
+        let context = DatabaseService.shared.context
+        let descriptor = FetchDescriptor<Transaction>(predicate: #Predicate { $0.merchant == testMerchant })
+        guard let savedTx = try context.fetch(descriptor).first else {
+            XCTFail("Transaction was not saved by RecordTransactionIntent")
+            return
+        }
+
+        XCTAssertEqual(savedTx.amount, 150.0, accuracy: 0.001)
+        XCTAssertEqual(savedTx.currency, "₪")
+        XCTAssertNil(savedTx.originalAmount)
+        XCTAssertNil(savedTx.originalCurrency)
+        XCTAssertNil(savedTx.exchangeRate)
+
+        context.delete(savedTx)
+        try? context.save()
+    }
+
+    @MainActor
+    func testRecordTransactionIntentWithExplicitUSDCurrencyParameterFallsBackToBaseCurrency() async throws {
+        // Test C: Base ILS, RecordTransactionIntent with currency = "USD".
+        // Assert base currency wins (₪34.50, no conversion).
+        LocalizationManager.shared.baseCurrency = .ils
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+        UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+
+        let testMerchant = "TestMerchantC_\(UUID().uuidString)"
+        let intent = RecordTransactionIntent(
+            amount: 34.50,
+            merchant: testMerchant,
+            currency: "USD"
+        )
+
+        _ = try await intent.perform()
+
+        let context = DatabaseService.shared.context
+        let descriptor = FetchDescriptor<Transaction>(predicate: #Predicate { $0.merchant == testMerchant })
+        guard let savedTx = try context.fetch(descriptor).first else {
+            XCTFail("Transaction was not saved by RecordTransactionIntent")
+            return
+        }
+
+        XCTAssertEqual(savedTx.amount, 34.50, accuracy: 0.001)
+        XCTAssertEqual(savedTx.currency, "₪")
+        XCTAssertNil(savedTx.originalAmount)
+        XCTAssertNil(savedTx.originalCurrency)
+        XCTAssertNil(savedTx.exchangeRate)
+
+        context.delete(savedTx)
+        try? context.save()
+    }
+
+    func testDirectIngestWithExplicitTrustedForeignCurrencyStillWorks() throws {
+        // Test D: Direct call to TransactionIngest.makeTransaction with explicit trusted foreign currency (e.g. 20.0 EUR).
+        // Assert foreign conversion still works as intended.
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+        UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+
+        let tx = try TransactionIngest.makeTransaction(
+            amount: 20.0,
+            amountText: "€20",
+            merchant: "Boulangerie Paris",
+            currency: "EUR",
+            date: Date(),
+            existing: []
+        )
+
+        XCTAssertEqual(tx.originalAmount, 20.0)
+        XCTAssertEqual(tx.originalCurrency, "EUR")
+        XCTAssertEqual(tx.currency, "₪")
+        let eurRate = FXService.rateToILS(for: "EUR") ?? 3.95
+        XCTAssertEqual(tx.amount, (20.0 * eurRate * 100).rounded() / 100, accuracy: 0.1)
+        XCTAssertNotNil(tx.exchangeRate)
+    }
+
+    @MainActor
+    func testRecordTransactionIntentAmountFallbackFromCurrencyAmountIgnoresCurrencyCode() async throws {
+        // Verifies that when numeric amount is 0/nil, currencyAmount.amount is safely used as fallback
+        // while its currencyCode is completely ignored and base currency (₪) is used.
+        LocalizationManager.shared.baseCurrency = .ils
+        UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
+        UserDefaults.standard.set(true, forKey: "auto_convert_fx")
+
+        let testMerchant = "TestMerchantFallback_\(UUID().uuidString)"
+        let intent = RecordTransactionIntent(
+            amount: 0.0,
+            merchant: testMerchant,
+            currencyAmount: IntentCurrencyAmount(amount: 45.0, currencyCode: "USD")
+        )
+
+        _ = try await intent.perform()
+
+        let context = DatabaseService.shared.context
+        let descriptor = FetchDescriptor<Transaction>(predicate: #Predicate { $0.merchant == testMerchant })
+        guard let savedTx = try context.fetch(descriptor).first else {
+            XCTFail("Transaction was not saved by RecordTransactionIntent")
+            return
+        }
+
+        XCTAssertEqual(savedTx.amount, 45.0, accuracy: 0.001)
+        XCTAssertEqual(savedTx.currency, "₪")
+        XCTAssertNil(savedTx.originalAmount)
+        XCTAssertNil(savedTx.originalCurrency)
+
+        context.delete(savedTx)
+        try? context.save()
     }
 
     // MARK: - Helpers

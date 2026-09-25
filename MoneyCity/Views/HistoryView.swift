@@ -542,6 +542,9 @@ public struct HistoryView: View {
                     SwipeActionRow(
                         id: tx.id,
                         openSwipeRowID: $openSwipeRowID,
+                        onTap: {
+                            edit(tx)
+                        },
                         onEdit: {
                             edit(tx)
                         },
@@ -581,9 +584,29 @@ public struct HistoryView: View {
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
-                    Text(tx.category.displayName)
-                        .font(.system(size: 12.5, weight: .regular, design: .default))
-                        .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+                    let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
+                    if isRefund {
+                        Text(l10n.language == .hebrew ? "• ↩️ זיכוי" : "• ↩️ Refund")
+                            .font(.system(size: 11, weight: .semibold, design: .default))
+                            .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
+                    } else if tx.category == .other {
+                        HStack(spacing: 3) {
+                            Text(l10n.language == .hebrew ? "הגדר קטגוריה" : "Set category")
+                                .font(.system(size: 11.5, weight: .semibold, design: .default))
+                                .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                            MoneyIcon(l10n.language == .hebrew ? .chevronLeft : .chevronRight, size: 9, color: Color(red: 245/255, green: 158/255, blue: 11/255))
+                        }
+                    } else {
+                        Text(tx.category.displayName)
+                            .font(.system(size: 12.5, weight: .regular, design: .default))
+                            .foregroundColor(Color(red: 148/255, green: 163/255, blue: 184/255))
+
+                        if !tx.isConfirmed {
+                            Text(l10n.language == .hebrew ? "• לאישור" : "• Needs review")
+                                .font(.system(size: 11, weight: .semibold, design: .default))
+                                .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
+                        }
+                    }
 
                     #if !SWIFT_PACKAGE
                     if let payer = scope.participants.first(where: { $0.id == tx.paidBy }) {
@@ -598,16 +621,6 @@ public struct HistoryView: View {
                         .accessibilityLabel((l10n.isHebrew ? "שילם/ה: " : "Paid by: ") + payer.name)
                     }
                     #endif
-                    let isRefund = tx.note?.contains("זיכוי") == true || tx.amount < 0
-                    if isRefund {
-                        Text(l10n.language == .hebrew ? "• ↩️ זיכוי" : "• ↩️ Refund")
-                            .font(.system(size: 11, weight: .semibold, design: .default))
-                            .foregroundColor(Color(red: 16/255, green: 185/255, blue: 129/255))
-                    } else if !tx.isConfirmed {
-                        Text(l10n.language == .hebrew ? "• סיווג לא ודאי" : "• unverified")
-                            .font(.system(size: 11, weight: .semibold, design: .default))
-                            .foregroundColor(Color(red: 245/255, green: 158/255, blue: 11/255))
-                    }
                 }
             }
 
@@ -672,7 +685,7 @@ public struct HistoryView: View {
                     Haptics.impact(.light)
                 } label: {
                     Label {
-                        Text(l10n.language == .hebrew ? "אשר את הסיווג" : "Confirm category")
+                        Text(l10n.language == .hebrew ? "אשר קטגוריה" : "Confirm category")
                     } icon: {
                         MoneyIcon(.checkCircle, size: 18)
                     }
@@ -686,6 +699,16 @@ public struct HistoryView: View {
                         Text(l10n.language == .hebrew ? "המר עכשיו" : "Convert now")
                     } icon: {
                         MoneyIcon(.exchange, size: 18)
+                    }
+                }
+            } else if tx.canRevertForeign {
+                Button {
+                    revertForeignTransaction(tx)
+                } label: {
+                    Label {
+                        Text(l10n.language == .hebrew ? "העסקה בוצעה בשקלים (בטל המרה)" : "Mark as Shekels (remove FX)")
+                    } icon: {
+                        Image(systemName: "sheqelsign.circle")
                     }
                 }
             }
@@ -831,6 +854,28 @@ public struct HistoryView: View {
         #endif
         guard let original = personalTransactions.first(where: { $0.id == tx.id }) else { return }
         delete(original)
+    }
+
+    private func revertForeignTransaction(_ tx: ExpenseSnapshot) {
+        guard !isShared, let original = personalTransactions.first(where: { $0.id == tx.id }) else { return }
+        revertForeignTransaction(original)
+    }
+
+    private func revertForeignTransaction(_ tx: Transaction) {
+        withAnimation {
+            if let orig = tx.originalAmount {
+                tx.amount = tx.amount < 0 ? -abs(orig) : abs(orig)
+            }
+            tx.originalAmount = nil
+            tx.originalCurrency = nil
+            tx.exchangeRate = nil
+            tx.currency = l10n.baseCurrency.symbol
+            try? modelContext.save()
+            if tx.savingsGoalId != nil {
+                SavingsGoalService.reconcileAll(context: modelContext)
+            }
+        }
+        Haptics.notify(.success)
     }
 
     private func delete(_ tx: Transaction) {

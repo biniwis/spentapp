@@ -395,8 +395,11 @@ struct MoneyCityApp: App {
         WindowGroup {
             AppRootView()
                 .sheet(isPresented: $sharedWorkspace.showSetup) { SharedSpacesSetupView() }
+                // Only for failures raised while nothing of ours is on screen. While the
+                // setup sheet is up it carries its own alert, because an alert and a sheet
+                // competing for the same presentation slot is what broke the first version.
                 .alert(l10n.language == .hebrew ? "מרחב משותף" : "Shared space", isPresented: Binding(
-                    get: { sharedWorkspace.errorMessage != nil },
+                    get: { sharedWorkspace.errorMessage != nil && !sharedWorkspace.showSetup },
                     set: { if !$0 { sharedWorkspace.errorMessage = nil } })) {
                         Button(l10n.language == .hebrew ? "סגירה" : "Dismiss") { sharedWorkspace.errorMessage = nil }
                     } message: { Text(sharedWorkspace.errorMessage ?? "") }

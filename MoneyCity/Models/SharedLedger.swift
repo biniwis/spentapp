@@ -148,6 +148,16 @@ final class SharedDatabaseService {
 
 enum SharedLedgerError: LocalizedError {
     case invalidAmount, invalidInput, storageUnavailable, noAccount, noAccess, pendingChanges, unsupportedVersion, wrongInvitation
+
+    /// True when the cause is something the user typed or chose, not a transport,
+    /// account or storage fault. These are reported on the screen they came from.
+    var isUserInput: Bool {
+        switch self {
+        case .invalidAmount, .invalidInput, .wrongInvitation: return true
+        case .storageUnavailable, .noAccount, .noAccess, .pendingChanges, .unsupportedVersion: return false
+        }
+    }
+
     var errorDescription: String? {
         let he = AppLanguage.current == .hebrew
         switch self {

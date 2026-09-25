@@ -8,6 +8,10 @@ import SwiftData
 final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     static let shared = SharedWorkspaceStore()
     static let zonePrefix = "SPENT.Shared."
+    /// A zone CloudKit has just saved can answer `zoneNotFound` until its own listing
+    /// catches up. One blip must not cost the user a space, so a revoke has to repeat
+    /// itself before we believe it.
+    static let revocationThreshold = 3
     let cloud = CKContainer(identifier: "iCloud.com.moneycity.app")
     @Published private(set) var spaces: [SharedSpace] = []
     @Published private(set) var members: [SharedMember] = []
@@ -20,7 +24,11 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     @Published var showSetup = false
     @Published var showAccountSwitcher = false
     @Published var busy = false
+    /// Background/transport failures. Presented as a global alert.
     @Published var errorMessage: String?
+    /// Failures caused by what the user just typed. The setup screen owns these and
+    /// renders them inline, so a bad link never escalates to an app-wide alert.
+    @Published private(set) var setupError: String?
     @Published var invitation: CKShare.Metadata?
     private(set) var database: SharedDatabaseService?
     private var engines: [Int: CKSyncEngine] = [:]
@@ -28,6 +36,8 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     private var writableSpaces = Set<UUID>()
     private var revokedSpaces = Set<UUID>()
     private var unsupportedSpaces = Set<UUID>()
+    private var ownedSpaces = Set<UUID>()
+    private var revocationStrikes: [UUID: Int] = [:]
     private var accountObserver: NSObjectProtocol?
     private var connecting = false
     private var stopped = false
@@ -39,7 +49,10 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     }
     func myMemberID(in space: UUID) -> String { hash(space.uuidString + (accountName ?? "")) }
     func canWrite(_ id: UUID) -> Bool {
-        !stopped && !unsupportedSpaces.contains(id) && !revokedSpaces.contains(id) && writableSpaces.contains(id)
+        guard !stopped, !unsupportedSpaces.contains(id), !revokedSpaces.contains(id) else { return false }
+        // Denial needs positive evidence. Anything else risks locking the owner out of
+        // their own space over a listing that had not caught up yet.
+        return writableSpaces.contains(id) || ownedSpaces.contains(id)
     }
     func select(_ id: UUID?) {
         guard id == nil || spaces.contains(where: { $0.id == id }) else { return }
@@ -50,9 +63,21 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         busy = true
         Task {
             defer { busy = false }
-            do { try await work() } catch { errorMessage = error.localizedDescription }
+            do { try await work() }
+            catch {
+                // The user's own input belongs on the screen they are looking at.
+                // Escalating it to a global alert is what made a bad invite link look
+                // like the whole app had broken.
+                if let ledger = error as? SharedLedgerError, ledger.isUserInput {
+                    setupError = ledger.errorDescription
+                } else {
+                    errorMessage = error.localizedDescription
+                }
+            }
         }
     }
+
+    func clearSetupError() { setupError = nil }
 
     func connect() async throws {
         guard !connecting else { throw SharedLedgerError.storageUnavailable }
@@ -123,6 +148,12 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     func reload() throws {
         guard let database else { return }
         let records = try database.records()
+        // A zone that lives in our own private database is ours to write to, whether or
+        // not CloudKit has answered us lately. Tracked here so `canWrite` stays a cheap
+        // lookup instead of a scan, and so a failed refresh cannot cost us our own spaces.
+        ownedSpaces = Set(records.filter { $0.kind == "space" && !$0.isDeleted &&
+                                            $0.databaseScope == CKDatabase.Scope.private.rawValue }
+                                .compactMap { UUID(uuidString: $0.spaceID) })
         var nextSpaces: [SharedSpace] = [], nextMembers: [SharedMember] = [], nextExpenses: [SharedExpense] = []
         for row in records where !row.isDeleted && row.schemaVersion == 1 {
             guard let id = UUID(uuidString: row.spaceID), !revokedSpaces.contains(id) else { continue }
@@ -176,26 +207,89 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try reload()
     }
 
+    private enum Revocation {
+        /// The owner removed the share or the zone. The space is gone.
+        case terminal
+        /// CloudKit's listing has not caught up yet. Believed only if it repeats.
+        case transient
+    }
+
+    /// Returns true when the space is actually revoked, so callers know whether to
+    /// discard the queued change and report, or to keep waiting quietly.
+    @discardableResult
+    private func revoke(_ id: UUID, because reason: Revocation) -> Bool {
+        switch reason {
+        case .terminal:
+            revokedSpaces.insert(id)
+            writableSpaces.remove(id)
+            revocationStrikes[id] = nil
+            return true
+        case .transient:
+            let strikes = (revocationStrikes[id] ?? 0) + 1
+            revocationStrikes[id] = strikes
+            guard strikes >= Self.revocationThreshold else { return false }
+            revokedSpaces.insert(id)
+            writableSpaces.remove(id)
+            return true
+        }
+    }
+
     func create(name: String, memberName: String, currency: String, mapStyle: String) async throws {
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !memberName.isEmpty,
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanMember = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty, !cleanMember.isEmpty,
               Locale.commonISOCurrencyCodes.contains(currency) else { throw SharedLedgerError.invalidInput }
         try await connect()
         let id = UUID()
-        let space = SharedSpace(id: id, name: String(name.prefix(60)), currencyCode: currency,
+        let space = SharedSpace(id: id, name: String(cleanName.prefix(60)), currencyCode: currency,
                                 timeZoneID: TimeZone.current.identifier, mapStyle: mapStyle, createdAt: Date())
         let zone = CKRecordZone(zoneName: Self.zonePrefix + id.uuidString)
-        if !demo {
-            _ = try await cloud.privateCloudDatabase.save(zone)
-            let share = CKShare(recordZoneID: zone.zoneID)
-            share[CKShare.SystemFieldKey.title] = space.name as CKRecordValue
-            share.publicPermission = .none
-            _ = try await cloud.privateCloudDatabase.save(share)
+        do {
+            if !demo {
+                _ = try await cloud.privateCloudDatabase.save(zone)
+                let share = CKShare(recordZoneID: zone.zoneID)
+                share[CKShare.SystemFieldKey.title] = space.name as CKRecordValue
+                share.publicPermission = .none
+                _ = try await cloud.privateCloudDatabase.save(share)
+            }
+            writableSpaces.insert(id)
+            try put(space, kind: "space", name: "space", space: id, zone: zone.zoneID, scope: CKDatabase.Scope.private.rawValue)
+            try registerMember(in: id, name: cleanMember)
+            if !demo { try await sync() }
+        } catch {
+            // Half a space is worse than no space: undo every step this call made.
+            rollbackSpace(id, zone: zone)
+            throw error
         }
-        writableSpaces.insert(id)
-        try put(space, kind: "space", name: "space", space: id, zone: zone.zoneID, scope: CKDatabase.Scope.private.rawValue)
-        try registerMember(in: id, name: memberName)
+        // The app only leaves the previous scope once the new space and its first
+        // sync are both real, so a failed create cannot strand the user in a broken scope.
         activeSpaceID = id
-        if !demo { try await sync() }
+    }
+
+    /// Undoes a partially created space: local rows, write access, the engine queue,
+    /// and the remote zone. CloudKit cleanup is best effort — the local state is what
+    /// the user actually sees, so that part is not allowed to fail.
+    private func rollbackSpace(_ id: UUID, zone: CKRecordZone) {
+        writableSpaces.remove(id)
+        revocationStrikes[id] = nil
+        if let database {
+            for record in ((try? database.records()) ?? []) where record.spaceID == id.uuidString {
+                database.context.delete(record)
+            }
+            try? database.save()
+        }
+        let queued: [CKSyncEngine.PendingRecordZoneChange] = [
+            .saveRecord(CKRecord.ID(recordName: "space", zoneID: zone.zoneID)),
+            .saveRecord(CKRecord.ID(recordName: "member-" + myMemberID(in: id), zoneID: zone.zoneID))
+        ]
+        for engine in engines.values { engine.state.remove(pendingRecordZoneChanges: queued) }
+        if !demo {
+            let container = cloud
+            Task.detached(priority: .utility) {
+                try? await container.privateCloudDatabase.deleteRecordZone(withID: zone.zoneID)
+            }
+        }
+        try? reload()
     }
 
     func registerMember(in id: UUID, name: String) throws {
@@ -256,10 +350,43 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             }
             try await engines[scope.rawValue]?.fetchChanges()
         }
-        // Only a complete successful listing proves absence; network errors never revoke data.
-        revokedSpaces.formUnion(Set(spaces.map(\.id)).subtracting(accessible))
-        writableSpaces = writable
+        // A space we can see again is not revoked, and its access comes back with it.
+        revokedSpaces.subtract(accessible)
+        // Only a space that actually reappeared clears its record. Wiping every strike
+        // for any space missing from this listing would reset the count to zero on each
+        // pass, and the threshold could never be reached by a zone that is really gone.
+        for id in accessible { revocationStrikes[id] = nil }
+        // Absence from one listing is not proof: a zone CloudKit accepted moments ago
+        // can take a while to show up in its own list. It gets the same strike budget as
+        // a transient zoneNotFound instead of a silent, permanent revoke.
+        for missing in Set(spaces.map(\.id)).subtracting(accessible) { revoke(missing, because: .transient) }
+        // Write access is withdrawn only on positive evidence — the space is listed, but
+        // its share says read-only. A zone we merely failed to see never costs access.
+        writableSpaces.formUnion(writable)
+        writableSpaces.subtract(accessible.subtracting(writable))
         try reload()
+    }
+
+    /// Undoes a revocation and re-sends whatever the space never managed to upload.
+    /// Safe to call on a space that is not revoked: refresh decides the truth.
+    func recoverSpace(_ id: UUID) async throws {
+        revokedSpaces.remove(id)
+        revocationStrikes[id] = nil
+        // reload() reads revokedSpaces, so the row has to surface here before anything
+        // downstream can look the space up by id.
+        try reload()
+        // Rows still carrying a local revision are unsent work. If their place in the
+        // engine queue was lost, re-arm them here: recovery has to restore the data, not
+        // just hand the permission back.
+        if let database {
+            for row in try database.records() where row.spaceID == id.uuidString &&
+                                                   row.localRevision != nil && !row.isDeleted {
+                engines[row.databaseScope]?.state.add(pendingRecordZoneChanges: [.saveRecord(recordID(row))])
+            }
+        }
+        try await refresh()
+        guard canWrite(id) else { return }
+        try await sync()
     }
 
     func sync() async throws {
@@ -300,9 +427,15 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     }
 
     func metadata(for url: String) async throws -> CKShare.Metadata {
-        guard let url = URL(string: url), url.scheme == "https",
-              let result = try await cloud.shareMetadatas(for: [url])[url] else { throw SharedLedgerError.wrongInvitation }
-        return try result.get()
+        // A link pasted with a trailing space or a stray newline is a typo, not a broken
+        // invitation, and CloudKit would reject the untrimmed form.
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let link = URL(string: trimmed), link.scheme == "https", link.host?.isEmpty == false,
+              let result = try await cloud.shareMetadatas(for: [link])[link] else {
+            throw SharedLedgerError.wrongInvitation
+        }
+        do { return try result.get() }
+        catch { throw SharedLedgerError.wrongInvitation }
     }
 
     /// Access-management UI must not allow leaving while there are unsent local edits.
@@ -515,28 +648,36 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
                 }
             case .fetchedDatabaseChanges(let changes):
                 for deletion in changes.deletions {
-                    if let id = spaceID(deletion.zoneID) { revokedSpaces.insert(id); writableSpaces.remove(id) }
+                    if let id = spaceID(deletion.zoneID) { revoke(id, because: .terminal) }
                 }
             case .sentRecordZoneChanges(let changes):
-                for record in changes.savedRecords { try merge(record, scope: scope, acknowledge: true) }
+                for record in changes.savedRecords {
+                    try merge(record, scope: scope, acknowledge: true)
+                    if let id = spaceID(record.recordID.zoneID) { revocationStrikes[id] = nil }
+                }
                 for failure in changes.failedRecordSaves {
                     if failure.error.code == .serverRecordChanged, let server = failure.error.serverRecord {
                         try merge(server, scope: scope, conflict: true)
-                    } else {
-                        if [.permissionFailure, .zoneNotFound, .userDeletedZone].contains(failure.error.code), let id = spaceID(failure.record.recordID.zoneID) {
-                            revokedSpaces.insert(id); writableSpaces.remove(id)
-                            syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(failure.record.recordID)])
-                        }
-                        errorMessage = failure.error.localizedDescription
+                        continue
                     }
+                    guard let id = spaceID(failure.record.recordID.zoneID),
+                          revoke(id, because: failure.error.code == .zoneNotFound ? .transient : .terminal) else {
+                        // Still under the strike threshold: keep the record queued so the
+                        // retry can deliver it, and stay quiet instead of crying wolf.
+                        continue
+                    }
+                    syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(failure.record.recordID)])
+                    errorMessage = failure.error.localizedDescription
                 }
             default: return
             }
             try database.save()
             try reload()
         } catch {
+            // One malformed record is a bad record, not a dead engine. Tearing the whole
+            // store down here used to leave the app in a shared scope with no write
+            // access, no explanation, and no way back — permanently.
             database.context.rollback()
-            stopped = true; engines.removeAll(); writableSpaces.removeAll()
             errorMessage = error.localizedDescription
         }
     }

@@ -30,122 +30,196 @@ struct SharedExpenseEditor: View {
     }
 }
 
-private struct TabPressButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
-            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
+// MARK: - Poster arrival
+/// One small rise per beat. The page builds itself once, then holds still.
+private struct SetupPosterReveal: ViewModifier {
+    let phase: Int
+    let step: Int
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        let isShown = reduceMotion || phase >= step
+        content
+            .opacity(isShown ? 1 : 0)
+            .offset(y: isShown ? 0 : 14)
     }
 }
 
-/// An architectural drawing of two shared buildings and a tree in the SPENT Onboarding style.
+private extension View {
+    func posterReveal(phase: Int, step: Int, reduceMotion: Bool) -> some View {
+        modifier(SetupPosterReveal(phase: phase, step: step, reduceMotion: reduceMotion))
+    }
+}
+
+/// Two equal houses on one street, a tree they share, and a nameplate the user writes.
+/// The drawing kit is deliberately the same one onboarding uses, so the two read as one city.
 struct SharedSpaceHeroIllustration: View {
     let isJoin: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var appeared = false
-    @State private var bounce = false
-    @State private var smokeTick = false
+    let spaceName: String
+    let isRTL: Bool
 
-    private let ink = Color.jetBlack
-    private let stroke = StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase = 0
+    @State private var signPulse = false
+
+    private var artboard: CGSize { CGSize(width: 320, height: 124) }
+    private var presentsImmediately: Bool { reduceMotion }
+
+    // One shared street: both houses sit on the same baseline at the same height.
+    private static let baseline: CGFloat = 106
+    private static let houseY: CGFloat = 58
+    private static let houseWidth: CGFloat = 84
+    private static let leftHouseX: CGFloat = 20
+    private static let rightHouseX: CGFloat = 216
+    private static let plate = CGRect(x: 94, y: 6, width: 140, height: 34)
 
     var body: some View {
-        Canvas { context, _ in
-            var c = context
-            // Ground line
-            line(&c, [(24, 76), (216, 76)], width: 2.6)
-
-            // Left Building (Partner 1) - Baby Blue
-            polygon(&c, [(88, 26), (95, 20), (95, 70), (88, 76)], fill: .jetBlack) // side depth
-            rectangle(&c, 32, 26, 56, 50, fill: .babyBlue, radius: 2) // facade
-            polygon(&c, [(28, 26), (36, 18), (92, 18), (88, 26)], fill: .white) // roof slab
-
-            // Left Windows (warm glow when in create mode)
-            rectangle(&c, 41, 35, 11, 11, fill: isJoin ? .jetBlack : .warmCream, radius: 1)
-            line(&c, [(44, 37), (44, 43)], color: isJoin ? .white : .jetBlack, width: 1.5)
-            rectangle(&c, 64, 35, 11, 11, fill: isJoin ? .jetBlack : .warmCream, radius: 1)
-            line(&c, [(67, 37), (67, 43)], color: isJoin ? .white : .jetBlack, width: 1.5)
-            // Left Door
-            rectangle(&c, 52, 56, 14, 20, fill: .violetBlue, radius: 1)
-
-            // Right Building (Partner 2) - Warm Cream with Pitched Roof
-            // Chimney
-            rectangle(&c, 180, 16, 8, 12, fill: .jetBlack, radius: 1)
-            // Animated smoke puffs
-            let smokeY: CGFloat = smokeTick ? -2.5 : 0
-            circle(&c, 184, 11 + smokeY, 2.5, fill: .white)
-            circle(&c, 188, 6 + smokeY, 3.2, fill: .white)
-
-            polygon(&c, [(192, 34), (198, 28), (198, 70), (192, 76)], fill: .jetBlack) // side depth
-            rectangle(&c, 136, 34, 56, 42, fill: .warmCream, radius: 2) // facade
-            // Pitched roof
-            polygon(&c, [(132, 34), (164, 14), (196, 34)], fill: .orangeRed)
-            line(&c, [(132, 34), (164, 14), (196, 34)])
-
-            // Right Windows (glowing lime when in join mode)
-            rectangle(&c, 145, 42, 10, 10, fill: isJoin ? .neonLime : .jetBlack, radius: 1)
-            line(&c, [(148, 44), (148, 49)], color: isJoin ? .jetBlack : .white, width: 1.5)
-            rectangle(&c, 171, 42, 10, 10, fill: isJoin ? .neonLime : .jetBlack, radius: 1)
-            line(&c, [(174, 44), (174, 49)], color: isJoin ? .jetBlack : .white, width: 1.5)
-            // Door
-            rectangle(&c, 158, 58, 13, 18, fill: .jetBlack, radius: 1)
-
-            // Center Tree (Shared green connection)
-            line(&c, [(112, 76), (112, 45)], width: 2.6)
-            circle(&c, 112, 36, 15, fill: .luckyGreen)
-            line(&c, [(112, 54), (107, 48)], width: 1.8)
-
-            // Stepping stones between buildings
-            circle(&c, 100, 76, 2, fill: .white)
-            circle(&c, 124, 76, 2, fill: .white)
-
-            if isJoin {
-                // Animated invitation envelope flying between them with dashed trajectory
-                var arch = Path()
-                arch.move(to: CGPoint(x: 75, y: 22))
-                arch.addQuadCurve(to: CGPoint(x: 148, y: 24), control: CGPoint(x: 112, y: 4))
-                c.stroke(arch, with: .color(ink), style: StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [3, 3]))
-
-                // Little envelope
-                polygon(&c, [(105, 14), (119, 14), (119, 24), (105, 24)], fill: .white)
-                polygon(&c, [(105, 14), (112, 19), (119, 14)], fill: .orangeRed)
-            } else {
-                // Sky detail (two minimalist birds / sparkles)
-                line(&c, [(108, 14), (112, 11), (116, 14)], width: 1.8)
-                line(&c, [(122, 18), (125, 15), (128, 18)], width: 1.5)
+        ZStack(alignment: .topLeading) {
+            layer(1) { c in
+                drawGround(&c)
+                drawHouse(&c, x: Self.leftHouseX, color: .babyBlue)
+                drawHouse(&c, x: Self.rightHouseX, color: .warmCream)
             }
+
+            layer(2) { c in
+                drawTree(&c)
+            }
+
+            layer(3) { c in
+                drawNameplate(&c)
+            }
+
+            lettering
+                .opacity(presentsImmediately || phase >= 3 ? 1 : 0)
         }
-        .frame(width: 240, height: 88)
-        .scaleEffect(bounce ? 1.06 : (appeared ? 1.0 : 0.88))
-        .opacity(appeared ? 1.0 : 0.0)
-        .offset(y: appeared ? 0 : 8)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            Haptics.impact(.light)
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.52)) {
-                bounce = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    bounce = false
-                }
-            }
-        }
-        .onAppear {
-            if reduceMotion {
-                appeared = true
-            } else {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) {
-                    appeared = true
-                }
-                withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true)) {
-                    smokeTick = true
-                }
-            }
-        }
-        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: isJoin)
+        .frame(width: artboard.width, height: artboard.height)
+        .scaleEffect(signPulse ? 1.04 : 1.0)
+        .animation(.spring(response: 0.32, dampingFraction: 0.6), value: signPulse)
+        .animation(.easeInOut(duration: 0.3), value: isJoin)
         .accessibilityHidden(true)
+        .task(id: "\(isJoin)-\(presentsImmediately)") {
+            // A departed scene's build sequence must not fire into the next one.
+            var transaction = SwiftUI.Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { phase = presentsImmediately ? 3 : 0 }
+            guard !presentsImmediately else { return }
+            for nextPhase in 1...3 {
+                do { try await Task.sleep(for: .milliseconds(nextPhase == 1 ? 70 : 150)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.32)) { phase = nextPhase }
+            }
+        }
+        .onChange(of: spaceName) { oldValue, newValue in
+            // The street gets its name the moment the first letter lands.
+            guard !newValue.isEmpty, oldValue.isEmpty else { return }
+            Haptics.impact(.light)
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.5)) { signPulse = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) { signPulse = false }
+            }
+        }
     }
+
+    // MARK: - Build beats
+
+    private func layer(_ step: Int, _ draw: @escaping (inout GraphicsContext) -> Void) -> some View {
+        Canvas(opaque: false, rendersAsynchronously: false) { context, size in
+            var c = context
+            c.translateBy(x: (size.width - artboard.width) / 2,
+                          y: (size.height - artboard.height) / 2)
+            draw(&c)
+        }
+        .opacity(presentsImmediately || phase >= step ? 1 : 0)
+        .offset(y: presentsImmediately || phase >= step ? 0 : 10)
+        .animation(.easeOut(duration: 0.32), value: phase)
+    }
+
+    // MARK: - Nameplate
+
+    private var signText: String {
+        let trimmed = spaceName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        if isJoin { return isRTL ? "מרחב משותף" : "SHARED SPACE" }
+        return isRTL ? "המרחב שלך" : "YOUR SPACE"
+    }
+
+    private var lettering: some View {
+        Text(signText)
+            .font(.system(size: 15, weight: .heavy, design: .rounded))
+            .tracking(isRTL ? -0.4 : -0.6)
+            .foregroundStyle(Color.jetBlack)
+            .lineLimit(1)
+            .minimumScaleFactor(0.45)
+            .allowsTightening(true)
+            .frame(width: Self.plate.width - 18, height: Self.plate.height - 12)
+            .offset(x: Self.plate.minX + 9, y: Self.plate.minY + 6)
+    }
+
+    private func drawNameplate(_ c: inout GraphicsContext) {
+        let plate = Self.plate
+        // A mounted plate in the sky, not a post — the two roof lips sit at different
+        // heights, so any mast would either float or cut through a facade.
+        rectangle(&c, plate.minX, plate.minY, plate.width, plate.height, fill: .white, radius: 3)
+        for boltX in [plate.minX + 8, plate.maxX - 8] {
+            circle(&c, boltX, plate.midY, 1.6, fill: .jetBlack)
+        }
+    }
+
+    // MARK: - Scene
+
+    private func drawGround(_ c: inout GraphicsContext) {
+        line(&c, [(12, Self.baseline), (308, Self.baseline)], width: 2.4)
+    }
+
+    /// Onboarding's house kit: shallow side plane, roof lip, two rows of windows, one door.
+    /// `lit` flips the windows from waiting-dark to somebody-is-home.
+    private func drawHouse(_ c: inout GraphicsContext, x: CGFloat, color: Color) {
+        let width = Self.houseWidth
+        let y = Self.houseY
+        let height = Self.baseline - y
+        let lit = isJoin
+
+        polygon(&c, [(x + width, y), (x + width + 12, y - 8),
+                     (x + width + 12, y + height - 8), (x + width, y + height)], fill: .jetBlack)
+        rectangle(&c, x, y, width, height, fill: color, radius: 2)
+        polygon(&c, [(x - 5, y), (x + 7, y - 10),
+                     (x + width + 15, y - 10), (x + width + 5, y)], fill: .white)
+
+        let windowWidth = width * 0.14
+        let windowHeight = height * 0.15
+        let glass: Color = lit ? .warmCream : .jetBlack
+        for row in 0..<2 {
+            for column in 0..<3 {
+                let windowX = x + width * 0.15 + CGFloat(column) * width * 0.28
+                let windowY = y + 20 + CGFloat(row) * height * 0.28
+                rectangle(&c, windowX, windowY, windowWidth, windowHeight, fill: glass, radius: 1)
+                line(&c, [(windowX + 3, windowY + 3),
+                          (windowX + 3, windowY + windowHeight * 0.6)],
+                     color: lit ? Color.jetBlack : Color.white, width: 1.6)
+            }
+        }
+        rectangle(&c, x + width * 0.4, y + height * 0.75, width * 0.22, height * 0.25,
+                  fill: .violetBlue, radius: 1)
+    }
+
+    private func drawTree(_ c: inout GraphicsContext) {
+        var local = c
+        let size: CGFloat = 0.54
+        local.translateBy(x: 164, y: Self.baseline)
+        local.scaleBy(x: size, y: size)
+        line(&local, [(0, 0), (0, -67)], width: 3)
+        let canopy = Path(ellipseIn: CGRect(x: -20, y: -85, width: 40, height: 60))
+        local.fill(canopy, with: .color(.luckyGreen))
+        local.stroke(canopy, with: .color(ink), style: stroke)
+        line(&local, [(0, -19), (0, -61)])
+        line(&local, [(0, -39), (-10, -49)])
+    }
+
+    // MARK: - Drawing kit
+
+    private var ink: Color { .jetBlack }
+    private let stroke = StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round)
 
     private func rectangle(_ c: inout GraphicsContext, _ x: CGFloat, _ y: CGFloat,
                            _ w: CGFloat, _ h: CGFloat, fill: Color, radius: CGFloat = 0) {
@@ -168,7 +242,7 @@ struct SharedSpaceHeroIllustration: View {
     }
 
     private func line(_ c: inout GraphicsContext, _ points: [(CGFloat, CGFloat)],
-                      color: Color = .jetBlack, width: CGFloat = 2.6) {
+                      color: Color = .jetBlack, width: CGFloat = 2.4) {
         c.stroke(path(points), with: .color(color),
                  style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
     }
@@ -183,15 +257,32 @@ struct SharedSpaceHeroIllustration: View {
     }
 }
 
+#Preview("Shared space poster") {
+    ZStack {
+        Color.warmCream.ignoresSafeArea()
+        SharedSpacesSetupView()
+    }
+    .environmentObject(LocalizationManager.shared)
+}
+
 struct SharedSpacesSetupView: View {
     @ObservedObject private var store = SharedWorkspaceStore.shared
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @ScaledMetric(relativeTo: .largeTitle) private var titleSize: CGFloat = 42
     @Namespace private var toggleNamespace
 
     private enum SetupTab: Int, CaseIterable {
         case create = 0
         case join = 1
+    }
+
+    private enum SetupField: Hashable {
+        case spaceName
+        case memberName
+        case inviteLink
     }
 
     @State private var selectedTab: SetupTab = .create
@@ -202,127 +293,228 @@ struct SharedSpacesSetupView: View {
     @State private var selectedStyle: CityMapStyle = .urban
     @State private var showCurrencyPicker = false
     @State private var showMapStylePicker = false
+    @State private var entrancePhase: Int = 0
+    @FocusState private var focusedField: SetupField?
+
+    // MARK: - Shared poster space (same world as onboarding)
+
+    private var isHebrew: Bool { AppLanguage.current == .hebrew }
+    private var posterInk: Color { .jetBlack }
+
+    /// The canvas shifts with the tab, the way onboarding shifts it per step.
+    private var posterCanvas: Color {
+        selectedTab == .create ? Color.warmCream : Color.neonLime
+    }
+
+    private var pageAnimation: Animation {
+        reduceMotion ? .easeOut(duration: 0.15) : .easeInOut(duration: 0.3)
+    }
+
+    // MARK: - One screen, no scrolling
+
+    /// Short screens (SE, mini) get a smaller drawing and a tighter title so the
+    /// whole poster still lands above the fold.
+    private var isShortScreen: Bool {
+        UIScreen.main.bounds.height < 700 || dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var heroHeight: CGFloat { isShortScreen ? 100 : 124 }
+    private var titleBase: CGFloat { isShortScreen ? min(titleSize, 36) : titleSize }
+
+    /// The drawing is authored on a fixed 320pt artboard and scaled down to whatever
+    /// width the device actually has, so the composition never crops.
+    private var heroBand: some View {
+        GeometryReader { geometry in
+            let scale = min(1.0, geometry.size.width / 320)
+            SharedSpaceHeroIllustration(
+                isJoin: selectedTab == .join,
+                spaceName: name,
+                isRTL: isHebrew
+            )
+            .scaleEffect(scale)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: .center)
+        }
+        .frame(height: heroHeight)
+        .padding(.horizontal, 24)
+    }
+
+    // MARK: - Onboarding's single graphic action
+
+    private func primaryAction(title: String, isEnabled: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            guard isEnabled else { return }
+            Haptics.impact(.medium)
+            action()
+        } label: {
+            Text(title)
+                .font(.system(.body, design: .rounded, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: isShortScreen ? 50 : 54)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(posterInk)
+                )
+                .opacity(isEnabled ? 1.0 : 0.38)
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .bouncyPress(scale: (reduceMotion || !isEnabled) ? 1 : 0.97)
+    }
+
+    /// Fields are printed on the canvas with a baseline rule, exactly like onboarding's inputs.
+    private func underlineField(
+        title: String,
+        placeholder: String,
+        text: Binding<String>,
+        field: SetupField,
+        size: CGFloat,
+        design: Font.Design = .rounded,
+        submitLabel: SubmitLabel = .next
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(.footnote, design: .rounded))
+                .foregroundStyle(posterInk.opacity(0.7))
+
+            TextField(placeholder, text: text)
+                .font(.system(size: size, weight: .bold, design: design))
+                .foregroundStyle(posterInk)
+                .tint(posterInk)
+                .multilineTextAlignment(.leading)
+                .focused($focusedField, equals: field)
+                .submitLabel(submitLabel)
+                .textInputAutocapitalization(.words)
+                .disableAutocorrection(field != .inviteLink)
+                .padding(.vertical, 5)
+                .onChange(of: text.wrappedValue) { _, _ in clearSetupError() }
+
+            Rectangle()
+                .fill(posterInk.opacity(focusedField == field ? 1 : 0.35))
+                .frame(height: focusedField == field ? 2 : 1)
+        }
+    }
+
+    // MARK: - Build
+
+    /// The canvas sits behind the scroll view, so it never sees a tap that lands on the
+    /// content. Both surfaces route here, and the guard keeps an unfocused field unfocused.
+    private func dismissKeyboard() {
+        guard focusedField != nil else { return }
+        focusedField = nil
+    }
+
+    /// A fresh attempt starts from a clean slate, so a stale complaint never greets
+    /// someone who has already fixed the link.
+    private func clearSetupError() {
+        withAnimation(.easeOut(duration: 0.2)) { store.clearSetupError() }
+    }
 
     var body: some View {
         ZStack {
-            Color.appBackground.ignoresSafeArea()
+            posterCanvas
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture { dismissKeyboard() }
 
+            VStack(spacing: 0) {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 20) {
-                    // ── Top Navigation Bar ──
+                VStack(alignment: .leading, spacing: 0) {
+                    // ── Flat poster header ──
                     HStack {
-                        Spacer()
+                        Spacer(minLength: 0)
                         Button {
+                            Haptics.impact(.light)
+                            focusedField = nil
                             dismiss()
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(Color.deepNavy)
-                                .frame(width: 32, height: 32)
-                                .background(Color.white, in: Circle())
-                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(posterInk)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .bouncyPress(scale: 0.92)
+                        .accessibilityLabel(store.text("סגירה", "Close"))
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 16)
+                    .padding(.top, 2)
+                    .posterReveal(phase: entrancePhase, step: 1, reduceMotion: reduceMotion)
 
-                    // ── Centered Compact Capsule Toggle with Fluid Sliding Indicator ──
+                    // ── Create / Join capsule, 44pt targets ──
                     HStack(spacing: 0) {
-                        Button {
-                            guard selectedTab != .create else { return }
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
-                                selectedTab = .create
-                            }
-                        } label: {
-                            Text(store.text("יצירת מרחב", "Create Space"))
-                                .font(.system(size: 13, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
-                                .foregroundColor(selectedTab == .create ? Color.deepNavy : Color.textSecondary)
-                                .frame(width: 96, height: 28)
-                                .background {
-                                    if selectedTab == .create {
-                                        Capsule()
-                                            .fill(Color.white)
-                                            .matchedGeometryEffect(id: "activeTabPill", in: toggleNamespace)
-                                            .shadow(color: Color.black.opacity(0.08), radius: 3, y: 1.5)
-                                    }
-                                }
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(TabPressButtonStyle())
-
-                        Button {
-                            guard selectedTab != .join else { return }
-                            Haptics.selection()
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.78)) {
-                                selectedTab = .join
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(store.text("הצטרפות", "Join Space"))
-                                    .font(.system(size: 13, weight: selectedTab == .join ? .bold : .medium, design: .rounded))
-                                    .foregroundColor(selectedTab == .join ? Color.deepNavy : Color.textSecondary)
-                                if store.invitation != nil {
-                                    Circle()
-                                        .fill(MoneyCityTheme.spentGreen)
-                                        .frame(width: 5.5, height: 5.5)
-                                }
-                            }
-                            .frame(width: 96, height: 28)
-                            .background {
-                                if selectedTab == .join {
-                                    Capsule()
-                                        .fill(Color.white)
-                                        .matchedGeometryEffect(id: "activeTabPill", in: toggleNamespace)
-                                        .shadow(color: Color.black.opacity(0.08), radius: 3, y: 1.5)
-                                }
-                            }
-                            .contentShape(Capsule())
-                        }
-                        .buttonStyle(TabPressButtonStyle())
+                        tabButton(.create, title: store.text("יצירת מרחב", "Create Space"), showsDot: false)
+                        tabButton(.join, title: store.text("הצטרפות", "Join Space"), showsDot: store.invitation != nil)
                     }
                     .padding(3)
                     .background(
                         Capsule()
-                            .fill(Color.jetBlack.opacity(0.05))
+                            .fill(posterInk.opacity(0.06))
                     )
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 6)
+                    .posterReveal(phase: entrancePhase, step: 2, reduceMotion: reduceMotion)
 
-                    // ── Onboarding-style Animated Architectural Hero Illustration ──
-                    SharedSpaceHeroIllustration(isJoin: selectedTab == .join)
-                        .padding(.top, 4)
+                    // ── The two shared buildings, and the name you are giving them ──
+                    heroBand
+                        .padding(.top, 10)
+                        .posterReveal(phase: entrancePhase, step: 3, reduceMotion: reduceMotion)
 
-                    // ── Editorial Title (Punchy onboarding style without redundant subtitle) ──
-                    Text(selectedTab == .create ? store.text("פותחים מרחב משותף", "Start a Shared Space") : store.text("הצטרפות למרחב", "Join a Shared Space"))
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
-                        .tracking(AppLanguage.current == .hebrew ? -1.0 : -1.5)
-                        .foregroundColor(Color.deepNavy)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                        .padding(.top, 4)
-                        .padding(.bottom, 8)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
+                    // ── Editorial title: the one thing the poster is saying ──
+                    Text(selectedTab == .create
+                         ? store.text("פותחים\nמרחב משותף", "Start a\nShared Space")
+                         : store.text("מצטרפים\nלמרחב קיים", "Join an\nexisting Space"))
+                        .font(.system(size: titleBase, weight: .heavy, design: .rounded))
+                        .tracking(isHebrew ? -0.5 : -0.8)
+                        .foregroundStyle(posterInk)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 24)
+                    .posterReveal(phase: entrancePhase, step: 4, reduceMotion: reduceMotion)
 
-                    // ── Active Tab Content ──
+                    // ── Active tab content ──
                     ZStack {
                         if selectedTab == .create {
                             createSpaceContent
                                 .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .offset(x: -12)),
-                                    removal: .opacity.combined(with: .offset(x: -12))
+                                    insertion: .offset(x: transitionDirection * 30).combined(with: .opacity),
+                                    removal: .offset(x: -transitionDirection * 20).combined(with: .opacity)
                                 ))
                         } else {
                             joinSpaceContent
                                 .transition(.asymmetric(
-                                    insertion: .opacity.combined(with: .offset(x: 12)),
-                                    removal: .opacity.combined(with: .offset(x: 12))
+                                    insertion: .offset(x: transitionDirection * 30).combined(with: .opacity),
+                                    removal: .offset(x: -transitionDirection * 20).combined(with: .opacity)
                                 ))
                         }
                     }
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: selectedTab)
+                    .padding(.top, 26)
+                    .animation(pageAnimation, value: selectedTab)
+                    .animation(.easeOut(duration: 0.2), value: store.setupError)
+                    .posterReveal(phase: entrancePhase, step: 5, reduceMotion: reduceMotion)
+
+                    Spacer(minLength: 4)
                 }
-                .padding(.bottom, 36)
+                .frame(maxWidth: 560, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture { dismissKeyboard() }
+            }
+            .scrollDismissesKeyboard(.interactively)
+
+            // The action lives on the canvas, outside the scroll — a keyboard can never hide it.
+            bottomActionBar
+                .padding(.horizontal, 24)
+                .padding(.top, 8)
+                .padding(.bottom, 6)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
+                .background(posterCanvas)
             }
             .disabled(store.busy)
             .overlay {
@@ -343,7 +535,7 @@ struct SharedSpacesSetupView: View {
             .sheet(isPresented: $showMapStylePicker) {
                 MapStylePickerView(
                     draft: $selectedStyle,
-                    isHebrew: AppLanguage.current == .hebrew,
+                    isHebrew: isHebrew,
                     onClose: { showMapStylePicker = false },
                     onSelect: { chosen in
                         selectedStyle = chosen
@@ -353,275 +545,305 @@ struct SharedSpacesSetupView: View {
                 .environmentObject(l10n)
             }
         }
-        .presentationBackground(Color.appBackground)
+        .presentationBackground(posterCanvas)
+        .animation(pageAnimation, value: selectedTab)
+        // The root app can only show this alert while the sheet is closed, so the sheet
+        // shows it itself. An alert inside a sheet's own content is ordinary and does not
+        // fight the sheet that presents it.
+        .alert(l10n.language == .hebrew ? "מרחב משותף" : "Shared space", isPresented: Binding(
+            get: { store.errorMessage != nil },
+            set: { if !$0 { store.errorMessage = nil } })) {
+                Button(l10n.language == .hebrew ? "סגירה" : "Dismiss") { store.errorMessage = nil }
+            } message: { Text(store.errorMessage ?? "") }
+        .task {
+            // Poster arrival: the page builds itself once, then holds still.
+            var transaction = SwiftUI.Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) { entrancePhase = reduceMotion ? 5 : 0 }
+            guard !reduceMotion else { return }
+            for nextPhase in 1...5 {
+                do { try await Task.sleep(for: .milliseconds(nextPhase == 1 ? 60 : 55)) }
+                catch { return }
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.3)) { entrancePhase = nextPhase }
+            }
+        }
+    }
+
+    private var transitionDirection: CGFloat { isHebrew ? -1 : 1 }
+
+    private func tabButton(_ tab: SetupTab, title: String, showsDot: Bool) -> some View {
+        let isSelected = selectedTab == tab
+        return Button {
+            guard !isSelected else { return }
+            Haptics.selection()
+            focusedField = nil
+            withAnimation(pageAnimation) {
+                selectedTab = tab
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(title)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular, design: .rounded))
+                    .foregroundStyle(isSelected ? posterInk : posterInk.opacity(0.5))
+                if showsDot {
+                    Circle()
+                        .fill(posterInk)
+                        .frame(width: 5.5, height: 5.5)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 44)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(Color.white)
+                        .matchedGeometryEffect(id: "activeTabPill", in: toggleNamespace)
+                        .shadow(color: Color.black.opacity(0.06), radius: 1.5, y: 1)
+                }
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var createSpaceContent: some View {
-        VStack(spacing: 20) {
-            // Space name field
-            VStack(alignment: .leading, spacing: 8) {
-                Text(store.text("שם המרחב", "Space Name"))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy.opacity(0.85))
-                TextField(store.text("הבית שלנו", "Our Home"), text: $name)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .padding(.horizontal, 16)
-                    .frame(height: 56)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-            }
+        VStack(alignment: .leading, spacing: isShortScreen ? 14 : 18) {
+            underlineField(
+                title: store.text("שם המרחב", "Space Name"),
+                placeholder: store.text("הבית שלנו", "Our Home"),
+                text: $name,
+                field: .spaceName,
+                size: isShortScreen ? 24 : 26
+            )
 
-            // Member name field
-            VStack(alignment: .leading, spacing: 8) {
-                Text(store.text("השם שלך", "Your Name"))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy.opacity(0.85))
-                TextField(store.text("איך קוראים לך?", "What's your name?"), text: $memberName)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
-                    .padding(.horizontal, 16)
-                    .frame(height: 56)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-            }
+            underlineField(
+                title: store.text("השם שלך", "Your Name"),
+                placeholder: store.text("איך קוראים לך?", "What's your name?"),
+                text: $memberName,
+                field: .memberName,
+                size: isShortScreen ? 19 : 21
+            )
 
-            // Currency & City Map Style side-by-side selection pills
-            HStack(spacing: 12) {
-                // Currency Button
+            // Currency & City style, as two printed instruments rather than white cards
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 16) { choiceInstruments }
+                VStack(alignment: .leading, spacing: 14) { choiceInstruments }
+            }
+            .padding(.top, 2)
+
+            #if DEBUG
+            if store.database == nil {
                 Button {
                     Haptics.selection()
-                    showCurrencyPicker = true
-                } label: {
-                    HStack(spacing: 10) {
-                        ZStack {
-                            Circle()
-                                .fill(MoneyCityTheme.babyBlue.opacity(0.55))
-                                .frame(width: 32, height: 32)
-                            Text(selectedCurrency.symbol)
-                                .font(.system(size: 14, weight: .black, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(store.text("מטבע", "Currency"))
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.textSecondary)
-                            Text(selectedCurrency.rawValue)
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.textMuted)
-                    }
-                    .padding(.horizontal, 14)
-                    .frame(height: 56)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                }
-                .buttonStyle(.plain)
-
-                // City Map Style Button
-                Button {
-                    Haptics.selection()
-                    showMapStylePicker = true
-                } label: {
-                    HStack(spacing: 10) {
-                        ZStack {
-                            Circle()
-                                .fill(MoneyCityTheme.spentGreenSoft)
-                                .frame(width: 32, height: 32)
-                            MoneyIcon(.globe, size: 18, color: MoneyCityTheme.brandPrimary)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(store.text("סגנון עיר", "City Style"))
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.textSecondary)
-                            Text(selectedStyle.title(isHebrew: AppLanguage.current == .hebrew))
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
-                                .lineLimit(1)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color.textMuted)
-                    }
-                    .padding(.horizontal, 14)
-                    .frame(height: 56)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                }
-                .buttonStyle(.plain)
-            }
-
-            // Primary CTA & Optional Demo
-            let canCreate = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                            !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            VStack(spacing: 12) {
-                Button {
-                    Haptics.impact(.medium)
                     store.perform {
-                        try await store.create(
-                            name: name,
-                            memberName: memberName,
-                            currency: selectedCurrency.rawValue,
-                            mapStyle: selectedStyle.rawValue
-                        )
+                        try await store.startDemo()
                         dismiss()
                     }
                 } label: {
-                    Text(store.text("יצירת מרחב", "Create Space"))
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                    Text(store.text("התנסות במרחב הדגמה", "Try Demo Space"))
+                        .font(.system(.footnote, design: .rounded, weight: .medium))
+                        .foregroundStyle(posterInk.opacity(0.7))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(canCreate ? MoneyCityTheme.brandPrimary : MoneyCityTheme.brandPrimary.opacity(0.35))
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .frame(minHeight: 32)
                 }
                 .buttonStyle(.plain)
-                .disabled(!canCreate)
-
-                #if DEBUG
-                if store.database == nil {
-                    Button {
-                        Haptics.selection()
-                        store.perform {
-                            try await store.startDemo()
-                            dismiss()
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(store.text("התנסות במרחב הדגמה", "Try Demo Space"))
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                        }
-                        .foregroundColor(MoneyCityTheme.brandPrimary)
-                        .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.plain)
-                }
-                #endif
             }
-            .padding(.top, 8)
+            #endif
         }
         .padding(.horizontal, 24)
     }
 
+    @ViewBuilder
+    private var choiceInstruments: some View {
+        choiceInstrument(
+            title: store.text("מטבע", "Currency"),
+            value: selectedCurrency.rawValue,
+            chipColor: MoneyCityTheme.babyBlue,
+            chipText: selectedCurrency.symbol,
+            isOpen: showCurrencyPicker
+        ) {
+            Haptics.selection()
+            focusedField = nil
+            showCurrencyPicker = true
+        }
+
+        choiceInstrument(
+            title: store.text("סגנון עיר", "City Style"),
+            value: selectedStyle.title(isHebrew: isHebrew),
+            chipColor: MoneyCityTheme.spentGreenSoft,
+            chipText: nil,
+            isOpen: showMapStylePicker
+        ) {
+            Haptics.selection()
+            focusedField = nil
+            showMapStylePicker = true
+        }
+    }
+
+    private func choiceInstrument(
+        title: String,
+        value: String,
+        chipColor: Color,
+        chipText: String?,
+        isOpen: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(posterInk.opacity(0.7))
+
+                HStack(spacing: 8) {
+                    if let chipText {
+                        Text(chipText)
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundStyle(posterInk)
+                            .frame(width: 26, height: 26)
+                            .background(chipColor, in: Circle())
+                    } else {
+                        MoneyIcon(.globe, size: 15, color: posterInk)
+                            .frame(width: 26, height: 26)
+                            .background(chipColor, in: Circle())
+                    }
+
+                    Text(value)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(posterInk)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(posterInk.opacity(0.45))
+                }
+                .frame(minHeight: 34)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(posterInk.opacity(isOpen ? 1 : 0.35))
+                        .frame(height: isOpen ? 2 : 1)
+                }
+                .contentShape(Rectangle())
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.97)
+    }
+
     private var joinSpaceContent: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: isShortScreen ? 14 : 18) {
             if store.invitation != nil {
-                // Highlighted Invitation Ready Card
-                VStack(spacing: 16) {
+                // A pending invitation is a real object, so it keeps a card — the poster is behind it.
+                HStack(spacing: 12) {
                     ZStack {
                         Circle()
                             .fill(MoneyCityTheme.spentGreenSoft)
-                            .frame(width: 52, height: 52)
-                        MoneyIcon(.mail, size: 26, color: MoneyCityTheme.brandPrimary)
+                            .frame(width: 40, height: 40)
+                        MoneyIcon(.mail, size: 20, color: MoneyCityTheme.brandPrimary)
                     }
-
-                    Text(store.text("התקבלה הזמנה למרחב!", "Space Invitation Ready!"))
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(store.text("השם שלך", "Your Name"))
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy.opacity(0.85))
-                        TextField(store.text("איך קוראים לך?", "What's your name?"), text: $memberName)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                            .padding(.horizontal, 16)
-                            .frame(height: 56)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                    }
-
-                    Button {
-                        Haptics.impact(.medium)
-                        store.perform {
-                            guard let pending = store.invitation else { return }
-                            try await store.accept(pending, memberName: memberName)
-                            dismiss()
-                        }
-                    } label: {
-                        Text(store.text("הצטרפות למרחב", "Join Space"))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? MoneyCityTheme.brandPrimary.opacity(0.35) : MoneyCityTheme.brandPrimary)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Text(store.text("התקבלה הזמנה למרחב", "Invitation ready"))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundStyle(posterInk)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                .padding(20)
+                .padding(14)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.white)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .padding(.horizontal, 24)
             } else {
-                // Join via Link
-                VStack(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(store.text("קישור הזמנה", "Invitation Link"))
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy.opacity(0.85))
-                        TextField("https://www.icloud.com/share/...", text: $url)
-                            .font(.system(size: 15, weight: .medium, design: .monospaced))
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .padding(.horizontal, 16)
-                            .frame(height: 56)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                    }
+                underlineField(
+                    title: store.text("קישור הזמנה", "Invitation Link"),
+                    placeholder: "https://www.icloud.com/share/...",
+                    text: $url,
+                    field: .inviteLink,
+                    size: 14,
+                    design: .monospaced,
+                    submitLabel: .go
+                )
+                .padding(.horizontal, 24)
+            }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(store.text("השם שלך", "Your Name"))
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy.opacity(0.85))
-                        TextField(store.text("איך קוראים לך?", "What's your name?"), text: $memberName)
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                            .padding(.horizontal, 16)
-                            .frame(height: 56)
-                            .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                    }
+            underlineField(
+                title: store.text("השם שלך", "Your Name"),
+                placeholder: store.text("איך קוראים לך?", "What's your name?"),
+                text: $memberName,
+                field: .memberName,
+                size: isShortScreen ? 19 : 21
+            )
+            .padding(.horizontal, 24)
 
-                    let canJoin = !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                                  !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            // A link that does not exist is the most common thing to get wrong here, and
+            // it deserves a line on the poster — not an alert over the whole app.
+            if let setupError = store.setupError {
+                Text(setupError)
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
+                    .foregroundStyle(posterInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(posterInk, lineWidth: 1.5)
+                    )
+                    .padding(.horizontal, 24)
+                    .transition(.opacity.combined(with: .offset(y: 6)))
+            }
+        }
+    }
 
-                    Button {
-                        Haptics.impact(.medium)
-                        store.perform {
-                            let metadata = try await store.metadata(for: url)
-                            try await store.accept(metadata, memberName: memberName)
-                            dismiss()
-                        }
-                    } label: {
-                        Text(store.text("הצטרפות למרחב", "Join Space"))
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(canJoin ? MoneyCityTheme.brandPrimary : MoneyCityTheme.brandPrimary.opacity(0.35))
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canJoin)
+    // MARK: - The single pinned action
+
+    @ViewBuilder
+    private var bottomActionBar: some View {
+        if selectedTab == .create {
+            primaryAction(
+                title: store.text("יצירת מרחב", "Create Space"),
+                isEnabled: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                           !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
+                store.perform {
+                    try await store.create(
+                        name: name,
+                        memberName: memberName,
+                        currency: selectedCurrency.rawValue,
+                        mapStyle: selectedStyle.rawValue
+                    )
+                    dismiss()
+                }
+            }
+        } else if store.invitation != nil {
+            primaryAction(
+                title: store.text("הצטרפות למרחב", "Join Space"),
+                isEnabled: !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
+                store.perform {
+                    // A vanished invitation used to return silently: no dismiss, no error,
+                    // no feedback — the button simply did nothing.
+                    guard let pending = store.invitation else { throw SharedLedgerError.wrongInvitation }
+                    try await store.accept(pending, memberName: memberName)
+                    dismiss()
+                }
+            }
+        } else {
+            primaryAction(
+                title: store.text("הצטרפות למרחב", "Join Space"),
+                isEnabled: !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                           !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ) {
+                focusedField = nil
+                store.perform {
+                    let metadata = try await store.metadata(for: url)
+                    try await store.accept(metadata, memberName: memberName)
+                    dismiss()
                 }
             }
         }
-        .padding(.horizontal, 24)
     }
 
     private var existingSpacesCard: some View {

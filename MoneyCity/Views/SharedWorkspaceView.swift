@@ -77,7 +77,7 @@ struct SharedSpacesSetupView: View {
                     .padding(.top, 24)
 
                     // ── Segment Switcher ──
-                    HStack(spacing: 6) {
+                    HStack(spacing: 4) {
                         Button {
                             Haptics.selection()
                             withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
@@ -85,13 +85,13 @@ struct SharedSpacesSetupView: View {
                             }
                         } label: {
                             Text(store.text("יצירת מרחב", "Create Space"))
-                                .font(.system(size: 14, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
+                                .font(.system(size: 12.5, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
                                 .foregroundColor(selectedTab == .create ? Color.deepNavy : Color.textSecondary)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 38)
+                                .frame(height: 30)
                                 .background(selectedTab == .create ? Color.white : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                                .shadow(color: selectedTab == .create ? Color.black.opacity(0.04) : Color.clear, radius: 4, y: 1)
+                                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                .shadow(color: selectedTab == .create ? Color.black.opacity(0.04) : Color.clear, radius: 3, y: 1)
                         }
                         .buttonStyle(.plain)
 
@@ -101,28 +101,28 @@ struct SharedSpacesSetupView: View {
                                 selectedTab = .join
                             }
                         } label: {
-                            HStack(spacing: 6) {
+                            HStack(spacing: 5) {
                                 Text(store.text("הצטרפות", "Join Space"))
-                                    .font(.system(size: 14, weight: selectedTab == .join ? .bold : .medium, design: .rounded))
+                                    .font(.system(size: 12.5, weight: selectedTab == .join ? .bold : .medium, design: .rounded))
                                     .foregroundColor(selectedTab == .join ? Color.deepNavy : Color.textSecondary)
                                 if store.invitation != nil {
                                     Circle()
                                         .fill(MoneyCityTheme.spentGreen)
-                                        .frame(width: 7, height: 7)
+                                        .frame(width: 5.5, height: 5.5)
                                 }
                             }
                             .frame(maxWidth: .infinity)
-                            .frame(height: 38)
+                            .frame(height: 30)
                             .background(selectedTab == .join ? Color.white : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                            .shadow(color: selectedTab == .join ? Color.black.opacity(0.04) : Color.clear, radius: 4, y: 1)
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                            .shadow(color: selectedTab == .join ? Color.black.opacity(0.04) : Color.clear, radius: 3, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(4)
+                    .padding(2.5)
                     .background(Color.black.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .padding(.horizontal, 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .padding(.horizontal, 36)
 
                     // ── Active Tab Content ──
                     if selectedTab == .create {
@@ -249,9 +249,7 @@ struct SharedSpacesSetupView: View {
                             Circle()
                                 .fill(MoneyCityTheme.spentGreenSoft)
                                 .frame(width: 32, height: 32)
-                            Image(systemName: "map.fill")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(MoneyCityTheme.brandPrimary)
+                            MoneyIcon(.globe, size: 18, color: MoneyCityTheme.brandPrimary)
                         }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(store.text("סגנון עיר", "City Style"))
@@ -313,8 +311,6 @@ struct SharedSpacesSetupView: View {
                         }
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: 13, weight: .semibold))
                             Text(store.text("התנסות במרחב הדגמה", "Try Demo Space"))
                                 .font(.system(size: 14, weight: .bold, design: .rounded))
                         }
@@ -339,9 +335,7 @@ struct SharedSpacesSetupView: View {
                         Circle()
                             .fill(MoneyCityTheme.spentGreenSoft)
                             .frame(width: 52, height: 52)
-                        Image(systemName: "envelope.badge.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(MoneyCityTheme.spentGreen)
+                        MoneyIcon(.mail, size: 26, color: MoneyCityTheme.brandPrimary)
                     }
 
                     Text(store.text("התקבלה הזמנה למרחב!", "Space Invitation Ready!"))
@@ -460,9 +454,7 @@ struct SharedSpacesSetupView: View {
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "person.2.fill")
-                                .font(.system(size: 16))
-                                .foregroundColor(MoneyCityTheme.brandPrimary)
+                            MoneyIcon(.users, size: 18, color: MoneyCityTheme.brandPrimary)
                                 .frame(width: 36, height: 36)
                                 .background(MoneyCityTheme.babyBlue.opacity(0.6), in: Circle())
 
@@ -703,8 +695,7 @@ struct SharedSpaceManagement: View {
                             showPreInvite = true
                         } label: {
                             HStack(spacing: 8) {
-                                Image(systemName: "person.badge.plus")
-                                    .font(.system(size: 15, weight: .semibold))
+                                MoneyIcon(.plusCircle, size: 16, color: MoneyCityTheme.brandPrimary)
                                 Text(store.text("הזמנת חבר/ה למרחב", "Invite Member"))
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                             }
@@ -779,8 +770,7 @@ struct SharedSpaceManagement: View {
                                 showStopSharingConfirm = true
                             } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "person.crop.circle.badge.xmark")
-                                        .font(.system(size: 15, weight: .semibold))
+                                    MoneyIcon(.lock, size: 16, color: Color.deepNavy)
                                     Text(store.text("עצירת שיתוף המרחב", "Stop Sharing Space"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                 }
@@ -798,8 +788,7 @@ struct SharedSpaceManagement: View {
                                 showDeleteConfirm = true
                             } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "trash")
-                                        .font(.system(size: 14, weight: .semibold))
+                                    MoneyIcon(.trash, size: 16, color: MoneyCityTheme.destructive)
                                     Text(store.text("מחיקת המרחב לצמיתות", "Delete Shared Space"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                 }
@@ -817,8 +806,7 @@ struct SharedSpaceManagement: View {
                                 showLeaveConfirm = true
                             } label: {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "rectangle.portrait.and.arrow.right")
-                                        .font(.system(size: 14, weight: .semibold))
+                                    MoneyIcon(.xmarkCircle, size: 16, color: MoneyCityTheme.destructive)
                                     Text(store.text("עזיבת המרחב", "Leave Space"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                 }

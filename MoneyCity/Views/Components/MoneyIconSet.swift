@@ -111,6 +111,7 @@ public enum MoneyIconType: String, CaseIterable, Sendable {
     case globe
     case trophy
     case user
+    case users
 
     // Complementary utility icons in identical style
     case chevronLeft
@@ -238,6 +239,7 @@ struct MoneyIconRenderer: View {
             case .globe:          globeIcon
             case .trophy:         trophyIcon
             case .user:           userIcon
+            case .users:          usersIcon
 
             // Utilities
             case .chevronLeft:    chevronLeftIcon

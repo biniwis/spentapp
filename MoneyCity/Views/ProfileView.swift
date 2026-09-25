@@ -443,11 +443,12 @@ public struct ProfileView: View {
             if scopeCapabilities.isShared, let _ = scope.currentSpace {
                 let participants = scope.participants
                 if participants.isEmpty {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(Color.deepNavy)
-                        .frame(width: 56, height: 56)
-                        .background(MoneyCityTheme.babyBlue.opacity(0.6), in: Circle())
+                    ZStack {
+                        Circle()
+                            .fill(MoneyCityTheme.babyBlue.opacity(0.6))
+                            .frame(width: 56, height: 56)
+                        MoneyIcon(.users, size: 28, color: MoneyCityTheme.brandPrimary)
+                    }
                 } else {
                     HStack(spacing: -8) {
                         ForEach(participants.prefix(2)) { p in
@@ -976,9 +977,7 @@ public struct ProfileView: View {
                         Circle()
                             .fill(MoneyCityTheme.spentGreenSoft)
                             .frame(width: 48, height: 48)
-                        Image(systemName: "person.2.badge.plus")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(MoneyCityTheme.spentGreen)
+                        MoneyIcon(.users, size: 24, color: MoneyCityTheme.brandPrimary)
                     }
 
                     VStack(alignment: .leading, spacing: 3) {
@@ -994,7 +993,7 @@ public struct ProfileView: View {
                     Spacer(minLength: 4)
 
                     HStack(spacing: 4) {
-                        Text(l10n.language == .hebrew ? "התחלה ✨" : "Start ✨")
+                        Text(l10n.language == .hebrew ? "התחלה" : "Start")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                     }
@@ -1014,9 +1013,7 @@ public struct ProfileView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     HStack(spacing: 8) {
-                        Image(systemName: "person.2.fill")
-                            .font(.system(size: 15))
-                            .foregroundColor(MoneyCityTheme.brandPrimary)
+                        MoneyIcon(.users, size: 16, color: MoneyCityTheme.brandPrimary)
                         Text(l10n.language == .hebrew ? "מרחבים משותפים" : "Shared Spaces")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundColor(Color.deepNavy)
@@ -1045,9 +1042,7 @@ public struct ProfileView: View {
                     HStack(spacing: 12) {
                         HStack(spacing: -8) {
                             if members.isEmpty {
-                                Image(systemName: "person.2.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Color.deepNavy)
+                                MoneyIcon(.users, size: 16, color: Color.deepNavy)
                                     .frame(width: 34, height: 34)
                                     .background(MoneyCityTheme.babyBlue.opacity(0.5), in: Circle())
                             } else {
@@ -1102,9 +1097,7 @@ public struct ProfileView: View {
                     subtitle: l10n.language == .hebrew ? "חברים, הזמנות, הגדרות ועזיבה" : "Members, invites, settings and leave",
                     iconBg: MoneyCityTheme.spentGreenSoft
                 ) {
-                    Image(systemName: "person.2.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(MoneyCityTheme.brandPrimary)
+                    MoneyIcon(.users, size: 24, color: MoneyCityTheme.brandPrimary)
                 } action: {
                     selectedSpaceForManagement = space
                 }

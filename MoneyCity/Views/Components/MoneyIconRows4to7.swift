@@ -571,6 +571,36 @@ extension MoneyIconRenderer {
         }
     }
 
+    var usersIcon: some View {
+        ZStack {
+            // Back User (Left)
+            Circle()
+                .fill(overrideColor?.opacity(0.55) ?? IconPalette.babyBlue)
+                .frame(width: 7, height: 7)
+                .overlay(Circle().stroke(black, lineWidth: strokeWidth))
+                .offset(x: -4.5, y: -4)
+
+            UserBustShape()
+                .fill(overrideColor?.opacity(0.55) ?? IconPalette.babyBlue)
+                .frame(width: 13, height: 7.5)
+                .overlay(UserBustShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
+                .offset(x: -4.5, y: 4.5)
+
+            // Front User (Right)
+            Circle()
+                .fill(overrideColor ?? IconPalette.luckyGreen)
+                .frame(width: 7.5, height: 7.5)
+                .overlay(Circle().stroke(black, lineWidth: strokeWidth))
+                .offset(x: 4.5, y: -2.5)
+
+            UserBustShape()
+                .fill(overrideColor ?? IconPalette.luckyGreen)
+                .frame(width: 14, height: 8)
+                .overlay(UserBustShape().stroke(black, style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round, lineJoin: .round)))
+                .offset(x: 4.5, y: 5.5)
+        }
+    }
+
     // MARK: - Utilities
 
     var chevronLeftIcon: some View {

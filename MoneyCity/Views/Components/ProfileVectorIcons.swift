@@ -71,6 +71,16 @@ public struct RecurringCalendarVectorIcon: View {
     }
 }
 
+/// 8. Shared Space / Duo Vector Icon
+public struct SharedSpaceVectorIcon: View {
+    public let color: Color
+    public init(color: Color = MoneyCityTheme.brandPrimary) { self.color = color }
+    
+    public var body: some View {
+        MoneyIcon(.users, size: 24, color: color)
+    }
+}
+
 
 /// 9. Bespoke City Enrichment Vector Badges
 public struct EnrichmentVectorBadge: View {

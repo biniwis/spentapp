@@ -1127,10 +1127,6 @@ public struct SharedConflictResolutionSheet: View {
         .padding(16)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.borderSubtle, lineWidth: 1)
-        )
         .shadow(color: Color.black.opacity(0.04), radius: 8, y: 2)
     }
 

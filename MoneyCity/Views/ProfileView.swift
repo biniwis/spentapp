@@ -440,7 +440,7 @@ public struct ProfileView: View {
     private var userProfileCard: some View {
         HStack(spacing: 14) {
             #if !SWIFT_PACKAGE
-            if scopeCapabilities.isShared, let space = scope.currentSpace {
+            if scopeCapabilities.isShared, let _ = scope.currentSpace {
                 let participants = scope.participants
                 if participants.isEmpty {
                     Image(systemName: "person.2.fill")
@@ -1006,11 +1006,7 @@ public struct ProfileView: View {
                 .padding(16)
                 .background(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(Color.borderSubtle, lineWidth: 1)
-                )
-                .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
+                .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                 .padding(.horizontal, 16)
             }
             .buttonStyle(.plain)
@@ -1091,11 +1087,7 @@ public struct ProfileView: View {
             .padding(16)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.borderSubtle, lineWidth: 1)
-            )
-            .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
+            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
             .padding(.horizontal, 16)
         }
     }

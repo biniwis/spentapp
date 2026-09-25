@@ -164,7 +164,6 @@ public struct ScopeSelectorMenu: View {
     @ObservedObject private var scopeContext = AppScopeContext.shared
     @ObservedObject private var sharedStore = SharedWorkspaceStore.shared
     @EnvironmentObject private var l10n: LocalizationManager
-    @State private var showAccountSwitcher = false
 
     public init() {}
 
@@ -173,7 +172,7 @@ public struct ScopeSelectorMenu: View {
         if !sharedStore.spaces.isEmpty {
             Button {
                 Haptics.selection()
-                showAccountSwitcher = true
+                sharedStore.showAccountSwitcher = true
             } label: {
                 AccountIdentityLabel(
                     title: scopeContext.displayName,
@@ -188,13 +187,6 @@ public struct ScopeSelectorMenu: View {
             .frame(minHeight: 44)
             .accessibilityLabel(l10n.isHebrew ? "בחירת חשבון" : "Choose account")
             .accessibilityValue(scopeContext.displayName)
-            .sheet(isPresented: $showAccountSwitcher) {
-                AccountSwitcherSheet(
-                    scopeContext: scopeContext,
-                    sharedStore: sharedStore
-                )
-                .environmentObject(l10n)
-            }
         }
     }
 }
@@ -209,17 +201,6 @@ struct AccountSwitcherSheet: View {
     init(scopeContext: AppScopeContext, sharedStore: SharedWorkspaceStore) {
         self.scopeContext = scopeContext
         self.sharedStore = sharedStore
-    }
-
-    private var sheetHeight: CGFloat {
-        let spacesCount = sharedStore.spaces.count
-        if spacesCount == 0 {
-            return 320
-        } else if spacesCount == 1 {
-            return 395
-        } else {
-            return min(CGFloat(395 + (spacesCount - 1) * 80), 560)
-        }
     }
 
     public var body: some View {
@@ -392,7 +373,7 @@ struct AccountSwitcherSheet: View {
             .padding(.bottom, 20)
         }
         .background(Color.appBackground.ignoresSafeArea())
-        .presentationDetents([.height(sheetHeight), .fraction(0.72)])
+        .presentationDetents([.fraction(0.48), .fraction(0.75)])
         .presentationDragIndicator(.visible)
         .presentationBackground(Color.appBackground)
         .sheet(item: $managingSpace) { space in

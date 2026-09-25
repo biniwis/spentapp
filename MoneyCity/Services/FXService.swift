@@ -21,14 +21,14 @@ public final class FXService: ObservableObject {
         self.session = session
     }
 
-    public static let defaultRatesToILS: [String: Double] = [
+    nonisolated public static let defaultRatesToILS: [String: Double] = [
         "ILS": 1.00,
         "USD": 3.65,
         "EUR": 3.95,
         "GBP": 4.65
     ]
 
-    private static let ratesCacheKey = "fx_rates_cache_dict"
+    nonisolated private static let ratesCacheKey = "fx_rates_cache_dict"
 
     /// Rate relative to 1 ILS (Shekel) — how many shekels is 1 unit of foreign currency worth.
     /// Returns nil if no rate is known for this currency code.

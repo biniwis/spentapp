@@ -18,6 +18,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     @Published private(set) var demo = false
     @Published private(set) var activeSpaceID: UUID?
     @Published var showSetup = false
+    @Published var showAccountSwitcher = false
     @Published var busy = false
     @Published var errorMessage: String?
     @Published var invitation: CKShare.Metadata?

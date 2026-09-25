@@ -668,7 +668,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             isInitialDelivery = true
 
             MoneyCityLog.error("Diorama renderer recovery started")
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .dioramaRecoveryStarted, object: nil)
             }
 

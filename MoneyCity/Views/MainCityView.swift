@@ -1019,6 +1019,15 @@ public struct MainCityView: View {
             RecurringExpensesSheet()
                 .environmentObject(l10n)
         }
+        #if !SWIFT_PACKAGE
+        .sheet(isPresented: $sharedStore.showAccountSwitcher) {
+            AccountSwitcherSheet(
+                scopeContext: scopeContext,
+                sharedStore: sharedStore
+            )
+            .environmentObject(l10n)
+        }
+        #endif
         .fullScreenCover(item: $activeNewMonthRecap) { recap in
             MonthlyRecapSheet(recap: recap) { targetDate in
                 monthSnapshot = targetDate

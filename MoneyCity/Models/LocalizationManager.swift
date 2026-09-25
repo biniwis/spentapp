@@ -275,11 +275,11 @@ public final class LocalizationManager: ObservableObject {
 
     nonisolated public static var currentBaseCurrency: CurrencyType {
         let raw = UserDefaults.standard.string(forKey: "app_currency_pref") ?? CurrencyType.ils.rawValue
-        return CurrencyType(rawValue: raw) ?? .ils
+        return CurrencyType(rawValue: raw)
     }
 
     public var baseCurrency: CurrencyType {
-        get { CurrencyType(rawValue: baseCurrencyRaw) ?? .ils }
+        get { CurrencyType(rawValue: baseCurrencyRaw) }
         set { baseCurrencyRaw = newValue.rawValue }
     }
 

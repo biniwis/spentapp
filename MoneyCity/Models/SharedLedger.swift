@@ -9,11 +9,58 @@ struct SharedSpace: Codable, Identifiable, Equatable {
     var timeZoneID: String
     var mapStyle: String
     var createdAt: Date
+    /// The space's own monthly spending target, in minor units of `currencyCode`.
+    ///
+    /// Optional on purpose. Spaces that existed before targets did simply have no such
+    /// field in their payload, and the synthesized decoder turns that into `nil` rather
+    /// than failing — an old space keeps working and reports no target instead of being
+    /// given an invented number. This is the space's target, never the personal
+    /// `monthly_budget`, and the two must stay independent.
+    ///
+    /// TODO before release: decoding is backward compatible, but *encoding* is not. A
+    /// client on an older build that re-encodes a `SharedSpace` will drop this field and
+    /// silently clear the target. Shared Mode is unreleased, so that path cannot happen
+    /// yet. Once it can, the target has to survive a write from an old client — either
+    /// by refusing to overwrite a field an old client cannot see, or by versioning the
+    /// payload. The CloudKit schema does not need changing for it: the payload is opaque
+    /// `Data`.
+    var monthlyBudgetMinor: Int64?
     var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timeZoneID) ?? TimeZone(secondsFromGMT: 0)!
         return calendar
     }
+
+    func progress(spentMinor: Int64) -> SharedBudgetProgress {
+        SharedBudgetProgress(spentMinor: spentMinor, targetMinor: monthlyBudgetMinor)
+    }
+}
+
+/// How a space's month stands against its target.
+///
+/// Pure arithmetic in the space's own currency, so every surface that reports a shared
+/// target — city, profile, analytics, recap — reads the same numbers instead of
+/// recomputing them its own way. A space with no target reports `hasTarget == false` and
+/// no numbers at all, rather than a zero that would look like a finished month.
+struct SharedBudgetProgress: Equatable {
+    let spentMinor: Int64
+    let targetMinor: Int64?
+
+    var hasTarget: Bool { (targetMinor ?? 0) > 0 }
+
+    var remainingMinor: Int64? {
+        guard let targetMinor, hasTarget else { return nil }
+        return targetMinor - spentMinor
+    }
+
+    /// Share of the target already spent, uncapped: going over the target is information
+    /// the product needs, not something to hide by clamping to 1.
+    var fraction: Double? {
+        guard let targetMinor, targetMinor > 0 else { return nil }
+        return Double(spentMinor) / Double(targetMinor)
+    }
+
+    var isOverTarget: Bool { (remainingMinor ?? 0) < 0 }
 }
 
 struct SharedMember: Codable, Identifiable, Equatable {

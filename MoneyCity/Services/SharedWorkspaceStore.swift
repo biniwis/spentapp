@@ -234,15 +234,20 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         }
     }
 
-    func create(name: String, memberName: String, currency: String, mapStyle: String) async throws {
+    func create(name: String, memberName: String, currency: String, mapStyle: String,
+                monthlyBudgetMinor: Int64? = nil) async throws {
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanMember = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty, !cleanMember.isEmpty,
               Locale.commonISOCurrencyCodes.contains(currency) else { throw SharedLedgerError.invalidInput }
+        // A target is optional, but a target of zero or less is a mistake, not a choice.
+        // Rejected before anything is created, so a bad number costs nothing.
+        if let monthlyBudgetMinor, monthlyBudgetMinor <= 0 { throw SharedLedgerError.invalidAmount }
         try await connect()
         let id = UUID()
         let space = SharedSpace(id: id, name: String(cleanName.prefix(60)), currencyCode: currency,
-                                timeZoneID: TimeZone.current.identifier, mapStyle: mapStyle, createdAt: Date())
+                                timeZoneID: TimeZone.current.identifier, mapStyle: mapStyle, createdAt: Date(),
+                                monthlyBudgetMinor: monthlyBudgetMinor)
         let zone = CKRecordZone(zoneName: Self.zonePrefix + id.uuidString)
         do {
             if !demo {
@@ -302,6 +307,18 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         let member = SharedMember(id: memberID, spaceID: id, name: String(name.prefix(40)),
                                   colorHex: existing?.colorHex ?? palette[index], isActive: true)
         try put(member, kind: "member", name: "member-" + memberID, space: id,
+                zone: recordID(row).zoneID, scope: row.databaseScope)
+    }
+
+    /// Sets or clears the space's own monthly target. Never touches a personal budget:
+    /// the value lives in the space record, so every member reads the same one.
+    func setMonthlyBudget(_ minor: Int64?, for id: UUID) throws {
+        guard canWrite(id) else { throw SharedLedgerError.noAccess }
+        if let minor, minor <= 0 { throw SharedLedgerError.invalidAmount }
+        guard var space = spaces.first(where: { $0.id == id }) else { throw SharedLedgerError.noAccess }
+        let row = try spaceRow(id)
+        space.monthlyBudgetMinor = minor
+        try put(space, kind: "space", name: "space", space: id,
                 zone: recordID(row).zoneID, scope: row.databaseScope)
     }
 
@@ -405,7 +422,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             return share
         }
         if row.databaseScope == CKDatabase.Scope.private.rawValue {
-            let spaceObj = spaces.first(where: { $0.id == space }) ?? SharedSpace(id: space, name: "SPENT", currencyCode: "ILS", timeZoneID: TimeZone.current.identifier, mapStyle: "urban", createdAt: Date())
+            let spaceObj = spaces.first(where: { $0.id == space }) ?? SharedSpace(id: space, name: "SPENT", currencyCode: "ILS", timeZoneID: TimeZone.current.identifier, mapStyle: "urban", createdAt: Date(), monthlyBudgetMinor: nil)
             let share = CKShare(recordZoneID: zone.zoneID)
             share[CKShare.SystemFieldKey.title] = spaceObj.name as CKRecordValue
             share.publicPermission = .none
@@ -701,7 +718,9 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         guard database == nil else { throw SharedLedgerError.invalidInput }
         demo = true; accountName = "demo-user"
         database = try SharedDatabaseService(directory: nil, inMemory: true)
-        try await create(name: text("הבית שלנו · הדגמה", "Our home · Demo"), memberName: text("אני", "Me"), currency: "ILS", mapStyle: "urban")
+        try await create(name: text("הבית שלנו · הדגמה", "Our home · Demo"), memberName: text("אני", "Me"),
+                         currency: "ILS", mapStyle: "urban",
+                         monthlyBudgetMinor: try SharedMoney.minor("8000", currency: "ILS"))
         guard let id = activeSpaceID else { return }
         let row = try spaceRow(id)
         let partner = SharedMember(id: "demo-partner", spaceID: id, name: text("מאיה", "Maya"), colorHex: "#FF6446", isActive: true)

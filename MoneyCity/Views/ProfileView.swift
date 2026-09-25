@@ -425,10 +425,6 @@ public struct ProfileView: View {
             .padding(.vertical, 14)
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.borderSubtle, lineWidth: 1)
-            )
             .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
             .padding(.horizontal, 16)
         }

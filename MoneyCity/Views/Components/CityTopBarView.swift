@@ -219,26 +219,30 @@ struct AccountSwitcherSheet: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(l10n.isHebrew ? "בחירת מרחב" : "Select Space")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .font(.system(size: 22, weight: .heavy, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
                             Text(l10n.isHebrew ? "מעבר בין העיר האישית למרחבים משותפים" : "Switch between your personal city and shared spaces")
-                                .font(.system(size: 13, weight: .medium, design: .default))
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.textSecondary)
                         }
                         Spacer()
                         Button {
                             dismiss()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundStyle(Color.textMuted.opacity(0.6))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color.deepNavy)
+                                .frame(width: 32, height: 32)
+                                .background(Color.white, in: Circle())
+                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.top, 20)
 
                     // Personal Account Card
+                    let isPersonal = scopeContext.activeScope == .personal
                     Button {
                         Haptics.selection()
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
@@ -251,7 +255,7 @@ struct AccountSwitcherSheet: View {
                                 Circle()
                                     .fill(MoneyCityTheme.warmCream)
                                     .frame(width: 44, height: 44)
-                                MoneyIcon(.user, size: 22)
+                                MoneyIcon(.user, size: 24)
                             }
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(l10n.isHebrew ? "העיר שלי" : "My City")
@@ -262,20 +266,16 @@ struct AccountSwitcherSheet: View {
                                     .foregroundColor(Color.textSecondary)
                             }
                             Spacer()
-                            if scopeContext.activeScope == .personal {
+                            if isPersonal {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundColor(MoneyCityTheme.brandPrimary)
                             }
                         }
                         .padding(16)
-                        .background(Color.white)
+                        .background(isPersonal ? MoneyCityTheme.spentGreenSoft.opacity(0.55) : Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(scopeContext.activeScope == .personal ? MoneyCityTheme.brandPrimary : Color.borderSubtle, lineWidth: scopeContext.activeScope == .personal ? 1.5 : 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+                        .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     }
                     .buttonStyle(.plain)
                     .padding(.horizontal, 16)
@@ -284,7 +284,7 @@ struct AccountSwitcherSheet: View {
                     if !sharedStore.spaces.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(l10n.isHebrew ? "מרחבים משותפים" : "Shared Spaces")
-                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.textSecondary)
                                 .padding(.horizontal, 20)
 
@@ -302,9 +302,7 @@ struct AccountSwitcherSheet: View {
                                         HStack(spacing: 14) {
                                             HStack(spacing: -8) {
                                                 if spaceMembers.isEmpty {
-                                                    Image(systemName: "person.2.fill")
-                                                        .font(.system(size: 18))
-                                                        .foregroundColor(Color.deepNavy)
+                                                    MoneyIcon(.users, size: 20, color: Color.deepNavy)
                                                         .frame(width: 44, height: 44)
                                                         .background(MoneyCityTheme.babyBlue.opacity(0.5), in: Circle())
                                                 } else {
@@ -333,13 +331,9 @@ struct AccountSwitcherSheet: View {
                                             }
                                         }
                                         .padding(16)
-                                        .background(Color.white)
+                                        .background(isSelected ? MoneyCityTheme.spentGreenSoft.opacity(0.55) : Color.white)
                                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                                .stroke(isSelected ? MoneyCityTheme.brandPrimary : Color.borderSubtle, lineWidth: isSelected ? 1.5 : 1)
-                                        )
-                                        .shadow(color: Color.black.opacity(0.03), radius: 6, y: 2)
+                                        .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -355,16 +349,15 @@ struct AccountSwitcherSheet: View {
                             sharedStore.showSetup = true
                         } label: {
                             HStack(spacing: 8) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 16, weight: .semibold))
+                                MoneyIcon(.plusCircle, size: 16, color: MoneyCityTheme.brandPrimary)
                                 Text(l10n.isHebrew ? "יצירה או הצטרפות למרחב" : "Create or Join Space")
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                             }
                             .foregroundColor(MoneyCityTheme.brandPrimary)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 48)
+                            .frame(height: 50)
                             .background(MoneyCityTheme.spentGreenSoft)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
                         .buttonStyle(.plain)
 
@@ -373,8 +366,7 @@ struct AccountSwitcherSheet: View {
                                 managingSpace = active
                             } label: {
                                 HStack(spacing: 6) {
-                                    Image(systemName: "gearshape")
-                                        .font(.system(size: 13, weight: .medium))
+                                    MoneyIcon(.gear, size: 14, color: Color.textSecondary)
                                     Text(l10n.isHebrew ? "ניהול מרחב: \(active.name)" : "Manage: \(active.name)")
                                         .font(.system(size: 13, weight: .medium, design: .rounded))
                                 }
@@ -397,6 +389,7 @@ struct AccountSwitcherSheet: View {
         }
         .presentationDetents([.medium, .fraction(0.7)])
         .presentationDragIndicator(.visible)
+        .presentationBackground(Color.appBackground)
     }
 }
 
@@ -406,13 +399,14 @@ struct SharedMemberMark: View {
     var size: CGFloat = 28
 
     var body: some View {
-        Image(systemName: "tshirt.fill")
-            .font(.system(size: size * 0.48, weight: .semibold))
-            .foregroundStyle(Color(hex: colorHex))
-            .frame(width: size, height: size)
-            .background(Color(hex: colorHex).opacity(0.10), in: Circle())
-            .overlay(Circle().stroke(MoneyCityTheme.appBackground, lineWidth: 2))
-            .accessibilityHidden(true)
+        ZStack {
+            Circle()
+                .fill(Color(hex: colorHex).opacity(0.18))
+            MoneyIcon(.user, size: size * 0.7, color: Color(hex: colorHex))
+        }
+        .frame(width: size, height: size)
+        .background(Color.white, in: Circle())
+        .accessibilityHidden(true)
     }
 }
 
@@ -426,10 +420,9 @@ struct AccountIdentityLabel: View {
     var body: some View {
         HStack(spacing: 10) {
             if members.isEmpty {
-                Image(systemName: "person.crop.circle")
-                    .font(.title3)
-                    .foregroundStyle(MoneyCityTheme.textSecondary)
+                MoneyIcon(.user, size: 18, color: MoneyCityTheme.textSecondary)
                     .frame(width: 36, height: 36)
+                    .background(Color.black.opacity(0.04), in: Circle())
             } else {
                 HStack(spacing: -8) {
                     ForEach(members.prefix(2)) { member in
@@ -460,7 +453,7 @@ struct AccountIdentityLabel: View {
     }
 }
 
-/// Selection uses a checkmark and border, not color alone. Large text stacks the choices.
+/// Selection uses a checkmark and soft background, no stroke. Large text stacks the choices.
 struct SharedPayerSelection: View {
     let title: String
     let members: [SharedMember]
@@ -502,10 +495,9 @@ struct SharedPayerSelection: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                .background(selected ? MoneyCityTheme.brandPrimary.opacity(0.06) : Color.clear,
+                .background(selected ? MoneyCityTheme.spentGreenSoft : Color.white,
                             in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12)
-                    .stroke(selected ? MoneyCityTheme.brandPrimary : MoneyCityTheme.borderSubtle, lineWidth: 1))
+                .shadow(color: Color.black.opacity(0.02), radius: 4, y: 1)
                 .contentShape(RoundedRectangle(cornerRadius: 12))
             }
             .buttonStyle(.plain)

@@ -787,22 +787,25 @@ struct SharedSpaceManagement: View {
             ScrollView {
                 VStack(spacing: 18) {
                     // Header
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(space.name)
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .font(.system(size: 22, weight: .heavy, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
                             Text(store.text("ניהול מרחב משותף · \(space.currencyCode)", "Manage Shared Space · \(space.currencyCode)"))
-                                .font(.system(size: 13, weight: .medium, design: .default))
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
                                 .foregroundColor(Color.textSecondary)
                         }
                         Spacer()
                         Button {
                             dismiss()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundStyle(Color.textMuted.opacity(0.6))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color.deepNavy)
+                                .frame(width: 32, height: 32)
+                                .background(Color.white, in: Circle())
+                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
@@ -832,7 +835,7 @@ struct SharedSpaceManagement: View {
                                         .foregroundColor(Color.deepNavy)
                                     Text(store.text("העריכות המקומיות שלך נשמרו. לחץ להשוואה ובחירה.",
                                                     "Your local edits were saved. Tap to review and resolve."))
-                                        .font(.system(size: 12, weight: .medium, design: .default))
+                                        .font(.system(size: 12, weight: .medium, design: .rounded))
                                         .foregroundColor(Color.textSecondary)
                                         .lineLimit(2)
                                 }
@@ -843,9 +846,9 @@ struct SharedSpaceManagement: View {
                                     .font(.system(size: 13, weight: .bold))
                                     .foregroundColor(Color.orange)
                             }
-                            .padding(14)
+                            .padding(16)
                             .background(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                             .shadow(color: Color.orange.opacity(0.06), radius: 8, y: 2)
                             .padding(.horizontal, 20)
                         }
@@ -853,38 +856,47 @@ struct SharedSpaceManagement: View {
                     }
 
                     // Members Card
+                    let spaceMembers = store.members.filter { $0.spaceID == space.id }
                     VStack(alignment: .leading, spacing: 14) {
                         HStack {
-                            Text(store.text("חברי המרחב", "Members"))
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
+                            HStack(spacing: 8) {
+                                MoneyIcon(.users, size: 16, color: MoneyCityTheme.brandPrimary)
+                                Text(store.text("חברי המרחב", "Space Members"))
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                            }
                             Spacer()
-                            Text("\(store.members.filter { $0.spaceID == space.id }.count)")
+                            Text("\(spaceMembers.count)")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.textMuted)
+                                .foregroundColor(MoneyCityTheme.brandPrimary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(MoneyCityTheme.spentGreenSoft)
+                                .clipShape(Capsule())
                         }
 
                         VStack(spacing: 10) {
-                            ForEach(store.members.filter { $0.spaceID == space.id }) { member in
+                            ForEach(spaceMembers) { member in
+                                let isMe = member.id == store.myMemberID(in: space.id)
                                 HStack(spacing: 12) {
-                                    SharedMemberMark(colorHex: member.colorHex, size: 36)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(member.name)
-                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                                            .foregroundColor(Color.deepNavy)
-                                        if member.id == store.myMemberID(in: space.id) {
-                                            Text(store.text("את/ה", "You"))
-                                                .font(.system(size: 11, weight: .medium, design: .default))
-                                                .foregroundColor(MoneyCityTheme.brandPrimary)
-                                        }
-                                    }
+                                    SharedMemberMark(colorHex: member.colorHex, size: 38)
+                                    Text(member.name)
+                                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
                                     Spacer()
+                                    if isMe {
+                                        Text(store.text("את/ה", "You"))
+                                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                                            .foregroundColor(MoneyCityTheme.brandPrimary)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 3)
+                                            .background(MoneyCityTheme.spentGreenSoft)
+                                            .clipShape(Capsule())
+                                    }
                                 }
-                                .padding(.vertical, 4)
+                                .padding(.vertical, 2)
                             }
                         }
-
-                        Divider().padding(.vertical, 2)
 
                         // Invite Member Button
                         Button {
@@ -898,70 +910,71 @@ struct SharedSpaceManagement: View {
                             }
                             .foregroundColor(MoneyCityTheme.brandPrimary)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 44)
+                            .frame(height: 46)
                             .background(MoneyCityTheme.spentGreenSoft)
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                         }
                         .buttonStyle(.plain)
+                        .padding(.top, 4)
                         .disabled(store.demo)
                     }
                     .padding(18)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     .padding(.horizontal, 20)
 
                     // Space Settings Card
                     VStack(alignment: .leading, spacing: 14) {
-                        Text(store.text("הגדרות המרחב", "Space Settings"))
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-
-                        HStack {
-                            Text(store.text("מטבע המרחב", "Currency"))
-                                .font(.system(size: 14, weight: .medium, design: .default))
-                                .foregroundColor(Color.textSecondary)
-                            Spacer()
-                            Text(space.currencyCode)
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        HStack(spacing: 8) {
+                            MoneyIcon(.gear, size: 16, color: Color.textSecondary)
+                            Text(store.text("פרטי המרחב", "Space Details"))
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
                         }
 
-                        Divider()
+                        VStack(spacing: 10) {
+                            HStack {
+                                Text(store.text("מטבע המרחב", "Space Currency"))
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .foregroundColor(Color.textSecondary)
+                                Spacer()
+                                Text(space.currencyCode)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(Color.appBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
 
-                        HStack {
-                            Text(store.text("אזור זמן", "Timezone"))
-                                .font(.system(size: 14, weight: .medium, design: .default))
-                                .foregroundColor(Color.textSecondary)
-                            Spacer()
-                            Text(space.timeZoneID)
-                                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                                .foregroundColor(Color.textMuted)
-                        }
-
-                        Divider()
-
-                        HStack {
-                            Text(store.text("סגנון מפת עיר", "City Style"))
-                                .font(.system(size: 14, weight: .medium, design: .default))
-                                .foregroundColor(Color.textSecondary)
-                            Spacer()
-                            Text(space.mapStyle)
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color.deepNavy)
+                            HStack {
+                                Text(store.text("סגנון עיר", "City Style"))
+                                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                                    .foregroundColor(Color.textSecondary)
+                                Spacer()
+                                let localizedStyle = CityMapStyle(rawValue: space.mapStyle)?.title(isHebrew: l10n.isHebrew) ?? space.mapStyle
+                                Text(localizedStyle)
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(Color.appBackground)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            }
                         }
                     }
                     .padding(18)
                     .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                     .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     .padding(.horizontal, 20)
 
-                    // Actions Card
-                    VStack(spacing: 12) {
+                    // Actions
+                    VStack(spacing: 10) {
                         let isOwner = store.isOwner(space.id)
                         if isOwner {
-                            // Stop Sharing (Owner only)
+                            // Stop Sharing (Owner only) - clean white card button
                             Button {
                                 Haptics.impact(.medium)
                                 showStopSharingConfirm = true
@@ -974,8 +987,9 @@ struct SharedSpaceManagement: View {
                                 .foregroundColor(Color.deepNavy)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 48)
-                                .background(Color.borderSubtle.opacity(0.6))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .background(Color.white)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                             }
                             .buttonStyle(.plain)
 
@@ -993,7 +1007,7 @@ struct SharedSpaceManagement: View {
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 48)
                                 .background(MoneyCityTheme.destructive.opacity(0.08))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         } else {
@@ -1011,12 +1025,13 @@ struct SharedSpaceManagement: View {
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 48)
                                 .background(MoneyCityTheme.destructive.opacity(0.08))
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding(.horizontal, 20)
+                    .padding(.top, 4)
                 }
                 .padding(.bottom, 32)
             }
@@ -1141,9 +1156,12 @@ public struct SharedConflictResolutionSheet: View {
                         Button {
                             dismiss()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundStyle(Color.textMuted.opacity(0.6))
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color.deepNavy)
+                                .frame(width: 32, height: 32)
+                                .background(Color.white, in: Circle())
+                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
@@ -1350,9 +1368,12 @@ public struct InviteMemberPreSheet: View {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(Color.textMuted.opacity(0.6))
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(width: 32, height: 32)
+                        .background(Color.white, in: Circle())
+                        .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                 }
                 .buttonStyle(.plain)
             }

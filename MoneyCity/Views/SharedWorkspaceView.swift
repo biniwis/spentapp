@@ -30,6 +30,110 @@ struct SharedExpenseEditor: View {
     }
 }
 
+/// An architectural drawing of two shared buildings and a tree in the SPENT Onboarding style.
+struct SharedSpaceHeroIllustration: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+
+    private let ink = Color.jetBlack
+    private let stroke = StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round)
+
+    var body: some View {
+        Canvas { context, _ in
+            var c = context
+            // Ground line
+            line(&c, [(24, 76), (216, 76)], width: 2.6)
+
+            // Left Building (Partner 1) - Baby Blue
+            polygon(&c, [(88, 26), (95, 20), (95, 70), (88, 76)], fill: .jetBlack) // side depth
+            rectangle(&c, 32, 26, 56, 50, fill: .babyBlue, radius: 2) // facade
+            polygon(&c, [(28, 26), (36, 18), (92, 18), (88, 26)], fill: .white) // roof slab
+            // Windows
+            rectangle(&c, 41, 35, 11, 11, fill: .jetBlack, radius: 1)
+            line(&c, [(44, 37), (44, 43)], color: .white, width: 1.5)
+            rectangle(&c, 64, 35, 11, 11, fill: .jetBlack, radius: 1)
+            line(&c, [(67, 37), (67, 43)], color: .white, width: 1.5)
+            // Door
+            rectangle(&c, 52, 56, 14, 20, fill: .violetBlue, radius: 1)
+
+            // Right Building (Partner 2) - Warm Cream with Pitched Roof
+            polygon(&c, [(192, 34), (198, 28), (198, 70), (192, 76)], fill: .jetBlack) // side depth
+            rectangle(&c, 136, 34, 56, 42, fill: .warmCream, radius: 2) // facade
+            // Pitched roof
+            polygon(&c, [(132, 34), (164, 14), (196, 34)], fill: .orangeRed)
+            line(&c, [(132, 34), (164, 14), (196, 34)])
+            // Windows
+            rectangle(&c, 145, 42, 10, 10, fill: .jetBlack, radius: 1)
+            line(&c, [(148, 44), (148, 49)], color: .white, width: 1.5)
+            rectangle(&c, 171, 42, 10, 10, fill: .jetBlack, radius: 1)
+            line(&c, [(174, 44), (174, 49)], color: .white, width: 1.5)
+            // Door
+            rectangle(&c, 158, 58, 13, 18, fill: .jetBlack, radius: 1)
+
+            // Center Tree (Shared green connection)
+            line(&c, [(112, 76), (112, 45)], width: 2.6)
+            circle(&c, 112, 36, 15, fill: .luckyGreen)
+            line(&c, [(112, 54), (107, 48)], width: 1.8)
+
+            // Stepping stones between buildings
+            circle(&c, 100, 76, 2, fill: .white)
+            circle(&c, 124, 76, 2, fill: .white)
+
+            // Sky detail (two minimalist birds / sparkles)
+            line(&c, [(108, 14), (112, 11), (116, 14)], width: 1.8)
+        }
+        .frame(width: 240, height: 88)
+        .scaleEffect(appeared ? 1.0 : 0.88)
+        .opacity(appeared ? 1.0 : 0.0)
+        .offset(y: appeared ? 0 : 8)
+        .onAppear {
+            if reduceMotion {
+                appeared = true
+            } else {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) {
+                    appeared = true
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func rectangle(_ c: inout GraphicsContext, _ x: CGFloat, _ y: CGFloat,
+                           _ w: CGFloat, _ h: CGFloat, fill: Color, radius: CGFloat = 0) {
+        let path = Path(roundedRect: CGRect(x: x, y: y, width: w, height: h), cornerRadius: radius)
+        c.fill(path, with: .color(fill))
+        c.stroke(path, with: .color(ink), style: stroke)
+    }
+
+    private func circle(_ c: inout GraphicsContext, _ x: CGFloat, _ y: CGFloat, _ r: CGFloat, fill: Color) {
+        let path = Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2))
+        c.fill(path, with: .color(fill))
+        c.stroke(path, with: .color(ink), style: stroke)
+    }
+
+    private func polygon(_ c: inout GraphicsContext, _ points: [(CGFloat, CGFloat)],
+                         fill: Color, outlined: Bool = true) {
+        let path = path(points, closed: true)
+        c.fill(path, with: .color(fill))
+        if outlined { c.stroke(path, with: .color(ink), style: stroke) }
+    }
+
+    private func line(_ c: inout GraphicsContext, _ points: [(CGFloat, CGFloat)],
+                      color: Color = .jetBlack, width: CGFloat = 2.6) {
+        c.stroke(path(points), with: .color(color),
+                 style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round))
+    }
+
+    private func path(_ points: [(CGFloat, CGFloat)], closed: Bool = false) -> Path {
+        Path { path in
+            guard let first = points.first else { return }
+            path.move(to: CGPoint(x: first.0, y: first.1))
+            for point in points.dropFirst() { path.addLine(to: CGPoint(x: point.0, y: point.1)) }
+            if closed { path.closeSubpath() }
+        }
+    }
+}
+
 struct SharedSpacesSetupView: View {
     @ObservedObject private var store = SharedWorkspaceStore.shared
     @EnvironmentObject private var l10n: LocalizationManager
@@ -54,56 +158,59 @@ struct SharedSpacesSetupView: View {
             Color.appBackground.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // ── Header ──
-                    HStack(alignment: .center) {
-                        Text(store.text("מרחב משותף", "Shared Space"))
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
+                VStack(spacing: 20) {
+                    // ── Top Navigation Bar ──
+                    HStack {
                         Spacer()
                         Button {
                             dismiss()
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 13, weight: .bold))
+                                .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(Color.deepNavy)
-                                .frame(width: 34, height: 34)
+                                .frame(width: 32, height: 32)
                                 .background(Color.white, in: Circle())
                                 .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                         }
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 24)
+                    .padding(.top, 16)
 
-                    // ── Segment Switcher ──
-                    HStack(spacing: 4) {
+                    // ── Centered Compact Capsule Toggle ──
+                    HStack(spacing: 0) {
                         Button {
                             Haptics.selection()
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 selectedTab = .create
                             }
                         } label: {
                             Text(store.text("יצירת מרחב", "Create Space"))
-                                .font(.system(size: 12.5, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
+                                .font(.system(size: 13, weight: selectedTab == .create ? .bold : .medium, design: .rounded))
                                 .foregroundColor(selectedTab == .create ? Color.deepNavy : Color.textSecondary)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 30)
-                                .background(selectedTab == .create ? Color.white : Color.clear)
-                                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                .shadow(color: selectedTab == .create ? Color.black.opacity(0.04) : Color.clear, radius: 3, y: 1)
+                                .frame(width: 96, height: 28)
+                                .background(
+                                    Group {
+                                        if selectedTab == .create {
+                                            Capsule()
+                                                .fill(Color.white)
+                                                .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
+                                        }
+                                    }
+                                )
+                                .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
 
                         Button {
                             Haptics.selection()
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.8)) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                 selectedTab = .join
                             }
                         } label: {
-                            HStack(spacing: 5) {
+                            HStack(spacing: 4) {
                                 Text(store.text("הצטרפות", "Join Space"))
-                                    .font(.system(size: 12.5, weight: selectedTab == .join ? .bold : .medium, design: .rounded))
+                                    .font(.system(size: 13, weight: selectedTab == .join ? .bold : .medium, design: .rounded))
                                     .foregroundColor(selectedTab == .join ? Color.deepNavy : Color.textSecondary)
                                 if store.invitation != nil {
                                     Circle()
@@ -111,18 +218,48 @@ struct SharedSpacesSetupView: View {
                                         .frame(width: 5.5, height: 5.5)
                                 }
                             }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 30)
-                            .background(selectedTab == .join ? Color.white : Color.clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                            .shadow(color: selectedTab == .join ? Color.black.opacity(0.04) : Color.clear, radius: 3, y: 1)
+                            .frame(width: 96, height: 28)
+                            .background(
+                                Group {
+                                    if selectedTab == .join {
+                                        Capsule()
+                                            .fill(Color.white)
+                                            .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
+                                    }
+                                }
+                            )
+                            .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(2.5)
-                    .background(Color.black.opacity(0.04))
-                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    .padding(.horizontal, 36)
+                    .padding(3)
+                    .background(
+                        Capsule()
+                            .fill(Color.jetBlack.opacity(0.05))
+                    )
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                    // ── Onboarding-style Animated Architectural Hero Illustration ──
+                    SharedSpaceHeroIllustration()
+                        .padding(.top, 4)
+
+                    // ── Editorial Title & Subtitle ──
+                    VStack(spacing: 6) {
+                        Text(selectedTab == .create ? store.text("פותחים מרחב משותף", "Start a Shared Space") : store.text("הצטרפות למרחב", "Join a Shared Space"))
+                            .font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .tracking(AppLanguage.current == .hebrew ? -0.8 : -1.2)
+                            .foregroundColor(Color.deepNavy)
+                            .multilineTextAlignment(.center)
+                            .animation(.none, value: selectedTab)
+
+                        Text(selectedTab == .create ? store.text("מעקב והוצאות משותפות, בעיר אחת לשניכם", "Track shared expenses together in one city") : store.text("הזינו את הקישור שקיבלתם כדי להצטרף", "Enter the invite link to join your partner"))
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .animation(.none, value: selectedTab)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 6)
 
                     // ── Active Tab Content ──
                     if selectedTab == .create {

@@ -50,7 +50,9 @@ struct SharedSpacesSetupView: View {
     @State private var showMapStylePicker = false
 
     var body: some View {
-        NavigationStack {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     // ── Header ──
@@ -72,7 +74,7 @@ struct SharedSpacesSetupView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(.horizontal, 24)
-                    .padding(.top, 20)
+                    .padding(.top, 24)
 
                     // ── Segment Switcher ──
                     HStack(spacing: 6) {
@@ -118,7 +120,7 @@ struct SharedSpacesSetupView: View {
                         .buttonStyle(.plain)
                     }
                     .padding(4)
-                    .background(MoneyCityTheme.babyBlue.opacity(0.3))
+                    .background(Color.black.opacity(0.04))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .padding(.horizontal, 24)
 
@@ -136,7 +138,6 @@ struct SharedSpacesSetupView: View {
                 }
                 .padding(.bottom, 36)
             }
-            .background(Color(red: 248/255, green: 249/255, blue: 251/255).ignoresSafeArea())
             .disabled(store.busy)
             .overlay {
                 if store.busy {
@@ -166,6 +167,7 @@ struct SharedSpacesSetupView: View {
                 .environmentObject(l10n)
             }
         }
+        .presentationBackground(Color.appBackground)
     }
 
     private var createSpaceContent: some View {
@@ -182,7 +184,7 @@ struct SharedSpacesSetupView: View {
                     .frame(height: 52)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
             }
 
             // Member name field
@@ -197,7 +199,7 @@ struct SharedSpacesSetupView: View {
                     .frame(height: 52)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
             }
 
             // Currency & City Map Style side-by-side selection pills
@@ -233,7 +235,7 @@ struct SharedSpacesSetupView: View {
                     .frame(height: 56)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                 }
                 .buttonStyle(.plain)
 
@@ -269,7 +271,7 @@ struct SharedSpacesSetupView: View {
                     .frame(height: 56)
                     .background(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                    .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                 }
                 .buttonStyle(.plain)
             }
@@ -357,7 +359,7 @@ struct SharedSpacesSetupView: View {
                             .frame(height: 52)
                             .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                     }
 
                     Button {
@@ -398,7 +400,7 @@ struct SharedSpacesSetupView: View {
                             .frame(height: 52)
                             .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -412,7 +414,7 @@ struct SharedSpacesSetupView: View {
                             .frame(height: 52)
                             .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                            .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                     }
 
                     let canJoin = !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -484,7 +486,7 @@ struct SharedSpacesSetupView: View {
                         .padding(14)
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
+                        .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
                     }
                     .buttonStyle(.plain)
                 }
@@ -500,7 +502,9 @@ public struct CurrencyPickerModal: View {
     @Environment(\.dismiss) private var dismiss
 
     public var body: some View {
-        NavigationStack {
+        ZStack {
+            Color.appBackground.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -515,14 +519,17 @@ public struct CurrencyPickerModal: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundStyle(Color.textMuted.opacity(0.6))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(Color.deepNavy)
+                            .frame(width: 32, height: 32)
+                            .background(Color.white, in: Circle())
+                            .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
                     }
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.top, 20)
                 .padding(.bottom, 12)
 
                 ScrollView(showsIndicators: false) {
@@ -555,12 +562,9 @@ public struct CurrencyPickerModal: View {
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(selectedCurrency == curr ? MoneyCityTheme.brandPrimary.opacity(0.06) : Color.white)
+                                .background(selectedCurrency == curr ? MoneyCityTheme.spentGreenSoft : Color.white)
                                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                        .stroke(selectedCurrency == curr ? MoneyCityTheme.brandPrimary : Color.borderSubtle, lineWidth: 1)
-                                )
+                                .shadow(color: Color.black.opacity(0.035), radius: 6, y: 2)
                             }
                             .buttonStyle(.plain)
                         }
@@ -569,8 +573,8 @@ public struct CurrencyPickerModal: View {
                     .padding(.vertical, 8)
                 }
             }
-            .background(Color.appBackground.ignoresSafeArea())
         }
+        .presentationBackground(Color.appBackground)
         .presentationDetents([.medium, .fraction(0.8)])
         .presentationDragIndicator(.visible)
     }
@@ -653,10 +657,6 @@ struct SharedSpaceManagement: View {
                             .padding(14)
                             .background(Color.white)
                             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(Color.orange.opacity(0.35), lineWidth: 1.5)
-                            )
                             .shadow(color: Color.orange.opacity(0.06), radius: 8, y: 2)
                             .padding(.horizontal, 20)
                         }
@@ -911,6 +911,7 @@ struct SharedSpaceManagement: View {
                                 "Leaving will remove your participation in iCloud and delete the shared data from this device only. Your recorded expenses will stay in the space."))
             }
         }
+        .presentationBackground(Color.appBackground)
     }
 }
 
@@ -1015,6 +1016,7 @@ public struct SharedConflictResolutionSheet: View {
             }
             .background(Color.appBackground.ignoresSafeArea())
         }
+        .presentationBackground(Color.appBackground)
     }
 
     private func conflictCard(_ conflict: SharedExpenseConflict) -> some View {
@@ -1241,6 +1243,7 @@ public struct InviteMemberPreSheet: View {
             .padding(.bottom, 24)
         }
         .background(Color.appBackground.ignoresSafeArea())
+        .presentationBackground(Color.appBackground)
         .presentationDetents([.medium, .fraction(0.7)])
         .presentationDragIndicator(.visible)
     }

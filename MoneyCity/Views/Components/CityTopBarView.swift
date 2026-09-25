@@ -211,185 +211,194 @@ struct AccountSwitcherSheet: View {
         self.sharedStore = sharedStore
     }
 
+    private var sheetHeight: CGFloat {
+        let spacesCount = sharedStore.spaces.count
+        if spacesCount == 0 {
+            return 320
+        } else if spacesCount == 1 {
+            return 395
+        } else {
+            return min(CGFloat(395 + (spacesCount - 1) * 80), 560)
+        }
+    }
+
     public var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 18) {
-                    // Header
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(l10n.isHebrew ? "בחירת מרחב" : "Select Space")
-                                .font(.system(size: 22, weight: .heavy, design: .rounded))
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(l10n.isHebrew ? "בחירת מרחב" : "Select Space")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Text(l10n.isHebrew ? "מעבר בין העיר האישית למרחבים משותפים" : "Switch between your personal city and shared spaces")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color.deepNavy)
+                            .frame(width: 32, height: 32)
+                            .background(Color.white, in: Circle())
+                            .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+
+                // Personal Account Card
+                let isPersonal = scopeContext.activeScope == .personal
+                Button {
+                    Haptics.selection()
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        scopeContext.selectPersonal()
+                    }
+                    dismiss()
+                } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(MoneyCityTheme.warmCream)
+                                .frame(width: 44, height: 44)
+                            MoneyIcon(.user, size: 24)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(l10n.isHebrew ? "העיר שלי" : "My City")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .foregroundColor(Color.deepNavy)
-                            Text(l10n.isHebrew ? "מעבר בין העיר האישית למרחבים משותפים" : "Switch between your personal city and shared spaces")
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                            Text(l10n.isHebrew ? "חשבון אישי" : "Personal account")
+                                .font(.system(size: 12, weight: .medium, design: .default))
                                 .foregroundColor(Color.textSecondary)
                         }
                         Spacer()
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 12, weight: .bold))
-                                .foregroundColor(Color.deepNavy)
-                                .frame(width: 32, height: 32)
-                                .background(Color.white, in: Circle())
-                                .shadow(color: Color.black.opacity(0.04), radius: 4, y: 1)
+                        if isPersonal {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundColor(MoneyCityTheme.brandPrimary)
                         }
-                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
+                    .padding(16)
+                    .background(isPersonal ? MoneyCityTheme.spentGreenSoft.opacity(0.55) : Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
 
-                    // Personal Account Card
-                    let isPersonal = scopeContext.activeScope == .personal
-                    Button {
-                        Haptics.selection()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                            scopeContext.selectPersonal()
-                        }
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(MoneyCityTheme.warmCream)
-                                    .frame(width: 44, height: 44)
-                                MoneyIcon(.user, size: 24)
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(l10n.isHebrew ? "העיר שלי" : "My City")
-                                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                                    .foregroundColor(Color.deepNavy)
-                                Text(l10n.isHebrew ? "חשבון אישי" : "Personal account")
-                                    .font(.system(size: 12, weight: .medium, design: .default))
-                                    .foregroundColor(Color.textSecondary)
-                            }
-                            Spacer()
-                            if isPersonal {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundColor(MoneyCityTheme.brandPrimary)
-                            }
-                        }
-                        .padding(16)
-                        .background(isPersonal ? MoneyCityTheme.spentGreenSoft.opacity(0.55) : Color.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.horizontal, 16)
+                // Shared Spaces Section
+                if !sharedStore.spaces.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(l10n.isHebrew ? "מרחבים משותפים" : "Shared Spaces")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                            .padding(.horizontal, 20)
 
-                    // Shared Spaces Section
-                    if !sharedStore.spaces.isEmpty {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text(l10n.isHebrew ? "מרחבים משותפים" : "Shared Spaces")
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundColor(Color.textSecondary)
-                                .padding(.horizontal, 20)
-
-                            VStack(spacing: 10) {
-                                ForEach(sharedStore.spaces) { space in
-                                    let isSelected = scopeContext.activeScope.spaceID == space.id
-                                    let spaceMembers = sharedStore.members.filter { $0.spaceID == space.id }
-                                    Button {
-                                        Haptics.selection()
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                            scopeContext.selectShared(spaceID: space.id)
-                                        }
-                                        dismiss()
-                                    } label: {
-                                        HStack(spacing: 14) {
-                                            HStack(spacing: -8) {
-                                                if spaceMembers.isEmpty {
-                                                    MoneyIcon(.users, size: 20, color: Color.deepNavy)
-                                                        .frame(width: 44, height: 44)
-                                                        .background(MoneyCityTheme.babyBlue.opacity(0.5), in: Circle())
-                                                } else {
-                                                    ForEach(spaceMembers.prefix(3)) { member in
-                                                        SharedMemberMark(colorHex: member.colorHex, size: 36)
-                                                    }
+                        VStack(spacing: 10) {
+                            ForEach(sharedStore.spaces) { space in
+                                let isSelected = scopeContext.activeScope.spaceID == space.id
+                                let spaceMembers = sharedStore.members.filter { $0.spaceID == space.id }
+                                Button {
+                                    Haptics.selection()
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                        scopeContext.selectShared(spaceID: space.id)
+                                    }
+                                    dismiss()
+                                } label: {
+                                    HStack(spacing: 14) {
+                                        HStack(spacing: -8) {
+                                            if spaceMembers.isEmpty {
+                                                MoneyIcon(.users, size: 20, color: Color.deepNavy)
+                                                    .frame(width: 44, height: 44)
+                                                    .background(MoneyCityTheme.babyBlue.opacity(0.5), in: Circle())
+                                            } else {
+                                                ForEach(spaceMembers.prefix(3)) { member in
+                                                    SharedMemberMark(colorHex: member.colorHex, size: 36)
                                                 }
                                             }
-
-                                            VStack(alignment: .leading, spacing: 2) {
-                                                Text(space.name)
-                                                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                                                    .foregroundColor(Color.deepNavy)
-                                                    .lineLimit(1)
-                                                Text(l10n.isHebrew ? "חשבון משותף · \(space.currencyCode)" : "Shared account · \(space.currencyCode)")
-                                                    .font(.system(size: 12, weight: .medium, design: .default))
-                                                    .foregroundColor(Color.textSecondary)
-                                            }
-
-                                            Spacer()
-
-                                            if isSelected {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .font(.system(size: 20, weight: .semibold))
-                                                    .foregroundColor(MoneyCityTheme.brandPrimary)
-                                            }
                                         }
-                                        .padding(16)
-                                        .background(isSelected ? MoneyCityTheme.spentGreenSoft.opacity(0.55) : Color.white)
-                                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                        .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                        }
-                    }
 
-                    // Bottom Actions
-                    VStack(spacing: 8) {
-                        Button {
-                            dismiss()
-                            sharedStore.showSetup = true
-                        } label: {
-                            HStack(spacing: 8) {
-                                MoneyIcon(.plusCircle, size: 16, color: MoneyCityTheme.brandPrimary)
-                                Text(l10n.isHebrew ? "יצירה או הצטרפות למרחב" : "Create or Join Space")
-                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(space.name)
+                                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                                .foregroundColor(Color.deepNavy)
+                                                .lineLimit(1)
+                                            Text(l10n.isHebrew ? "חשבון משותף · \(space.currencyCode)" : "Shared account · \(space.currencyCode)")
+                                                .font(.system(size: 12, weight: .medium, design: .default))
+                                                .foregroundColor(Color.textSecondary)
+                                        }
+
+                                        Spacer()
+
+                                        if isSelected {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.system(size: 20, weight: .semibold))
+                                                .foregroundColor(MoneyCityTheme.brandPrimary)
+                                        }
+                                    }
+                                    .padding(16)
+                                    .background(isSelected ? MoneyCityTheme.spentGreenSoft.opacity(0.55) : Color.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                    .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .foregroundColor(MoneyCityTheme.brandPrimary)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(MoneyCityTheme.spentGreenSoft)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+
+                // Bottom Actions
+                VStack(spacing: 8) {
+                    Button {
+                        dismiss()
+                        sharedStore.showSetup = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            MoneyIcon(.plusCircle, size: 16, color: MoneyCityTheme.brandPrimary)
+                            Text(l10n.isHebrew ? "יצירה או הצטרפות למרחב" : "Create or Join Space")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(MoneyCityTheme.brandPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(MoneyCityTheme.spentGreenSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+
+                    if let active = sharedStore.activeSpace {
+                        Button {
+                            managingSpace = active
+                        } label: {
+                            HStack(spacing: 6) {
+                                MoneyIcon(.gear, size: 14, color: Color.textSecondary)
+                                Text(l10n.isHebrew ? "ניהול מרחב: \(active.name)" : "Manage: \(active.name)")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                            }
+                            .foregroundColor(Color.textSecondary)
+                            .padding(.vertical, 6)
                         }
                         .buttonStyle(.plain)
-
-                        if let active = sharedStore.activeSpace {
-                            Button {
-                                managingSpace = active
-                            } label: {
-                                HStack(spacing: 6) {
-                                    MoneyIcon(.gear, size: 14, color: Color.textSecondary)
-                                    Text(l10n.isHebrew ? "ניהול מרחב: \(active.name)" : "Manage: \(active.name)")
-                                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                                }
-                                .foregroundColor(Color.textSecondary)
-                                .padding(.vertical, 8)
-                            }
-                            .buttonStyle(.plain)
-                        }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 6)
                 }
-                .padding(.bottom, 24)
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
             }
-            .background(Color.appBackground.ignoresSafeArea())
-            .sheet(item: $managingSpace) { space in
-                SharedSpaceManagement(space: space)
-                    .environmentObject(l10n)
-            }
+            .padding(.bottom, 20)
         }
-        .presentationDetents([.medium, .fraction(0.7)])
+        .background(Color.appBackground.ignoresSafeArea())
+        .presentationDetents([.height(sheetHeight), .fraction(0.72)])
         .presentationDragIndicator(.visible)
         .presentationBackground(Color.appBackground)
+        .sheet(item: $managingSpace) { space in
+            SharedSpaceManagement(space: space)
+                .environmentObject(l10n)
+        }
     }
 }
 

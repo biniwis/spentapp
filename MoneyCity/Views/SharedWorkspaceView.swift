@@ -283,12 +283,45 @@ struct SharedSpacesSetupView: View {
         case spaceName
         case memberName
         case inviteLink
+        case monthlyTarget
+    }
+
+    /// Keeps a number's digits in reading order inside a right-to-left layout.
+    ///
+    /// Mirrors the identical modifier in `OnboardingWizardView`, which is private to that
+    /// file. Widening it there would be the better home, but the personal onboarding
+    /// screen is meant to stay untouched in this phase.
+    private struct NumericLTRField: ViewModifier {
+        @ViewBuilder
+        func body(content: Content) -> some View {
+            if #available(iOS 26.0, *) {
+                content
+                    .environment(\.layoutDirection, .leftToRight)
+                    .multilineTextAlignment(.leading)
+                    .multilineTextAlignment(strategy: .layoutBased)
+                    .writingDirection(strategy: .layoutBased)
+            } else {
+                content
+                    .environment(\.layoutDirection, .leftToRight)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+    }
+
+    /// The create flow's two stages. Everything typed stays in `@State` on this view, so
+    /// moving between them cannot lose a draft — the view is never torn down, and nothing
+    /// reaches CloudKit until the final button.
+    private enum CreateStep: Int, Hashable, CaseIterable {
+        case identity
+        case monthlyTarget
     }
 
     @State private var selectedTab: SetupTab = .create
+    @State private var createStep: CreateStep = .identity
     @State private var name = ""
     @State private var memberName = ""
     @State private var url = ""
+    @State private var budgetInputText = ""
     @State private var selectedCurrency: CurrencyType = LocalizationManager.shared.baseCurrency
     @State private var selectedStyle: CityMapStyle = .urban
     @State private var showCurrencyPicker = false
@@ -320,6 +353,30 @@ struct SharedSpacesSetupView: View {
 
     private var heroHeight: CGFloat { isShortScreen ? 100 : 124 }
     private var titleBase: CGFloat { isShortScreen ? min(titleSize, 36) : titleSize }
+
+    /// The target step carries a longer sentence than the identity step, so it gets a
+    /// smaller base and lets the sentence wrap rather than overflow on an SE.
+    private var posterTitle: (text: String, size: CGFloat) {
+        guard selectedTab == .create else {
+            return (store.text("מצטרפים\nלמרחב קיים", "Join an\nexisting Space"), titleBase)
+        }
+        switch createStep {
+        case .identity:
+            return (store.text("פותחים\nמרחב משותף", "Start a\nShared Space"), titleBase)
+        case .monthlyTarget:
+            let base: CGFloat = isShortScreen ? 27 : 31
+            return (store.text("כמה תרצו\nלהוציא יחד\nבחודש?", "How much will you\nspend together\nthis month?"), base)
+        }
+    }
+
+    /// The target, in the space's own currency, or nil when what was typed is not a
+    /// usable amount. Conversion goes through `SharedMoney` so the currency's own digit
+    /// count is honoured — never a hardcoded ×100.
+    private var monthlyTargetMinor: Int64? {
+        let digits = OnboardingWizardView.sanitizedBudgetDigits(budgetInputText)
+        guard !digits.isEmpty else { return nil }
+        return try? SharedMoney.minor(digits, currency: selectedCurrency.rawValue)
+    }
 
     /// The drawing is authored on a fixed 320pt artboard and scaled down to whatever
     /// width the device actually has, so the composition never crops.
@@ -464,10 +521,8 @@ struct SharedSpacesSetupView: View {
                         .posterReveal(phase: entrancePhase, step: 3, reduceMotion: reduceMotion)
 
                     // ── Editorial title: the one thing the poster is saying ──
-                    Text(selectedTab == .create
-                         ? store.text("פותחים\nמרחב משותף", "Start a\nShared Space")
-                         : store.text("מצטרפים\nלמרחב קיים", "Join an\nexisting Space"))
-                        .font(.system(size: titleBase, weight: .heavy, design: .rounded))
+                    Text(posterTitle.text)
+                        .font(.system(size: posterTitle.size, weight: .heavy, design: .rounded))
                         .tracking(isHebrew ? -0.5 : -0.8)
                         .foregroundStyle(posterInk)
                         .multilineTextAlignment(.leading)
@@ -476,6 +531,12 @@ struct SharedSpacesSetupView: View {
                     .padding(.horizontal, 24)
                     .padding(.top, 24)
                     .posterReveal(phase: entrancePhase, step: 4, reduceMotion: reduceMotion)
+
+                    if selectedTab == .create {
+                        createProgress
+                            .padding(.top, 14)
+                            .posterReveal(phase: entrancePhase, step: 4, reduceMotion: reduceMotion)
+                    }
 
                     // ── Active tab content ──
                     ZStack {
@@ -494,7 +555,9 @@ struct SharedSpacesSetupView: View {
                         }
                     }
                     .padding(.top, 26)
+                    .id(createStep)
                     .animation(pageAnimation, value: selectedTab)
+                    .animation(pageAnimation, value: createStep)
                     .animation(.easeOut(duration: 0.2), value: store.setupError)
                     .posterReveal(phase: entrancePhase, step: 5, reduceMotion: reduceMotion)
 
@@ -608,7 +671,35 @@ struct SharedSpacesSetupView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
+    /// Two quiet dots, the way onboarding shows where you are without announcing a form.
+    private var createProgress: some View {
+        HStack(spacing: 7) {
+            ForEach(CreateStep.allCases, id: \.self) { step in
+                Circle()
+                    .fill(step == createStep ? posterInk : posterInk.opacity(0.22))
+                    .frame(width: step == createStep ? 9 : 7, height: step == createStep ? 9 : 7)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8), value: createStep)
+        .accessibilityElement()
+        .accessibilityLabel(store.text(
+            "שלב \(createStep.rawValue + 1) מתוך \(CreateStep.allCases.count)",
+            "Step \(createStep.rawValue + 1) of \(CreateStep.allCases.count)"))
+    }
+
     private var createSpaceContent: some View {
+        Group {
+            switch createStep {
+            case .identity: createIdentityStep
+            case .monthlyTarget: createTargetStep
+            }
+        }
+    }
+
+    // MARK: - Create, step one: who this space is
+
+    private var createIdentityStep: some View {
         VStack(alignment: .leading, spacing: isShortScreen ? 14 : 18) {
             underlineField(
                 title: store.text("שם המרחב", "Space Name"),
@@ -626,12 +717,19 @@ struct SharedSpacesSetupView: View {
                 size: isShortScreen ? 19 : 21
             )
 
-            // Currency & City style, as two printed instruments rather than white cards
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 16) { choiceInstruments }
-                VStack(alignment: .leading, spacing: 14) { choiceInstruments }
+            // City style stays here on step one. Currency moved to the target, where the
+            // number it has to scale actually appears.
+            choiceInstrument(
+                title: store.text("סגנון עיר", "City Style"),
+                value: selectedStyle.title(isHebrew: isHebrew),
+                chipColor: MoneyCityTheme.spentGreenSoft,
+                chipText: nil,
+                isOpen: showMapStylePicker
+            ) {
+                Haptics.selection()
+                focusedField = nil
+                showMapStylePicker = true
             }
-            .padding(.top, 2)
 
             #if DEBUG
             if store.database == nil {
@@ -655,31 +753,139 @@ struct SharedSpacesSetupView: View {
         .padding(.horizontal, 24)
     }
 
-    @ViewBuilder
-    private var choiceInstruments: some View {
-        choiceInstrument(
-            title: store.text("מטבע", "Currency"),
-            value: selectedCurrency.rawValue,
-            chipColor: MoneyCityTheme.babyBlue,
-            chipText: selectedCurrency.symbol,
-            isOpen: showCurrencyPicker
-        ) {
-            Haptics.selection()
-            focusedField = nil
-            showCurrencyPicker = true
-        }
+    // MARK: - Create, step two: what the space is aiming for each month
 
-        choiceInstrument(
-            title: store.text("סגנון עיר", "City Style"),
-            value: selectedStyle.title(isHebrew: isHebrew),
-            chipColor: MoneyCityTheme.spentGreenSoft,
-            chipText: nil,
-            isOpen: showMapStylePicker
-        ) {
+    private var createTargetStep: some View {
+        VStack(alignment: .leading, spacing: isShortScreen ? 12 : 16) {
+            backToIdentity
+
+            Text(store.text("הגדירו יעד להוצאות המשותפות. הוא יעזור לעיר שלכם לשקף איך החודש מתקדם.",
+                            "Set a target for your shared spending. It lets your city show how the month is going."))
+                .font(.system(size: isShortScreen ? 15 : 16, weight: .medium, design: .rounded))
+                .foregroundStyle(posterInk.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(store.text("יעד הוצאה חודשי", "Monthly spending target"))
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(posterInk.opacity(0.7))
+
+                HStack(alignment: .center, spacing: 8) {
+                    Text(SharedMoney.symbol(selectedCurrency.rawValue))
+                        .font(.system(size: isShortScreen ? 26 : 30, weight: .bold, design: .rounded))
+                        .foregroundStyle(posterInk)
+
+                    TextField("8,000", text: $budgetInputText)
+                        .font(.system(size: isShortScreen ? 32 : 38, weight: .heavy, design: .rounded))
+                        .foregroundStyle(posterInk)
+                        .tint(posterInk)
+                        .keyboardType(.asciiCapableNumberPad)
+                        .focused($focusedField, equals: .monthlyTarget)
+                        .modifier(NumericLTRField())
+                        .onSubmit { focusedField = nil }
+                        .onChange(of: budgetInputText) { _, newValue in
+                            // Digits only, whole currency units — the same rule the
+                            // personal onboarding step uses.
+                            let sanitized = OnboardingWizardView.sanitizedBudgetDigits(newValue)
+                            if newValue != sanitized { budgetInputText = sanitized }
+                            clearSetupError()
+                        }
+                        .accessibilityLabel(store.text("יעד הוצאה חודשי", "Monthly spending target"))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // Numbers stay left-to-right even in Hebrew, or the digits reorder.
+                .environment(\.layoutDirection, .leftToRight)
+                .padding(.vertical, 4)
+
+                Rectangle()
+                    .fill(posterInk.opacity(focusedField == .monthlyTarget ? 1 : 0.35))
+                    .frame(height: focusedField == .monthlyTarget ? 2 : 1)
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { targetPresets }
+                VStack(alignment: .leading, spacing: 4) { targetPresets }
+            }
+
+            choiceInstrument(
+                title: store.text("מטבע", "Currency"),
+                value: selectedCurrency.rawValue,
+                chipColor: MoneyCityTheme.babyBlue,
+                chipText: selectedCurrency.symbol,
+                isOpen: showCurrencyPicker
+            ) {
+                Haptics.selection()
+                focusedField = nil
+                showCurrencyPicker = true
+            }
+
+            Text(store.text("אפשר לשנות את היעד אחר כך", "You can change your target later"))
+                .font(.system(.footnote, design: .rounded))
+                .foregroundStyle(posterInk.opacity(0.7))
+
+            if let setupError = store.setupError {
+                Text(setupError)
+                    .font(.system(.footnote, design: .rounded, weight: .medium))
+                    .foregroundStyle(posterInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.white.opacity(0.9), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(posterInk, lineWidth: 1.5)
+                    )
+                    .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+
+    /// The figures come from the currency, so ₪5,000 and ¥500 are the same suggestion
+    /// rather than shekels spelled out in a different currency.
+    private var targetPresets: some View {
+        ForEach(SharedMoney.monthlyTargetPresets(currency: selectedCurrency.rawValue), id: \.self) { amount in
+            let isSelected = monthlyTargetMinor == amount
+            return Button {
+                Haptics.selection()
+                budgetInputText = String(Int64(SharedMoney.major(amount, currency: selectedCurrency.rawValue)))
+                focusedField = nil
+            } label: {
+                Text(SharedMoney.formattedMajor(amount, currency: selectedCurrency.rawValue))
+                    .font(.system(.subheadline, design: .rounded, weight: isSelected ? .bold : .regular))
+                    .fixedSize()
+                    .foregroundStyle(posterInk)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 44)
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(isSelected ? posterInk : .clear).frame(height: 2)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(store.text("\(SharedMoney.symbol(selectedCurrency.rawValue))\(SharedMoney.formattedMajor(amount, currency: selectedCurrency.rawValue))",
+                                           "\(SharedMoney.formattedMajor(amount, currency: selectedCurrency.rawValue)) \(selectedCurrency.rawValue)"))
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
+        }
+    }
+
+    private var backToIdentity: some View {
+        Button {
             Haptics.selection()
             focusedField = nil
-            showMapStylePicker = true
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) { createStep = .identity }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 12, weight: .bold))
+                Text(store.text("חזרה", "Back"))
+                    .font(.system(.subheadline, design: .rounded, weight: .semibold))
+            }
+            .foregroundStyle(posterInk)
+            .frame(minHeight: 44)
         }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.94)
+        .accessibilityLabel(store.text("חזרה לפרטי המרחב", "Back to space details"))
     }
 
     private func choiceInstrument(
@@ -802,19 +1008,39 @@ struct SharedSpacesSetupView: View {
     @ViewBuilder
     private var bottomActionBar: some View {
         if selectedTab == .create {
-            primaryAction(
-                title: store.text("יצירת מרחב", "Create Space"),
-                isEnabled: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-                           !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ) {
-                store.perform {
-                    try await store.create(
-                        name: name,
-                        memberName: memberName,
-                        currency: selectedCurrency.rawValue,
-                        mapStyle: selectedStyle.rawValue
-                    )
-                    dismiss()
+            switch createStep {
+            case .identity:
+                // Local draft only. Nothing here reaches CloudKit — the space does not
+                // exist until the last button on the second step.
+                primaryAction(
+                    title: store.text("המשך ליעד", "Continue to target"),
+                    isEnabled: !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                               !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ) {
+                    focusedField = nil
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) { createStep = .monthlyTarget }
+                }
+            case .monthlyTarget:
+                primaryAction(
+                    title: store.text("יצירת המרחב", "Create Space"),
+                    isEnabled: monthlyTargetMinor != nil
+                ) {
+                    store.perform {
+                        // Re-parse inside the call rather than trusting the button state:
+                        // the store stays the boundary that decides what is valid.
+                        guard let target = try? SharedMoney.minor(
+                            OnboardingWizardView.sanitizedBudgetDigits(budgetInputText),
+                            currency: selectedCurrency.rawValue) else { throw SharedLedgerError.invalidAmount }
+                        try await store.create(
+                            name: name,
+                            memberName: memberName,
+                            currency: selectedCurrency.rawValue,
+                            mapStyle: selectedStyle.rawValue,
+                            monthlyBudgetMinor: target
+                        )
+                        // Reached only once create() returned, so activeSpaceID is real.
+                        dismiss()
+                    }
                 }
             }
         } else if store.invitation != nil {

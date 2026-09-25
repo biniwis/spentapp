@@ -123,6 +123,38 @@ enum SharedMoney {
     static func major(_ amount: Int64, currency: String) -> Double {
         Double(amount) / pow(10, Double(digits(currency)))
     }
+
+    /// Starting points offered when a space sets its monthly target.
+    ///
+    /// Chosen as whole currency units and converted through `minor`, which is the only
+    /// part that has to know the currency. Holding them as raw minor units instead was
+    /// wrong: a minor unit *is* a whole unit in a zero-decimal currency, so ¥500,000
+    /// would have been offered as a monthly target.
+    private static let presetUnits: [Int64] = [5_000, 8_000, 12_000, 15_000]
+
+    static func monthlyTargetPresets(currency: String) -> [Int64] {
+        presetUnits.compactMap { try? minor(String($0), currency: currency) }
+    }
+
+    /// The currency's symbol for display beside an amount, e.g. "₪" or "$".
+    static func symbol(_ currency: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = currency
+        return formatter.currencySymbol ?? currency
+    }
+
+    /// Groups the major amount for reading — "8,000", not "8000". Digits still come from
+    /// the currency, so a zero-decimal currency is not given phantom decimals.
+    static func formattedMajor(_ minor: Int64, currency: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        formatter.maximumFractionDigits = digits(currency)
+        formatter.minimumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: major(minor, currency: currency)))
+            ?? String(Int64(major(minor, currency: currency)))
+    }
 }
 
 /// This envelope is the only Shared persistence schema. The typed payload above is versioned

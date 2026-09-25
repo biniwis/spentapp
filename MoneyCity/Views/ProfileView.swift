@@ -73,6 +73,9 @@ public struct ProfileView: View {
     @State private var showCityWorldPicker = false
     @State private var cityWorldDraft: CityMapStyle = .urban
     @State private var cityWorldRevision: Int = 0
+    #if !SWIFT_PACKAGE
+    @State private var selectedSpaceForManagement: SharedSpace? = nil
+    #endif
     #if DEBUG
     @State private var showDesignLab = false
     #endif
@@ -242,7 +245,7 @@ public struct ProfileView: View {
                     userProfileCard
 
                     // ── Festive Monthly Recap Banner (Celebration Window) ──
-                    if let (recap, status) = activeWindowRecapAndStatus {
+                    if !scopeCapabilities.isShared, let (recap, status) = activeWindowRecapAndStatus {
                         festiveMonthlyRecapRow(recap: recap, status: status)
                     }
 
@@ -252,16 +255,13 @@ public struct ProfileView: View {
                     // ── 12-Month Spending Bar Chart (Architectural Styling) ──
                     yearChartCard
 
-                    // ── Management Navigation Menu Cards (Inset Grouped) ──
-                    if !scopeCapabilities.isShared { managementMenuCard }
                     #if !SWIFT_PACKAGE
-                    Button {
-                        SharedWorkspaceStore.shared.showSetup = true
-                    } label: {
-                        Label(l10n.language == .hebrew ? "מרחב משותף" : "Shared space", systemImage: "person.2")
-                            .font(.headline).frame(maxWidth: .infinity, alignment: .leading).padding(20)
-                    }.foregroundStyle(MoneyCityTheme.brandSecondary)
+                    // ── Shared Space Card ──
+                    sharedSpaceProfileCard
                     #endif
+
+                    // ── Management Navigation Menu Cards (Inset Grouped) ──
+                    managementMenuCard
 
                     #if DEBUG
                     // ── Internal Development & Design Lab (Debug Only) ──
@@ -342,6 +342,12 @@ public struct ProfileView: View {
             )
             .environmentObject(l10n)
         }
+        #if !SWIFT_PACKAGE
+        .sheet(item: $selectedSpaceForManagement) { space in
+            SharedSpaceManagement(space: space)
+                .environmentObject(l10n)
+        }
+        #endif
         .onAppear {
             bootstrapAutomaticCaptureIfNeeded()
         }
@@ -433,44 +439,73 @@ public struct ProfileView: View {
 
     private var userProfileCard: some View {
         HStack(spacing: 14) {
+            #if !SWIFT_PACKAGE
+            if scopeCapabilities.isShared, let space = scope.currentSpace {
+                let participants = scope.participants
+                if participants.isEmpty {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color.deepNavy)
+                        .frame(width: 56, height: 56)
+                        .background(MoneyCityTheme.babyBlue.opacity(0.6), in: Circle())
+                } else {
+                    HStack(spacing: -8) {
+                        ForEach(participants.prefix(2)) { p in
+                            SharedMemberMark(colorHex: p.colorHex, size: 48)
+                        }
+                    }
+                }
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(MoneyCityTheme.warmCream)
+                        .frame(width: 56, height: 56)
+                    MoneyIcon(.user, size: 36)
+                }
+            }
+            #else
             ZStack {
                 Circle()
                     .fill(MoneyCityTheme.warmCream)
                     .frame(width: 56, height: 56)
                 MoneyIcon(.user, size: 36)
             }
+            #endif
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(displayName.isEmpty ? (l10n.language == .hebrew ? "היי, ברוך הבא" : "Welcome") : (l10n.language == .hebrew ? "שלום, \(displayName)" : "Hey, \(displayName)"))
-                    .font(.system(size: 19, weight: .bold, design: .rounded))
-                    .foregroundColor(Color.deepNavy)
+                #if !SWIFT_PACKAGE
+                if scopeCapabilities.isShared, let space = scope.currentSpace {
+                    Text(space.name)
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
 
-                HStack(spacing: 6) {
-                    HStack(spacing: 4) {
-                        MoneyIcon(.calendar, size: 12)
-                        Text(l10n.language == .hebrew ? "החודש: \(l10n.formatScoped(amount: totalThisMonth))" : "This month: \(l10n.formatScoped(amount: totalThisMonth))")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(Color.deepNavy)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(MoneyCityTheme.jetBlack.opacity(0.05))
-                    .clipShape(Capsule())
-
-                    if activeStreakDays > 0 {
+                    HStack(spacing: 6) {
                         HStack(spacing: 4) {
-                            MoneyIcon(.lightning, size: 10)
-                            Text("\(activeStreakDays)d")
+                            MoneyIcon(.calendar, size: 12)
+                            Text(l10n.language == .hebrew ? "החודש: \(l10n.formatScoped(amount: totalThisMonth))" : "This month: \(l10n.formatScoped(amount: totalThisMonth))")
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                         }
-                        .foregroundColor(MoneyCityTheme.brandPrimary)
-                        .padding(.horizontal, 8)
+                        .foregroundColor(Color.deepNavy)
+                        .padding(.horizontal, 9)
                         .padding(.vertical, 4)
-                        .background(MoneyCityTheme.spentGreenSoft)
+                        .background(MoneyCityTheme.jetBlack.opacity(0.05))
                         .clipShape(Capsule())
+
+                        Text(l10n.language == .hebrew ? "מרחב משותף" : "Shared Space")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(MoneyCityTheme.brandPrimary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(MoneyCityTheme.spentGreenSoft)
+                            .clipShape(Capsule())
                     }
+                    .padding(.top, 2)
+                } else {
+                    personalGreetingContent
                 }
-                .padding(.top, 2)
+                #else
+                personalGreetingContent
+                #endif
             }
 
             Spacer()
@@ -480,6 +515,41 @@ public struct ProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
         .padding(.horizontal, 16)
+    }
+
+    private var personalGreetingContent: some View {
+        Group {
+            Text(displayName.isEmpty ? (l10n.language == .hebrew ? "היי, ברוך הבא" : "Welcome") : (l10n.language == .hebrew ? "שלום, \(displayName)" : "Hey, \(displayName)"))
+                .font(.system(size: 19, weight: .bold, design: .rounded))
+                .foregroundColor(Color.deepNavy)
+
+            HStack(spacing: 6) {
+                HStack(spacing: 4) {
+                    MoneyIcon(.calendar, size: 12)
+                    Text(l10n.language == .hebrew ? "החודש: \(l10n.formatScoped(amount: totalThisMonth))" : "This month: \(l10n.formatScoped(amount: totalThisMonth))")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(Color.deepNavy)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(MoneyCityTheme.jetBlack.opacity(0.05))
+                .clipShape(Capsule())
+
+                if !scopeCapabilities.isShared && activeStreakDays > 0 {
+                    HStack(spacing: 4) {
+                        MoneyIcon(.lightning, size: 10)
+                        Text("\(activeStreakDays)d")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(MoneyCityTheme.brandPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(MoneyCityTheme.spentGreenSoft)
+                    .clipShape(Capsule())
+                }
+            }
+            .padding(.top, 2)
+        }
     }
 
     // MARK: - 4 Bento Metric Tiles (Tactile with live micro-interactions)
@@ -892,37 +962,198 @@ public struct ProfileView: View {
         .buttonStyle(.plain)
     }
 
+    #if !SWIFT_PACKAGE
+    @ViewBuilder
+    private var sharedSpaceProfileCard: some View {
+        let spaces = SharedWorkspaceStore.shared.spaces
+        if spaces.isEmpty {
+            Button {
+                Haptics.impact(.medium)
+                SharedWorkspaceStore.shared.showSetup = true
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(MoneyCityTheme.spentGreenSoft)
+                            .frame(width: 48, height: 48)
+                        Image(systemName: "person.2.badge.plus")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(MoneyCityTheme.spentGreen)
+                    }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(l10n.language == .hebrew ? "מרחב משותף" : "Shared Space")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Text(l10n.language == .hebrew ? "ניהול תקציב והוצאות יחד עם בן/בת זוג או שותפים" : "Track shared budget & expenses together")
+                            .font(.system(size: 12, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .lineLimit(2)
+                    }
+
+                    Spacer(minLength: 4)
+
+                    HStack(spacing: 4) {
+                        Text(l10n.language == .hebrew ? "התחלה ✨" : "Start ✨")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Color.deepNavy)
+                    .clipShape(Capsule())
+                }
+                .padding(16)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.borderSubtle, lineWidth: 1)
+                )
+                .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
+                .padding(.horizontal, 16)
+            }
+            .buttonStyle(.plain)
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 15))
+                            .foregroundColor(MoneyCityTheme.brandPrimary)
+                        Text(l10n.language == .hebrew ? "מרחבים משותפים" : "Shared Spaces")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    }
+                    Spacer()
+                    Button {
+                        SharedWorkspaceStore.shared.showSetup = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .bold))
+                            Text(l10n.language == .hebrew ? "מרחב נוסף" : "New Space")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(MoneyCityTheme.brandPrimary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(MoneyCityTheme.spentGreenSoft)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                ForEach(spaces) { space in
+                    let members = SharedWorkspaceStore.shared.members.filter { $0.spaceID == space.id }
+                    HStack(spacing: 12) {
+                        HStack(spacing: -8) {
+                            if members.isEmpty {
+                                Image(systemName: "person.2.fill")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(Color.deepNavy)
+                                    .frame(width: 34, height: 34)
+                                    .background(MoneyCityTheme.babyBlue.opacity(0.5), in: Circle())
+                            } else {
+                                ForEach(members.prefix(3)) { m in
+                                    SharedMemberMark(colorHex: m.colorHex, size: 32)
+                                }
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(space.name)
+                                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Text("\(members.count) " + (l10n.language == .hebrew ? "חברים · \(space.currencyCode)" : "members · \(space.currencyCode)"))
+                                .font(.system(size: 11, weight: .medium, design: .default))
+                                .foregroundColor(Color.textSecondary)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            selectedSpaceForManagement = space
+                        } label: {
+                            Text(l10n.language == .hebrew ? "ניהול" : "Manage")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.borderSubtle.opacity(0.6))
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .padding(16)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color.borderSubtle, lineWidth: 1)
+            )
+            .shadow(color: Color.deepNavy.opacity(0.04), radius: 10, y: 3)
+            .padding(.horizontal, 16)
+        }
+    }
+    #endif
+
     private var managementMenuCard: some View {
         VStack(spacing: 0) {
-            menuRow(
-                title: l10n.language == .hebrew ? "סיכומי חודש • Monthly Recaps" : "Monthly Recaps Archive",
-                subtitle: l10n.language == .hebrew ? "צפייה בסיפורי העיר וההוצאות בכל חודש" : "View city growth and spending stories",
-                iconBg: Color.themeTurquoiseSoft
-            ) {
-                MoneyIcon(.receipt, size: 24)
-            } action: {
-                showRecapArchive = true
+            #if !SWIFT_PACKAGE
+            if scopeCapabilities.isShared, let space = scope.currentSpace {
+                menuRow(
+                    title: l10n.language == .hebrew ? "ניהול המרחב: \(space.name)" : "Manage Space: \(space.name)",
+                    subtitle: l10n.language == .hebrew ? "חברים, הזמנות, הגדרות ועזיבה" : "Members, invites, settings and leave",
+                    iconBg: MoneyCityTheme.spentGreenSoft
+                ) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(MoneyCityTheme.brandPrimary)
+                } action: {
+                    selectedSpaceForManagement = space
+                }
+
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
+            }
+            #endif
+
+            if !scopeCapabilities.isShared {
+                menuRow(
+                    title: l10n.language == .hebrew ? "סיכומי חודש • Monthly Recaps" : "Monthly Recaps Archive",
+                    subtitle: l10n.language == .hebrew ? "צפייה בסיפורי העיר וההוצאות בכל חודש" : "View city growth and spending stories",
+                    iconBg: Color.themeTurquoiseSoft
+                ) {
+                    MoneyIcon(.receipt, size: 24)
+                } action: {
+                    showRecapArchive = true
+                }
+
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
+
+                cityWorldMenuRow
+
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
+            if scopeCapabilities.hasBudget {
+                menuRow(
+                    title: l10n.language == .hebrew ? "תקציב חודשי" : "Monthly Budget",
+                    subtitle: l10n.language == .hebrew ? "ניהול תקרות הוצאה לפי קטגוריה" : "Manage spending limits by category",
+                    iconBg: Color(red: 243/255, green: 232/255, blue: 255/255)
+                ) {
+                    MoneyIcon(.barChart, size: 24)
+                } action: {
+                    showBudgetsSheet = true
+                }
 
-            cityWorldMenuRow
-
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
-
-            menuRow(
-                title: l10n.language == .hebrew ? "תקציב חודשי" : "Monthly Budget",
-                subtitle: l10n.language == .hebrew ? "ניהול תקרות הוצאה לפי קטגוריה" : "Manage spending limits by category",
-                iconBg: Color(red: 243/255, green: 232/255, blue: 255/255)
-            ) {
-                MoneyIcon(.barChart, size: 24)
-            } action: {
-                showBudgetsSheet = true
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
             }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
-
-            if RemoteConfigService.shared.isFeatureEnabled("savingsGoals") {
+            if scopeCapabilities.hasSavings && RemoteConfigService.shared.isFeatureEnabled("savingsGoals") {
                 menuRow(
                     title: l10n.language == .hebrew ? "יעדי חיסכון" : "Savings Goals",
                     subtitle: l10n.language == .hebrew ? "מעקב אחר התקדמות החיסכון שלך" : "Track your savings progress",
@@ -936,17 +1167,19 @@ public struct ProfileView: View {
                 Divider().background(Color.borderSubtle).padding(.leading, 68)
             }
 
-            menuRow(
-                title: l10n.language == .hebrew ? "הוצאות קבועות ומנויים" : "Fixed Expenses & Subscriptions",
-                subtitle: l10n.language == .hebrew ? "שכירות, חשבונות והוראות קבע" : "Rent, utilities, recurring charges",
-                iconBg: Color(red: 254/255, green: 242/255, blue: 232/255)
-            ) {
-                MoneyIcon(.refresh, size: 24)
-            } action: {
-                showRecurringSheet = true
-            }
+            if scopeCapabilities.hasRecurring {
+                menuRow(
+                    title: l10n.language == .hebrew ? "הוצאות קבועות ומנויים" : "Fixed Expenses & Subscriptions",
+                    subtitle: l10n.language == .hebrew ? "שכירות, חשבונות והוראות קבע" : "Rent, utilities, recurring charges",
+                    iconBg: Color(red: 254/255, green: 242/255, blue: 232/255)
+                ) {
+                    MoneyIcon(.refresh, size: 24)
+                } action: {
+                    showRecurringSheet = true
+                }
 
-            Divider().background(Color.borderSubtle).padding(.leading, 68)
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
+            }
 
             if RemoteConfigService.shared.isFeatureEnabled("automaticCapture") {
                 menuRow(
@@ -988,19 +1221,23 @@ public struct ProfileView: View {
                     }
                 }
 
-                Divider().background(Color.borderSubtle).padding(.leading, 68)
+                if !scopeCapabilities.isShared {
+                    Divider().background(Color.borderSubtle).padding(.leading, 68)
+                }
             }
 
-            menuRow(
-                title: l10n.language == .hebrew ? "גיבוי ושחזור" : "Backup & Restore",
-                subtitle: l10n.language == .hebrew
-                    ? "ייצוא הנתונים לקובץ, שחזור מקובץ, ותצלומים אוטומטיים"
-                    : "Export to a file, restore from one, and automatic snapshots",
-                iconBg: Color(red: 243/255, green: 244/255, blue: 246/255)
-            ) {
-                MoneyIcon(.cloud, size: 24)
-            } action: {
-                showBackupSheet = true
+            if !scopeCapabilities.isShared {
+                menuRow(
+                    title: l10n.language == .hebrew ? "גיבוי ושחזור" : "Backup & Restore",
+                    subtitle: l10n.language == .hebrew
+                        ? "ייצוא הנתונים לקובץ, שחזור מקובץ, ותצלומים אוטומטיים"
+                        : "Export to a file, restore from one, and automatic snapshots",
+                    iconBg: Color(red: 243/255, green: 244/255, blue: 246/255)
+                ) {
+                    MoneyIcon(.cloud, size: 24)
+                } action: {
+                    showBackupSheet = true
+                }
             }
         }
         .background(Color.white)

@@ -284,6 +284,53 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         }
     }
 
+    func isOwner(_ spaceID: UUID) -> Bool {
+        guard let row = try? spaceRow(spaceID) else { return false }
+        return row.databaseScope == CKDatabase.Scope.private.rawValue
+    }
+
+    func deleteSpace(_ id: UUID) async throws {
+        try ensureNoPendingChanges(in: id)
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+        let row = try spaceRow(id)
+        if !demo && row.databaseScope == CKDatabase.Scope.private.rawValue {
+            let zoneID = recordID(row).zoneID
+            _ = try await cloud.privateCloudDatabase.deleteRecordZone(withID: zoneID)
+        }
+        let records = try database.records()
+        for r in records where r.spaceID == id.uuidString {
+            database.context.delete(r)
+        }
+        try database.save()
+        revokedSpaces.insert(id)
+        writableSpaces.remove(id)
+        if activeSpaceID == id {
+            activeSpaceID = nil
+        }
+        try reload()
+    }
+
+    func leaveSpace(_ id: UUID) async throws {
+        try ensureNoPendingChanges(in: id)
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+        let memberID = myMemberID(in: id)
+        if let memberRow = try? database.records().first(where: { $0.spaceID == id.uuidString && $0.key.contains("member-\(memberID)") }) {
+            memberRow.isDeleted = true
+            try database.save()
+        }
+        let records = try database.records()
+        for r in records where r.spaceID == id.uuidString {
+            database.context.delete(r)
+        }
+        try database.save()
+        revokedSpaces.insert(id)
+        writableSpaces.remove(id)
+        if activeSpaceID == id {
+            activeSpaceID = nil
+        }
+        try reload()
+    }
+
     private func cloudRecord(_ row: SharedStoredRecord) throws -> CKRecord {
         let record: CKRecord
         if let fields = row.systemFields {

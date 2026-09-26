@@ -90,9 +90,30 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
 
     func clearSetupError() { setupError = nil }
 
+    /// The connect attempt currently in flight, if any.
+    ///
+    /// Discovery is triggered from several independent places — launch, opening the shared
+    /// screen, and returning to the foreground — and those can easily overlap. Treating an
+    /// overlap as a failure was wrong twice over: it told a user their shared data was
+    /// unavailable at the exact moment it was being loaded, and it made an ordinary
+    /// foreground transition look like a fault. Concurrent callers now wait for the attempt
+    /// already running and share its result, so a second request is free rather than an
+    /// error, and a burst of them cannot fan out into a burst of CloudKit calls.
+    private var connectAttempt: Task<Void, Error>?
+
     func connect() async throws {
-        guard !connecting else { throw SharedLedgerError.storageUnavailable }
         if demo { return }
+        if let attempt = connectAttempt {
+            try await attempt.value
+            return
+        }
+        let attempt = Task { try await performConnect() }
+        connectAttempt = attempt
+        defer { connectAttempt = nil }
+        try await attempt.value
+    }
+
+    private func performConnect() async throws {
         guard !stopped else { throw SharedLedgerError.storageUnavailable }
         connecting = true
         defer { connecting = false }
@@ -382,6 +403,10 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             try await refresh()
         } catch let error as SharedLedgerError where error == .noAccount {
             return
+        } catch let ckError as CKError where SharedSyncClassifier.classify(ckError.code) == .retryable || SharedSyncClassifier.classify(ckError.code) == .accountRequired {
+            return
+        } catch let urlError as URLError where urlError.code == .notConnectedToInternet || urlError.code == .networkConnectionLost {
+            return
         } catch {
             errorMessage = error.localizedDescription
             return
@@ -391,8 +416,27 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         await resumePendingJoinIfAny()
     }
 
+    /// The refresh attempt currently in flight, if any.
+    ///
+    /// Startup, opening the shared screen, returning to the foreground, or resuming
+    /// pending joins can all call refresh at once. Sharing the attempt already in flight
+    /// prevents redundant CloudKit fetches and avoids hammering CKSyncEngine with
+    /// concurrent fetchChanges calls.
+    private var refreshAttempt: Task<Void, Error>?
+
     func refresh() async throws {
         if demo { return }
+        if let attempt = refreshAttempt {
+            try await attempt.value
+            return
+        }
+        let attempt = Task { try await performRefresh() }
+        refreshAttempt = attempt
+        defer { refreshAttempt = nil }
+        try await attempt.value
+    }
+
+    private func performRefresh() async throws {
         try await connect()
         var accessible = Set<UUID>(), writable = Set<UUID>()
         for scope: CKDatabase.Scope in [.private, .shared] {
@@ -546,6 +590,29 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     }
 
     // MARK: - Durable join
+
+    /// Whether this device has anything shared to keep in step: a local shared store, spaces
+    /// already known, or the flag saying this account has used sharing before.
+    var hasSharedState: Bool {
+        database != nil || !spaces.isEmpty || UserDefaults.standard.bool(forKey: "shared_spaces_enabled")
+    }
+
+    private var lastForegroundRefresh: Date?
+
+    /// The safety net under push, run when the app comes back to the foreground.
+    ///
+    /// Best effort by design. A personal-only user never reaches CloudKit at all, a missing
+    /// iCloud account is treated as an ordinary state rather than a failure to report, and
+    /// the whole thing is asynchronous so it cannot hold up the personal UI. A network that
+    /// is merely absent leaves spaces and write access exactly as they were — nothing here
+    /// can hide a space or revoke anything.
+    func refreshOnForeground(now: Date = Date()) async {
+        guard !demo else { return }
+        guard SharedForegroundSync.shouldRefresh(hasSharedState: hasSharedState,
+                                                 lastRefresh: lastForegroundRefresh, now: now) else { return }
+        lastForegroundRefresh = now
+        await discover()
+    }
 
     private func pendingJoins() throws -> [SharedPendingJoin] {
         guard let database else { return [] }

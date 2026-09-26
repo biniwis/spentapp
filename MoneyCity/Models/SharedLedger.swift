@@ -539,6 +539,33 @@ enum SharedJoin {
     }
 }
 
+/// When returning to the foreground should trigger a shared sync pass.
+///
+/// Push is the fast path, but a push can be delayed, coalesced away, or never arrive at
+/// all — offline when the edit happened, notification delivery declined, the device
+/// rebooted. Coming back to the app is therefore the one moment every device is guaranteed
+/// to reach, and it is where anything missed gets picked up.
+///
+/// The decision is kept here, away from SwiftUI and CloudKit, because the two ways of
+/// getting it wrong are both easy and both invisible until they show up as a support
+/// report: never refreshing, so a space silently goes stale; and refreshing on every
+/// transition, so flicking between apps hammers CloudKit and burns battery.
+enum SharedForegroundSync {
+    /// Two activations closer together than this are treated as one. Long enough that
+    /// switching apps does not re-fetch, short enough that a genuine return to the app
+    /// still converges.
+    static let minimumInterval: TimeInterval = 20
+
+    static func shouldRefresh(hasSharedState: Bool, lastRefresh: Date?, now: Date,
+                              interval: TimeInterval = minimumInterval) -> Bool {
+        // A personal-only user pays nothing: no shared account means no round trip, no
+        // wait, and no alert.
+        guard hasSharedState else { return false }
+        guard let lastRefresh else { return true }
+        return now.timeIntervalSince(lastRefresh) >= interval
+    }
+}
+
 enum SharedSchemaV1: VersionedSchema {
     static var versionIdentifier: Schema.Version { .init(1, 0, 0) }
     static var models: [any PersistentModel.Type] { [SharedStoredRecord.self, SharedEngineState.self, SharedPendingJoin.self] }

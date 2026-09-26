@@ -19,7 +19,32 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         #if canImport(UserNotifications)
         NotificationService.setupDelegate()
         #endif
+        // Registers the device with APNs so CloudKit can wake the app when a shared space
+        // changes on another device.
+        //
+        // Deliberately *not* a notification authorization request. There is no
+        // `requestAuthorization` anywhere near this call and there is no permission prompt:
+        // this is the silent, background delivery CloudKit uses to tell CKSyncEngine to
+        // fetch, and it carries nothing for the user to see. SPENT's own notification
+        // preferences (NotificationService) are a separate, user-controlled feature and
+        // stay exactly as they were.
+        //
+        // No backend is involved. The token CloudKit needs is exchanged between the system
+        // and Apple's CloudKit infrastructure, so there is nowhere to upload it and nothing
+        // to upload it to. Losing the token costs freshness, not correctness: the
+        // foreground refresh in the scene-phase handler still converges local state, which
+        // is why this is registered best-effort and never treated as a launch condition.
+        application.registerForRemoteNotifications()
         return true
+    }
+
+    /// APNs registration failed. Logged, never surfaced: shared sync falls back to the
+    /// foreground refresh, and personal money is entirely local, so there is nothing the
+    /// user could do about this and nothing that is broken for them.
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        let reason = (error as NSError).code
+        print("[SPENT] APNs registration unavailable (code \(reason)); shared sync will rely on foreground refresh")
     }
 }
 
@@ -437,6 +462,13 @@ struct MoneyCityApp: App {
                 .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
                         performAppMaintenance()
+                        // Safety net under CloudKit push. If a shared change was made while
+                        // this app was away — offline, terminated, or on a device that never
+                        // got the push — this is where it gets picked up. It is a no-op for a
+                        // personal-only user, is debounced so switching apps does not re-fetch,
+                        // and runs off the main actor's critical path so the personal UI is
+                        // never waiting on CloudKit.
+                        Task { await sharedWorkspace.refreshOnForeground() }
                     } else if newPhase == .background {
                         Task {
                             _ = try? await CloudBackupService.shared.performBackupIfNeeded(context: DatabaseService.shared.context, force: false)

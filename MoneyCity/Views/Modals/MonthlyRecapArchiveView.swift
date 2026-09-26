@@ -10,6 +10,7 @@ public struct MonthlyRecapArchiveView: View {
     @Query(sort: \Transaction.timestamp, order: .reverse) private var allTransactions: [Transaction]
     @AppStorage("monthly_budget") private var userMonthlyBudget: Double = 0
     @Query private var categoryBudgets: [CategoryBudget]
+    @ObservedObject private var scope = AppScopeContext.shared
     
     private var effectiveMonthlyBudget: Double {
         BudgetService.monthlySpendingBudget(
@@ -19,10 +20,13 @@ public struct MonthlyRecapArchiveView: View {
     }
     
     @State private var selectedRecap: MonthlyRecap? = nil
+    /// The shared half of the month that was opened, read when the row was tapped.
+    @State private var selectedSharedSections: [SharedRecapSection] = []
     var onNavigateToCity: ((Date) -> Void)? = nil
     
     private var availableMonths: [Date] {
-        MonthlyRecapService.availableRecapMonths(from: allTransactions)
+        MonthlyRecapService.availableRecapMonths(from: allTransactions,
+                                                 sharedMonths: scope.sharedRecapMonths())
     }
     
     public init(onNavigateToCity: ((Date) -> Void)? = nil) {
@@ -59,10 +63,12 @@ public struct MonthlyRecapArchiveView: View {
                                         context: modelContext
                                     )
                                     
+                                    let sharedSections = scope.sharedRecapSections(for: monthDate)
                                     Button {
                                         selectedRecap = recap
+                                        selectedSharedSections = sharedSections
                                     } label: {
-                                        completedRecapCard(recap)
+                                        completedRecapCard(recap, sharedSections: sharedSections)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -91,6 +97,7 @@ public struct MonthlyRecapArchiveView: View {
             .fullScreenCover(item: $selectedRecap) { recap in
                 MonthlyRecapSheet(
                     recap: recap,
+                    sharedSections: selectedSharedSections,
                     onNavigateToCity: { targetDate in
                         dismiss()
                         onNavigateToCity?(targetDate)
@@ -103,16 +110,33 @@ public struct MonthlyRecapArchiveView: View {
     
     // MARK: - Postcard Cards
     
-    private func completedRecapCard(_ recap: MonthlyRecap) -> some View {
+    private func completedRecapCard(_ recap: MonthlyRecap, sharedSections: [SharedRecapSection]) -> some View {
         let palette = ArchiveCityPalette.forDate(recap.date)
         let seed = stableSeed(for: recap.monthId)
         let isRTL = layoutDirection == .rightToLeft
         let monthTitle = l10n.language == .hebrew ? recap.monthNameHe : recap.monthNameEn
         let vibeTitle = l10n.language == .hebrew ? recap.cityVibe.titleHe : recap.cityVibe.titleEn
-        let countText = l10n.language == .hebrew
+        let isHe = l10n.language == .hebrew
+        let countText = isHe
             ? (recap.transactionCount == 1 ? "הוצאה אחת" : "\(recap.transactionCount) הוצאות")
             : (recap.transactionCount == 1 ? "1 expense" : "\(recap.transactionCount) expenses")
         let spentText = l10n.format(amount: recap.totalSpent)
+
+        // A month that only a shared space lived in has no personal figure to print. Saying
+        // zero would be a lie about the user's own spending, and the spaces' money cannot be
+        // added up here either, so the card names the spaces and leaves the amount out.
+        let sharedOnly = recap.transactionCount == 0 && !sharedSections.isEmpty
+        let headText: String
+        let footText: String
+        if sharedOnly {
+            let count = sharedSections.count
+            headText = isHe ? (count == 1 ? "מרחב אחד" : "\(count) מרחבים")
+                            : (count == 1 ? "1 space" : "\(count) spaces")
+            footText = sharedSections.map(\.spaceName).joined(separator: " · ")
+        } else {
+            headText = spentText
+            footText = countText
+        }
         
         return HStack(alignment: .bottom, spacing: 0) {
             // Text area (calm, legible, high-contrast)
@@ -134,13 +158,16 @@ public struct MonthlyRecapArchiveView: View {
                 Spacer(minLength: 16)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(spentText)
+                    Text(headText)
                         .font(.system(size: 18, weight: .black, design: .rounded))
                         .foregroundColor(Color.deepNavy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     
-                    Text(countText)
+                    Text(footText)
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundColor(Color.textMuted)
+                        .lineLimit(1)
                 }
             }
             .padding(.horizontal, 18)
@@ -167,7 +194,9 @@ public struct MonthlyRecapArchiveView: View {
         )
         .shadow(color: Color.deepNavy.opacity(0.04), radius: 8, y: 2)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(monthTitle), \(vibeTitle), \(l10n.language == .hebrew ? "הוצאות" : "spent") \(spentText), \(countText)")
+        .accessibilityLabel(sharedOnly
+                            ? "\(monthTitle), \(vibeTitle), \(footText)"
+                            : "\(monthTitle), \(vibeTitle), \(l10n.language == .hebrew ? "הוצאות" : "spent") \(spentText), \(countText)")
         .accessibilityHint(l10n.language == .hebrew ? "הקש פעמיים לפתיחת סיכום חודשי" : "Double tap to open monthly recap")
     }
 

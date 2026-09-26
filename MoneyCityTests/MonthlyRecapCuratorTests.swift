@@ -356,6 +356,8 @@ final class MonthlyRecapCuratorTests: XCTestCase {
                 : "insight(curated·\(i.family ?? "-")·\(Int(i.score * 100)))"
         case .noticed(let rows):
             return "noticed(\(rows.map { "\($0.family ?? "-")·\(Int($0.score * 100))" }.joined(separator: ", ")))"
+        case .sharedOverview(let section): return "shared-overview(\(section.spaceName))"
+        case .sharedMembers(let section): return "shared-members(\(section.spaceName))"
         case .portrait: return "portrait"
         }
     }

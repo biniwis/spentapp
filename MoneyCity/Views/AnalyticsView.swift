@@ -49,6 +49,8 @@ public struct AnalyticsView: View {
     @State private var selectedSlice: SpendingCategory? = nil
     @State private var selectedMonthOffset: Int = 0
     @State private var activeRecap: MonthlyRecap? = nil
+    /// The spaces' part of the same month, read at the moment the recap was opened.
+    @State private var activeRecapSharedSections: [SharedRecapSection] = []
     @State private var animateChart = false
     @State private var showAllCategories: Bool = false
     @State private var categoryForFeed: SpendingCategory? = nil
@@ -584,7 +586,8 @@ public struct AnalyticsView: View {
             }
         }
         .fullScreenCover(item: $activeRecap) { recap in
-            MonthlyRecapSheet(recap: recap, onNavigateToCity: onNavigateToCity)
+            MonthlyRecapSheet(recap: recap, sharedSections: activeRecapSharedSections,
+                              onNavigateToCity: onNavigateToCity)
         }
         .sheet(item: $categoryForFeed) { cat in
             let txs = displayTransactions.filter { $0.category.canonical == cat.canonical }
@@ -624,6 +627,9 @@ public struct AnalyticsView: View {
             if isRecapWindowActiveForTargetMonth {
                 Button(action: {
                     Haptics.impact(.medium)
+                    // The month the user is looking at, not the month the window happens to
+                    // be in, so the shared pages can never describe a different month.
+                    activeRecapSharedSections = scope.sharedRecapSections(for: targetMonthDate)
                     activeRecap = MonthlyRecapService.timelineRecap(
                         for: targetMonthDate,
                         allTransactions: personalTransactions,

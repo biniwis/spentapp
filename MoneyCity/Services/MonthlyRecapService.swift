@@ -614,11 +614,21 @@ public enum MonthlyRecapService {
 
 
     /// Returns all available past months that have transactions or recaps.
-    public static func availableRecapMonths(from allTransactions: [Transaction]) -> [Date] {
+    ///
+    /// Months where only a shared space had something going on are added too, bucketed on
+    /// this same calendar, and a month that appears in both halves is still one row: the
+    /// archive lists months, never two versions of the same month.
+    public static func availableRecapMonths(from allTransactions: [Transaction],
+                                            sharedMonths: [Date] = []) -> [Date] {
         let cal = Calendar(identifier: .gregorian)
         var monthSet: Set<Date> = []
         for tx in allTransactions {
             if let monthInterval = cal.dateInterval(of: .month, for: tx.timestamp) {
+                monthSet.insert(monthInterval.start)
+            }
+        }
+        for month in sharedMonths {
+            if let monthInterval = cal.dateInterval(of: .month, for: month) {
                 monthSet.insert(monthInterval.start)
             }
         }

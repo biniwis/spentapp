@@ -71,6 +71,8 @@ public struct ProfileView: View {
     @State private var showDetailedStreak = false
     @State private var showDetailedBudget = false
     @State private var activeRecapForSheet: MonthlyRecap? = nil
+    /// Read from the shared ledger when the recap was opened, never stored with it.
+    @State private var activeRecapSharedSections: [SharedRecapSection] = []
     @State private var showCityWorldPicker = false
     @State private var cityWorldDraft: CityMapStyle = .urban
     @State private var cityWorldRevision: Int = 0
@@ -86,7 +88,7 @@ public struct ProfileView: View {
     @AppStorage(AutomaticCaptureStateStore.Key.guideUpdatedAt) private var guideUpdatedTimestamp: Double = 0
     @AppStorage(AutomaticCaptureStateStore.Key.guideLegacyUpdatedAt) private var legacyGuideUpdatedTimestamp: Double = 0
 
-    private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus)? {
+    private var activeWindowRecapAndStatus: (recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus, sharedSections: [SharedRecapSection])? {
         guard !scopeCapabilities.isShared else { return nil }
         let status = MonthlyRecapService.checkRecapWindow()
         guard status.isActive, let targetDate = status.targetMonthDate else { return nil }
@@ -96,8 +98,12 @@ public struct ProfileView: View {
             monthlyBudget: effectiveBudgetLimit > 0 ? effectiveBudgetLimit : nil,
             context: modelContext
         )
-        guard recap.transactionCount > 0 else { return nil }
-        return (recap, status)
+        // A month where the user only spent inside a shared space still has a story, so the
+        // banner shows for the spaces alone. Neither half is required, and neither is
+        // enough on its own to invent numbers for the other.
+        let sharedSections = scope.sharedRecapSections(for: targetDate)
+        guard recap.transactionCount > 0 || !sharedSections.isEmpty else { return nil }
+        return (recap, status, sharedSections)
     }
 
     private var thisMonthTransactions: [ExpenseSnapshot] {
@@ -262,8 +268,8 @@ public struct ProfileView: View {
                     userProfileCard
 
                     // ── Festive Monthly Recap Banner (Celebration Window) ──
-                    if !scopeCapabilities.isShared, let (recap, status) = activeWindowRecapAndStatus {
-                        festiveMonthlyRecapRow(recap: recap, status: status)
+                    if !scopeCapabilities.isShared, let (recap, status, sharedSections) = activeWindowRecapAndStatus {
+                        festiveMonthlyRecapRow(recap: recap, status: status, sharedSections: sharedSections)
                     }
 
                     // ── 4 Bento Metric Tiles (Tactile with live micro-indicators) ──
@@ -300,7 +306,8 @@ public struct ProfileView: View {
             }
         }
         .fullScreenCover(item: $activeRecapForSheet) { recap in
-            MonthlyRecapSheet(recap: recap, onNavigateToCity: onNavigateToCity)
+            MonthlyRecapSheet(recap: recap, sharedSections: activeRecapSharedSections,
+                              onNavigateToCity: onNavigateToCity)
         }
         #if DEBUG
         .sheet(isPresented: $showDesignLab) {
@@ -385,13 +392,15 @@ public struct ProfileView: View {
 
     // MARK: - Festive Monthly Recap Banner (Celebration Window)
 
-    private func festiveMonthlyRecapRow(recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus) -> some View {
+    private func festiveMonthlyRecapRow(recap: MonthlyRecap, status: MonthlyRecapService.RecapWindowStatus,
+                                        sharedSections: [SharedRecapSection]) -> some View {
         let isHe = l10n.language == .hebrew
         let monthName = isHe ? status.monthNameHe : status.monthNameEn
 
         return Button(action: {
             Haptics.impact(.medium)
             activeRecapForSheet = recap
+            activeRecapSharedSections = sharedSections
         }) {
             VStack(alignment: .leading, spacing: 10) {
                 // ── Top Mini Celebration Tag ──

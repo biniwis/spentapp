@@ -228,6 +228,31 @@ public final class AppScopeContext: ObservableObject {
             now: month)
     }
 
+    /// One recap section per space that did something in the month — the whole space's
+    /// month, not only the part the user paid for, because this is the space telling its
+    /// own story and the personal half is a different story entirely.
+    ///
+    /// Read from the shared ledger on demand and never stored: a month the user can no
+    /// longer open the space for has no section, which is the intended behaviour rather
+    /// than a missing feature.
+    func sharedRecapSections(for month: Date) -> [SharedRecapSection] {
+        // The recap belongs to the personal flow. A reader standing inside a space is not
+        // given a shared story from here, so the rule is one rule in one place instead of a
+        // guard each screen has to remember.
+        guard !capabilities.isShared else { return [] }
+        return SharedRecapSection.sections(for: month, spaces: store.spaces,
+                                           expenses: store.expenses, members: store.members)
+    }
+
+    /// Months a recap could be opened for because of shared activity alone, on the same
+    /// calendar the personal months are counted on so the two never disagree about which
+    /// bucket a month falls into.
+    func sharedRecapMonths(on calendar: Calendar = Calendar(identifier: .gregorian)) -> [Date] {
+        guard !capabilities.isShared else { return [] }
+        return SharedRecapSection.monthsWithActivity(spaces: store.spaces, expenses: store.expenses,
+                                                      on: calendar)
+    }
+
     /// The shared expenses this user personally paid for, across every month asked about,
     /// in the personal currency and under the same rules as the card above.
     ///
@@ -236,8 +261,8 @@ public final class AppScopeContext: ObservableObject {
     /// asked about more than once by a screen that shows a window and a single month, so
     /// an expense is counted once and only once — the same row must never appear twice in
     /// a total because it was asked for twice.
-    public func mySharedExpenses(for months: some Sequence<Date>,
-                                 baseCurrencyCode: String) -> [ExpenseSnapshot] {
+    public func mySharedExpenses<Months: Sequence<Date>>(for months: Months,
+                                                         baseCurrencyCode: String) -> [ExpenseSnapshot] {
         guard !store.spaces.isEmpty else { return [] }
         var counted = Set<UUID>()
         var snapshots: [ExpenseSnapshot] = []

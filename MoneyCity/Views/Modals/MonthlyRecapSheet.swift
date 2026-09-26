@@ -4,7 +4,9 @@ import UIKit
 // MARK: - Story model and authored timing
 
 enum RecapEditorialShot: Equatable, Identifiable {
-    case opening, total, activity, district, insight(MonthlyRecapDynamicInsight), noticed([MonthlyRecapDynamicInsight]), portrait
+    case opening, total, activity, district, insight(MonthlyRecapDynamicInsight), noticed([MonthlyRecapDynamicInsight])
+    case sharedOverview(SharedRecapSection), sharedMembers(SharedRecapSection)
+    case portrait
     var id: String {
         switch self {
         case .opening: "opening"
@@ -13,6 +15,10 @@ enum RecapEditorialShot: Equatable, Identifiable {
         case .district: "district"
         case .insight(let insight): insight.id
         case .noticed: "noticed"
+        // Per space, so a second space's page is a different page and not a rerender of the
+        // first one.
+        case .sharedOverview(let section): "shared-overview-\(section.spaceID)"
+        case .sharedMembers(let section): "shared-members-\(section.spaceID)"
         case .portrait: "portrait"
         }
     }
@@ -24,14 +30,39 @@ enum RecapEditorialShot: Equatable, Identifiable {
         case .district: 5.0
         case .insight: 5.4
         case .noticed: 6.8
+        case .sharedOverview: 5.6
+        case .sharedMembers: 5.6
         case .portrait: 8.0
         }
     }
-    static func sequence(for recap: MonthlyRecap) -> [Self] {
-        [.opening, .total, .activity, .district] +
-            recap.dynamicInsights.prefix(4).map { .insight($0) } +
-            (recap.noticedInsights.isEmpty ? [] : [.noticed(recap.noticedInsights)]) +
-            [.portrait]
+
+    /// The order the story is told in.
+    ///
+    /// With no shared sections this is exactly the sequence it has always been. With them,
+    /// the personal half only gets its pages if the personal month had something to say —
+    /// a user whose month happened entirely in a shared space should not be shown pages
+    /// about a personal total of zero — and each space is then told on its own, in its own
+    /// currency, before the story closes.
+    static func sequence(for recap: MonthlyRecap, sharedSections: [SharedRecapSection] = []) -> [Self] {
+        guard !sharedSections.isEmpty else {
+            return [.opening, .total, .activity, .district] +
+                recap.dynamicInsights.prefix(4).map { .insight($0) } +
+                (recap.noticedInsights.isEmpty ? [] : [.noticed(recap.noticedInsights)]) +
+                [.portrait]
+        }
+
+        var shots: [Self] = [.opening]
+        if recap.transactionCount > 0 {
+            shots += [.total, .activity, .district]
+            shots += recap.dynamicInsights.prefix(4).map { .insight($0) }
+        }
+        for section in sharedSections {
+            shots.append(.sharedOverview(section))
+            if section.hasMemberRow { shots.append(.sharedMembers(section)) }
+        }
+        if !recap.noticedInsights.isEmpty { shots.append(.noticed(recap.noticedInsights)) }
+        shots.append(.portrait)
+        return shots
     }
 }
 
@@ -44,6 +75,10 @@ public struct MonthlyRecapSheet: View {
     @Environment(\.dynamicTypeSize) private var dynamicType
     @EnvironmentObject private var l10n: LocalizationManager
     let recap: MonthlyRecap
+    /// The shared spaces that had a month worth telling, read from the shared ledger when
+    /// the recap was opened. Empty means there is nothing shared to say, and then this
+    /// screen behaves exactly as it always has.
+    var sharedSections: [SharedRecapSection] = []
     var onNavigateToCity: ((Date) -> Void)?
     @State private var index = 0
     @State private var time = 0.0
@@ -51,13 +86,32 @@ public struct MonthlyRecapSheet: View {
     @State private var outgoingTime = 0.0
     @State private var sharedPortrait: RecapShareItem?
     @State private var shareFailed = false
-    private var shots: [RecapEditorialShot] { RecapEditorialShot.sequence(for: recap) }
+    private var shots: [RecapEditorialShot] {
+        RecapEditorialShot.sequence(for: recap, sharedSections: sharedSections)
+    }
     private var shot: RecapEditorialShot { shots[index] }
     private var he: Bool { l10n.language == .hebrew }
     private var still: Bool { reduceMotion || voiceOver }
 
-    public init(recap: MonthlyRecap, onNavigateToCity: ((Date) -> Void)? = nil) {
+    /// A shared page is drawn in its own space's currency. The personal symbol is never
+    /// printed next to a shared number — a shekel sign on someone else's euro would be a
+    /// claim, not a description.
+    private func currency(for shot: RecapEditorialShot) -> String {
+        switch shot {
+        case .sharedOverview(let section), .sharedMembers(let section):
+            return section.currencySymbol
+        default:
+            return l10n.baseCurrency.symbol
+        }
+    }
+
+    /// `sharedSections` defaults to empty, which is the personal-only recap this screen has
+    /// always been — callers that have a shared ledger to read pass what they found there.
+    init(recap: MonthlyRecap,
+         sharedSections: [SharedRecapSection] = [],
+         onNavigateToCity: ((Date) -> Void)? = nil) {
         self.recap = recap
+        self.sharedSections = sharedSections
         self.onNavigateToCity = onNavigateToCity
     }
 
@@ -68,17 +122,17 @@ public struct MonthlyRecapSheet: View {
                 ZStack {
                     if let outgoing, time < 0.55, !still {
                         RecapSceneFrame(shot: outgoing, recap: recap, time: outgoingTime,
-                                        he: he, currency: l10n.baseCurrency.symbol)
+                                        he: he, currency: currency(for: outgoing))
                             .accessibilityHidden(true)
                     }
                     RecapSceneFrame(shot: shot, recap: recap, time: still ? shot.duration : time,
-                                    he: he, currency: l10n.baseCurrency.symbol)
+                                    he: he, currency: currency(for: shot))
                         .clipShape(RecapSceneAperture(progress: outgoing == nil || still ? 1 : min(1, time / 0.55), shot: shot))
                 }
                 .clipped()
                 .ignoresSafeArea()
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(RecapEditorialCopy(shot: shot, recap: recap, he: he, currency: l10n.baseCurrency.symbol).accessible)
+                .accessibilityLabel(RecapEditorialCopy(shot: shot, recap: recap, he: he, currency: currency(for: shot)).accessible)
                 .contentShape(Rectangle())
                 .onTapGesture { point in navigate(point.x >= proxy.size.width / 2 ? 1 : -1) }
                 .gesture(DragGesture(minimumDistance: 35).onEnded { value in
@@ -91,7 +145,7 @@ public struct MonthlyRecapSheet: View {
                     VStack {
                         Spacer()
                         ScrollView {
-                            Text(RecapEditorialCopy(shot: shot, recap: recap, he: he, currency: l10n.baseCurrency.symbol).accessible)
+                            Text(RecapEditorialCopy(shot: shot, recap: recap, he: he, currency: currency(for: shot)).accessible)
                                 .font(.body).frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 24)
                         }.frame(maxHeight: 150).background(.ultraThinMaterial)
                     }
@@ -331,7 +385,49 @@ struct RecapEditorialCopy {
                 if let c = insight.category { return he ? c.shortName(for: .hebrew) : c.shortNameEn }
                 return ""
             }
+        case .sharedOverview(let section): return section.money(section.spentMinor)
+        case .sharedMembers: return ""
         case .noticed: return ""
+        }
+    }
+    /// The small lines under a shared page's figure: the target, the largest category, and
+    /// anything that could not be counted. Each states a fact about the month and stops
+    /// there — no praise, no warning, no comparison to anybody else.
+    var sharedSupport: String {
+        switch shot {
+        case .sharedOverview(let section):
+            var parts: [String] = []
+            if let over = section.overTargetMinor {
+                parts.append(he ? "\(section.money(over)) מעל היעד \(section.targetMoney)"
+                      : "\(section.money(over)) over the \(section.targetMoney) target")
+            } else if let remaining = section.remainingMinor {
+                parts.append(he ? "נותרו \(section.money(remaining)) מתוך יעד \(section.targetMoney)"
+                      : "\(section.money(remaining)) left of the \(section.targetMoney) target")
+            } else {
+                parts.append(he ? "לא הוגדר יעד חודשי" : "No monthly target set")
+            }
+            if let biggest = section.biggestCategory {
+                let name = he ? biggest.category.shortName(for: .hebrew) : biggest.category.shortNameEn
+                // In SPENT a category is a district of the city, so the product says
+                // "district" even though the ledger calls it a category.
+                parts.append(he ? "הרובע המוביל החודש: \(name) · \(section.money(biggest.amountMinor))"
+                      : "Top district this month: \(name) · \(section.money(biggest.amountMinor))")
+            }
+            if section.hasUnresolved {
+                parts.append(he
+                    ? (section.unresolvedCount == 1
+                        ? "עסקה אחת ממתינה להמרה ולא נכללה בסכומים"
+                        : "\(section.unresolvedCount) עסקאות ממתינות להמרה ולא נכללו בסכומים")
+                    : (section.unresolvedCount == 1
+                        ? "1 transaction is waiting for a rate and is not in the totals"
+                        : "\(section.unresolvedCount) transactions are waiting for rates and are not in the totals"))
+            }
+            return parts.joined(separator: " · ")
+        case .sharedMembers(let section):
+            guard section.hasUnattributed else { return "" }
+            return he ? "\(section.money(section.unattributedMinor)) לא משויכים לחבר במרחב"
+                     : "\(section.money(section.unattributedMinor)) is not attributed to a member"
+        default: return ""
         }
     }
     var statement: String {
@@ -353,6 +449,9 @@ struct RecapEditorialCopy {
                 if let h = he ? i.headlineHe : i.headlineEn, !h.isEmpty { return h }
                 return he ? "כך עבר החודש." : "Here's how your month went."
             }
+        case .sharedOverview(let section):
+            return he ? "החודש ב־\(section.spaceName)" : "The month at \(section.spaceName)"
+        case .sharedMembers: return he ? "מי שילם החודש" : "Who paid this month"
         case .noticed: return he ? "עוד כמה דברים מהחודש" : "THINGS WE NOTICED"
         }
     }
@@ -392,6 +491,10 @@ struct RecapEditorialCopy {
             case .weekendRhythm: return "\(Int(i.primaryValue.rounded()))% " + (he ? "מההוצאות היו בסוף השבוע." : "of expenses fell on the weekend.")
             case .curated: return (he ? i.supportHe : i.supportEn) ?? ""
             }
+        case .sharedOverview(let section):
+            return he ? (section.transactionCount == 1 ? "עסקה אחת במרחב" : "\(section.transactionCount) עסקאות במרחב")
+                     : (section.transactionCount == 1 ? "1 transaction in the space" : "\(section.transactionCount) transactions in the space")
+        case .sharedMembers: return ""
         case .noticed: return ""
         }
     }
@@ -405,7 +508,19 @@ struct RecapEditorialCopy {
             }
             return parts.filter { !$0.isEmpty }.joined(separator: ". ")
         }
-        return [hero, statement, detail].filter { !$0.isEmpty }.joined(separator: ". ")
+        // A shared "who paid" page is a list of people, and the whole canvas is announced as
+        // one element — so the names and their amounts have to be part of the label or the
+        // page says nothing at all to a screen reader.
+        if case .sharedMembers(let section) = shot {
+            var parts = [statement]
+            for member in section.memberTotals {
+                parts.append("\(member.name) · \(section.money(member.amountMinor))")
+            }
+            parts.append(sharedSupport)
+            return parts.filter { !$0.isEmpty }.joined(separator: ". ")
+        }
+        return ([hero, statement, detail] + [sharedSupport]).filter { !$0.isEmpty }
+            .joined(separator: ". ")
     }
 }
 
@@ -438,6 +553,8 @@ struct RecapSceneFrame: View {
                 }
             }
         case .noticed: .luckyGreen
+        case .sharedOverview: .orangeRed
+        case .sharedMembers: .violetBlue
         default: .babyBlue
         }
     }
@@ -475,6 +592,8 @@ struct RecapSceneFrame: View {
                 }
             }
         case .noticed: .white
+        case .sharedOverview: .warmCream
+        case .sharedMembers: .babyBlue
         }
     }
     private var canvas: some View {
@@ -487,6 +606,8 @@ struct RecapSceneFrame: View {
             case .district: district
             case .insight(let insight): dynamic(insight)
             case .noticed(let rows): noticed(rows)
+            case .sharedOverview(let section): sharedOverview(section)
+            case .sharedMembers(let section): sharedMembers(section)
             case .portrait: portrait
             }
             if export {
@@ -748,6 +869,70 @@ struct RecapSceneFrame: View {
             .offset(x: 26, y: 130)
         }.frame(width: W, height: H, alignment: .topLeading)
     }
+    /// One space's month, drawn as a place: a road, a skyline, and the figure that month
+    /// came to. The same poster vocabulary as every other page, in that space's own
+    /// currency, saying only what happened there.
+    private func sharedOverview(_ section: SharedRecapSection) -> some View {
+        ZStack(alignment: .topLeading) {
+            RecapRoad(progress: beat.ease(0.3, 1.5), color: .deepNavy)
+                .frame(width: 450, height: 3).offset(x: -20, y: 664)
+            RecapSkyline(beat: beat, start: 0.8, lights: 3.4, accent: accent, quiet: false)
+                .frame(width: 330, height: 150).offset(x: 40, y: 500)
+
+            VStack(alignment: hAlignment, spacing: 10) {
+                text(copy.statement, size: 17, at: 1.5)
+                text(copy.hero, size: he ? 66 : 74, at: 2.0, hero: true)
+                text(copy.detail, size: 19, at: 3.0)
+                if !copy.sharedSupport.isEmpty {
+                    text(copy.sharedSupport, size: 15, at: 3.6)
+                }
+            }
+            .frame(width: 338, alignment: alignment)
+            .offset(x: 26, y: 120)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+
+    /// Who paid, in the order the space's own month reports it. Not a ranking: nobody is
+    /// sorted to make a winner, nobody is crowned, and a member who paid nothing is still
+    /// in the list because they were in the space all month. A member who has since left is
+    /// still here for the month they paid in, under the name and colour they had then.
+    private func sharedMembers(_ section: SharedRecapSection) -> some View {
+        let shown = Array(section.memberTotals.prefix(4))
+        let hidden = section.memberTotals.count - shown.count
+        return ZStack(alignment: .topLeading) {
+            RecapPark(beat: beat, start: 0.5).frame(width: 330, height: 190).offset(x: 44, y: 486)
+
+            VStack(alignment: hAlignment, spacing: 14) {
+                text(copy.statement, size: 16, at: 1.2)
+                ForEach(Array(shown.enumerated()), id: \.element.memberID) { index, member in
+                    HStack(spacing: 11) {
+                        Circle()
+                            .fill(Color(hex: member.colorHex))
+                            .frame(width: 10, height: 10)
+                            .opacity(Double(beat.ease(0.9 + Double(index) * 0.6)))
+                        text(memberLine(member, in: section), size: 20,
+                             at: 0.9 + Double(index) * 0.6, width: 296)
+                    }
+                    .frame(width: 338, alignment: alignment)
+                }
+                if hidden > 0 {
+                    text(he ? "ועוד \(hidden)" : "and \(hidden) more", size: 14, at: 3.4)
+                }
+                if !copy.sharedSupport.isEmpty {
+                    text(copy.sharedSupport, size: 14, at: 3.8)
+                }
+            }
+            .frame(width: 338, alignment: alignment)
+            .offset(x: 26, y: 130)
+        }.frame(width: W, height: H, alignment: .topLeading)
+    }
+
+    /// A name and what they paid, signed: a refund is shown as money coming back rather
+    /// than as a smaller contribution. Stated in the space's own currency.
+    private func memberLine(_ member: SharedMemberTotal, in section: SharedRecapSection) -> String {
+        "\(member.name) · \(section.money(member.amountMinor))"
+    }
+
     private var portrait: some View {
         ZStack(alignment: .topLeading) {
             // Onboarding-style drawn emphasis, carried by the original reveal beat.

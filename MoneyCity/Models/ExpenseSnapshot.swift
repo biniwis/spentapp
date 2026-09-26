@@ -53,7 +53,11 @@ public struct ExpenseSnapshot: Sendable, Identifiable, ExpenseReadable {
     init(_ expense: SharedExpense) {
         id = expense.id; amount = expense.amount; merchant = expense.merchant
         category = expense.category; timestamp = expense.date; buildingId = expense.buildingID
-        isUnresolvedForeign = false
+        // Ask the record, rather than assuming. Hardcoding `false` here meant every shared
+        // surface reading through `allExpenses` — analytics, recap, city — counted a
+        // foreign-currency expense with no rate as real spend in the space's currency.
+        // The rule lives on `SharedExpense` so there is one definition, not two.
+        isUnresolvedForeign = expense.isUnresolvedForeign
         paidBy = expense.paidBy
         note = expense.note
         buildingIdRaw = expense.buildingID

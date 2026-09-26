@@ -103,6 +103,33 @@ public final class AppScopeContext: ObservableObject {
         currentSpace?.currencyCode ?? (UserDefaults.standard.string(forKey: "app_currency_pref") ?? "ILS")
     }
 
+    /// The active scope's monthly spending target, in minor units of that scope's currency.
+    ///
+    /// Shared reads only `SharedSpace.monthlyBudgetMinor`, in the space's own currency.
+    /// There is deliberately no fallback in either direction: a space with no target
+    /// reports none instead of borrowing the personal `monthly_budget`, and the personal
+    /// budget keeps living in its existing `BudgetService` path untouched. Personal
+    /// returns `nil` here on purpose — callers that want the personal number must ask for
+    /// it, so the two can never be confused for each other.
+    var sharedMonthlyTargetMinor: Int64? {
+        currentSpace?.monthlyTarget
+    }
+
+    /// The active scope's shared currency. `nil` in personal, where amounts are not in a
+    /// space's currency and must not be formatted as if they were.
+    var sharedCurrencyCode: String? {
+        currentSpace?.currencyCode
+    }
+
+    /// The active space's month, or `nil` in personal scope.
+    ///
+    /// Built from the local store, never from the network: a target saved offline has to
+    /// show up immediately, so the profile never waits on a sync round trip.
+    var sharedMonthSummary: SharedMonthlySummary? {
+        guard let space = currentSpace else { return nil }
+        return SharedMonthlySummary.month(of: space, expenses: store.expenses, members: store.members)
+    }
+
     public func selectPersonal() {
         store.select(nil)
     }

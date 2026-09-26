@@ -1206,12 +1206,140 @@ public struct CurrencyPickerModal: View {
     }
 }
 
+/// Edits a shared space's monthly target.
+///
+/// Its own small sheet rather than `BudgetSheet`, which edits the personal
+/// `monthly_budget` and per-category limits. The currency is shown but not editable here:
+/// it is the space's ledger currency, fixed when the space was created, and changing it
+/// would mean reinterpreting every amount already recorded in the space.
+///
+/// Takes the space explicitly instead of reading the active scope, so it can never be
+/// opened against a different space than the one the reader is looking at.
+struct SharedTargetEditorSheet: View {
+    let space: SharedSpace
+
+    @EnvironmentObject private var l10n: LocalizationManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var amountText = ""
+    @State private var errorText: String?
+    @FocusState private var isAmountFocused: Bool
+
+    private var currencyCode: String { space.currencyCode }
+
+    private var parsedMinor: Int64? {
+        guard !amountText.isEmpty else { return nil }
+        return try? SharedMoney.minor(amountText, currency: currencyCode)
+    }
+
+    private var canSave: Bool { parsedMinor != nil }
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(l10n.language == .hebrew ? "יעד חודשי" : "Monthly Target")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+
+                    HStack(spacing: 8) {
+                        TextField(l10n.language == .hebrew ? "0" : "0", text: $amountText)
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.leading)
+                            .focused($isAmountFocused)
+                            .onChange(of: amountText) { _, _ in errorText = nil }
+                            .accessibilityLabel(l10n.language == .hebrew ? "סכום היעד החודשי" : "Monthly target amount")
+                        Text(SharedMoney.symbol(currencyCode))
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundColor(MoneyCityTheme.brandPrimary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 14)
+                    .background(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .strokeBorder(Color.borderSubtle, lineWidth: 1)
+                    )
+                }
+
+                HStack(spacing: 6) {
+                    MoneyIcon(.globe, size: 13, color: Color.textSecondary)
+                    Text(l10n.language == .hebrew
+                         ? "המטבע של המרחב · \(currencyCode)"
+                         : "Space currency · \(currencyCode)")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                }
+
+                if let errorText {
+                    Text(errorText)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                }
+
+                Spacer()
+
+                if space.monthlyTarget != nil {
+                    Button {
+                        save(nil)
+                    } label: {
+                        Text(l10n.language == .hebrew ? "הסרת היעד" : "Remove Target")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(20)
+            .background(Color.appBackground)
+            .navigationTitle(l10n.language == .hebrew ? "יעד חודשי" : "Monthly Target")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(l10n.language == .hebrew ? "ביטול" : "Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(l10n.language == .hebrew ? "שמירה" : "Save") { save(parsedMinor) }
+                        .disabled(!canSave)
+                }
+            }
+        }
+        .presentationDetents([.height(430)])
+        .onAppear {
+            // Open on the current value, in major units so the field reads "8000" and not
+            // the minor-unit "800000" a user would have to convert in their head.
+            if let existing = space.monthlyTarget {
+                amountText = String(Int64(SharedMoney.major(existing, currency: currencyCode)))
+            }
+            isAmountFocused = true
+        }
+    }
+
+    /// Writes through the store, so the change queues locally and the profile reflects it
+    /// immediately rather than after a sync round trip.
+    private func save(_ minor: Int64?) {
+        do {
+            try SharedWorkspaceStore.shared.setMonthlyBudget(minor, for: space.id)
+            Haptics.impact(.light)
+            dismiss()
+        } catch {
+            errorText = (error as? SharedLedgerError)?.errorDescription
+                ?? (l10n.language == .hebrew ? "לא ניתן לשמור" : "Could not save")
+        }
+    }
+}
+
 struct SharedSpaceManagement: View {
     let space: SharedSpace
     @ObservedObject private var store = SharedWorkspaceStore.shared
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
     @State private var share: SharingItem?
+    @State private var showTargetEditor = false
     @State private var showPreInvite = false
     @State private var showDeleteConfirm = false
     @State private var showLeaveConfirm = false
@@ -1361,6 +1489,54 @@ struct SharedSpaceManagement: View {
                     .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
                     .padding(.horizontal, 20)
 
+                    // Monthly Target Card
+                    //
+                    // Placed under the space's own details, and clickable, because the
+                    // onboarding promises the target can be changed after the fact. This
+                    // edits the space's `monthlyBudgetMinor` only — not currency, not
+                    // members, not colours.
+                    Button {
+                        Haptics.selection()
+                        showTargetEditor = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.themeMintSoft)
+                                    .frame(width: 40, height: 40)
+                                MoneyIcon(.target, size: 20, color: MoneyCityTheme.brandPrimary)
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(store.text("יעד חודשי", "Monthly Target"))
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                                if let target = space.monthlyTarget {
+                                    Text(SharedMoney.formattedMajor(target, currency: space.currencyCode)
+                                         + " " + space.currencyCode)
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundColor(Color.deepNavy)
+                                } else {
+                                    Text(store.text("לא הוגדר · לחיצה להגדרה", "Not set · tap to set"))
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(Color.textSecondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            Image(systemName: l10n.isHebrew ? "chevron.left" : "chevron.right")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(Color.textSecondary)
+                        }
+                        .padding(16)
+                        .background(Color.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .shadow(color: Color.black.opacity(0.035), radius: 8, y: 2)
+                        .padding(.horizontal, 20)
+                    }
+                    .buttonStyle(.plain)
+
                     // Space Settings Card
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(spacing: 8) {
@@ -1475,6 +1651,10 @@ struct SharedSpaceManagement: View {
             .background(Color.appBackground.ignoresSafeArea())
             .sheet(isPresented: $showConflictResolution) {
                 SharedConflictResolutionSheet(spaceID: space.id)
+                    .environmentObject(l10n)
+            }
+            .sheet(isPresented: $showTargetEditor) {
+                SharedTargetEditorSheet(space: space)
                     .environmentObject(l10n)
             }
             .sheet(isPresented: $showPreInvite) {

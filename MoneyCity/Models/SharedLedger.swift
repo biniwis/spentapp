@@ -31,6 +31,17 @@ struct SharedSpace: Codable, Identifiable, Equatable {
         return calendar
     }
 
+    /// The space's monthly target, or `nil` when it has none.
+    ///
+    /// The single place a shared target is read from, so no view can reach for the personal
+    /// `monthly_budget` while looking at a space. A stored zero or negative is treated as
+    /// "no target" rather than a target of zero, which would render as an instantly
+    /// over-spent month.
+    var monthlyTarget: Int64? {
+        guard let minor = monthlyBudgetMinor, minor > 0 else { return nil }
+        return minor
+    }
+
     func progress(spentMinor: Int64) -> SharedBudgetProgress {
         SharedBudgetProgress(spentMinor: spentMinor, targetMinor: monthlyBudgetMinor)
     }
@@ -90,6 +101,106 @@ struct SharedExpense: Codable, Identifiable, Equatable {
     var exchangeRateDate: Date?
 
     var amount: Double { SharedMoney.major(amountMinor, currency: currencyCode) }
+
+    /// Whether this record is still waiting on a currency conversion.
+    ///
+    /// Mirrors `Transaction.isUnresolvedForeign`, but measures against the *space's*
+    /// currency instead of the personal base: shared money is never converted into the
+    /// personal one. An amount typed in a foreign currency with no rate applied has no
+    /// honest value in the space's currency, so counting it as spend would quietly
+    /// invent a conversion.
+    ///
+    /// Needed here rather than read off `ExpenseSnapshot`, which hardcodes
+    /// `isUnresolvedForeign = false` for shared records and therefore cannot see it.
+    var isUnresolvedForeign: Bool {
+        guard let original = originalCurrency, !original.isEmpty else { return false }
+        let spaceCode = currencyCode.uppercased()
+        let originalCode = (CurrencyResolutionService.normalizeToISOCode(original) ?? original).uppercased()
+        guard originalCode != spaceCode else { return false }
+        let rate = exchangeRate.flatMap { Double($0) }
+        return rate == nil || rate == 0
+    }
+}
+
+/// One member's signed share of a space's month.
+struct SharedMemberTotal: Identifiable, Equatable {
+    let memberID: String
+    let name: String
+    let colorHex: String
+    /// Net paid, signed: a refund to this member comes straight off it, so the value can
+    /// be zero or negative. Deliberately never clamped — Profile reports the ledger, and
+    /// turning a real negative into a zero would misstate what happened.
+    let amountMinor: Int64
+
+    var id: String { memberID }
+}
+
+/// A space's month, read once so every surface reports the same numbers.
+///
+/// The rules that matter, in one place so a view cannot get them subtly wrong:
+///
+/// * Only the given space. Another space's spending is never mixed in.
+/// * The month is the space's own calendar and time zone, not `Calendar.current`, so a
+///   record on the last night of the month belongs to the month the residents would name.
+/// * Refunds stay signed and reduce the month's spend and the member who paid them.
+/// * Unresolved foreign records are counted but not summed: the count keeps reflecting the
+///   record, the money stays out until there is a rate.
+/// * A member with no spending still appears, at zero.
+/// * Spend paid by someone who is not a current member counts toward the month but is
+///   attributed to nobody, so a shared payer arriving later cannot shrink the total.
+struct SharedMonthlySummary: Equatable {
+    let spaceID: UUID
+    let spentMinor: Int64
+    let transactionCount: Int
+    let unresolvedCount: Int
+    let memberTotals: [SharedMemberTotal]
+    let unattributedMinor: Int64
+    let progress: SharedBudgetProgress
+
+    /// The sum actually attributed to members. Lower than `spentMinor` when something was
+    /// paid by a non-member.
+    var attributedMinor: Int64 {
+        memberTotals.reduce(0) { $0 + $1.amountMinor }
+    }
+
+    static func month(of space: SharedSpace,
+                      expenses: [SharedExpense],
+                      members: [SharedMember],
+                      now: Date = Date()) -> SharedMonthlySummary {
+        let calendar = space.calendar
+        let inMonth = expenses.filter {
+            $0.spaceID == space.id && calendar.isDate($0.date, equalTo: now, toGranularity: .month)
+        }
+        let resolvable = inMonth.filter { !$0.isUnresolvedForeign }
+        let activeMembers = members.filter { $0.spaceID == space.id && $0.isActive }
+        let memberIDs = Set(activeMembers.map(\.id))
+
+        var totals: [String: Int64] = [:]
+        var unattributed: Int64 = 0
+        for expense in resolvable {
+            if memberIDs.contains(expense.paidBy) {
+                totals[expense.paidBy, default: 0] += expense.amountMinor
+            } else {
+                unattributed += expense.amountMinor
+            }
+        }
+
+        let memberTotals = activeMembers.map { member in
+            SharedMemberTotal(memberID: member.id,
+                              name: member.name,
+                              colorHex: member.colorHex,
+                              amountMinor: totals[member.id] ?? 0)
+        }
+        let spent = resolvable.reduce(Int64(0)) { $0 + $1.amountMinor }
+
+        return SharedMonthlySummary(spaceID: space.id,
+                                    spentMinor: spent,
+                                    transactionCount: inMonth.count,
+                                    unresolvedCount: inMonth.count - resolvable.count,
+                                    memberTotals: memberTotals,
+                                    unattributedMinor: unattributed,
+                                    progress: space.progress(spentMinor: spent))
+    }
 }
 
 struct SharedExpenseConflict: Identifiable, Equatable {

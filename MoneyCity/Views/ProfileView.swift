@@ -56,6 +56,7 @@ public struct ProfileView: View {
     @State private var showSettings = false
     @State private var showPrivacySheet = false
     @State private var showBudgetsSheet = false
+    @State private var showSharedTargetEditor = false
     @State private var showRecurringSheet = false
     @State private var showGoalsSheet = false
     @State private var showApplePayGuideSheet = false
@@ -252,6 +253,11 @@ public struct ProfileView: View {
                     // ── 4 Bento Metric Tiles (Tactile with live micro-indicators) ──
                     statsGridCard
 
+                    // ── Shared: who paid this month ──
+                    if scopeCapabilities.isShared {
+                        sharedMemberBreakdownCard
+                    }
+
                     // ── 12-Month Spending Bar Chart (Architectural Styling) ──
                     yearChartCard
 
@@ -293,6 +299,14 @@ public struct ProfileView: View {
         .sheet(isPresented: $showBudgetsSheet) {
             BudgetSheet()
                 .environmentObject(l10n)
+        }
+        .sheet(isPresented: $showSharedTargetEditor) {
+            // The shared editor, never `BudgetSheet`: that one edits the personal
+            // `monthly_budget` and per-category limits, which are a different scope.
+            if let space = scope.currentSpace {
+                SharedTargetEditorSheet(space: space)
+                    .environmentObject(l10n)
+            }
         }
         .sheet(isPresented: $showRecurringSheet) {
             RecurringExpensesSheet()
@@ -434,59 +448,48 @@ public struct ProfileView: View {
     // MARK: - User Profile Greeting Card (Mayor Hero Badge)
 
     private var userProfileCard: some View {
-        HStack(spacing: 14) {
-            #if !SWIFT_PACKAGE
-            if scopeCapabilities.isShared, let _ = scope.currentSpace {
-                let participants = scope.participants
-                if participants.isEmpty {
-                    ZStack {
-                        Circle()
-                            .fill(MoneyCityTheme.babyBlue.opacity(0.6))
-                            .frame(width: 56, height: 56)
-                        MoneyIcon(.users, size: 28, color: MoneyCityTheme.brandPrimary)
-                    }
-                } else {
-                    HStack(spacing: -8) {
-                        ForEach(participants.prefix(2)) { p in
-                            SharedMemberMark(colorHex: p.colorHex, size: 48)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 14) {
+                #if !SWIFT_PACKAGE
+                if scopeCapabilities.isShared, let _ = scope.currentSpace {
+                    let participants = scope.participants
+                    if participants.isEmpty {
+                        ZStack {
+                            Circle()
+                                .fill(MoneyCityTheme.babyBlue.opacity(0.6))
+                                .frame(width: 56, height: 56)
+                            MoneyIcon(.users, size: 28, color: MoneyCityTheme.brandPrimary)
+                        }
+                    } else {
+                        HStack(spacing: -8) {
+                            ForEach(participants.prefix(2)) { p in
+                                SharedMemberMark(colorHex: p.colorHex, size: 48)
+                            }
                         }
                     }
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(MoneyCityTheme.warmCream)
+                            .frame(width: 56, height: 56)
+                        MoneyIcon(.user, size: 36)
+                    }
                 }
-            } else {
+                #else
                 ZStack {
                     Circle()
                         .fill(MoneyCityTheme.warmCream)
                         .frame(width: 56, height: 56)
                     MoneyIcon(.user, size: 36)
                 }
-            }
-            #else
-            ZStack {
-                Circle()
-                    .fill(MoneyCityTheme.warmCream)
-                    .frame(width: 56, height: 56)
-                MoneyIcon(.user, size: 36)
-            }
-            #endif
+                #endif
 
-            VStack(alignment: .leading, spacing: 6) {
-                #if !SWIFT_PACKAGE
-                if scopeCapabilities.isShared, let space = scope.currentSpace {
-                    Text(space.name)
-                        .font(.system(size: 19, weight: .bold, design: .rounded))
-                        .foregroundColor(Color.deepNavy)
-
-                    HStack(spacing: 6) {
-                        HStack(spacing: 4) {
-                            MoneyIcon(.calendar, size: 12)
-                            Text(l10n.language == .hebrew ? "החודש: \(l10n.formatScoped(amount: totalThisMonth))" : "This month: \(l10n.formatScoped(amount: totalThisMonth))")
-                                .font(.system(size: 11, weight: .bold, design: .rounded))
-                        }
-                        .foregroundColor(Color.deepNavy)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
-                        .background(MoneyCityTheme.jetBlack.opacity(0.05))
-                        .clipShape(Capsule())
+                VStack(alignment: .leading, spacing: 6) {
+                    #if !SWIFT_PACKAGE
+                    if scopeCapabilities.isShared, let space = scope.currentSpace {
+                        Text(space.name)
+                            .font(.system(size: 19, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
 
                         Text(l10n.language == .hebrew ? "מרחב משותף" : "Shared Space")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
@@ -495,23 +498,126 @@ public struct ProfileView: View {
                             .padding(.vertical, 4)
                             .background(MoneyCityTheme.spentGreenSoft)
                             .clipShape(Capsule())
+                    } else {
+                        personalGreetingContent
                     }
-                    .padding(.top, 2)
-                } else {
+                    #else
                     personalGreetingContent
+                    #endif
                 }
-                #else
-                personalGreetingContent
-                #endif
+
+                Spacer()
             }
 
-            Spacer()
+            #if !SWIFT_PACKAGE
+            if let summary = scope.sharedMonthSummary {
+                sharedMonthBlock(summary)
+            }
+            #endif
         }
         .padding(18)
         .background(Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
         .padding(.horizontal, 16)
+    }
+
+    /// The shared headline: what the space spent this month, against what it aimed for.
+    ///
+    /// Descriptive, never a scoreboard. Going over the target says so in words and warms
+    /// the bar's colour a little; it does not turn red or scold.
+    private func sharedMonthBlock(_ summary: SharedMonthlySummary) -> some View {
+        let progress = summary.progress
+        return VStack(alignment: .leading, spacing: 10) {
+            if progress.hasTarget, let target = progress.targetMinor {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(sharedAmountText(summary.spentMinor))
+                        .font(.system(size: 26, weight: .heavy, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                    Text(l10n.language == .hebrew ? "מתוך" : "of")
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.textSecondary)
+                    Text(sharedAmountText(target))
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                }
+
+                if progress.isOverTarget {
+                    let over = -(progress.remainingMinor ?? 0)
+                    Text(l10n.language == .hebrew ? "מעל היעד ב־\(sharedAmountText(over))" : "\(sharedAmountText(over)) over target")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.spentGreen)
+                } else {
+                    Text(l10n.language == .hebrew ? "נותרו \(sharedAmountText(progress.remainingMinor ?? 0)) החודש" : "\(sharedAmountText(progress.remainingMinor ?? 0)) left this month")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.spentGreen)
+                }
+            } else {
+                if summary.spentMinor == 0 {
+                    Text(l10n.language == .hebrew ? "עדיין אין הוצאות החודש" : "No spending this month yet")
+                        .font(.system(size: 19, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 5) {
+                        Text(sharedAmountText(summary.spentMinor))
+                            .font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Text(l10n.language == .hebrew ? "החודש" : "this month")
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                }
+
+                Text(l10n.language == .hebrew ? "עדיין לא הוגדר יעד חודשי" : "No monthly target set yet")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.textSecondary)
+            }
+
+            // No bar at all without a target: a 0% bar would read as a real measurement.
+            if let fraction = progress.fraction {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                        Capsule()
+                            .fill(progress.isOverTarget ? Color.orange : MoneyCityTheme.brandPrimary)
+                            // The bar clamps; the fraction above it stays uncapped, because
+                            // 118% spent is information the reader is owed.
+                            .frame(width: geo.size.width * CGFloat(min(fraction, 1)))
+                    }
+                }
+                .frame(height: 6)
+            }
+
+            if !progress.hasTarget {
+                Button {
+                    Haptics.impact(.light)
+                    showSharedTargetEditor = true
+                } label: {
+                    HStack(spacing: 5) {
+                        MoneyIcon(.target, size: 13, color: MoneyCityTheme.brandPrimary)
+                        Text(l10n.language == .hebrew ? "הגדרת יעד" : "Set Target")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(MoneyCityTheme.brandPrimary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(MoneyCityTheme.spentGreenSoft)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
+        }
+    }
+
+    /// Shared amounts stay exact: decimals appear only when the currency has them and the
+    /// value actually carries a fraction, so ₪5,860 stays ₪5,860 while ₪5,860.50 keeps
+    /// its cents and ¥5,000 is not given phantom decimals.
+    private func sharedAmountText(_ minor: Int64) -> String {
+        let code = scope.sharedCurrencyCode ?? "ILS"
+        let major = SharedMoney.major(minor, currency: code)
+        let hasFraction = SharedMoney.digits(code) > 0 && major != major.rounded()
+        return l10n.formatScoped(amount: major, showDecimals: hasFraction)
     }
 
     private var personalGreetingContent: some View {
@@ -560,12 +666,158 @@ public struct ProfileView: View {
             monthTransactionsMetricTile
 
             // 3. Active Streak 🔥 (Tap triggers flame pulse and streak status)
+            // Streak is a personal habit, so a shared space has no use for it.
             if !scopeCapabilities.isShared { streakMetricTile }
 
             // 4. Budget Goal 🎯 (Tap toggles percentage vs remaining amount; edit pill opens BudgetSheet)
-            if scopeCapabilities.hasBudget { budgetMetricTile }
+            // Shared gets its own tile: the personal one is wired to `monthly_budget` and
+            // `CategoryBudget`, which are a different scope's numbers.
+            if scopeCapabilities.isShared {
+                sharedTargetMetricTile
+            } else if scopeCapabilities.hasBudget {
+                budgetMetricTile
+            }
         }
         .padding(.horizontal, 16)
+    }
+
+    /// The shared counterpart of `budgetMetricTile`.
+    ///
+    /// Reads `SharedSpace.monthlyBudgetMinor` and nothing else — no `BudgetService`, no
+    /// `userMonthlyBudget`, no `BudgetSheet` — because those are the personal budget and
+    /// showing them inside a shared space would describe the wrong money. Tapping opens the
+    /// shared target editor, which saves through `setMonthlyBudget`.
+    private var sharedTargetMetricTile: some View {
+        let summary = scope.sharedMonthSummary
+        let progress = summary?.progress
+        let hasTarget = progress?.hasTarget ?? false
+
+        return Button {
+            Haptics.selection()
+            showSharedTargetEditor = true
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    ZStack {
+                        Circle()
+                            .fill(Color.themeMintSoft)
+                            .frame(width: 36, height: 36)
+                        TargetReticleVectorIcon(color: Color(red: 16/255, green: 185/255, blue: 129/255))
+                            .scaleEffect(0.85)
+                    }
+                    Spacer()
+                    Circle()
+                        .fill(Color(red: 16/255, green: 185/255, blue: 129/255).opacity(0.18))
+                        .frame(width: 6, height: 6)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    if hasTarget, let target = progress?.targetMinor {
+                        Text(sharedAmountText(target))
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    } else {
+                        Text(l10n.language == .hebrew ? "הגדרת יעד" : "Set Target")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                    }
+
+                    if let fraction = progress?.fraction {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                                Capsule()
+                                    .fill((progress?.isOverTarget ?? false) ? Color.orange : MoneyCityTheme.brandPrimary)
+                                    .frame(width: geo.size.width * CGFloat(min(fraction, 1)))
+                            }
+                        }
+                        .frame(height: 4)
+                    }
+
+                    Text(l10n.language == .hebrew ? "יעד חודשי למרחב" : "Space Monthly Target")
+                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
+                        .lineLimit(1)
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 108)
+            .background(Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
+        }
+        .buttonStyle(.plain)
+        .bouncyPress(scale: 0.96)
+    }
+
+    /// Who paid what this month, in the space's own currency and members' own colours.
+    ///
+    /// Deliberately not a leaderboard: no ranking, no winner, no share-of-total percentage.
+    /// A member who has spent nothing still appears, at zero, because "we all live here"
+    /// is not the same statement as "we all spent here" — and a refund larger than the
+    /// payment shows its real negative rather than being flattened to zero.
+    private var sharedMemberBreakdownCard: some View {
+        Group {
+            if let summary = scope.sharedMonthSummary {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        HStack(spacing: 8) {
+                            MoneyIcon(.users, size: 16, color: MoneyCityTheme.brandPrimary)
+                            Text(l10n.language == .hebrew ? "מי שילם החודש" : "Who Paid This Month")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                        }
+                        Spacer()
+                    }
+
+                    VStack(spacing: 10) {
+                        ForEach(summary.memberTotals) { total in
+                            HStack(spacing: 12) {
+                                SharedMemberMark(colorHex: total.colorHex, size: 34)
+                                Text(total.name)
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color.deepNavy)
+                                    .lineLimit(1)
+                                Spacer(minLength: 8)
+                                Text(sharedAmountText(total.amountMinor))
+                                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                                    .foregroundColor(total.amountMinor < 0 ? Color.spentGreen : Color.deepNavy)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                            }
+                        }
+                    }
+
+                    // Money that arrived from outside the member list. Only worth saying
+                    // when there is any, and never folded into someone's total.
+                    if summary.unattributedMinor != 0 {
+                        Text(l10n.language == .hebrew
+                             ? "כולל \(sharedAmountText(summary.unattributedMinor)) שלא משויכים לחבר במרחב"
+                             : "Includes \(sharedAmountText(summary.unattributedMinor)) not attributed to a member")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if summary.unresolvedCount > 0 {
+                        Text(l10n.language == .hebrew
+                             ? "\(summary.unresolvedCount) עסקאות ממטבע חוץ ממתינות להמרה ולא נספרו"
+                             : "\(summary.unresolvedCount) foreign-currency records await a rate and are not counted")
+                            .font(.system(size: 11, weight: .medium, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(16)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .shadow(color: Color.black.opacity(0.035), radius: 10, y: 3)
+                .padding(.horizontal, 16)
+            }
+        }
     }
 
     private var yearMetricTile: some View {
@@ -1055,6 +1307,16 @@ public struct ProfileView: View {
                             Text("\(members.count) " + (l10n.language == .hebrew ? "חברים · \(space.currencyCode)" : "members · \(space.currencyCode)"))
                                 .font(.system(size: 11, weight: .medium, design: .default))
                                 .foregroundColor(Color.textSecondary)
+                            // A target turns the row into a one-line answer rather than a
+                            // dashboard: what the space has spent against what it aimed for.
+                            // Without a target there is nothing true to add, so the row stays
+                            // as it was.
+                            if let progress = sharedRowProgress(for: space) {
+                                Text(progress)
+                                    .font(.system(size: 11, weight: .bold, design: .default))
+                                    .foregroundColor(Color.deepNavy)
+                                    .padding(.top, 1)
+                            }
                         }
 
                         Spacer()
@@ -1083,6 +1345,25 @@ public struct ProfileView: View {
         }
     }
     #endif
+
+    /// "₪5,860 מתוך ₪8,000 החודש" for a space row in the personal profile, or `nil` when
+    /// the space has no target.
+    ///
+    /// A sum rather than a percentage, because "we have spent 5,860" is a fact a household
+    /// can use, while "73%" is a score. Formatted in the *space's* currency, not the
+    /// personal one: converting someone else's space into my shekels would misstate it.
+    private func sharedRowProgress(for space: SharedSpace) -> String? {
+        guard let target = space.monthlyTarget else { return nil }
+        let summary = SharedMonthlySummary.month(of: space,
+                                                expenses: SharedWorkspaceStore.shared.expenses,
+                                                members: SharedWorkspaceStore.shared.members)
+        let spent = SharedMoney.formattedMajor(summary.spentMinor, currency: space.currencyCode)
+        let goal = SharedMoney.formattedMajor(target, currency: space.currencyCode)
+        let code = space.currencyCode
+        return l10n.language == .hebrew
+            ? "\(spent) מתוך \(goal) החודש · \(code)"
+            : "\(spent) of \(goal) this month · \(code)"
+    }
 
     private var managementMenuCard: some View {
         VStack(spacing: 0) {
@@ -1120,7 +1401,19 @@ public struct ProfileView: View {
                 Divider().background(Color.borderSubtle).padding(.leading, 68)
             }
 
-            if scopeCapabilities.hasBudget {
+            if scopeCapabilities.isShared {
+                menuRow(
+                    title: l10n.language == .hebrew ? "יעד חודשי" : "Monthly Target",
+                    subtitle: l10n.language == .hebrew ? "היעד החודשי של המרחב המשותף" : "This space's monthly spending target",
+                    iconBg: Color(red: 243/255, green: 232/255, blue: 255/255)
+                ) {
+                    MoneyIcon(.target, size: 24)
+                } action: {
+                    showSharedTargetEditor = true
+                }
+
+                Divider().background(Color.borderSubtle).padding(.leading, 68)
+            } else if scopeCapabilities.hasBudget {
                 menuRow(
                     title: l10n.language == .hebrew ? "תקציב חודשי" : "Monthly Budget",
                     subtitle: l10n.language == .hebrew ? "ניהול תקרות הוצאה לפי קטגוריה" : "Manage spending limits by category",
@@ -1163,7 +1456,35 @@ public struct ProfileView: View {
             }
 
             if RemoteConfigService.shared.isFeatureEnabled("automaticCapture") {
-                menuRow(
+                if scopeCapabilities.isShared {
+                    // Informational only. Capture still lands in the personal city, and
+                    // moving it into a space does not exist yet — so this row must not
+                    // promise a transfer, and must not open a setup that implies one.
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color(red: 254/255, green: 240/255, blue: 245/255))
+                                .frame(width: 44, height: 44)
+                            MoneyIcon(.lightning, size: 24)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(l10n.language == .hebrew ? "קליטה אוטומטית נשמרת באישי" : "Automatic capture stays personal")
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                            Text(l10n.language == .hebrew
+                                 ? "הוצאות שנקלטות אוטומטית נשמרות בעיר האישית."
+                                 : "Automatically captured expenses are saved to your personal city.")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.vertical, 12)
+
+                    Divider().background(Color.borderSubtle).padding(.leading, 68)
+                } else {
+                    menuRow(
                     title: l10n.language == .hebrew ? "קליטה אוטומטית" : "Automatic Capture",
                     subtitle: automaticCaptureSubtitle,
                     iconBg: Color(red: 254/255, green: 240/255, blue: 245/255)
@@ -1202,8 +1523,6 @@ public struct ProfileView: View {
                     }
                 }
 
-                if !scopeCapabilities.isShared {
-                    Divider().background(Color.borderSubtle).padding(.leading, 68)
                 }
             }
 

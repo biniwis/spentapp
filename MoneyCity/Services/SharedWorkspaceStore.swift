@@ -732,6 +732,19 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
                 buildingID: index % 2 == 0 ? "food_coffee" : "food_super", date: Date().addingTimeInterval(-Double(index) * 3600 * 8),
                 note: "", paidBy: payer, createdBy: payer, updatedBy: payer))
         }
+        // A refund, so the demo can actually show a member's net dropping below what they
+        // paid rather than only ever growing. Stored negative, like the personal ledger.
+        let meID = myMemberID(in: id)
+        try saveExpense(SharedExpense(id: UUID(), spaceID: id, amountMinor: -1_200, currencyCode: "ILS",
+            merchant: text("החזר מספקה", "Supermarket refund"), category: .food, buildingID: "food_super",
+            date: Date().addingTimeInterval(-3_600 * 5), note: "", paidBy: meID, createdBy: meID, updatedBy: meID))
+        // A foreign-currency record with no rate applied. It must show up in the record
+        // count and stay out of the money, which is only visible if one exists.
+        try saveExpense(SharedExpense(id: UUID(), spaceID: id, amountMinor: 4_500, currencyCode: "ILS",
+            merchant: text("טיסה", "Flight"), category: .transport, buildingID: "transport_air",
+            date: Date().addingTimeInterval(-3_600 * 30), note: "", paidBy: partner.id, createdBy: partner.id,
+            updatedBy: partner.id, originalAmount: "120.00", originalCurrency: "USD",
+            exchangeRate: nil, exchangeRateDate: nil))
     }
     #endif
 }

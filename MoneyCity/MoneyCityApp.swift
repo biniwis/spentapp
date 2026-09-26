@@ -404,9 +404,15 @@ struct MoneyCityApp: App {
                         Button(l10n.language == .hebrew ? "סגירה" : "Dismiss") { sharedWorkspace.errorMessage = nil }
                     } message: { Text(sharedWorkspace.errorMessage ?? "") }
                 .task {
+                    // Opportunistic only, and never a gate on discovery: the shared list
+                    // fetches its own spaces when it is opened, so a device that has lost
+                    // the flag still finds everything it owns. This keeps a returning
+                    // shared user's list warm without making a personal user pay for a
+                    // CloudKit round trip they never asked for. `discover` treats a missing
+                    // iCloud account as an ordinary state, so it raises nothing here, and
+                    // because this is async it cannot hold up the personal UI.
                     if UserDefaults.standard.bool(forKey: "shared_spaces_enabled") {
-                        do { try await sharedWorkspace.refresh() }
-                        catch { sharedWorkspace.errorMessage = error.localizedDescription }
+                        await sharedWorkspace.discover()
                     }
                 }
                 #if DEBUG

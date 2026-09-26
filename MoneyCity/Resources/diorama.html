@@ -201,6 +201,9 @@
     <div id="diorama-overlays"></div>
   </div>
   <script>
+    const ARCTIC = window._arcticWorld === true;
+    const ISRAEL = window._israelWorld === true;
+    const FUTURE = window._futureWorld === true;
     const stage = document.getElementById("stage");
     const overlaysContainer = document.getElementById("diorama-overlays");
     const scene = new THREE.Scene();
@@ -287,13 +290,13 @@
     // ========== LIGHTING (soft illustration with readable light and shade) ==========
     // Less flat ambient light lets façades keep a warm lit face and a cool shaded face,
     // which is the depth cue that makes the reference feel illustrated rather than plastic.
-    const hemiLight = new THREE.HemisphereLight(0xFFF8E8, 0x9FB2C5, 0.27);
+    const hemiLight = new THREE.HemisphereLight(ISRAEL ? 0xFFF1D5 : 0xFFF8E8, ISRAEL ? 0xC6B99D : 0x9FB2C5, 0.27);
     scene.add(hemiLight);
 
     const ambientLight = new THREE.AmbientLight(0xFFFDF8, 0.14);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xFFF3DC, 1.02);
+    const sunLight = new THREE.DirectionalLight(ISRAEL ? 0xFFE6BD : 0xFFF3DC, 1.02);
     sunLight.position.set(-24, 38, 28);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
@@ -477,6 +480,7 @@
       g.fillStyle = fg || "#FFFFFF";
       g.font = "900 " + (fontSize || 34) + "px -apple-system, BlinkMacSystemFont, sans-serif";
       g.textAlign = "center"; g.textBaseline = "middle";
+      g.direction = /[\u0590-\u05FF]/.test(title) ? "rtl" : "ltr";
       g.fillText(title, 128, 40);
       return tex(c);
     }
@@ -521,9 +525,9 @@
     const M_WOOD       = mat(0x9A633D, 0.88);
     const M_WHITE      = mat(0xFFFCF6, 0.76);
     const M_GOLD       = mat(0xEFB64A, 0.48, 0.55);
-    const M_GRASS_LIME = mat(0x7DBB45, 0.86);
-    const M_GRASS_DARK = mat(0x328A49, 0.88);
-    const M_ASPHALT    = mat(0x56657A, 0.90);
+    const M_GRASS_LIME = mat(ISRAEL ? 0xA6AD69 : 0x7DBB45, 0.86);
+    const M_GRASS_DARK = mat(ISRAEL ? 0x768D58 : 0x328A49, 0.88);
+    const M_ASPHALT    = mat(ISRAEL ? 0x85847B : 0x56657A, 0.90);
     const M_WATER      = new THREE.MeshStandardMaterial({
       // A directional light plus an orthographic camera gives every point on a flat plane
       // the same half-vector, so a low roughness turns the entire lake into one specular
@@ -565,7 +569,7 @@
     root.add(earthBase);
 
     // Lush Green Landscape Deck (The Main Surface)
-    const islandDeck = mesh(roundedBox(25.6, 0.16, 25.6, 1.1), M_GRASS_LIME, 0, Y_GRASS - 0.08, 0, false, true);
+    const islandDeck = mesh(roundedBox(25.6, 0.16, 25.6, 1.1), ISRAEL ? mat(0xCFC5AD, 0.96) : M_GRASS_LIME, 0, Y_GRASS - 0.08, 0, false, true);
     root.add(islandDeck);
 
     // ────────────────────────────────────────────────────────────────
@@ -632,10 +636,29 @@
 
     // Raised pedestrian pavers. Every block registers its footprint so the greenery pass
     // can scatter trees over open grass only.
+    function israelPavingTex() {
+      const c = cv(128, 128), ctx = c.getContext("2d");
+      ctx.fillStyle = "#B5B0A1"; ctx.fillRect(0, 0, 128, 128);
+      const shades = ["#D6D0BF", "#CFC8B7", "#DCD5C3", "#C9C3B2"];
+      for (let row = 0; row < 8; row++) {
+        for (let col = -1; col < 5; col++) {
+          ctx.fillStyle = shades[(row * 3 + col + 8) % 4];
+          ctx.fillRect(col * 32 + row % 2 * 16 + 1, row * 16 + 1, 30, 14);
+        }
+      }
+      return tex(c);
+    }
     const paverMat = new THREE.MeshStandardMaterial({ map: sidewalkPaverTex(), color: C(0xF4EBDD), roughness: 0.90 });
     const pavedBlocks = [];
     function addSidewalkBlock(cx, cz, w, d) {
-      const sb = mesh(roundedBox(w, 0.10, d, 0.35), paverMat, cx, Y_WALK - 0.05, cz, false, true);
+      let pavement = paverMat;
+      if (ISRAEL) {
+        const paving = israelPavingTex();
+        paving.wrapS = paving.wrapT = THREE.RepeatWrapping;
+        paving.repeat.set(w / 2.4, d / 2.4);
+        pavement = new THREE.MeshStandardMaterial({ map: paving, roughness: 0.96 });
+      }
+      const sb = mesh(roundedBox(w, 0.10, d, ISRAEL ? 0.045 : 0.35), pavement, cx, Y_WALK - 0.05, cz, false, true);
       root.add(sb);
       pavedBlocks.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - d / 2, z1: cz + d / 2 });
       return sb;
@@ -644,6 +667,19 @@
     // Kerb line so the pavement reads as raised rather than painted on
     function addKerb(cx, cz, w, d) {
       const t = 0.09;
+      if (ISRAEL) {
+        const blue = mat(cz > 6 ? 0xB95849 : 0x547D9B, 0.85);
+        [[w, false], [d, true]].forEach(function (edge) {
+          const n = Math.ceil(edge[0] / 0.55), step = edge[0] / n;
+          for (let i = 0; i < n; i++) [-1, 1].forEach(function (side) {
+            const along = -edge[0] / 2 + step * (i + 0.5);
+            root.add(queueForMerge(mesh(new THREE.BoxGeometry(edge[1] ? t : step, 0.13, edge[1] ? step : t),
+              i % 2 ? M_WHITE : blue, cx + (edge[1] ? side * w / 2 : along), Y_WALK - 0.07,
+              cz + (edge[1] ? along : side * d / 2), false, false)));
+          });
+        });
+        return;
+      }
       root.add(queueForMerge(mesh(new THREE.BoxGeometry(w + t, 0.13, t), M_WARM_STONE, cx, Y_WALK - 0.07, cz - d / 2, false, false)));
       root.add(queueForMerge(mesh(new THREE.BoxGeometry(w + t, 0.13, t), M_WARM_STONE, cx, Y_WALK - 0.07, cz + d / 2, false, false)));
       root.add(queueForMerge(mesh(new THREE.BoxGeometry(t, 0.13, Math.max(0.01, d - t)), M_WARM_STONE, cx - w / 2, Y_WALK - 0.07, cz, false, false)));
@@ -664,7 +700,7 @@
     const M_TERRACOTTA_POT = mat(0xC97B55, 0.88);
     const M_CONCRETE  = mat(0xD7D9D5, 0.88);
     const M_CANVAS    = mat(0xF7F1E8, 0.92);
-    const M_STREET_LEAF = mat(0x3F9B58, 0.86);
+    const M_STREET_LEAF = mat(ISRAEL ? 0x758666 : 0x3F9B58, 0.86);
     const M_MARBLE_REF  = mat(0xFFF9EF, 0.52, 0.02);
 
     // Warm glass that can be lit from inside as the district gets busier.
@@ -1167,7 +1203,940 @@
      * cfg: { id, district, name, trend, x, z, rotY, w, d, body, roof, accent,
      *        awning:[c1,c2], sign:{text,bg,fg}, kind:'shop'|'house'|'civic', maxTier }
      */
+    // Arctic presentation only. The same groups, tiers, hit targets and plot coordinates
+    // remain owned by the city engine. No additional animation loop or remote assets.
+    function iceDome(parent, w, d, height, baseY) {
+      const g = new THREE.Group(); g.position.y = baseY || 0; parent.add(g);
+      const cap = mesh(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2),
+        M_WHITE, 0, 0, 0);
+      cap.scale.set(w / 2, height, d / 2); g.add(cap);
+      // Staggered meridian joints plus curved courses follow the actual dome surface.
+      const joints = [], courses = [0, 0.23, 0.46, 0.67, 0.84, 0.96];
+      function point(level, angle) {
+        const r = Math.sqrt(1 - level * level);
+        return new THREE.Vector3(Math.cos(angle) * w * 0.502 * r,
+          height * level + 0.004, Math.sin(angle) * d * 0.502 * r);
+      }
+      for (let row = 0; row < courses.length - 1; row++) {
+        const low = courses[row], high = courses[row + 1], count = Math.max(5, 14 - row * 2);
+        if (row) for (let j = 0; j < 48; j++) joints.push(point(low, j / 48 * Math.PI * 2), point(low, (j + 1) / 48 * Math.PI * 2));
+        for (let j = 0; j < count; j++) {
+          const angle = (j + (row % 2) * 0.5) / count * Math.PI * 2;
+          for (let k = 0; k < 3; k++) joints.push(point(low + (high-low)*k/3, angle), point(low + (high-low)*(k+1)/3, angle));
+        }
+      }
+      const seams = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(joints),
+        new THREE.LineBasicMaterial({ color: C(0xA8C4D2) }));
+      g.add(seams);
+      return g;
+    }
+    function iceBuildingType(id) {
+      if (['food_super', 'food_wolt', 'city_sorting_hub'].includes(id)) return 'depot';
+      if (['shop_tech', 'house_util', 'health_pharmacy'].includes(id)) return 'crystal';
+      if (['house_tower', 'shop_boutique', 'shop_travel'].includes(id)) return 'lodge';
+      return 'igloo';
+    }
+    function iceRoof(parent, w, d, height, y, id) {
+      const type = iceBuildingType(id);
+      const g = new THREE.Group(); g.position.y = y; parent.add(g);
+      if (type === 'igloo') { iceDome(g, w, d, height, 0); }
+      else if (type === 'crystal') {
+        [-0.27, 0.18].forEach(function (x, i) {
+          const peak = mesh(new THREE.CylinderGeometry(0, 1, height * (i ? 1.2 : 0.85), 4),
+            i ? M_WARM_STONE : M_CREAM, w*x, height*(i ? 0.60 : 0.425), 0);
+          peak.scale.set(w * 0.43, 1, d * 0.55); peak.rotation.y = Math.PI / 4; g.add(peak);
+        });
+      } else if (type === 'lodge') {
+        pitchedRoof(g, w, d, height, M_WHITE, 0, {});
+        g.add(mesh(new THREE.BoxGeometry(0.23, 0.52, 0.25), M_WARM_STONE, w*0.28, 0.36, -d*0.18));
+      } else {
+        g.add(mesh(roundedBox(w, 0.16, d, 0.12), M_WHITE, 0, 0.08, 0));
+        [-1, 1].forEach(function (side) {
+          g.add(mesh(new THREE.BoxGeometry(w*0.94, 0.20, 0.09), M_WARM_STONE, 0, 0.23, side*d*0.44));
+        });
+      }
+      // Roof equipment follows the selected tier because it belongs to that roof group.
+      const top = height + 0.05;
+      if (id === 'house_subs' || id === 'shop_tech') {
+        g.add(mesh(new THREE.CylinderGeometry(.025,.035,.50,6),M_SLATE,w*.22,top+.18,0,false,false));
+        const dish=mesh(new THREE.SphereGeometry(.23,10,6,0,Math.PI*2,0,Math.PI*.40),M_CREAM,w*.22,top+.36,0,false,false);
+        dish.rotation.z=.65;g.add(dish);
+      } else if (id === 'food_coffee' || id === 'food_bistro') {
+        g.add(mesh(new THREE.BoxGeometry(.23,.48,.23),M_WOOD,w*.23,top-.05,-d*.14));
+        g.add(mesh(new THREE.BoxGeometry(.31,.07,.31),M_WHITE,w*.23,top+.21,-d*.14));
+      } else if (id === 'shop_travel') {
+        const plane=new THREE.Group();plane.position.set(0,top+.15,0);g.add(plane);
+        plane.add(mesh(new THREE.BoxGeometry(.12,.10,.70),M_WHITE,0,0,0,false,false));
+        plane.add(mesh(new THREE.BoxGeometry(.65,.055,.17),M_WARM_STONE,0,0,.05,false,false));
+        plane.add(mesh(new THREE.BoxGeometry(.29,.05,.12),M_WARM_STONE,0,.05,-.26,false,false));
+      } else if (id === 'health_pharmacy') {
+        g.add(mesh(new THREE.BoxGeometry(.13,.47,.10),mat(0x548C7C,.9),0,top+.17,0,false,false));
+        g.add(mesh(new THREE.BoxGeometry(.43,.13,.10),mat(0x548C7C,.9),0,top+.17,0,false,false));
+      } else if (id === 'house_util') {
+        const panel=mesh(new THREE.BoxGeometry(w*.43,.05,d*.36),M_SLATE,0,top,0,false,false);panel.rotation.x=.25;g.add(panel);
+        for(let i=0;i<3;i++)g.add(mesh(new THREE.BoxGeometry(.02,.025,d*.34),M_GLASS_BL,(i-1)*w*.13,top+.04,0,false,false));
+      } else if (id === 'food_wolt' || id === 'city_sorting_hub') {
+        g.add(mesh(new THREE.BoxGeometry(w*.76,.055,.39),M_WOOD,0,.40,d*.38,false,false));
+        [-1,1].forEach(function(side){g.add(mesh(new THREE.BoxGeometry(.05,.39,.05),M_WOOD,side*w*.34,.20,d*.38,false,false));});
+      }
+      return g;
+    }
+    // Large, physical shop emblems stay legible even when the first-tier venue is quiet.
+    function iceIdentity(parent, w, d, cfg, h) {
+      const id = cfg.id || '', g = new THREE.Group(); parent.add(g);
+      g.position.set(-w*0.25, h*0.68, d*0.50 + 0.10);
+      const accent = mat(cfg.accent || cfg.body || 0x5486CF, 0.86);
+      function box(wi, hi, de, x, y, material) { g.add(mesh(new THREE.BoxGeometry(wi,hi,de), material || accent,x,y,0,false,false)); }
+      if (id === 'food_coffee') {
+        g.add(mesh(new THREE.CylinderGeometry(.14,.10,.24,10), M_CREAM,0,.04,0,false,false));
+        const handle = mesh(new THREE.TorusGeometry(.075,.023,5,10), M_CREAM,.15,.05,0,false,false); g.add(handle);
+        box(.36,.035,.28,0,-.10,M_WOOD);
+      } else if (id === 'food_bistro') {
+        const plate = mesh(new THREE.CylinderGeometry(.19,.19,.035,16), M_WHITE,0,0,0,false,false); plate.rotation.x=Math.PI/2; g.add(plate);
+        box(.035,.34,.035,-.24,0); box(.035,.34,.035,.24,0);
+        [-.04,0,.04].forEach(function(x){box(.014,.12,.03,-.24+x,.15);});
+      } else if (id === 'food_super') {
+        box(.38,.21,.24,0,-.03,M_WOOD);
+        [-.11,0,.11].forEach(function(x,i){g.add(mesh(new THREE.SphereGeometry(.075,7,5),i%2?M_GOLD:M_ROOF_OR,x,.12,0,false,false));});
+      } else if (id === 'food_wolt') {
+        g.add(woltIceBox()); g.scale.setScalar(0.85);
+      } else if (id === 'health_pharmacy') {
+        box(.12,.43,.08,0,0); box(.43,.12,.08,0,0);
+      } else if (id === 'shop_tech') {
+        box(.46,.32,.08,0,.04); box(.38,.23,.09,0,.04,M_GLASS_BL); box(.06,.16,.08,0,-.17); box(.28,.04,.15,0,-.24);
+      } else if (id === 'shop_boutique') {
+        box(.29,.32,.12,0,-.03); const handle=mesh(new THREE.TorusGeometry(.09,.025,5,10),M_GOLD,0,.18,0,false,false);g.add(handle);
+      } else if (id === 'shop_travel') {
+        box(.38,.28,.16,0,0); box(.17,.04,.05,0,.19,M_WOOD);
+        [-.12,.12].forEach(function(x){box(.025,.29,.18,x,0,M_CREAM);});
+      } else if (id === 'shop_arcade') {
+        box(.46,.25,.15,0,0);box(.13,.035,.17,-.12,0,M_WHITE);box(.035,.13,.17,-.12,0,M_WHITE);
+        [.07,.16].forEach(function(x){g.add(mesh(new THREE.SphereGeometry(.035,6,5),M_GOLD,x,.04,.09,false,false));});
+      } else if (id === 'house_util') {
+        const bolt=new THREE.Shape();bolt.moveTo(.06,.25);bolt.lineTo(-.15,-.02);bolt.lineTo(-.02,-.02);bolt.lineTo(-.06,-.23);bolt.lineTo(.17,.07);bolt.lineTo(.03,.07);bolt.closePath();
+        g.add(mesh(new THREE.ExtrudeGeometry(bolt,{depth:.05,bevelEnabled:false}),M_GOLD,0,0,0,false,false));
+      } else if (id === 'house_subs') {
+        box(.43,.30,.09,0,0,accent);
+        const play=mesh(new THREE.CircleGeometry(.11,3),M_WHITE,0,0,.055,false,false);g.add(play);
+      } else if (id === 'house_tower') {
+        box(.30,.25,.12,0,-.04); const roof=mesh(new THREE.ConeGeometry(.25,.20,4),M_WOOD,0,.17,0,false,false);roof.rotation.y=Math.PI/4;g.add(roof);
+      } else if (id === 'city_sorting_hub') {
+        [-.15,0,.15].forEach(function(x,i){box(.12,.20+i*.06,.16,x,0,i%2?M_GOLD:accent);});
+      } else {
+        box(.32,.28,.18,0,0); box(.055,.31,.20,0,0,M_GOLD);box(.34,.05,.20,0,.03,M_GOLD);
+      }
+    }
+    function woltIceBox() {
+      const box = new THREE.Group(), turquoise = mat(0x00BFD6, 0.85);
+      box.add(mesh(roundedBox(.42,.43,.40,.035),turquoise,0,0,0,false,false));
+      box.add(mesh(new THREE.BoxGeometry(.45,.055,.43),turquoise,0,.225,0,false,false));
+      [-1,1].forEach(function(side){
+        const label=mesh(new THREE.PlaneGeometry(.33,.15),new THREE.MeshBasicMaterial({map:signTex('Wolt','#00BFD6','#FFFFFF',42)}),0,.025,side*.205,false,false);
+        if(side<0)label.rotation.y=Math.PI;box.add(label);
+      });
+      return box;
+    }
+
+    function iceFront(parent, w, d, cfg, small) {
+      const h = small ? 0.66 : FLOOR_H;
+      const type = iceBuildingType(cfg.id);
+      if (small && type === 'igloo') iceDome(parent, w * 0.88, d * 0.82, h, 0);
+      else {
+        parent.add(mesh(roundedBox(w * 0.90, h, d * 0.88, 0.12), M_CREAM, 0, h / 2, 0));
+        [0.28, 0.57, 0.86].forEach(function (y) {
+          parent.add(mesh(new THREE.BoxGeometry(w * 0.90, 0.018, d * 0.89), M_WARM_STONE, 0, y * h, 0, false, false));
+        });
+        [-0.29, 0.29].forEach(function (x) {
+          parent.add(mesh(new THREE.BoxGeometry(w * 0.15, 0.29, 0.04), M_GLASS_BL, w * x, h * 0.57, d * 0.45, false, false));
+        });
+      }
+      if (small && type !== 'igloo') iceRoof(parent,w*0.98,d*0.98,0.34,h,cfg.id);
+      iceIdentity(parent, w, d, cfg, h);
+      iceCategoryRoom(parent, w, d, cfg, small ? 0 : 1);
+      // Short vaulted entrance tunnel, warm dark opening and category-colored lintel.
+      const tunnel = mesh(new THREE.SphereGeometry(1, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), M_WHITE, 0, 0.04, d * 0.43);
+      tunnel.scale.set(0.34, 0.37, 0.43); parent.add(tunnel);
+      const door = mesh(new THREE.CircleGeometry(0.22, 12, 0, Math.PI), M_SLATE, 0, 0.04, d * 0.43 + 0.39, false, false);
+      parent.add(door);
+      // Individual snow voussoirs make the entry a built arch rather than a smooth blob.
+      for (let i=0;i<7;i++) {
+        const angle=(i+.5)*Math.PI/7;
+        const block=mesh(new THREE.BoxGeometry(.115,.105,.10),i%2?M_CREAM:M_WHITE,
+          Math.cos(angle)*.275,.04+Math.sin(angle)*.275,d*.43+.40,false,false);
+        block.rotation.z=angle-Math.PI/2;parent.add(block);
+      }
+      const accent = mat(cfg.accent || cfg.body || 0x5486CF, 0.86);
+      parent.add(mesh(new THREE.BoxGeometry(0.48, 0.08, 0.07), accent, 0, 0.30, d * 0.43 + 0.32, false, false));
+      if (cfg.sign) signPlate(parent, w * 0.82, small ? h + 0.24 : 0.98, d, cfg.sign.text, cfg.sign.bg, cfg.sign.fg, cfg.sign.size);
+    }
+    // Each level adds a category-specific room, not a repeated anonymous window band.
+    function iceCategoryRoom(parent, w, d, cfg, level) {
+      const id = cfg.id, g = new THREE.Group(); parent.add(g);
+      const small = level === 0, scale = small ? 0.72 : 1;
+      g.position.set(w * 0.24, small ? 0.08 : 0.14, d * 0.45 + 0.07);
+      g.scale.setScalar(Math.min(scale, w / 2.0));
+      const ink = M_SLATE, wood = M_WOOD, snow = M_WHITE;
+      const accent = mat(cfg.accent || cfg.body || 0x5486CF, .88);
+      function b(w,h,d,x,y,z,m) { g.add(mesh(new THREE.BoxGeometry(w,h,d),m||accent,x,y,z,false,false)); }
+      function sphere(r,x,y,z,m) { g.add(mesh(new THREE.SphereGeometry(r,8,6),m||accent,x,y,z,false,false)); }
+      function shelf() { [-.27,.27].forEach(function(x){b(.04,.53,.20,x,.27,0,wood);}); [.08,.31,.54].forEach(function(y){b(.59,.035,.24,0,y,0,wood);}); }
+      if (id === 'food_super') {
+        shelf();
+        for(let row=0;row<2;row++) for(let j=0;j<3;j++) sphere(.067,(j-1)*.17,.16+row*.23,.025,mat(row?0xD5AA54:0xC7694E,.9));
+        b(.65,.09,.28,0,.60,0,snow);
+      } else if (id === 'food_coffee' || id === 'food_bistro') {
+        b(.58,.07,.35,0,.28,.05,wood);b(.07,.28,.07,0,.14,.05,wood);
+        [-.16,.16].forEach(function(x){
+          g.add(mesh(new THREE.CylinderGeometry(.065,.055,.10,8),snow,x,.365,.05,false,false));
+          b(.17,.045,.18,x,.12,.32,wood);
+        });
+        if(level>1) { b(.45,.26,.12,0,.48,-.06,ink); b(.34,.14,.025,0,.48,.015,M_GOLD); }
+      } else if (id === 'food_wolt' || id === 'city_sorting_hub') {
+        b(.62,.065,.38,0,.08,0,wood);
+        [-.16,.16].forEach(function(x,i){
+          if(id==='food_wolt') { const box=woltIceBox();box.scale.setScalar(.56);box.position.set(x,.23,i*.04);g.add(box); }
+          else { b(.23,.22,.23,x,.22,0,mat(i?0xD4B383:0xA88461,.9));b(.025,.23,.24,x,.22,0,snow); }
+        });
+        if(level>1) { b(.55,.10,.045,0,.54,0,accent);[-.18,0,.18].forEach(function(x){b(.07,.06,.06,x,.54,.045,snow);}); }
+      } else if (id === 'shop_boutique') {
+        b(.055,.61,.055,0,.31,0,wood); b(.62,.045,.055,0,.60,0,wood);
+        [-.19,.19].forEach(function(x,i){
+          const coat=mat(i?0xA26455:0x536D84,.9);
+          b(.19,.31,.12,x,.39,0,coat);b(.29,.09,.10,x,.48,0,coat);
+          const hood=mesh(new THREE.TorusGeometry(.063,.023,5,10),snow,x,.57,.035,false,false);g.add(hood);
+        });
+      } else if (id === 'shop_tech' || id === 'house_subs') {
+        b(.59,.045,.28,0,.19,0,wood);
+        b(.46,.28,.075,0,.37,0,ink);b(.37,.19,.012,0,.37,.046,M_GLASS_BL);
+        b(.28,.018,.14,0,.225,.13,snow);
+        if(level>1) { b(.10,.46,.15,-.31,.27,0,accent);for(let j=0;j<3;j++)b(.065,.018,.02,-.31,.16+j*.11,.08,snow); }
+      } else if (id === 'health_pharmacy') {
+        shelf();
+        for(let row=0;row<2;row++) for(let j=0;j<3;j++) {
+          b(.095,.14,.11,(j-1)*.16,.17+row*.23,.02,snow);
+          b(.06,.035,.015,(j-1)*.16,.17+row*.23,.082,accent);
+        }
+      } else if (id === 'shop_travel') {
+        [-.17,.17].forEach(function(x,i){b(.23,.31,.16,x,.23,0,i?accent:wood);b(.10,.035,.055,x,.415,0,ink);});
+        b(.61,.18,.045,0,.63,-.03,ink);
+        [-.17,0,.17].forEach(function(x){b(.095,.022,.02,x,.64,0,M_GOLD);});
+      } else if (id === 'shop_arcade') {
+        [-.18,.18].forEach(function(x){b(.26,.52,.24,x,.28,0,accent);b(.19,.19,.025,x,.40,.135,ink);b(.23,.055,.17,x,.245,.17,wood);sphere(.03,x,.30,.19,M_GOLD);});
+      } else if (id === 'house_util') {
+        b(.30,.44,.25,-.15,.24,0,ink);
+        for(let j=0;j<3;j++) b(.21,.022,.02,-.15,.14+j*.10,.135,M_GOLD);
+        g.add(mesh(new THREE.CylinderGeometry(.12,.12,.41,10),M_WARM_STONE,.22,.24,0,false,false));
+        b(.30,.045,.045,.08,.48,0,wood);
+      } else if (id === 'house_tower') {
+        b(.63,.05,.32,0,.12,.02,wood);
+        [-.29,0,.29].forEach(function(x){b(.025,.24,.025,x,.25,.19,wood);}); b(.63,.03,.035,0,.37,.19,wood);
+        b(.25,.12,.16,-.15,.22,-.02,accent); b(.17,.05,.15,.18,.21,0,snow);
+      } else if (id === 'finance_bank') {
+        b(.48,.51,.17,0,.28,0,ink);
+        b(.29,.16,.025,0,.39,.10,M_GLASS_BL);b(.22,.035,.03,0,.22,.10,M_GOLD);
+        b(.19,.08,.08,0,.10,.11,snow);
+      } else {
+        b(.56,.055,.32,0,.12,0,wood);
+        const exhibit=mesh(new THREE.OctahedronGeometry(.18,0),M_WARM_STONE,0,.34,0,false,false);g.add(exhibit);
+        b(.20,.07,.025,0,.16,.19,M_GOLD);
+      }
+    }
+    function iceStorey(parent, w, d, i, cfg) {
+      const type=iceBuildingType(cfg.id);
+      parent.add(mesh(roundedBox(w*.90,FLOOR_H,d*.88,type==='igloo'?.24:.08),i?M_WARM_STONE:M_CREAM,0,FLOOR_H/2,0));
+      // Dark recessed display bays frame their contents; they never cover the objects.
+      [-.25,.25].forEach(function(x){parent.add(mesh(new THREE.BoxGeometry(w*.37,FLOOR_H*.64,.025),M_SLATE,w*x,FLOOR_H*.48,d*.445,false,false));});
+      iceCategoryRoom(parent,w,d,cfg,i+2);
+      const display=new THREE.Group();parent.add(display);display.position.set(-w*.48,0,0);
+      iceCategoryRoom(display,w,d,cfg,i+2);
+      parent.add(mesh(new THREE.BoxGeometry(w*.94,.09,d*.92),M_WHITE,0,FLOOR_H-.04,0));
+      parent.add(mesh(new THREE.BoxGeometry(.065,FLOOR_H*.72,.07),M_WHITE,0,FLOOR_H*.47,d*.47));
+    }
+
+    // Israeli presentation: shared footprints, IDs, tiers and financial behavior.
+    const ISRAEL_SIGNS = {
+      house_tower: "מגורים", house_util: "חשמל ומים", house_subs: "תקשורת",
+      shop_boutique: "בוטיק", shop_tech: "סלולר ומחשבים", shop_travel: "נסיעות",
+      shop_arcade: "קולנוע", food_super: "סופר השכונה", food_bistro: "חומוס ופלאפל",
+      food_coffee: "קפה בשדרה", food_wolt: "משלוחים", health_pharmacy: "בית מרקחת",
+      museum_curiosities: "מתנות וספרים", city_sorting_hub: "דואר ישראל", finance_bank: "בנק"
+    };
+
+    // Distinct local architecture; category props and all simulation IDs stay shared.
+    const ISRAEL_BUILDINGS = {
+      house_tower:       [0xF4F0E5, 0xC8C1AE, "#697C70", "bauhaus"],
+      house_util:        [0xD8CCB6, 0xB6AB95, "#567A83", "utility"],
+      house_subs:        [0xD5D7D2, 0x77878C, "#465D73", "telecom"],
+      food_super:        [0xE8E2D3, 0xAC4035, "#B23932", "supermarket"],
+      food_bistro:       [0xD5B48C, 0xA76C45, "#597A64", "jaffa"],
+      food_coffee:       [0xE9D8BE, 0xA67A55, "#677D64", "kiosk"],
+      food_wolt:         [0xD8E2DF, 0x639FA4, "#367F86", "depot"],
+      shop_boutique:     [0xE8C8BB, 0xA76E60, "#694B47", "neve"],
+      shop_tech:         [0xB4CDD1, 0x4C717C, "#365C69", "campus"],
+      shop_travel:       [0xDDD8C9, 0x839C9E, "#516E79", "terminal"],
+      shop_arcade:       [0xE6C9A1, 0xAD624F, "#943F36", "cinema"],
+      health_pharmacy:   [0xE8E6DC, 0x94AA99, "#47806A", "clinic"],
+      museum_curiosities:[0xDED1BA, 0xAE9B7F, "#625E53", "museum"],
+      city_sorting_hub:  [0xDFCCB0, 0xB75A4C, "#AD3D38", "post"],
+      finance_bank:     [0xDCCDAD, 0xB3A084, "#385E66", "bank"]
+    };
+
+    function israelBox(g, w, h, d, color, x, y, z, radius) {
+      const obj = mesh(roundedBox(w, h, d, radius || 0.015), mat(color, 0.84), x, y, z);
+      g.add(obj); return obj;
+    }
+
+    function israelArch(g, x, y, z, radius, color) {
+      g.add(mesh(new THREE.TorusGeometry(radius, 0.065, 6, 16, Math.PI), mat(color, 0.9), x, y, z));
+      [-1, 1].forEach(function (side) {
+        israelBox(g, 0.13, y - 0.08, 0.13, color, x + side * radius, (y + 0.08) / 2, z);
+      });
+    }
+
+    function israelSmallSign(g, text, w, h, x, y, z, bg, fg) {
+      const material = new THREE.MeshStandardMaterial({ map: signTex(text, bg || "#F3EBDD", fg || "#454A40", 30), roughness: 0.88 });
+      g.add(mesh(new THREE.BoxGeometry(w, h, 0.025), material, x, y, z, false, false));
+    }
+
+    function israelCart(parent, x, z) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+      const metal = 0x9CA5A1;
+      // Open wire basket: the gaps remain visible at the city camera scale.
+      [-1, 1].forEach(function (side) {
+        israelBox(g, 0.026, 0.30, 0.026, metal, side * 0.14, 0.28, -0.14);
+        israelBox(g, 0.026, 0.22, 0.026, metal, side * 0.14, 0.31, 0.17);
+        for (let row = 0; row < 3; row++) israelBox(g, 0.018, 0.018, 0.34, metal, side * 0.14, 0.25 + row * 0.07, 0.02);
+        [-0.12, 0.16].forEach(function (zz) {
+          const wheel = mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.035, 8), M_DARKFRAME, side * 0.14, 0.07, zz);
+          wheel.rotation.z = Math.PI / 2; g.add(wheel);
+        });
+      });
+      for (let i = -1; i <= 1; i++) israelBox(g, 0.018, 0.18, 0.018, metal, i * 0.13, 0.34, 0.18);
+      israelBox(g, 0.30, 0.022, 0.34, metal, 0, 0.22, 0.02);
+      israelBox(g, 0.32, 0.038, 0.035, 0xB83D34, 0, 0.46, -0.17);
+    }
+
+    function israelAC(g, x, y, z) {
+      israelBox(g, 0.32, 0.23, 0.16, 0xDEDACD, x, y, z, 0.025);
+      g.add(mesh(new THREE.TorusGeometry(0.072, 0.013, 5, 10), mat(0x989D91, 0.85), x - 0.035, y, z + 0.085));
+      for (let i = -1; i <= 1; i++) israelBox(g, 0.12, 0.012, 0.018, 0x9EAA9C, x + 0.08, y + i * 0.045, z + 0.09);
+      israelBox(g, 0.025, 0.22, 0.025, 0xD4C9AE, x + 0.19, y - 0.11, z);
+    }
+
+    function israelStreetDetails(g, w, d, cfg) {
+      const front = d / 2 + 0.09, kind = cfg.israelKind;
+      if (kind === "supermarket") {
+        // Sliding entrance, red fascia, trolley corral and a recycling point.
+        israelBox(g, w + 0.03, 0.21, 0.14, 0xB23932, 0, 0.98, front);
+        [-1, 1].forEach(function (side) {
+          israelBox(g, w * 0.20, 0.66, 0.035, 0x9CBBC0, side * w * 0.105, 0.41, front + 0.05);
+          israelBox(g, 0.025, 0.67, 0.055, 0xDCDDD4, side * w * 0.21, 0.41, front + 0.06);
+        });
+        israelBox(g, w * 0.41, 0.045, 0.06, 0xB23932, 0, 0.48, front + 0.085);
+        israelSmallSign(g, "פתוח", 0.28, 0.12, 0, 0.74, front + 0.085, "#F6F0DF", "#A43631");
+        // Nested along the side, outside the clear entrance path.
+        for (let i = 0; i < 3; i++) israelCart(g, -w * 0.35, front + 0.08 + i * 0.13);
+        israelBox(g, 0.025, 0.48, 0.62, 0xA5AAA0, -w * 0.45, 0.25, front + 0.23);
+        israelBox(g, 0.28, 0.57, 0.25, 0x68866B, w * 0.36, 0.30, front + 0.15, 0.025);
+        israelSmallSign(g, "מיחזור", 0.24, 0.12, w * 0.36, 0.44, front + 0.29);
+        israelSmallSign(g, "מבצעים", 0.33, 0.26, w * 0.34, 0.73, front + 0.08, "#F3CC60", "#7B3428");
+        // Stacked six-packs beside the window, leaving the sliding doors clear.
+        const rack = new THREE.Group(); rack.position.set(w * 0.44, 0, -d * 0.13); rack.rotation.y = Math.PI / 2; g.add(rack);
+        for (let shelf = 0; shelf < 2; shelf++) {
+          israelBox(rack, 0.48, 0.035, 0.28, 0x969D90, 0, 0.10 + shelf * 0.28, 0);
+          for (let i = 0; i < 6; i++) {
+            const x = (i % 3 - 1) * 0.13, z = (Math.floor(i / 3) - 0.5) * 0.12;
+            rack.add(mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.18, 7), mat(0xB3CED0, 0.72), x, 0.21 + shelf * 0.28, z));
+            israelBox(rack, 0.05, 0.025, 0.05, 0x638B9E, x, 0.31 + shelf * 0.28, z);
+          }
+        }
+        [-1, 1].forEach(function (side) { israelBox(rack, 0.025, 0.66, 0.025, 0x969D90, side * 0.25, 0.33, 0); });
+        const crateZ = -d * 0.34;
+        israelBox(g, 0.28, 0.18, 0.38, 0x74845E, w / 2 + 0.06, 0.11, crateZ);
+        for (let i = 0; i < 4; i++) g.add(mesh(new THREE.SphereGeometry(0.06, 6, 5), mat(i % 2 ? 0xC37942 : 0xA8A353, 0.9), w / 2 + (i % 2 ? 0.12 : 0.01), 0.23, crateZ - 0.10 + Math.floor(i / 2) * 0.14));
+
+      } else if (kind === "kiosk" || kind === "jaffa") {
+        // Tiny cafe table, two chairs and linen shade on the building's frontage.
+        const x = w * 0.29, z = front + 0.25;
+        g.add(mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.035, 12), M_WOOD, x, 0.39, z));
+        israelBox(g, 0.045, 0.37, 0.045, 0x53695A, x, 0.19, z);
+        [-1, 1].forEach(function (side) {
+          israelBox(g, 0.16, 0.045, 0.16, 0x708370, x + side * 0.26, 0.22, z);
+          israelBox(g, 0.16, 0.21, 0.035, 0x708370, x + side * 0.26, 0.34, z - 0.07);
+          israelBox(g, 0.035, 0.22, 0.12, 0x53695A, x + side * 0.26, 0.11, z);
+        });
+        g.add(mesh(new THREE.CylinderGeometry(0.037, 0.03, 0.065, 8), M_WHITE, x, 0.44, z));
+        if (kind === "kiosk") {
+          israelBox(g, 0.025, 1.12, 0.025, 0x8C7758, x, 0.56, z);
+          g.add(mesh(new THREE.ConeGeometry(0.42, 0.14, 8), mat(0xE5D7B9, 0.94), x, 1.18, z));
+        }
+      } else if (kind === "post") {
+        israelBox(g, w * 0.42, 0.67, 0.055, 0x9A9D93, w * 0.24, 0.39, front);
+        for (let i = 0; i < 7; i++) israelBox(g, w * 0.41, 0.018, 0.018, 0xC7C9BC, w * 0.24, 0.10 + i * 0.09, front + 0.045);
+        israelBox(g, w + 0.10, 0.055, 0.42, 0xA6A99E, 0, 1.17, front + 0.10);
+        israelSmallSign(g, "קבלת חבילות", 0.54, 0.14, w * 0.23, 0.80, front + 0.07, "#F0E7D3", "#A33D32");
+      } else if (kind === "bank") {
+        [-1, 1].forEach(function (side) { israelBox(g, w * 0.18, 1.12, 0.22, 0xCBBB9E, side * w * 0.39, 0.56, front); });
+        israelBox(g, 0.30, 0.50, 0.11, 0x536B67, -w * 0.24, 0.35, front + 0.13);
+        israelBox(g, 0.19, 0.14, 0.018, 0xA9C1BC, -w * 0.24, 0.46, front + 0.195);
+        israelSmallSign(g, "כספומט", 0.34, 0.11, -w * 0.24, 0.68, front + 0.16);
+      } else if (kind === "terminal") {
+        israelSmallSign(g, "המראות", 0.65, 0.19, 0, 0.67, front + 0.09, "#344B54", "#F1DB8B");
+        for (let i = 0; i < 3; i++) israelBox(g, 0.045, 0.35, 0.045, 0xA0AAA5, (i - 1) * 0.28, 0.18, front + 0.32);
+      } else if (kind === "neve") {
+        israelSmallSign(g, "חדש בחנות", 0.30, 0.33, -w * 0.39, 0.40, front + 0.16, "#D6C1A4", "#584E44");
+        israelBox(g, 0.025, 0.37, 0.025, 0x8D8F7D, -w * 0.48, 0.20, front + 0.16);
+        israelBox(g, 0.025, 0.37, 0.025, 0x8D8F7D, -w * 0.30, 0.20, front + 0.16);
+      } else if (kind === "clinic") {
+        israelSmallSign(g, "בית מרקחת", 0.62, 0.14, w * 0.10, 0.78, front + 0.08, "#EAEADF", "#3D715F");
+        israelBox(g, 0.33, 0.06, 0.17, 0x82988A, w * 0.29, 0.28, front + 0.19);
+      }
+    }
+
+    function israelWindow(g, x, y, z, width, closed) {
+      israelBox(g, width + 0.07, 0.52, 0.065, 0x9A9E94, x, y, z);
+      israelBox(g, width, 0.45, 0.025, closed ? 0xCBC9B9 : 0x789298, x, y, z + 0.045);
+      if (closed) {
+        for (let i = 0; i < 6; i++) israelBox(g, width, 0.012, 0.016, 0xABAFA3, x, y - 0.18 + i * 0.065, z + 0.065);
+      } else {
+        israelBox(g, 0.024, 0.45, 0.022, 0xD3D5CA, x, y, z + 0.065);
+        israelBox(g, width, 0.018, 0.022, 0xD3D5CA, x, y - 0.08, z + 0.065);
+      }
+      israelBox(g, width + 0.14, 0.045, 0.14, 0xD1CAB7, x, y - 0.29, z + 0.04);
+    }
+
+    function israelBalcony(g, x, z, width, enclosed, level) {
+      israelBox(g, width, 0.085, 0.35, 0xCEC8B8, x, 0.12, z + 0.12);
+      if (enclosed) {
+        israelBox(g, width, 0.27, 0.05, 0xC5C8B7, x, 0.32, z + 0.27);
+        for (let i = 0; i < 4; i++) israelBox(g, width, 0.018, 0.05, 0xA7ADA0, x, 0.22 + i * 0.06, z + 0.30);
+        israelBox(g, width, 0.04, 0.36, 0xE1DCC9, x, 0.71, z + 0.12);
+      } else {
+        israelBox(g, width, 0.027, 0.035, 0x79857B, x, 0.46, z + 0.27);
+        for (let i = 0; i < 5; i++) israelBox(g, 0.016, 0.29, 0.024, 0x79857B, x - width / 2 + i * width / 4, 0.30, z + 0.27);
+        if (level % 2) {
+          israelBox(g, width * 0.25, 0.23, 0.024, 0xC4D0CA, x - width * 0.20, 0.37, z + 0.29);
+          israelBox(g, width * 0.20, 0.20, 0.024, 0xE9E2D1, x + width * 0.10, 0.38, z + 0.29);
+        } else {
+          israelBox(g, 0.15, 0.15, 0.15, 0xAE7C5B, x, 0.24, z + 0.12);
+          g.add(mesh(new THREE.DodecahedronGeometry(0.12, 0), mat(0x72815B, 0.95), x, 0.39, z + 0.12));
+        }
+      }
+    }
+
+    function israelGround(g, w, d, cfg) {
+      const home = cfg.kind === "house";
+      const front = d / 2;
+      if (home) {
+        // Recessed stairwell and open pilotis: a recognisable apartment block base.
+        israelBox(g, w * 0.44, FLOOR_H, d * 0.77, cfg.body, w * 0.12, FLOOR_H / 2, -d * 0.10);
+        israelBox(g, w, 0.19, d, cfg.body, 0, FLOOR_H - 0.095, 0);
+        [-1, 1].forEach(function (side) {
+          [-0.34, 0.34].forEach(function (z) { israelBox(g, 0.15, FLOOR_H - 0.19, 0.16, 0xC7C1AF, side * w * 0.39, (FLOOR_H - 0.19) / 2, z * d); });
+        });
+        israelBox(g, 0.39, 0.77, 0.04, 0x748E8F, w * 0.10, 0.42, d * 0.30);
+        israelBox(g, 0.022, 0.77, 0.045, 0xBEC2B6, w * 0.10, 0.42, d * 0.30 + 0.025);
+        for (let i = 0; i < 4; i++) israelBox(g, 0.10, 0.075, 0.06, 0x949B90, w * 0.33, 0.44 + i * 0.09, d * 0.30);
+        israelSmallSign(g, cfg.id === "house_tower" ? "12" : cfg.id === "house_util" ? "14" : "16", 0.19, 0.19, -w * 0.39, 0.70, d * 0.34 + 0.09, "#EAE5D7", "#495D64");
+        israelBox(g, w * 0.43, 0.06, 0.50, 0xC8C3B3, w * 0.10, 0.035, front - 0.10);
+        return;
+      }
+      // Shop shells are open-front concrete rooms, not the shared rounded solid box.
+      israelBox(g, w, FLOOR_H, 0.14, cfg.body, 0, FLOOR_H / 2, -d / 2 + 0.07);
+      [-1, 1].forEach(function (side) { israelBox(g, 0.13, FLOOR_H, d, cfg.body, side * (w / 2 - 0.065), FLOOR_H / 2, 0); });
+      israelBox(g, w, 0.18, d, cfg.body, 0, FLOOR_H - 0.09, 0);
+      israelBox(g, w, 0.07, d, 0xBEBFB4, 0, 0.035, 0);
+      israelFacade(g, w, d, cfg);
+    }
+
+    function israelFacade(g, w, d, cfg) {
+      const kind = cfg.israelKind, front = d / 2 + 0.02;
+      // Aluminium shop windows, recessed displays and deep signage band.
+      israelBox(g, w - 0.28, 0.70, 0.035, 0x758F91, 0, 0.43, front - 0.09);
+      [-0.34, 0.11, 0.35].forEach(function (x) { israelBox(g, 0.035, 0.75, 0.055, 0xA9B0A8, w * x, 0.43, front - 0.04); });
+      israelBox(g, w - 0.17, 0.055, 0.11, 0xBEC1B7, 0, 0.07, front);
+      if (["jaffa", "kiosk", "neve"].includes(kind)) {
+        const canopy = israelBox(g, w + 0.02, 0.055, 0.44, kind === "jaffa" ? 0xACAA83 : 0x8C9A87, 0, 0.96, front + 0.17);
+        canopy.rotation.x = 0.08;
+        israelBox(g, w + 0.02, 0.10, 0.035, kind === "jaffa" ? 0xACAA83 : 0x8C9A87, 0, 0.91, front + 0.38);
+      }
+      if (kind === "jaffa" || kind === "kiosk") {
+        israelBox(g, w * 0.47, 0.27, 0.30, 0xC7C5B2, -w * 0.21, 0.23, front + 0.04);
+        israelBox(g, w * 0.50, 0.035, 0.34, 0x929D94, -w * 0.21, 0.39, front + 0.05);
+        for (let i = 0; i < 3; i++) g.add(mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 9), mat(0xD5B47A, 0.9), -w * 0.34 + i * 0.14, 0.43, front + 0.05));
+        israelBox(g, 0.26, 0.69, 0.20, 0xD7D9CF, w * 0.35, 0.39, front - 0.02);
+        israelBox(g, 0.21, 0.51, 0.025, 0x729196, w * 0.35, 0.41, front + 0.095);
+        for (let row = 0; row < 3; row++) israelBox(g, 0.20, 0.022, 0.026, 0xD9DBCA, w * 0.35, 0.24 + row * 0.16, front + 0.11);
+      } else if (kind === "post" || kind === "depot") {
+        israelBox(g, w * 0.55, 0.72, 0.06, 0xA5AAA0, -w * 0.12, 0.40, front);
+        for (let i = 0; i < 7; i++) israelBox(g, w * 0.54, 0.015, 0.02, 0x7E8981, -w * 0.12, 0.11 + i * 0.10, front + 0.04);
+        israelBox(g, 0.28, 0.42, 0.23, kind === "post" ? 0xAB4D40 : 0x6F9493, w * 0.33, 0.23, front + 0.16);
+        if (kind === "depot") {
+          const scooter = makeCourier(0x668F91); scooter.scale.setScalar(0.58); scooter.position.set(-w * 0.26, 0, front + 0.25); g.add(scooter);
+        }
+      } else if (kind === "campus") {
+        // A phone/electronics shop, rather than a rooftop landmark miniature.
+        for (let i = 0; i < 3; i++) {
+          israelBox(g, 0.22, 0.30, 0.045, 0x384F58, -w * 0.28 + i * w * 0.22, 0.51, front);
+          israelBox(g, 0.17, 0.23, 0.018, 0xA6BDBD, -w * 0.28 + i * w * 0.22, 0.52, front + 0.035);
+        }
+      } else if (kind === "neve") {
+        israelBox(g, w * 0.40, 0.035, 0.035, 0xA4AAA0, -w * 0.18, 0.70, front);
+        [0xAA7D6D, 0x748F88, 0xD8CCAC].forEach(function (color, i) { israelBox(g, 0.16, 0.29, 0.05, color, -w * 0.31 + i * 0.19, 0.52, front); });
+      } else if (kind === "museum") {
+        for (let i = 0; i < 5; i++) israelBox(g, 0.07, 0.19 + i % 2 * 0.05, 0.07, i % 2 ? 0x997A68 : 0x8B9A8A, -w * 0.26 + i * 0.12, 0.25, front);
+      }
+      // Side-wall AC, drainpipe and service hatch are part of the architecture.
+      const side = new THREE.Group(); side.position.x = -w / 2 - 0.01; side.rotation.y = -Math.PI / 2; g.add(side);
+      israelAC(side, -d * 0.20, 0.70, 0.07);
+      israelBox(side, 0.04, 1.12, 0.055, 0xB4B2A1, d * 0.33, 0.56, 0.05);
+      israelStreetDetails(g, w, d, cfg);
+    }
+
+    function israelStorey(g, w, d, cfg, level) {
+      const home = cfg.kind === "house", kind = cfg.israelKind;
+      // Broad slab and offset stairwell create a local walk-up silhouette.
+      israelBox(g, w, FLOOR_H, d * 0.91, cfg.body, 0, FLOOR_H / 2, -d * 0.045);
+      israelBox(g, w * 0.19, FLOOR_H, d * 0.12, cfg.accent, w * 0.06, FLOOR_H / 2, d * 0.45);
+      israelBox(g, w + 0.035, 0.075, d + 0.015, 0xC9C5B5, 0, 0.025, 0);
+      [-1, 1].forEach(function (side) {
+        const x = side * w * 0.29, front = d * 0.415;
+        israelWindow(g, x, 0.62, front, w * 0.25, (level + (side > 0 ? 1 : 0)) % 2 === 0);
+        if (home || kind === "neve" || kind === "kiosk") {
+          israelBalcony(g, x, front, w * 0.38, side > 0 && level === 0, level);
+          // Flag hanging DOWN from the balcony railing like a banner — level 1, right side only
+          if ((home || kind === "neve") && level === 1 && side > 0) {
+            const flagW = 0.32, flagH = 0.40, railY = 0.46, flagZ = front + 0.30;
+            // Thin horizontal rod the flag hangs from
+            const rod = mesh(new THREE.CylinderGeometry(0.006, 0.006, flagW + 0.05, 5), mat(0x8B8680, 0.65), x, railY + 0.012, flagZ, false, false);
+            rod.rotation.z = Math.PI / 2; g.add(rod);
+            // White field — hangs downward from rail
+            g.add(mesh(new THREE.BoxGeometry(flagW, flagH, 0.007), mat(0xF4F1E8, 0.92), x, railY - flagH / 2, flagZ, false, false));
+            // Blue stripe — upper (just below the rod)
+            g.add(mesh(new THREE.BoxGeometry(flagW, 0.058, 0.009), mat(0x1A4A9B, 0.88), x, railY - 0.044, flagZ, false, false));
+            // Blue stripe — lower (near bottom of flag)
+            g.add(mesh(new THREE.BoxGeometry(flagW, 0.058, 0.009), mat(0x1A4A9B, 0.88), x, railY - flagH + 0.044, flagZ, false, false));
+          }
+        } else {
+          israelAC(g, x, 0.19, front + 0.13);
+        }
+      });
+      for (let i = 0; i < 3; i++) israelBox(g, w * 0.095, 0.11, 0.025, 0x8C9E9A, w * 0.06, 0.25 + i * 0.27, d * 0.515);
+      [-1, 1].forEach(function (direction) {
+        const side = new THREE.Group(); side.position.x = direction * w / 2; side.rotation.y = direction * Math.PI / 2; g.add(side);
+        israelWindow(side, -d * 0.22, 0.65, 0.02, d * 0.26, level === 0);
+        israelWindow(side, d * 0.23, 0.65, 0.02, d * 0.22, level !== 0);
+        israelAC(side, d * 0.22, 0.22, 0.10);
+        israelBox(side, 0.035, FLOOR_H, 0.06, 0xAFAE9F, -d * 0.41, FLOOR_H / 2, 0.05);
+      });
+    }
+
+    function israelRoof(parent, w, d, y, cfg) {
+      const r = new THREE.Group(); r.position.y = y; parent.add(r);
+      // Flat concrete parapet, rooftop stair enclosure and practical plant.
+      israelBox(r, w + 0.035, 0.075, d + 0.035, 0xD2CBB7, 0, 0.025, 0);
+      [-1, 1].forEach(function (side) {
+        israelBox(r, w, 0.19, 0.08, cfg.body, 0, 0.13, side * (d / 2 - 0.04));
+        israelBox(r, 0.08, 0.19, d, cfg.body, side * (w / 2 - 0.04), 0.13, 0);
+      });
+      const home = cfg.kind === "house";
+      if (home) {
+        israelBox(r, w * 0.30, 0.39, d * 0.32, cfg.body, w * 0.16, 0.23, -d * 0.21);
+        israelBox(r, 0.20, 0.28, 0.025, 0x909789, w * 0.16, 0.20, -d * 0.05);
+        [-1, 1].forEach(function (side) {
+          const x = side * w * 0.27;
+          const tank = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.43, 10), M_WHITE, x, 0.33, d * 0.11); tank.rotation.z = Math.PI / 2; r.add(tank);
+          const panel = israelBox(r, w * 0.27, 0.045, d * 0.28, 0x536C76, x, 0.17, d * 0.29); panel.rotation.x = -0.38;
+          israelBox(r, 0.03, 0.16, 0.16, 0x999F91, x, 0.15, d * 0.11);
+        });
+      } else {
+        israelBox(r, w * 0.48, 0.28, d * 0.34, 0xB6BCAE, -w * 0.15, 0.19, -d * 0.12);
+        for (let i = 0; i < 5; i++) israelBox(r, w * 0.40, 0.025, 0.025, 0x8B9588, -w * 0.15, 0.35, -d * 0.24 + i * d * 0.055);
+        r.add(mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.30, 8), M_CONCRETE, w * 0.29, 0.20, -d * 0.23));
+      }
+      return r;
+    }
+
+    // Future world uses the same plots, tiers and financial destinations.
+    // Emissive geometry provides crisp light without a bloom/postprocessing pass.
+    const FUTURE_PLACES = {
+      house_tower: [0x64E1E4, "מגורים", "pod"],
+      house_util: [0xF0C56B, "אנרגיה", "reactor"],
+      house_subs: [0xBBA0F0, "תקשורת", "signal"],
+      food_super: [0x9AE0AC, "סופר", "market"],
+      food_bistro: [0xF1AA7C, "מסעדה", "diner"],
+      food_coffee: [0xF4D095, "קפה", "cafe"],
+      food_wolt: [0x70D8E9, "משלוחים", "depot"],
+      shop_boutique: [0xECA1D4, "אופנה", "fashion"],
+      shop_tech: [0x8AABF1, "טכנולוגיה", "chip"],
+      shop_travel: [0x8DDAD3, "נסיעות", "port"],
+      shop_arcade: [0xCE9DEC, "בילויים", "arcade"],
+      health_pharmacy: [0x9CE5C4, "בריאות", "clinic"],
+      museum_curiosities: [0xD6BBED, "מתנות", "gallery"],
+      city_sorting_hub: [0xF0BA81, "מיון חבילות", "depot"],
+      finance_bank: [0xB6CBEF, "פיננסים", "vault"]
+    };
+    function futureSpec(id) { return FUTURE_PLACES[id] || [0x75DAE0, "עיר העתיד", "pod"]; }
+    function futureGlow(color) { return mat(color, 0.48, 0.08, color, 0.85); }
+    function futureBox(g, w, h, d, material, x, y, z, radius) {
+      const m = mesh(roundedBox(w, h, d, radius || 0.025), material, x, y, z); g.add(m); return m;
+    }
+    function futureRing(g, radius, thickness, material, x, y, z, upright) {
+      const ring = mesh(new THREE.TorusGeometry(radius, thickness, 6, 24), material, x, y, z);
+      if (!upright) ring.rotation.x = Math.PI / 2;
+      g.add(ring); return ring;
+    }
+    function futureDisplay(g, text, width, x, y, z, color) {
+      const fg = "#" + color.toString(16).padStart(6, "0");
+      const panel = new THREE.MeshStandardMaterial({ map: signTex(text, "#253345", fg, 30), roughness: 0.65 });
+      futureBox(g, width, 0.21, 0.055, panel, x, y, z);
+    }
+    function futureIdentity(g, w, d, id) {
+      const spec = futureSpec(id), color = spec[0], type = spec[2];
+      const light = futureGlow(color), dark = mat(0x2E4056, 0.68), white = mat(0xE2E8ED, 0.7);
+      const z = d / 2 + 0.10;
+      futureDisplay(g, spec[1], Math.min(w * 0.88, 1.85), 0, 0.99, z, color);
+      if (type === "market") {
+        // Produce pods and a recognisable basket cart beneath the floating canopy.
+        [-1, 1].forEach(function (side) {
+          futureBox(g, w * 0.26, 0.22, 0.28, white, side * w * 0.29, 0.26, z);
+          for (let i = 0; i < 3; i++) g.add(mesh(new THREE.SphereGeometry(0.065, 7, 6), mat(i % 2 ? 0xE5AE6C : 0x87C59B, 0.85), side * w * 0.29 + (i - 1) * 0.10, 0.42, z));
+        });
+        futureBox(g, 0.26, 0.20, 0.20, light, w * 0.32, 0.24, z + 0.25);
+        futureBox(g, 0.29, 0.025, 0.025, dark, w * 0.32, 0.42, z + 0.17);
+      } else if (type === "cafe" || type === "diner") {
+        futureBox(g, w * 0.55, 0.07, 0.32, white, 0, 0.39, z);
+        [-1, 1].forEach(function (side) {
+          futureBox(g, 0.17, 0.08, 0.17, light, side * w * 0.30, 0.23, z + 0.24);
+          g.add(mesh(new THREE.CylinderGeometry(0.058, 0.045, 0.09, 9), white, side * 0.15, 0.47, z));
+        });
+        // Large suspended coffee cup / plate emblem remains legible from above.
+        if (type === "cafe") {
+          g.add(mesh(new THREE.CylinderGeometry(0.18, 0.13, 0.22, 12), white, -w * 0.28, 1.40, z - 0.10));
+          futureRing(g, 0.095, 0.025, light, -w * 0.28 + 0.19, 1.40, z - 0.10, true);
+        } else futureRing(g, 0.18, 0.035, light, -w * 0.28, 1.37, z - 0.10, true);
+      } else if (type === "depot") {
+        for (let i = 0; i < 3; i++) {
+          futureBox(g, w * 0.23, 0.39, 0.12, dark, (i - 1) * w * 0.27, 0.43, z);
+          futureBox(g, w * 0.18, 0.024, 0.025, light, (i - 1) * w * 0.27, 0.53, z + 0.08);
+        }
+        futureBox(g, 0.26, 0.22, 0.23, white, w * 0.25, 1.46, 0);
+        [-1, 1].forEach(function (side) { futureRing(g, 0.13, 0.026, light, w * 0.25 + side * 0.24, 1.58, 0); });
+      } else if (type === "clinic") {
+        futureBox(g, 0.15, 0.50, 0.07, light, 0, 0.55, z);
+        futureBox(g, 0.46, 0.15, 0.075, light, 0, 0.55, z);
+      } else if (type === "fashion") {
+        [-1, 1].forEach(function (side) {
+          futureBox(g, 0.23, 0.31, 0.10, side < 0 ? light : white, side * w * 0.25, 0.48, z);
+          g.add(mesh(new THREE.SphereGeometry(0.07, 8, 6), white, side * w * 0.25, 0.72, z));
+        });
+      } else if (type === "port") {
+        const wing = futureBox(g, w * 0.58, 0.035, 0.14, light, 0, 1.36, z);
+        wing.rotation.z = -0.12;
+        futureBox(g, 0.07, 0.055, 0.45, white, 0, 1.37, z);
+      } else if (type === "chip" || type === "arcade") {
+        [-1, 1].forEach(function (side) {
+          futureBox(g, 0.30, 0.43, 0.12, dark, side * w * 0.24, 0.42, z);
+          futureBox(g, 0.23, 0.24, 0.026, light, side * w * 0.24, 0.49, z + 0.08);
+          futureBox(g, 0.28, 0.04, 0.15, white, side * w * 0.24, 0.26, z + 0.05);
+        });
+      } else if (type === "vault") {
+        futureRing(g, 0.28, 0.05, light, 0, 0.54, z, true);
+        futureBox(g, 0.30, 0.045, 0.04, white, 0, 0.54, z + 0.02);
+      } else if (type === "gallery") {
+        g.add(mesh(new THREE.OctahedronGeometry(0.22, 0), light, 0, 0.55, z));
+        futureBox(g, 0.42, 0.06, 0.27, white, 0, 0.20, z);
+      } else if (type === "reactor") {
+        g.add(mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.46, 10), light, 0, 0.48, z));
+        futureRing(g, 0.23, 0.027, white, 0, 0.51, z);
+      } else {
+        futureBox(g, 0.35, 0.59, 0.045, dark, 0, 0.41, z);
+        futureBox(g, 0.025, 0.52, 0.045, light, 0.19, 0.43, z + 0.02);
+      }
+    }
+    function futureFront(g, w, d, cfg, small) {
+      const spec = futureSpec(cfg.id), light = futureGlow(spec[0]), type = spec[2];
+      const shell = mat(0xC5D1E0, 0.68), dark = mat(0x2A394F, 0.73);
+      const body = new THREE.Group(); g.add(body);
+      if (small) body.scale.set(0.88, 0.86, 0.88);
+      futureBox(body, w, 0.10, d, dark, 0, 0.08, 0, 0.10);
+      // A visible gap and lit base make modules feel magnetically suspended.
+      futureBox(body, w * 0.85, 0.72, d * 0.80, shell, 0, 0.65, 0, type === "pod" || type === "cafe" ? 0.25 : 0.06);
+      futureBox(body, w * 0.87, 0.045, d * 0.82, light, 0, 0.27, 0, 0.08);
+      futureBox(body, w * 0.74, 0.37, 0.035, dark, 0, 0.66, d * 0.405);
+      [-1, 1].forEach(function (side) {
+        futureBox(body, 0.045, 0.62, d * 0.74, dark, side * w * 0.43, 0.66, 0);
+        futureBox(body, 0.052, 0.035, d * 0.64, light, side * w * 0.44, 0.80, 0);
+      });
+      futureIdentity(body, w, d, cfg.id);
+      if (small) futureRoof(body, w, d, FLOOR_H, cfg);
+    }
+    function futureStorey(g, w, d, cfg, level) {
+      const spec = futureSpec(cfg.id), type = spec[2], light = futureGlow(spec[0]);
+      const shell = mat(level ? 0xA9BCD3 : 0xD4DDE7, 0.66), dark = mat(0x30445D, 0.68);
+      if (["reactor", "vault", "gallery"].includes(type)) {
+        g.add(mesh(new THREE.CylinderGeometry(w * 0.39, w * 0.44, FLOOR_H * 0.82, type === "gallery" ? 5 : 12), shell, 0, FLOOR_H * 0.50, 0));
+        futureRing(g, w * 0.43, 0.035, light, 0, 0.12, 0);
+        futureRing(g, w * 0.40, 0.025, light, 0, 0.92, 0);
+      } else if (type === "pod" || type === "fashion" || type === "cafe") {
+        [-1, 1].forEach(function (side) {
+          const z = side * (level % 2 ? -1 : 1) * d * 0.10;
+          futureBox(g, w * 0.45, FLOOR_H * 0.75, d * 0.77, shell, side * w * 0.24, 0.59, z, 0.18);
+          futureBox(g, w * 0.38, 0.25, 0.04, dark, side * w * 0.24, 0.63, z + d * 0.40);
+          futureBox(g, w * 0.42, 0.04, d * 0.78, light, side * w * 0.24, 0.18, z, 0.05);
+        });
+      } else {
+        const offset = (level % 2 ? -1 : 1) * w * 0.05;
+        futureBox(g, w * 0.91, FLOOR_H * 0.76, d * 0.83, shell, offset, 0.60, 0, 0.05);
+        futureBox(g, w * 0.82, 0.34, 0.035, dark, offset, 0.65, d * 0.425);
+        futureBox(g, w * 0.95, 0.045, d * 0.88, light, offset, 0.18, 0);
+        for (let i = -1; i <= 1; i++) futureBox(g, 0.032, 0.35, 0.035, light, offset + i * w * 0.28, 0.65, d * 0.45);
+      }
+    }
+    function futureRoof(parent, w, d, y, cfg) {
+      const spec = futureSpec(cfg.id), type = spec[2], light = futureGlow(spec[0]);
+      const g = new THREE.Group(); g.position.y = y; parent.add(g);
+      futureBox(g, w * 0.90, 0.10, d * 0.86, mat(0x3C506A, 0.7), 0, 0.06, 0, 0.10);
+      if (["cafe", "reactor", "vault", "gallery"].includes(type)) {
+        futureRing(g, Math.min(w, d) * 0.39, 0.05, light, 0, 0.36, 0);
+        if (type !== "cafe") g.add(mesh(new THREE.OctahedronGeometry(0.20, 0), light, 0, 0.50, 0));
+      } else if (type === "signal" || type === "chip") {
+        for (let i = -1; i <= 1; i++) futureBox(g, 0.15, 0.31 + (i === 0 ? 0.20 : 0), d * 0.44, light, i * w * 0.24, 0.28, 0);
+      } else if (type === "port") {
+        const wing = futureBox(g, w * 1.05, 0.06, d * 0.60, light, 0, 0.32, 0); wing.rotation.z = 0.10;
+      } else if (type === "arcade") {
+        futureRing(g, w * 0.31, 0.055, light, 0, 0.42, 0, true);
+      } else {
+        futureBox(g, w * 0.76, 0.05, d * 0.72, light, 0, 0.30, 0, 0.08);
+      }
+      return g;
+    }
+    function futureVehicle(isBus, isTaxi) {
+      const g = new THREE.Group(); g.name = isBus ? "future-transit-pod" : isTaxi ? "future-taxi" : "future-hover-car";
+      const w = isBus ? 1.0 : 0.80, d = isBus ? 2.40 : 1.50;
+      const light = futureGlow(isTaxi ? 0xF1C777 : 0x77D9E5), dark = mat(0x30455D, 0.65);
+      futureBox(g, w, 0.30, d, mat(0xCFDAE5, 0.64), 0, 0.50, 0, 0.12);
+      futureBox(g, w * 0.88, isBus ? 0.38 : 0.25, d * 0.75, dark, 0, isBus ? 0.78 : 0.72, 0, 0.10);
+      futureBox(g, w * 0.90, 0.04, d * 0.90, light, 0, 0.32, 0, 0.08);
+      [-1, 1].forEach(function (side) {
+        [-1, 1].forEach(function (end) { futureRing(g, 0.14, 0.035, light, side * w * 0.35, 0.23, end * d * 0.31); });
+        futureBox(g, 0.16, 0.055, 0.025, light, side * w * 0.30, 0.53, d / 2 + 0.01);
+      });
+      if (isBus) {
+        for (let i = -2; i <= 2; i++) futureBox(g, w * 0.90, 0.30, 0.028, mat(0xCFDAE5, 0.68), 0, 0.78, i * 0.34);
+        futureDisplay(g, "01 TRANSIT", 0.73, 0, 0.80, d / 2 + 0.035, 0x77D9E5);
+      } else if (isTaxi) futureDisplay(g, "TAXI", 0.34, 0, 0.96, 0.03, 0xF1C777);
+      return packRigidModel(g);
+    }
+
+    // Alternate worlds use complete architectural stages. Geometry is created
+    // on demand and batched per stage; Urban retains its original tier engine.
+    function worldStarter(parent, w, d, cfg) {
+      const g = new THREE.Group(); parent.add(g);
+      const unit = Math.min(w / 2.4, d / 2.0, 1);
+      g.scale.setScalar(unit);
+      const id = cfg.id, cold = ARCTIC, next = FUTURE;
+      const wall = mat(next ? 0xD4DDE7 : cold ? 0xDDE5DC : cfg.body, .86);
+      const trim = mat(next ? futureSpec(id)[0] : cold ? 0x5B8190 : cfg.accent, .84);
+      const dark = mat(next ? 0x30445D : cold ? 0x455A64 : 0x52615C, .9);
+      const wood = next ? wall : M_WOOD;
+      function b(wi, h, de, x, y, z, m) { g.add(mesh(new THREE.BoxGeometry(wi,h,de),m || wall,x,y,z)); }
+      function cup(x,y,z) {
+        g.add(mesh(new THREE.CylinderGeometry(.07,.05,.11,9),M_CREAM,x,y,z));
+      }
+      function canopy(width,depth,height) {
+        [-1,1].forEach(s => b(.055,height,.055,s*(width/2-.06),height/2,-depth/2+.06,wood));
+        const roof = mesh(new THREE.BoxGeometry(width,.07,depth),cold ? M_WHITE : trim,0,height,0);
+        roof.rotation.x = .09; g.add(roof);
+      }
+      function counter(width) { b(width,.42,.48,0,.25,0,trim);b(width+.08,.06,.55,0,.49,0,wall); }
+      function terminal(x,z) {
+        b(.34,.75,.30,x,.40,z,dark); b(.26,.28,.025,x,.56,z+.16,trim);
+        b(.22,.045,.17,x,.34,z+.20,wall);
+      }
+      function crate(x,z) { b(.30,.24,.30,x,.14,z,wood);b(.32,.04,.32,x,.28,z,trim); }
+      function hut() {
+        b(1.12,.74,.85,0,.40,-.12);b(.31,.58,.04,.24,.30,.32,dark);
+        b(.31,.25,.04,-.24,.47,.32,M_GLASS_BL);
+        if(cold) pitchedRoof(g,1.25,1,.40,M_WHITE,.78,{});
+        else { b(1.24,.10,.97,0,.82,-.12,trim); }
+      }
+      b(1.65,.06,1.42,0,.03,0,cold ? M_WHITE : M_WARM_STONE);
+      switch(id) {
+        case 'food_coffee':
+          counter(.88);canopy(1.14,.83,.99);
+          b(.33,.27,.25,-.18,.65,-.05,dark);cup(.17,.58,.12);cup(.35,.58,.12);
+          if(!cold && !next) [-1,1].forEach(s=>{const wheel=mesh(new THREE.CylinderGeometry(.12,.12,.08,10),dark,s*.43,.16,.22);wheel.rotation.x=Math.PI/2;g.add(wheel);});
+          break;
+        case 'food_bistro':
+          counter(1.08);canopy(1.27,.88,1.03);
+          b(.43,.12,.30,-.22,.58,0,dark);
+          g.add(mesh(new THREE.CylinderGeometry(.14,.14,.06,10),M_CREAM,.28,.56,.06));
+          b(.15,.45,.15,-.48,.81,-.30,wood);break;
+        case 'food_super':
+          canopy(1.40,1.0,1.0);counter(.96);
+          for(let i=0;i<3;i++) {crate(-.53+i*.52,.48);g.add(mesh(new THREE.SphereGeometry(.09,7,5),i%2?M_GOLD:M_STREET_LEAF,-.53+i*.52,.36,.48));}
+          if(next) {terminal(-.52,-.18);terminal(.52,-.18);}break;
+        case 'food_wolt':
+        case 'city_sorting_hub':
+          canopy(1.36,.93,.92);crate(-.37,.13);crate(.03,.13);crate(.40,-.18);
+          if(next) {
+            futureRing(g,.30,.025,trim,0,.10,.40);
+            b(.29,.10,.20,0,.45,.40,dark);
+            [-1,1].forEach(s=>futureRing(g,.12,.02,trim,s*.26,.49,.40));
+          } else {b(.75,.05,.40,0,.10,.19,wood);b(.04,.37,.04,.49,.23,.43,wood);}break;
+        case 'shop_boutique':
+          canopy(1.30,.88,1.10);b(1.04,.05,.05,0,.91,0,dark);
+          [-1,0,1].forEach((s,i)=>b(.24,.40,.09,s*.33,.66,0,i%2?trim:M_CREAM));
+          b(.67,.10,.42,0,.12,0,wood);break;
+        case 'shop_tech':
+        case 'shop_arcade':
+          if(next) {terminal(-.29,0);terminal(.29,0);}
+          else {counter(1.06);canopy(1.22,.83,1.13);[-1,1].forEach(s=>{b(.26,.34,.08,s*.28,.69,0,dark);b(.20,.24,.025,s*.28,.70,.055,M_GLASS_BL);});}
+          break;
+        case 'house_tower': hut();break;
+        case 'house_util':
+          b(.75,.56,.54,0,.32,0,trim);
+          b(.30,.30,.035,0,.41,.29,dark);
+          {const panel=mesh(new THREE.BoxGeometry(.93,.055,.62),M_GLASS_BL,0,.82,-.04);panel.rotation.x=-.30;g.add(panel);}
+          break;
+        case 'house_subs':
+          terminal(0,0);b(.045,.55,.045,0,1.02,-.10,dark);
+          g.add(mesh(new THREE.SphereGeometry(.20,10,6,0,Math.PI*2,0,Math.PI*.45),wall,0,1.27,-.10));break;
+        case 'health_pharmacy':
+          hut();b(.12,.40,.045,-.26,.48,.36,trim);b(.38,.12,.045,-.26,.48,.36,trim);break;
+        case 'shop_travel':
+          canopy(1.25,.80,1.13);b(.52,.54,.08,-.23,.58,-.18,trim);
+          b(.35,.20,.06,-.23,.62,-.12,M_CREAM);crate(.40,.30);break;
+        case 'finance_bank': terminal(0,0);canopy(.86,.72,1.04);break;
+        default:
+          canopy(1.17,.84,.97);counter(.84);
+          g.add(mesh(new THREE.OctahedronGeometry(.18,0),trim,0,.72,0));break;
+      }
+      if(ISRAEL && cfg.sign && cfg.sign.text)
+        israelSmallSign(g,cfg.sign.text,1.0,.20,0,1.20,.20,cfg.sign.bg,cfg.sign.fg);
+    }
+
+    function buildWorldStage(g, w, d, cfg, tier) {
+      if(tier===1) {worldStarter(g,w,d,cfg);return;}
+      const home = cfg.kind === 'house', id = cfg.id;
+      const food = id === 'food_coffee' || id === 'food_bistro';
+      const freight = id === 'food_wolt' || id === 'city_sorting_hub';
+      const accent = mat(FUTURE ? futureSpec(id)[0] : cfg.accent || cfg.body,.85);
+      function box(wi,h,de,x,y,z,m) {g.add(mesh(new THREE.BoxGeometry(wi,h,de),m,x,y,z));}
+      // Main modules own category identity; secondary modules are quiet service
+      // rooms, so a compound does not duplicate signs, entrances and emblems.
+      function module(x,z,wi,de,levels,main) {
+        const p = new THREE.Group();p.position.set(x,0,z);g.add(p);
+        if(ISRAEL) {
+          if(main) {
+            if(home) israelStorey(p,wi,de,cfg,0);
+            else {israelGround(p,wi,de,cfg);if(cfg.sign)signPlate(p,wi,1.02,de,cfg.sign.text,cfg.sign.bg,cfg.sign.fg,27);}
+          } else {
+            israelBox(p,wi,FLOOR_H,de,cfg.body,0,FLOOR_H/2,0);
+            israelWindow(p,0,.62,de/2,Math.min(.45,wi*.54),false);
+          }
+          for(let i=1;i<levels;i++) {const f=new THREE.Group();f.position.y=i*FLOOR_H;p.add(f);israelStorey(f,wi,de,cfg,i-1);}
+          israelRoof(p,wi,de,levels*FLOOR_H,cfg);
+        } else if(ARCTIC) {
+          if(main) iceFront(p,wi,de,cfg,false);
+          else {
+            p.add(mesh(roundedBox(wi,FLOOR_H,de,.10),M_CREAM,0,FLOOR_H/2,0));
+            p.add(mesh(new THREE.BoxGeometry(wi*.58,.30,.04),M_GLASS_BL,0,.61,de/2+.02));
+            p.add(mesh(new THREE.BoxGeometry(wi,.09,de),accent,0,.16,0));
+          }
+          for(let i=1;i<levels;i++) {const f=new THREE.Group();f.position.y=i*FLOOR_H;p.add(f);iceStorey(f,wi,de,i-1,cfg);}
+          iceRoof(p,wi*1.04,de*1.04,.48,levels*FLOOR_H,id);
+        } else {
+          if(main) futureFront(p,wi,de,cfg,false);
+          else {
+            futureBox(p,wi,.10,de,mat(0x30445D,.8),0,.08,0);
+            futureBox(p,wi*.88,.86,de*.85,mat(0xCAD7E0,.8),0,.65,0,.12);
+            futureBox(p,wi*.67,.26,.035,accent,0,.68,de*.43);
+          }
+          for(let i=1;i<levels;i++) {const f=new THREE.Group();f.position.y=i*FLOOR_H;p.add(f);futureStorey(f,wi,de,cfg,i-1);}
+          futureRoof(p,wi,de,levels*FLOOR_H,cfg);
+        }
+      }
+      function terrace(x,z,wi,de) {
+        const material = ISRAEL ? M_WOOD : ARCTIC ? M_WHITE : accent;
+        box(wi,.07,de,x,.07,z,ARCTIC?M_WOOD:M_WARM_STONE);
+        [-1,1].forEach(s=>box(.045,.92,.045,x+s*wi*.43,.51,z-de*.37,material));
+        box(wi,.06,de,x,1.0,z,material);
+        if(food) {
+          box(wi*.52,.06,de*.42,x,.44,z,M_CREAM);box(.07,.35,.07,x,.24,z,M_WOOD);
+          [-1,1].forEach(s=>box(.18,.23,.18,x+s*wi*.37,.20,z,accent));
+        } else if(freight || id==='food_super') {
+          [-1,1].forEach(s=>box(wi*.27,.30,de*.46,x+s*wi*.22,.25,z,accent));
+        } else {box(wi*.65,.25,de*.27,x,.22,z,accent);}
+      }
+      box(w*.98,.05,d*.98,0,.025,0,ARCTIC?M_WHITE:M_WARM_STONE);
+      if(ISRAEL) {
+        if(home) {
+          module(tier===4?-w*.13:0,-d*.08,w*(tier===4?.66:.72),d*.72,tier===2?1:tier===3?2:3,true);
+          if(tier===4)module(w*.34,-d*.12,w*.24,d*.57,1,false);
+        } else if(tier===2) module(0,-d*.10,w*.62,d*.58,1,true);
+        else if(tier===3) {
+          module(-w*.08,-d*.13,w*.78,d*.65,1,true);
+          terrace(w*.20,d*.32,w*.46,d*.25);
+        } else {
+          module(-w*.15,-d*.15,w*.64,d*.64,food||freight?1:2,true);
+          module(w*.32,-d*.04,w*.27,d*.84,1,false);
+          terrace(-w*.15,d*.33,w*.61,d*.23);
+        }
+      } else if(ARCTIC) {
+        module(tier===2?0:-w*.19,-d*.12,w*(tier===2?.66:.54),d*.60,tier===4&&home?2:1,true);
+        if(tier>=3) {
+          module(w*.30,-d*.16,w*.28,d*.51,1,false);
+          box(w*.15,.55,d*.22,w*.14,.36,-d*.17,M_WARM_STONE);
+        }
+        if(tier===4) {module(w*.30,d*.27,w*.28,d*.28,1,false);terrace(-w*.20,d*.30,w*.47,d*.27);}
+      } else {
+        if(tier===2) module(0,-d*.12,w*.62,d*.57,1,true);
+        else if(tier===3) {
+          module(-w*.24,-d*.12,w*.43,d*.64,1,true);
+          module(w*.26,-d*.12,w*.35,d*.64,1,false);
+          box(w*.18,.16,d*.28,w*.03,.92,-d*.12,accent);
+        } else {
+          module(-w*.10,-d*.22,w*.65,d*.46,2,true);
+          module(w*.32,d*.22,w*.25,d*.33,1,false);
+          terrace(-w*.22,d*.27,w*.43,d*.32);
+          box(w*.17,.16,d*.24,w*.32,.72,-d*.05,accent);
+        }
+      }
+    }
+
+    function makeWorldBuilding(cfg) {
+      const g=new THREE.Group();g.position.set(cfg.x,Y_WALK,cfg.z);
+      if(cfg.rotY)g.rotation.y=cfg.rotY;
+      root.add(g);
+      const shell=new THREE.Group(),plot=new THREE.Group(),stall=new THREE.Group();
+      g.add(shell,plot,stall);
+      const proxy=hitProxy(cfg.w+.2,FLOOR_H*3.8,cfg.d+.2);
+      proxy.userData={id:cfg.id,district:cfg.district,name:cfg.name,amount:0,trend:cfg.trend,shell:shell};
+      g.add(proxy);interactiveBuildings.push(proxy);buildingRoots[cfg.id]=g;
+      const rec={id:cfg.id,group:g,shell:shell,plot:plot,stall:stall,ground:shell,
+        proxy:proxy,floors:[],roofs:[],dressing:[],tierGroups:[],minTier:1,
+        maxTier:cfg.maxTier===undefined?4:cfg.maxTier,tier:-1,
+        buildStage:function(tier){const stage=new THREE.Group();shell.add(stage);buildWorldStage(stage,cfg.w,cfg.d,cfg,tier);packRigidModel(stage);return stage;}};
+      cityBuildings[cfg.id]=rec;
+      if (typeof attachBuildingContextualLife === "function") attachBuildingContextualLife(g, cfg, cfg.w, cfg.d);
+      setBuildingTier(rec,1);return rec;
+    }
+
     function makeBuilding(cfg) {
+      if (ISRAEL) {
+        const local = ISRAEL_BUILDINGS[cfg.id] || [cfg.body, cfg.accent || cfg.body, "#596F67", "utility"];
+        cfg = Object.assign({}, cfg, {
+          body: local[0], accent: local[1], israelKind: local[3],
+          glass: 0xA8C3C8, balcony: false,
+          awning: [local[2], "#F4E9D4"],
+          sign: { text: ISRAEL_SIGNS[cfg.id] || (cfg.sign && cfg.sign.text) || "", bg: local[2], fg: "#FFF7E9", size: 27 }
+        });
+      }
+
+      if(ISRAEL || ARCTIC || FUTURE) return makeWorldBuilding(cfg);
+
       const g = new THREE.Group();
       g.position.set(cfg.x, Y_WALK, cfg.z);
       if (cfg.rotY) g.rotation.y = cfg.rotY;
@@ -1194,9 +2163,11 @@
       const shell = new THREE.Group(); g.add(shell);
 
       const ground = new THREE.Group(); shell.add(ground);
+      if (FUTURE) { futureFront(ground, w, d, cfg, false); } else if (ARCTIC) { iceFront(ground, w, d, cfg, false); } else if (ISRAEL) { israelGround(ground, w, d, cfg); } else {
       ground.add(mesh(roundedBox(w, FLOOR_H, d, 0.10), bodyMat, 0, FLOOR_H / 2, 0));
       secondaryFacade(ground, w, d);
-      if (typeof CUSTOM_FACADES !== "undefined" && CUSTOM_FACADES[cfg.id]) {
+      if (ISRAEL) { israelFacade(ground, w, d, cfg); }
+      else if (typeof CUSTOM_FACADES !== "undefined" && CUSTOM_FACADES[cfg.id]) {
         CUSTOM_FACADES[cfg.id](ground, w, d, cfg, bodyMat);
       } else if (cfg.kind === "house") {
         // Houses get punched windows and a front door rather than a shopfront.
@@ -1212,13 +2183,18 @@
         if (cfg.awning) stripedAwning(ground, w, d, cfg.awning[0], cfg.awning[1], 0.98);
       }
 
+      }
+
       // Upper storeys, revealed one at a time as spending grows
       const floors = [];
       for (let i = 0; i < 2; i++) {
         const f = new THREE.Group();
         f.position.y = FLOOR_H + i * FLOOR_H;
         shell.add(f);
-        if (typeof CUSTOM_FLOORS !== "undefined" && CUSTOM_FLOORS[cfg.id]) {
+        if (FUTURE) { futureStorey(f, w, d, cfg, i); }
+        else if (ARCTIC) { iceStorey(f, w, d, i, cfg); }
+        else if (ISRAEL) { israelStorey(f, w, d, cfg, i); }
+        else if (typeof CUSTOM_FLOORS !== "undefined" && CUSTOM_FLOORS[cfg.id]) {
           CUSTOM_FLOORS[cfg.id](f, w, d, i, cfg, bodyMat);
         } else {
           f.add(mesh(roundedBox(w - (cfg.kind === "house" ? 0.10 : 0.04), FLOOR_H, d - (cfg.kind === "house" ? 0.10 : 0.04), 0.09),
@@ -1230,19 +2206,25 @@
             f.add(mesh(new THREE.SphereGeometry(0.13, 6, 6), M_STREET_LEAF, -w * 0.22, FLOOR_H * 0.20 + 0.16, d / 2 + 0.28, false, false));
           }
         }
-        secondaryFacade(f, w, d);
+        if (!FUTURE && !ARCTIC && !ISRAEL) secondaryFacade(f, w, d);
         floors.push(f);
       }
 
       // Signage sits on the ground floor fascia for shops, above the door for civic blocks
-      if (cfg.sign) signPlate(ground, w, cfg.kind === "house" ? 0.95 : 1.02, d, cfg.sign.text, cfg.sign.bg, cfg.sign.fg, cfg.sign.size);
+      if (!FUTURE && !ARCTIC && !(ISRAEL && cfg.kind === "house") && cfg.sign) signPlate(ground, w, cfg.kind === "house" ? 0.95 : 1.02, d, cfg.sign.text, cfg.sign.bg, cfg.sign.fg, cfg.sign.size);
 
       // Roofs: one per height the building can end up at
       const roofs = [];
       for (let t = 0; t < 3; t++) {
         const y = FLOOR_H * (t + 1);
         let r;
-        if (cfg.roofStyle === "mansard") {
+        if (FUTURE) {
+          r = futureRoof(shell, w, d, y, cfg);
+        } else if (ARCTIC) {
+          r = iceRoof(shell, w * 1.04, d * 1.04, cfg.kind === "house" ? 0.84 : 0.65, y, cfg.id);
+        } else if (ISRAEL) {
+          r = israelRoof(shell, w, d, y, cfg);
+        } else if (cfg.roofStyle === "mansard") {
           r = mansardRoof(shell, w, d, 0.82, roofMat, y, { dormers: true });
         } else if (cfg.roofStyle === "barrel") {
           r = barrelRoof(shell, w, d, 0.62, roofMat, y);
@@ -1279,9 +2261,7 @@
       });
 
       // What this building actually is, beyond a sign: mannequins, crates, a dish, scooters.
-      if (typeof CHARACTER !== "undefined" && CHARACTER[cfg.id]) {
-        try { CHARACTER[cfg.id](ground, w, d); } catch (e) { console.warn("character " + cfg.id, e); }
-      }
+      attachBuildingContextualLife(ground, cfg, w, d);
 
       // Batch each independently visible tier, not the whole building. Guests stay separate.
       [stall, ground].concat(floors, roofs, dressing.map(function (p) { return p.obj; })).forEach(packRigidModel);
@@ -1328,6 +2308,14 @@
       if (rec.tier === tier) return;
       const previous = rec.tier;
       rec.tier = tier;
+      if(rec.buildStage) {
+        let current=rec.tierGroups.find(t=>t.visibleAt===tier);
+        if(!current) {current={visibleAt:tier,group:rec.buildStage(tier)};rec.tierGroups.push(current);}
+        rec.plot.visible=false;rec.stall.visible=false;rec.shell.visible=true;
+        rec.tierGroups.forEach(t=>{t.group.visible=t===current;});
+        if(previous>=0 && tier>previous && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) raise(current.group);
+        return;
+      }
       rec.plot.visible = (tier === 0);
       rec.stall.visible = (tier === 1);
       rec.shell.visible = (tier >= 2);
@@ -1510,7 +2498,14 @@
         accHpBand:       new THREE.BoxGeometry(0.195, 0.010, 0.010),
         accHpCup:        new THREE.CylinderGeometry(0.021, 0.021, 0.015, 7),
         jacketShoulder:  new THREE.BoxGeometry(0.305, 0.044, 0.148),
-        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7)
+        looseBtmFlare:   new THREE.CylinderGeometry(0.118, 0.094, 0.065, 7),
+        kippah:          new THREE.SphereGeometry(0.052, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.44),
+        harediBrim:      new THREE.CylinderGeometry(0.136, 0.136, 0.012, 16),
+        harediCrown:     new THREE.CylinderGeometry(0.076, 0.082, 0.085, 16),
+        harediRibbon:    new THREE.CylinderGeometry(0.083, 0.083, 0.018, 16),
+        tzitzitStrand:   new THREE.BoxGeometry(0.007, 0.065, 0.007),
+        shades:          new THREE.BoxGeometry(0.125, 0.022, 0.026),
+        peyot:           new THREE.CylinderGeometry(0.007, 0.005, 0.08, 6)
       };
     })();
 
@@ -1648,8 +2643,122 @@
       return buildAppearanceProfile(key, 0);
     }
 
+    // Adapt appearance profile for the sunny, diverse Israeli streetscape
+    function adaptIsraelAppearance(p) {
+      if (!p) return p;
+      const rand = makePRNG(hashCitizenKey((p.key || 'israel:citizen') + ':israel:v1'));
+      const roll = rand();
+
+      // 1. One Haredi citizen ("אולי אחד חרדי עם חליפה")
+      const isCrosswalk = p.key && (p.key.includes('crosswalk') || p.key === 'city:crosswalk:ped');
+      const isChabad    = p.key && p.key.startsWith('chabad:');
+      const isHaredi = isCrosswalk || isChabad || roll < 0.085;
+      if (isHaredi) {
+        return Object.assign({}, p, {
+          israelType: 'haredi',
+          presentation: 'male',
+          topStyle: 'jacket',
+          topColor: 0x18181B,
+          innerShirt: 0xFFFFFF,
+          bottomStyle: 'straight',
+          bottomColor: 0x18181B,
+          shoeStyle: 'shoe',
+          israelShoe: 'shoe',
+          hairStyle: 'short',
+          hairColor: 0x221B17,
+          accessory: 'harediHat'
+        });
+      }
+
+      // 2. Subtly Religious ("איזה כמה ממש בקטנה דתיים" - kippah, tzitzit)
+      const isDati = roll >= 0.085 && roll < 0.28;
+      if (isDati) {
+        const kippahColors = [0x1E3A5F, 0x2C4035, 0x222226, 0xDCDAD1, 0x4A3E36];
+        const kCol = kippahColors[Math.floor(rand() * kippahColors.length)];
+        const wearShorts = rand() < 0.45;
+        const btm = wearShorts ? 'shorts' : (rand() < 0.5 ? 'straight' : 'slim');
+        const btmCols = wearShorts
+          ? [0xB8A882, 0x58664A, 0x405466, 0x8C8479]
+          : [0x2C3E50, 0x424852, 0x544E45, 0x36433E];
+        const bCol = btmCols[Math.floor(rand() * btmCols.length)];
+        const shoeRoll = rand();
+        const israelShoe = shoeRoll < 0.45 ? 'blundstone' : (shoeRoll < 0.75 ? 'sneaker' : 'shoe');
+        return Object.assign({}, p, {
+          israelType: 'dati',
+          presentation: 'male',
+          topStyle: rand() < 0.65 ? 'basic' : 'oversized',
+          topColor: [0xF8F8F6, 0x52728C, 0x6E7B62, 0xC4B59D, 0x3E4B5B, 0xB66B56][Math.floor(rand() * 6)],
+          bottomStyle: btm,
+          bottomColor: bCol,
+          israelShoe: israelShoe,
+          shoeStyle: israelShoe === 'blundstone' ? 'boot' : (israelShoe === 'sneaker' ? 'sneaker' : 'shoe'),
+          blundstoneColor: rand() < 0.55 ? 0x4A3423 : 0x36271A,
+          accessory: 'kippah',
+          kippahColor: kCol,
+          tzitzit: true,
+          hairStyle: ['short', 'crop', 'shaved'][Math.floor(rand() * 3)]
+        });
+      }
+
+      // 3. Israeli Casual (Mediterranean summer style, ~45% shorts, blundstones/sandals/sneakers, shades)
+      const wearShorts = rand() < 0.45;
+      const btmStyle = wearShorts ? 'shorts' : (p.presentation === 'female' && rand() < 0.22 ? 'skirt' : (rand() < 0.5 ? 'slim' : 'straight'));
+      const israelBottomColors = wearShorts
+        ? [0xB8A882, 0x546347, 0x425B70, 0x948E84, 0x35414D, 0xA89F91]
+        : [0x3B4856, 0x4E555C, 0x5A5248, 0x364842, 0x2A343F];
+      const bCol = israelBottomColors[Math.floor(rand() * israelBottomColors.length)];
+
+      const israelTopColors = [
+        0xF7F6F2, 0x5A738E, 0x6C7E5F, 0xD4B896, 0xB86B58, 0x8EA093, 0x3E4C59, 0xE2C578
+      ];
+      const topCol = israelTopColors[Math.floor(rand() * israelTopColors.length)];
+
+      const shoeRoll = rand();
+      let israelShoe = null;
+      let shoeStyle = p.shoeStyle;
+      if (shoeRoll < 0.38) {
+        israelShoe = 'blundstone';
+        shoeStyle = 'boot';
+      } else if (shoeRoll < 0.72) {
+        israelShoe = 'sneaker';
+        shoeStyle = 'sneaker';
+      } else {
+        israelShoe = 'sandals';
+        shoeStyle = 'shoe';
+      }
+
+      const accRoll = rand();
+      let acc = null;
+      if (accRoll < 0.22) acc = 'sunglasses';
+      else if (accRoll < 0.36) acc = 'cap';
+      else if (accRoll < 0.46) acc = 'tote';
+      else if (accRoll < 0.56) acc = 'backpack';
+
+      const topStyle = rand() < 0.55 ? 'basic' : (rand() < 0.82 ? 'oversized' : p.topStyle);
+
+      return Object.assign({}, p, {
+        israelType: 'casual',
+        bottomStyle: btmStyle,
+        bottomColor: bCol,
+        topStyle: topStyle,
+        topColor: topCol,
+        shoeStyle: shoeStyle,
+        israelShoe: israelShoe,
+        blundstoneColor: rand() < 0.6 ? 0x4E3726 : 0x38281B,
+        accessory: acc
+      });
+    }
+
     // Update appearance on an existing figure record (crowd pool reuse).
     function applyAppearanceToFigure(record, appearance) {
+      if (typeof ISRAEL !== "undefined" && ISRAEL) {
+        appearance = adaptIsraelAppearance(appearance);
+      } else if (typeof ARCTIC !== "undefined" && ARCTIC) {
+        appearance = Object.assign({}, appearance, {
+          topStyle: 'jacket', bottomStyle: 'regular', shoeStyle: 'boot',
+          accessory: ['cap', 'headphones'].includes(appearance.accessory) ? null : appearance.accessory
+        });
+      }
       const ud = record.obj.userData;
       // Feet are at local y≈0 in fig space; scaling from origin keeps them on Y_WALK.
       record.obj.scale.set(appearance.widthScale, appearance.heightScale, appearance.widthScale);
@@ -1664,6 +2773,7 @@
       if (ud.pantsMeshes) ud.pantsMeshes.forEach(function (m) { m.material = btmMat; });
       addHairToGroup(ud.hairGrp, appearance.hairStyle, appearance.hairColor);
       applyCitizenDesign(record.obj, appearance);
+      if (typeof ARCTIC !== "undefined" && ARCTIC) dressArcticFigure(record.obj, topMat);
       record.motion        = appearance.motion;
       record.appearance    = appearance;
       record.appearanceKey = appearance.key;
@@ -1729,9 +2839,15 @@
         u.shinMeshes[i].position.y = 0;
         u.shinMeshes[i].scale.set(wide,shin,wide);
         u.shinMeshes[i].material = p.bottomStyle === 'shorts' ? skin : bottom;
-        const shoe = knee.children[1]; shoe.geometry = G[p.shoeStyle]; shoe.material = dark;
+        const shoe = knee.children[1];
+        shoe.geometry = G[p.shoeStyle] || G.sneaker;
+        const shoeMat = (p.israelShoe === 'blundstone')
+          ? citizenMat(p.blundstoneColor || 0x4E3726, 0.76)
+          : (p.israelShoe === 'sneaker' ? citizenMat(0xF0EFEA, 0.85) : dark);
+        shoe.material = shoeMat;
         shoe.position.set(0,-shin - .050,0); shoe.scale.set(1,1,1);
-        citizenPart(knee,2,G.sole,sole,0,-shin - .050,0);
+        const soleMat = (p.israelShoe === 'blundstone') ? citizenMat(0x1C1A17, 0.92) : sole;
+        citizenPart(knee,2,G.sole,soleMat,0,-shin - .050,0);
       });
       const c = u.clothingGrp; hideCitizenParts(c);
       // A visible hem, articulated sleeves and open jacket panels define clothing at zoom.
@@ -1741,7 +2857,10 @@
           citizenPart(c,1+i,G.panel,top,side*d.top*.50,.006,d.depth*bulk+.004,d.top*.79,d.length*.88,.014);
           citizenPart(c,3+i,G.panel,top,side*.038,d.length*.43,d.depth*.83,.045,.049,.016).rotation.z = side*.34;
         });
-        citizenPart(c,5,G.panel,citizenMat(0xB9B4A9,.88),0,.004,d.depth*bulk+.003,.022,d.length*.80,.011);
+        citizenPart(c,5,G.panel,citizenMat(p.innerShirt || 0xB9B4A9,.88),0,.004,d.depth*bulk+.003,.022,d.length*.80,.011);
+        if (p.israelType === 'haredi') {
+          citizenPart(c,6,G.neck,citizenMat(0xFFFFFF,.9),0,d.length*.49,0,1.22,.34,1.22);
+        }
       } else if (p.topStyle === 'hoodie') {
         citizenPart(c,1,G.hood,top,0,d.length*.39,-d.depth-.009);
       } else if (p.topStyle === 'sweater' || p.topStyle === 'longSleeve') {
@@ -1754,7 +2873,7 @@
       u.pelvis.scale.set(d.hip/.103,u.seated ? contact/.045 : 1,d.depth/.069);
       if (drape) {
         const fabric = p.topStyle === 'dress' || p.topStyle === 'longTop' ? top : bottom;
-        citizenPart(c,6,G.skirt,fabric,0,-d.length*.43,0,d.hip/.101,.22,1).visible = !u.seated;
+        citizenPart(c,7,G.skirt,fabric,0,-d.length*.43,0,d.hip/.101,.22,1).visible = !u.seated;
         // Two overlapping cloth panels follow the thighs when seated; no rigid cone through the chair.
         [u.legL,u.legR].forEach(function (leg) {
           citizenPart(leg,2,G.thigh,fabric,0,0,0,1.7,thigh,1.23).visible = !!u.seated;
@@ -1774,6 +2893,37 @@
       } else if (p.accessory === 'headphones') {
         citizenPart(a,0,G.accHpBand,dark,0,.352+headOffset,0,headWidth,1,1);
         [-1,1].forEach(function (side,i) { citizenPart(a,i+1,G.accHpCup,dark,side*.09*headWidth,.267+headOffset,0).rotation.z = Math.PI/2; });
+      } else if (p.accessory === 'kippah') {
+        const kippahMat = citizenMat(p.kippahColor || 0x1E3A5F, 0.92);
+        const kippahMesh = citizenPart(a, 0, G.kippah, kippahMat, 0, 0.332 + headOffset, -0.022, headWidth * 1.05, headHeight, d.head * 1.05);
+        kippahMesh.rotation.x = -0.32;
+        if (p.tzitzit) {
+          const tzitzitMat = citizenMat(0xFAFAFA, 0.95);
+          citizenPart(a, 1, G.tzitzitStrand, tzitzitMat, -d.hip * 0.96, -d.length / 2 - 0.02, 0);
+          citizenPart(a, 2, G.tzitzitStrand, tzitzitMat,  d.hip * 0.96, -d.length / 2 - 0.02, 0);
+        }
+      } else if (p.accessory === 'harediHat') {
+        const hatMat = citizenMat(0x18181B, 0.85);
+        const ribbonMat = citizenMat(0x0E0E10, 0.92);
+        const brim = citizenPart(a, 0, G.harediBrim, hatMat, 0, 0.320 + headOffset, 0.005, headWidth, 1, d.head);
+        brim.rotation.x = -0.04;
+        const crown = citizenPart(a, 1, G.harediCrown, hatMat, 0, 0.362 + headOffset, 0.005, headWidth, 1, d.head);
+        crown.rotation.x = -0.04;
+        const rib = citizenPart(a, 2, G.harediRibbon, ribbonMat, 0, 0.328 + headOffset, 0.005, headWidth * 1.01, 1, d.head * 1.01);
+        rib.rotation.x = -0.04;
+        const peyotMat = citizenMat(p.hairColor || 0x221B17, 0.9);
+        [-1, 1].forEach(function (side, pi) {
+          const curl = citizenPart(a, 3 + pi, G.peyot, peyotMat, side * 0.076 * headWidth, 0.235 + headOffset, 0.012, 1, 1, 1);
+          curl.rotation.z = side * 0.12;
+        });
+      } else if (p.accessory === 'sunglasses') {
+        const shadesMat = citizenMat(0x1C1C20, 0.45);
+        citizenPart(a, 0, G.shades, shadesMat, 0, 0.305 + headOffset, 0.065 * d.head, headWidth, 1, 1);
+      }
+      if (p.tzitzit && p.accessory !== 'kippah') {
+        const tzitzitMat = citizenMat(0xFAFAFA, 0.95);
+        citizenPart(a, 3, G.tzitzitStrand, tzitzitMat, -d.hip * 0.96, -d.length / 2 - 0.02, 0);
+        citizenPart(a, 4, G.tzitzitStrand, tzitzitMat,  d.hip * 0.96, -d.length / 2 - 0.02, 0);
       }
       if (!u.propGrp) { u.propGrp = new THREE.Group(); u.armR.children[1].add(u.propGrp); }
       hideCitizenParts(u.propGrp);
@@ -1942,7 +3092,45 @@
         pantsMeshes: thighMeshes.concat(shinMeshes)
       };
       if (appearance) applyAppearanceToFigure({ obj: fig }, appearance);
+      if (typeof ARCTIC !== "undefined" && ARCTIC && !appearance) dressArcticFigure(fig, shirt);
       return fig;
+    }
+
+    // Keep winter clothing attached to the existing rig, including pooled citizens.
+    function dressArcticFigure(fig, coat) {
+      const u = fig.userData, trim = citizenMat(0xF1E5D2, 0.95);
+      if (!u.winter) {
+        const hood = new THREE.Group(); hood.name = "parka-hood"; u.torso.add(hood);
+        const back = mesh(new THREE.SphereGeometry(0.115, 10, 8, Math.PI, Math.PI), coat, 0, 0, 0, false, false);
+        const rim = mesh(new THREE.TorusGeometry(0.099, 0.025, 5, 14), trim, 0, 0, 0.028, false, false);
+        hood.add(back, rim);
+        const hem = mesh(new THREE.CylinderGeometry(0.117, 0.122, 0.035, 10), trim, 0, -0.12, 0, false, false);
+        hem.scale.z = 0.72; u.torso.add(hem);
+        const cuffs = [u.armL, u.armR].map(function (arm) {
+          const fore = arm.children[1];
+          const cuff = mesh(new THREE.CylinderGeometry(0.033, 0.035, 0.034, 8), trim, 0, -0.112, 0, false, false);
+          fore.add(cuff); return cuff;
+        });
+        u.winter = { hood: hood, back: back, hem: hem, cuffs: cuffs };
+      }
+      const w = u.winter;
+      w.hood.position.copy(u.headMesh.position); w.hood.scale.copy(u.headMesh.scale);
+      w.back.material = coat;
+      w.hem.position.y = u.dimensions ? -u.dimensions.length * 0.46 : -0.12;
+      if (u.dimensions) w.hem.scale.set(u.dimensions.hip / 0.10, 1, u.dimensions.depth / 0.10);
+      u.hairGrp.visible = false;
+      [u.armL, u.armR].forEach(function (arm) {
+        const fore = arm.children[1];
+        fore.children[0].material = coat; fore.children[0].scale.x = fore.children[0].scale.z = 1.20;
+        fore.children[1].material = citizenMat(0x5D4B40, 0.9);
+      });
+      if (!u.appearance) {
+        u.bodyMesh.scale.x = 1.12;
+        [u.kneeL, u.kneeR].forEach(function (knee) {
+          knee.children[1].geometry = CITIZEN_GEO.boot;
+          knee.children[1].material = citizenMat(0x5D4B40, 0.9);
+        });
+      }
     }
 
     // Pose variant for seated cafe / dining guests before packing
@@ -2042,9 +3230,20 @@
         if (rider.userData.torso) { rider.userData.torso.rotation.z = -0.14; rider.userData.torso.rotation.x = 0.08; }
       }
       rider.position.set(-0.06, 0.04, 0); rider.rotation.y = Math.PI / 2; g.add(rider);
-      g.add(mesh(roundedBox(0.30, 0.32, 0.30, 0.04), body, -0.30, 0.58, 0, false, false));
-      g.add(mesh(new THREE.BoxGeometry(0.20, 0.20, 0.02), M_WHITE, -0.30, 0.58, 0.16, false, false));
-      [[-0.36], [0.36]].forEach(function (p) {
+      if (ARCTIC) {
+        const deliveryBox = woltIceBox(); deliveryBox.position.set(-0.39,0.62,0); g.add(deliveryBox);
+        g.add(mesh(new THREE.BoxGeometry(.50,.055,.44),M_WOOD,-.39,.385,0,false,false));
+      } else {
+        g.add(mesh(roundedBox(0.30, 0.32, 0.30, 0.04), body, -0.30, 0.58, 0, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.20, 0.20, 0.02), M_WHITE, -0.30, 0.58, 0.16, false, false));
+      }
+      if (ARCTIC) {
+        [-0.19, 0.19].forEach(function (z) {
+          g.add(mesh(new THREE.BoxGeometry(1.12, 0.06, 0.075), M_WOOD, 0, 0.07, z));
+          const tip = mesh(new THREE.BoxGeometry(0.28, 0.06, 0.075), M_WOOD, 0.60, 0.13, z);
+          tip.rotation.z = 0.48; g.add(tip);
+        });
+      } else [[-0.36], [0.36]].forEach(function (p) {
         const wh = mesh(new THREE.CylinderGeometry(0.145, 0.145, 0.08, 12), mat(0x09090B, 0.9), p[0], 0.145, 0, false, false);
         wh.rotation.x = Math.PI / 2; g.add(wh);
       });
@@ -2115,12 +3314,76 @@
 
     // Vehicle factory, defined before the districts because the transport yard parks a
     // bus and a taxi of its own.
+    function arcticSled(color, isBus, isTaxi) {
+      const g = new THREE.Group(); g.name = isBus ? "arctic-passenger-sled" : "arctic-sled";
+      const length = isBus ? 2.4 : 1.5, width = isBus ? 0.94 : 0.76;
+      const paint = mat(color, 0.88), timber = M_WOOD;
+      [-1, 1].forEach(function (side) {
+        const x = side * width * 0.48;
+        g.add(mesh(new THREE.BoxGeometry(0.075, 0.065, length), timber, x, 0.075, 0));
+        // Upturned wooden runners, aligned with the original vehicle's +z heading.
+        const tip = mesh(new THREE.BoxGeometry(0.075, 0.065, 0.34), timber, x, 0.155, length / 2 + 0.10);
+        tip.rotation.x = -0.55; g.add(tip);
+        [-0.30, 0.30].forEach(function (z) {
+          g.add(mesh(new THREE.BoxGeometry(0.065, 0.22, 0.07), timber, x, 0.20, z * length));
+        });
+        g.add(mesh(new THREE.BoxGeometry(0.07, 0.20, length * 0.83), paint, side * width / 2, 0.42, -0.03));
+        g.add(mesh(new THREE.BoxGeometry(0.08, 0.04, length * 0.85), M_CREAM, side * width / 2, 0.54, -0.03));
+      });
+      g.add(mesh(roundedBox(width, 0.10, length * 0.88, 0.04), timber, 0, 0.29, -0.03));
+      const seats = isBus ? [-0.70, -0.05, 0.60] : [0.05];
+      seats.forEach(function (z, i) {
+        g.add(mesh(new THREE.BoxGeometry(width * 0.82, 0.075, 0.27), paint, 0, 0.41, z));
+        g.add(mesh(new THREE.BoxGeometry(width * 0.82, 0.25, 0.065), paint, 0, 0.55, z - 0.16));
+        const rider = makeFigure({ seated: true, shirt: i % 2 ? 0xA85E47 : 0x476C80, hair: false });
+        rider.position.set(0, 0.16, z); rider.userData.lifeActor = true; g.add(rider);
+      });
+      if (isTaxi) g.add(mesh(new THREE.BoxGeometry(0.30, 0.12, 0.08), M_GOLD, 0, 0.61, -length * 0.39));
+      return packRigidModel(g);
+    }
+
     function createCar(color, isBus, isTaxi) {
+      if (FUTURE) return futureVehicle(isBus, isTaxi);
+      if (ARCTIC) return arcticSled(color, isBus, isTaxi);
       const g = new THREE.Group();
       g.name = isBus ? "city-bus" : "city-car";
-      const bMat = mat(color, 0.5, 0.15);
+      const bMat = mat(ISRAEL && isTaxi ? 0xF1F0E7 : color, 0.5, 0.15);
       const wMat = mat(0x0F172A, 0.9);
-      if (isBus) {
+      function vehicleLabel(text, width, height, x, y, z, angle, background, foreground) {
+        const material = new THREE.MeshStandardMaterial({ map: signTex(text, background, foreground, 32), roughness: 0.8 });
+        const panel = mesh(new THREE.PlaneGeometry(width, height), material, x, y, z, false, false);
+        panel.rotation.y = angle || 0; g.add(panel);
+      }
+      if (ISRAEL && isBus) {
+        g.name = "israeli-city-bus";
+        const green = mat(0x4F805F, 0.78), ivory = mat(0xE9EADD, 0.8), glass = mat(0x30484C, 0.52);
+        // Familiar low-floor city bus: pale body, green skirt and continuous dark glazing.
+        g.add(mesh(roundedBox(1.0, 0.78, 2.4, 0.055), ivory, 0, 0.51, 0));
+        g.add(mesh(new THREE.BoxGeometry(1.025, 0.20, 2.41), green, 0, 0.27, 0));
+        g.add(mesh(new THREE.BoxGeometry(1.04, 0.055, 2.42), ivory, 0, 0.94, 0));
+        g.add(mesh(roundedBox(0.69, 0.12, 0.90, 0.03), M_CONCRETE, 0, 1.025, -0.25));
+        [-1, 1].forEach(function (side) {
+          g.add(mesh(new THREE.BoxGeometry(0.026, 0.34, 2.26), glass, side * 0.535, 0.71, 0));
+          for (let i = 0; i < 6; i++) g.add(mesh(new THREE.BoxGeometry(0.029, 0.34, 0.028), M_DARKFRAME, side * 0.55, 0.71, -0.96 + i * 0.37));
+          g.add(mesh(new THREE.BoxGeometry(0.028, 0.055, 2.24), green, side * 0.55, 0.49, 0));
+          // Large exterior mirrors on front arms.
+          g.add(mesh(new THREE.BoxGeometry(0.17, 0.035, 0.035), M_DARKFRAME, side * 0.57, 0.81, 1.10));
+          g.add(mesh(new THREE.BoxGeometry(0.07, 0.15, 0.07), M_DARKFRAME, side * 0.65, 0.74, 1.10));
+        });
+        // Front and centre folding doors on the passenger side.
+        [0.87, -0.22].forEach(function (z) {
+          g.add(mesh(new THREE.BoxGeometry(0.035, 0.66, 0.36), glass, 0.559, 0.52, z));
+          g.add(mesh(new THREE.BoxGeometry(0.040, 0.66, 0.022), M_MULLION, 0.581, 0.52, z));
+          g.add(mesh(new THREE.BoxGeometry(0.044, 0.027, 0.36), M_GOLD, 0.583, 0.21, z));
+        });
+        g.add(mesh(new THREE.BoxGeometry(0.88, 0.39, 0.027), glass, 0, 0.69, 1.251));
+        vehicleLabel("18 מרכז העיר", 0.80, 0.13, 0, 0.875, 1.27, 0, "#263A37", "#EAC26A");
+        vehicleLabel("18", 0.28, 0.12, 0.584, 0.855, 0.45, Math.PI / 2, "#263A37", "#EAC26A");
+        vehicleLabel("18", 0.29, 0.12, 0, 0.84, -1.252, Math.PI, "#263A37", "#EAC26A");
+        [-1, 1].forEach(function (end) {
+          vehicleLabel("58-213-47", 0.28, 0.08, 0, 0.29, end * 1.267, end > 0 ? 0 : Math.PI, "#E6BA43", "#343A35");
+        });
+      } else if (isBus) {
         g.add(mesh(roundedBox(1.0, 0.78, 2.4, 0.08), bMat, 0, 0.51, 0));
         g.add(mesh(new THREE.BoxGeometry(1.04, 0.045, 2.40), M_CREAM, 0, 0.945, 0));
         [-1, 1].forEach(function (side) {
@@ -2149,7 +3412,19 @@
           g.add(mesh(new THREE.BoxGeometry(0.065, 0.06, 0.11), bMat, side * 0.463, 0.48, 0.32, false, false));
           g.add(mesh(new THREE.BoxGeometry(0.022, 0.025, 0.09), M_MULLION, side * 0.45, 0.36, -0.09, false, false));
         });
-        if (isTaxi) g.add(mesh(new THREE.BoxGeometry(0.26, 0.08, 0.14), M_WHITE, 0, 0.805, -0.05));
+        if (isTaxi && ISRAEL) {
+          g.name = "israeli-white-taxi";
+          const taxiYellow = mat(0xE6B847, 0.78);
+          g.add(mesh(roundedBox(0.31, 0.11, 0.17, 0.015), taxiYellow, 0, 0.825, -0.05));
+          vehicleLabel("מונית", 0.27, 0.085, 0, 0.829, 0.039, 0, "#E6B847", "#333C3D");
+          vehicleLabel("TAXI", 0.27, 0.085, 0, 0.829, -0.139, Math.PI, "#E6B847", "#333C3D");
+          [-1, 1].forEach(function (side) {
+            vehicleLabel("מונית", 0.25, 0.09, side * 0.451, 0.37, 0.16, side * Math.PI / 2, "#F1F0E7", "#455C64");
+          });
+          [-1, 1].forEach(function (end) {
+            vehicleLabel("83-417-26", 0.26, 0.075, 0, 0.28, end * 0.806, end > 0 ? 0 : Math.PI, "#E6BA43", "#343A35");
+          });
+        } else if (isTaxi) g.add(mesh(new THREE.BoxGeometry(0.26, 0.08, 0.14), M_WHITE, 0, 0.805, -0.05));
       }
       const wheelR = isBus ? 0.17 : 0.14, axleZ = isBus ? 0.75 : 0.46;
       [-1, 1].forEach(function (side) {
@@ -2493,6 +3768,206 @@
         g.add(mesh(new THREE.BoxGeometry(0.20, 0.02, 0.16), mat(0xDC2626, 0.6), w * 0.30, 0.39, d / 2 + 0.44, false, false));
       }
     };
+
+    function attachIsraelContextualLife(g, cfg, w, d) {
+      if (cfg.id === "food_coffee") {
+        const tGrp = new THREE.Group(); tGrp.position.set(w * 0.13, 0, d / 2 + 0.85); g.add(tGrp);
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.04, 16), M_CREAM, 0, 0.41, 0));
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.38, 8), mat(0x596F67, 0.6), 0, 0.20, 0, false, false));
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 10), mat(0x596F67, 0.6), 0, 0.02, 0, false, false));
+        [-0.08, 0.08].forEach(function (cx) {
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.065, 8), M_WHITE, cx, 0.46, 0.05, false, false));
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.007, 8), mat(0x4A2E18, 0.9), cx, 0.49, 0.05, false, false));
+        });
+        [-1, 1].forEach(function (side, i) {
+          const chair = new THREE.Group(); chair.position.z = side * 0.44; chair.rotation.y = side > 0 ? Math.PI : 0; tGrp.add(chair);
+          chair.add(mesh(roundedBox(0.24, 0.03, 0.24, 0.02), M_WOOD, 0, 0.25, 0));
+          chair.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.28, 6), mat(0x596F67, 0.7), -0.09, 0.39, -0.10, false, false));
+          chair.add(mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.28, 6), mat(0x596F67, 0.7),  0.09, 0.39, -0.10, false, false));
+          chair.add(mesh(roundedBox(0.22, 0.06, 0.02, 0.01), M_WOOD, 0, 0.46, -0.10, false, false));
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:israel:guest:' + i) });
+          guest.position.z = 0.015; chair.add(guest);
+          applySeatedPoseVariant(guest, i === 0 ? "leanBack" : "turnedSlightly");
+          guest.userData.lifeActor = true; packRigidModel(guest);
+          bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+          registerCharacterIdle({
+            mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+            phase: 200 + i * 450, subType: i
+          });
+        });
+      } else if (cfg.id === "food_bistro") {
+        [-0.38, 0.38].forEach(function (tx, tIdx) {
+          const dt = new THREE.Group(); dt.position.set(tx, 0, d / 2 + 0.75); g.add(dt);
+          dt.add(mesh(roundedBox(0.56, 0.045, 0.62, 0.02), M_WOOD, 0, 0.43, 0));
+          dt.add(mesh(roundedBox(0.58, 0.02, 0.64, 0.02), mat(0xF4E9D4, 0.8), 0, 0.46, 0));
+          [-1, 1].forEach(function (side, sIdx) {
+            const idx = tIdx * 2 + (side > 0 ? 1 : 0);
+            const threshold = [0.18, 0.46, 0.45, 0.73][idx];
+            const guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:israel:guest:' + idx) });
+            guest.position.z = side * 0.46; guest.rotation.y = side > 0 ? Math.PI : 0;
+            applySeatedPoseVariant(guest, ["leanBack", "turnedSlightly", "leanForward", "neutral"][idx]);
+            guest.userData.lifeActor = true; packRigidModel(guest);
+            dt.add(guest);
+            bindVenueActor(guest, "food_bistro", threshold);
+            registerCharacterIdle({
+              mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+              phase: 150 + idx * 220, subType: side > 0 ? 1 : 0
+            });
+            dt.add(mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.015, 10), M_WHITE, 0, 0.48, side * 0.18));
+            dt.add(mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.06, 8), mat(0xA8C3C8, 0.4), 0.14, 0.50, side * 0.18, false, false));
+            dt.add(mesh(roundedBox(0.26, 0.03, 0.25, 0.02), M_WOOD, 0, 0.25, side * 0.46));
+            dt.add(mesh(roundedBox(0.26, 0.24, 0.03, 0.02), M_WOOD, 0, 0.38, side * 0.56));
+        });
+        });
+      } else if (cfg.id === "shop_boutique") {
+        [-w * 0.34, w * 0.34].forEach(function (px) {
+          const pl = new THREE.Group(); pl.position.set(px, 0, d / 2 + 0.38); g.add(pl);
+          pl.add(mesh(roundedBox(0.24, 0.28, 0.24, 0.03), mat(0x596F67, 0.8), 0, 0.14, 0, false, false));
+          pl.add(mesh(new THREE.SphereGeometry(0.13, 8, 8), M_STREET_LEAF, 0, 0.35, 0, false, false));
+        });
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:israel:shopper') });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60); shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.12, 0.15, 0.08, 0.02), mat(0x596F67, 0.8), 0.22, 0.24, 0.08, false, false));
+        shopper.userData.lifeActor = true; packRigidModel(shopper); g.add(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({
+          mode: "shopper", ref: shopper, torso: shopper.userData.torso,
+          armL: shopper.userData.armL, armR: shopper.userData.armR,
+          phase: 330
+        });
+      } else if (cfg.id === "food_super") {
+        crateStack(g, -w * 0.32, d / 2 + 0.40);
+        crateStack(g,  w * 0.30, d / 2 + 0.38);
+      }
+    }
+
+    function attachArcticContextualLife(g, cfg, w, d) {
+      if (cfg.id === "food_coffee") {
+        const tGrp = new THREE.Group(); tGrp.position.set(w * 0.13, 0, d / 2 + 0.85); g.add(tGrp);
+        tGrp.add(mesh(roundedBox(0.48, 0.045, 0.52, 0.02), M_WOOD, 0, 0.41, 0));
+        [-0.18, 0.18].forEach(x => tGrp.add(mesh(new THREE.BoxGeometry(0.04, 0.38, 0.04), M_DARKFRAME, x, 0.20, 0)));
+        [-0.08, 0.08].forEach(function (cx) {
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.038, 0.032, 0.075, 8), mat(0x31576B, 0.9), cx, 0.47, 0, false, false));
+        });
+        [-1, 1].forEach(function (side, i) {
+          const chair = new THREE.Group(); chair.position.z = side * 0.44; chair.rotation.y = side > 0 ? Math.PI : 0; tGrp.add(chair);
+          chair.add(mesh(roundedBox(0.24, 0.035, 0.24, 0.02), M_WOOD, 0, 0.25, 0));
+          chair.add(mesh(roundedBox(0.24, 0.24, 0.03, 0.02), M_WOOD, 0, 0.38, -0.10));
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:arctic:guest:' + i) });
+          guest.position.z = 0.015; chair.add(guest);
+          applySeatedPoseVariant(guest, i === 0 ? "leanForward" : "neutral");
+          guest.userData.lifeActor = true; packRigidModel(guest);
+          bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+          registerCharacterIdle({
+            mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+            phase: 250 + i * 400, subType: i
+          });
+        });
+      } else if (cfg.id === "food_bistro") {
+        [-0.38, 0.38].forEach(function (tx, tIdx) {
+          const dt = new THREE.Group(); dt.position.set(tx, 0, d / 2 + 0.75); g.add(dt);
+          dt.add(mesh(roundedBox(0.56, 0.045, 0.62, 0.02), M_WOOD, 0, 0.43, 0));
+          [-1, 1].forEach(function (side, sIdx) {
+            const idx = tIdx * 2 + (side > 0 ? 1 : 0);
+            const threshold = [0.18, 0.46, 0.45, 0.73][idx];
+            const guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:arctic:guest:' + idx) });
+            guest.position.z = side * 0.46; guest.rotation.y = side > 0 ? Math.PI : 0;
+            applySeatedPoseVariant(guest, ["leanForward", "neutral", "turnedSlightly", "leanBack"][idx]);
+            guest.userData.lifeActor = true; packRigidModel(guest);
+            dt.add(guest);
+            bindVenueActor(guest, "food_bistro", threshold);
+            registerCharacterIdle({
+              mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+              phase: 180 + idx * 210, subType: side > 0 ? 1 : 0
+            });
+            dt.add(mesh(new THREE.CylinderGeometry(0.10, 0.08, 0.04, 10), mat(0x71949F, 0.8), 0, 0.48, side * 0.18));
+            dt.add(mesh(roundedBox(0.26, 0.035, 0.25, 0.02), M_WOOD, 0, 0.25, side * 0.46));
+            dt.add(mesh(roundedBox(0.26, 0.24, 0.03, 0.02), M_WOOD, 0, 0.38, side * 0.56));
+          });
+        });
+      } else if (cfg.id === "shop_boutique") {
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:arctic:shopper') });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60); shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.12, 0.16, 0.08, 0.02), mat(0x31576B, 0.85), 0.22, 0.24, 0.08, false, false));
+        shopper.userData.lifeActor = true; packRigidModel(shopper); g.add(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({
+          mode: "shopper", ref: shopper, torso: shopper.userData.torso, phase: 420
+        });
+      } else if (cfg.id === "food_super") {
+        crateStack(g, -w * 0.32, d / 2 + 0.40);
+      }
+    }
+
+    function attachFutureContextualLife(g, cfg, w, d) {
+      if (cfg.id === "food_coffee") {
+        const tGrp = new THREE.Group(); tGrp.position.set(w * 0.13, 0, d / 2 + 0.85); g.add(tGrp);
+        const neonCyan = mat(0x75DAE0, 0.3, 0.2, 0x75DAE0, 1.2);
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.035, 16), mat(0x1E293B, 0.8), 0, 0.42, 0));
+        tGrp.add(mesh(new THREE.TorusGeometry(0.24, 0.012, 6, 18), neonCyan, 0, 0.42, 0));
+        tGrp.add(mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.40, 8), mat(0x334155, 0.8), 0, 0.20, 0, false, false));
+        [-0.08, 0.08].forEach(function (cx) {
+          tGrp.add(mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.08, 8), neonCyan, cx, 0.48, 0, false, false));
+        });
+        [-1, 1].forEach(function (side, i) {
+          const chair = new THREE.Group(); chair.position.z = side * 0.44; chair.rotation.y = side > 0 ? Math.PI : 0; tGrp.add(chair);
+          chair.add(mesh(roundedBox(0.24, 0.03, 0.24, 0.02), mat(0x1E293B, 0.8), 0, 0.25, 0));
+          chair.add(mesh(roundedBox(0.24, 0.22, 0.03, 0.02), mat(0x334155, 0.8), 0, 0.38, -0.10));
+          const guest = makeFigure({ seated: true, appearance: buildAppearanceProfile('food_coffee:future:guest:' + i) });
+          guest.position.z = 0.015; chair.add(guest);
+          applySeatedPoseVariant(guest, i === 0 ? "leanBack" : "turnedSlightly");
+          guest.userData.lifeActor = true; packRigidModel(guest);
+          bindVenueActor(guest, "food_coffee", i === 0 ? 0.18 : 0.46);
+          registerCharacterIdle({
+            mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+            phase: 310 + i * 380, subType: i
+          });
+        });
+      } else if (cfg.id === "food_bistro") {
+        [-0.38, 0.38].forEach(function (tx, tIdx) {
+          const dt = new THREE.Group(); dt.position.set(tx, 0, d / 2 + 0.75); g.add(dt);
+          dt.add(mesh(roundedBox(0.56, 0.04, 0.62, 0.02), mat(0x1E293B, 0.85), 0, 0.43, 0));
+          [-1, 1].forEach(function (side, sIdx) {
+            const idx = tIdx * 2 + (side > 0 ? 1 : 0);
+            const threshold = [0.18, 0.46, 0.45, 0.73][idx];
+            const guest = makeFigure({ seated: true, seatHeight: 0.2775, appearance: buildAppearanceProfile('food_bistro:future:guest:' + idx) });
+            guest.position.z = side * 0.46; guest.rotation.y = side > 0 ? Math.PI : 0;
+            applySeatedPoseVariant(guest, ["leanBack", "turnedSlightly", "leanForward", "neutral"][idx]);
+            guest.userData.lifeActor = true; packRigidModel(guest);
+            dt.add(guest);
+            bindVenueActor(guest, "food_bistro", threshold);
+            registerCharacterIdle({
+              mode: "seated", ref: guest, baseYaw: guest.rotation.y, baseY: guest.position.y,
+              phase: 220 + idx * 230, subType: side > 0 ? 1 : 0
+            });
+            dt.add(mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.015, 10), mat(0x64748B, 0.7), 0, 0.465, side * 0.18));
+            dt.add(mesh(roundedBox(0.25, 0.03, 0.25, 0.02), mat(0x1E293B, 0.8), 0, 0.25, side * 0.46));
+            dt.add(mesh(roundedBox(0.25, 0.24, 0.03, 0.02), mat(0x334155, 0.8), 0, 0.38, side * 0.56));
+          });
+        });
+      } else if (cfg.id === "shop_boutique") {
+        const shopper = makeFigure({ appearance: buildAppearanceProfile('shop_boutique:future:shopper') });
+        shopper.position.set(w * 0.24, 0, d / 2 + 0.60); shopper.rotation.y = -0.35;
+        shopper.add(mesh(roundedBox(0.12, 0.15, 0.07, 0.02), mat(0x75DAE0, 0.9), 0.22, 0.24, 0.08, false, false));
+        shopper.userData.lifeActor = true; packRigidModel(shopper); g.add(shopper);
+        bindVenueActor(shopper, "shop_boutique", 0.15);
+        registerCharacterIdle({ mode: "shopper", ref: shopper, torso: shopper.userData.torso, phase: 290 });
+      } else if (cfg.id === "food_super") {
+        crateStack(g, -w * 0.32, d / 2 + 0.40);
+      }
+    }
+
+    function attachBuildingContextualLife(g, cfg, w, d) {
+      if (ISRAEL) {
+        attachIsraelContextualLife(g, cfg, w, d);
+      } else if (ARCTIC) {
+        attachArcticContextualLife(g, cfg, w, d);
+      } else if (FUTURE) {
+        attachFutureContextualLife(g, cfg, w, d);
+      } else if (typeof CHARACTER !== "undefined" && CHARACTER[cfg.id]) {
+        try { CHARACTER[cfg.id](g, w, d); } catch (e) { console.warn("character " + cfg.id, e); }
+      }
+    }
 
     // ────────────────────────────────────────────────────────────────
     // 🎪 3e. CUSTOM TIER 1 STALLS — Bespoke character for every category
@@ -3054,49 +4529,35 @@
     fountainGroup.add(fRipple);
     animObjects.push({ type: "fountain_ripple", ring: fRipple, mat: fRippleMat });
 
-    // Monthly volume landmark: deliberately non-selectable and separate from banking.
+    // Finance & Fees building — sits in the civic corner, grows with finance spending.
+    // Registered in cityBuildings so applyBuildingActivity() drives its tier/share exactly
+    // like every other spending building. No bespoke progress driver.
+    if (typeof CUSTOM_FACADES === "undefined") { window.CUSTOM_FACADES = {}; }
+    CUSTOM_FACADES["finance_bank"] = function (ground, w, d, cfg, bodyMat) {
+      const finGlass = glassMaterial(0x9FC7F0); registerGlass(finGlass);
+      storefront(ground, w, d, { tint: 0x9FC7F0 });
+      ground.add(mesh(new THREE.BoxGeometry(0.46, 0.8, 0.05), finGlass, 0, 0.47, d / 2 + 0.03));
+      const sign = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#344B48", "#FFF4DB", 32) });
+      ground.add(mesh(new THREE.BoxGeometry(0.95, 0.22, 0.05), sign, 0, 1.09, d / 2 + 0.04));
+      [-1, 1].forEach(function (side) {
+        ground.add(mesh(new THREE.BoxGeometry(0.36, 0.52, 0.04), finGlass, side * w * 0.33, 0.72, d / 2 + 0.03));
+        ground.add(mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.05, 8), M_WHITE, side * 0.62, 0.65, d / 2 + 0.19));
+      });
+      ground.add(mesh(roundedBox(1.5, 0.12, 0.55, 0.04), M_WARM_STONE, 0, 1.23, d / 2 + 0.15));
+    };
     addSidewalkBlock(9.4, -9.4, 4.6, 4.3);
     addKerb(9.4, -9.4, 4.6, 4.3);
-    const cityHall = new THREE.Group(); cityHall.name = "city_hall";
-    cityHall.position.set(9.4, Y_WALK, -9.4); root.add(cityHall);
-    const cityHallHit = hitProxy(3.2, 3.0, 2.8);
-    cityHallHit.position.set(0, 1.5, 0);
-    cityHallHit.userData = { id: "city_hall", district: "civic", name: "עיריית SPENT", amount: 0, trend: "נפח ההוצאות החודשי", shell: cityHall };
-    cityHall.add(cityHallHit);
-    interactiveBuildings.push(cityHallHit);
-    buildingRoots.city_hall = cityHall;
-    const hallStages = [];
-    const hallGlass = glassMaterial(0x9FC7F0); registerGlass(hallGlass);
-    for (let stage = 0; stage < 4; stage++) {
-      const g = new THREE.Group(); cityHall.add(g); hallStages.push(g);
-      const w = stage === 0 ? 1.85 : 2.9, d = stage === 0 ? 1.7 : 2.35;
-      const h = stage < 2 ? 1.35 : 2.65;
-      g.add(mesh(roundedBox(w, h, d, 0.09), M_CREAM, 0, h / 2, 0));
-      g.add(mesh(roundedBox(w + 0.18, 0.14, d + 0.18, 0.06), M_WARM_STONE, 0, 0.07, 0));
-      g.add(mesh(roundedBox(w + 0.15, 0.16, d + 0.15, 0.05), mat(0x397E70, 0.8), 0, h + 0.08, 0));
-      g.add(mesh(new THREE.BoxGeometry(0.46, 0.8, 0.05), hallGlass, 0, 0.47, d / 2 + 0.03));
-      const sign = new THREE.MeshStandardMaterial({ map: signTex("SPENT", "#344B48", "#FFF4DB", 32) });
-      g.add(mesh(new THREE.BoxGeometry(0.95, 0.22, 0.05), sign, 0, 1.09, d / 2 + 0.04));
-      [-1, 1].forEach(function (side) {
-        g.add(mesh(new THREE.BoxGeometry(0.36, 0.52, 0.04), hallGlass, side * w * 0.33, 0.72, d / 2 + 0.03));
-        if (stage >= 1) g.add(mesh(new THREE.CylinderGeometry(0.07, 0.08, 1.05, 8), M_WHITE, side * 0.62, 0.65, d / 2 + 0.19));
-        if (stage >= 2) g.add(mesh(new THREE.BoxGeometry(0.48, 0.65, 0.04), hallGlass, side * 0.74, 2.01, d / 2 + 0.03));
-      });
-      if (stage >= 1) g.add(mesh(roundedBox(1.5, 0.12, 0.55, 0.04), M_WARM_STONE, 0, 1.23, d / 2 + 0.15));
-      if (stage === 3) {
-        g.add(mesh(roundedBox(0.88, 1.22, 0.88, 0.06), M_CREAM, 0, 3.34, -0.18));
-        g.add(mesh(roundedBox(1.03, 0.17, 1.03, 0.05), M_WARM_STONE, 0, 4.03, -0.18));
-        g.add(mesh(new THREE.PlaneGeometry(0.60, 0.60), new THREE.MeshBasicMaterial({ map: clockTex() }), 0, 3.43, 0.27));
-      }
-      packRigidModel(g);
-    }
-    function applyCityHallProgress(value) {
-      const progress = Number.isFinite(value) ? clamp(value, 0, 1) : 0;
-      const stage = progress < 0.15 ? 0 : progress < 0.40 ? 1 : progress < 0.75 ? 2 : 3;
-      hallStages.forEach(function (g, i) { g.visible = i === stage; });
-    }
-    applyCityHallProgress(0);
+    makeBuilding({
+      id: "finance_bank", district: "finance",
+      name: "פיננסים ועמלות", trend: "בנקים, עמלות ושירותים פיננסיים",
+      x: 9.4, z: -9.4, w: 2.9, d: 2.35,
+      body: 0xF2DFC2, roof: 0x397E70, accent: 0x344B48, glass: 0x9FC7F0,
+      roofStyle: "dome",
+      maxTier: 4
+    });
     addBenchAt(10.7, -7.9, 0);
+
+
 
     // Plaza life: trees, benches, bins, a busker and pigeons
     const ambientBench = addBenchAt(3.0, 1.0, -Math.PI / 2);
@@ -3308,7 +4769,7 @@
     const shelterGlass = glassMaterial(0xCFE9FB); registerGlass(shelterGlass);
     transportYard.add(mesh(new THREE.BoxGeometry(2.4, 0.95, 0.05), shelterGlass, -0.4, 0.55, -1.95, false, false));
     transportYard.add(mesh(new THREE.BoxGeometry(2.0, 0.10, 0.34), M_WOOD, -0.4, 0.42, -1.65, false, false));
-    transportYard.add(mesh(new THREE.BoxGeometry(0.5, 0.34, 0.05), new THREE.MeshStandardMaterial({ map: signTex("BUS", "#1D4ED8", "#FFFFFF", 30) }), 1.15, 1.35, -1.5, false, false));
+    transportYard.add(mesh(new THREE.BoxGeometry(0.5, 0.34, 0.05), new THREE.MeshStandardMaterial({ map: signTex(ISRAEL ? "אוטובוס" : "BUS", ISRAEL ? "#415E68" : "#1D4ED8", "#FFFFFF", ISRAEL ? 25 : 30) }), 1.15, 1.35, -1.5, false, false));
 
     // Parking bays
     for (let i = 0; i < 3; i++) {
@@ -3338,12 +4799,12 @@
       const bus = createCar(0x2563EB, true, false);
       bus.position.set(-0.5, 0, -0.4); bus.rotation.y = Math.PI / 2; bus.scale.setScalar(1.15);
       transportYard.add(bus);
-      const taxi = createCar(0xFACC15, false, true);
+      const taxi = createCar(ISRAEL ? 0xEEEDE2 : 0xFACC15, false, true);
       taxi.position.set(1.6, 0, -1.7); taxi.rotation.y = 0;
       parkedTaxi = taxi;
       const door = new THREE.Group(); door.position.set(-0.42, 0.27, 0.22);
       door.userData.rewardJoint = true;
-      door.add(mesh(new THREE.BoxGeometry(0.035, 0.21, 0.46), mat(0xFACC15, 0.5), 0, 0.06, -0.23, false, false));
+      door.add(mesh(new THREE.BoxGeometry(0.035, 0.21, 0.46), mat(ISRAEL ? 0xEEEDE2 : 0xFACC15, 0.5), 0, 0.06, -0.23, false, false));
       door.add(mesh(new THREE.BoxGeometry(0.027, 0.22, 0.43), M_GLASS_BL, 0, 0.27, -0.23, false, false));
       door.add(mesh(new THREE.BoxGeometry(0.025, 0.025, 0.09), M_MULLION, -0.03, 0.10, -0.34, false, false));
       taxi.add(door); taxi.userData.passengerDoor = door;
@@ -3351,6 +4812,41 @@
     })();
     transportYard.add(mesh(new THREE.BoxGeometry(0.7, 0.34, 0.06), new THREE.MeshStandardMaterial({ map: signTex("RIDE", "#0F766E", "#FFFFFF", 26) }), 0.55, 0.95, 2.55, false, false));
     transportYard.add(mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.95, 6), M_DARKFRAME, 0.55, 0.47, 2.55, false, false));
+
+    if (ISRAEL) {
+      const street = new THREE.Group(); street.name = "israel-neighborhood-street"; root.add(street);
+      // Municipal service boxes on the back edge of housing, clear of the walkway.
+      [[-1.40, -11.15], [1.32, -11.15]].forEach(function (p, i) {
+        const g = new THREE.Group(); g.position.set(p[0], Y_WALK, p[1]); street.add(g);
+        israelBox(g, 0.42, 0.68, 0.22, i ? 0xA5A798 : 0xBCBAAB, 0, 0.35, 0);
+        israelBox(g, 0.016, 0.60, 0.015, 0x858D81, 0.05, 0.35, 0.12);
+        israelBox(g, 0.025, 0.08, 0.025, 0x6F7E74, -0.02, 0.36, 0.13);
+        for (let row = 0; row < 3; row++) israelBox(g, 0.23, 0.016, 0.02, 0x93998C, 0, 0.52 + row * 0.05, 0.12);
+      });
+      // Wheeled municipal bins beside service entrances.
+      [[-0.9, -10.6], [0.75, 10.5]].forEach(function (p) {
+        const g = new THREE.Group(); g.position.set(p[0], Y_WALK, p[1]); street.add(g);
+        israelBox(g, 0.33, 0.44, 0.34, 0x64795E, 0, 0.25, 0);
+        israelBox(g, 0.38, 0.065, 0.39, 0x52694F, 0, 0.49, 0.015);
+        [-1, 1].forEach(function (side) {
+          const wheel = mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8), M_DARKFRAME, side * 0.16, 0.055, -0.10); wheel.rotation.z = Math.PI / 2; g.add(wheel);
+        });
+      });
+      // Meter and street plaque read as practical local street furniture.
+      [[-7.25, -3.0], [7.05, 3.9]].forEach(function (p) {
+        const g = new THREE.Group(); g.position.set(p[0], Y_WALK, p[1]); street.add(g);
+        israelBox(g, 0.06, 0.71, 0.06, 0x6B7C77, 0, 0.36, 0);
+        israelBox(g, 0.23, 0.32, 0.16, 0x687B78, 0, 0.76, 0);
+        israelBox(g, 0.15, 0.10, 0.025, 0xB4C5BB, 0, 0.81, 0.09);
+        israelSmallSign(g, "חניה", 0.26, 0.12, 0, 1.02, 0.03, "#607C8A", "#F5F1E3");
+      });
+      // Bus stop: route panel, timetable and a simple metal shelter fascia.
+      israelSmallSign(transportYard, "תחנת אוטובוס", 1.34, 0.20, -0.40, 1.20, -0.98, "#4C706F", "#F2EEE0");
+      israelSmallSign(transportYard, "5  18  63", 0.36, 0.15, 1.15, 1.12, -1.44, "#F1E9D5", "#40595A");
+      israelBox(transportYard, 0.23, 0.39, 0.025, 0xE6E3D2, 0.52, 0.66, -1.91);
+      for (let i = 0; i < 5; i++) israelBox(transportYard, 0.17, 0.012, 0.018, 0x8E9D90, 0.52, 0.53 + i * 0.06, -1.885);
+      packRigidModel(street);
+    }
 
     const transportHit = new THREE.Mesh(new THREE.BoxGeometry(5.2, 2.8, 5.2), new THREE.MeshBasicMaterial({ visible: false }));
     transportHit.position.set(0, 1.4, 0);
@@ -3401,7 +4897,7 @@
     const reserveGroup = new THREE.Group(); reserveGroup.position.set(0, Y_WALK, 0); root.add(reserveGroup);
 
     // Dedicated Reserve Meadow Ground Patch (distinct from the rest of the city)
-    const M_PARK_MEADOW = mat(0x66B63E, 0.90);
+    const M_PARK_MEADOW = mat(ISRAEL ? 0xA3A76B : 0x66B63E, 0.90);
     const meadowGeo = roundedBox(7.0, 0.05, 7.0, 0.65);
 
     const reserveMeadowMesh = mesh(meadowGeo, M_PARK_MEADOW, 0, Y_GRASS + 0.004, 0, false, true);
@@ -3571,13 +5067,13 @@ function normalizedSlotPlacements(input) {
 
     // Conifer Pine & Deciduous Trees for city
     const M_PINE = mat(0x2F874D, 0.88);
-    const M_LEAF = mat(0x4EAA50, 0.86);
+    const M_LEAF = mat(ISRAEL ? 0x849061 : 0x4EAA50, 0.86);
     const M_LEAF_LIGHT = mat(0x79BF58, 0.88);
 
     // Dedicated Nature Reserve foliage & blooms (reacts dynamically to monthly spending pace)
-    const M_PARK_PINE = mat(0x2D8048, 0.88);
-    const M_PARK_LEAF = mat(0x4EAA50, 0.86);
-    const M_PARK_LEAF_LIGHT = mat(0x78BF58, 0.88);
+    const M_PARK_PINE = mat(ISRAEL ? 0x657852 : 0x2D8048, 0.88);
+    const M_PARK_LEAF = mat(ISRAEL ? 0x849061 : 0x4EAA50, 0.86);
+    const M_PARK_LEAF_LIGHT = mat(ISRAEL ? 0xA1A574 : 0x78BF58, 0.88);
     const M_PARK_BLOOM = mat(0xFACC15, 0.90);
 
     const parkPlantings = [];
@@ -3737,8 +5233,8 @@ function normalizedSlotPlacements(input) {
     cityTrees.forEach(function (t, i) {
       // Ranks run from 0.2 upward so the city keeps a green backbone at every health level.
       const rank = 0.20 + (i / Math.max(1, cityTrees.length - 1)) * 0.80;
-      if (t.pine) addPine(t.x, t.z, t.s, root, rank);
-      else        addDecid(t.x, t.z, t.s, root, rank);
+      if (t.pine && !ISRAEL) addPine(t.x, t.z, t.s, root, rank);
+      else        addDecid(t.x, t.z, ISRAEL ? t.s * 0.88 : t.s, root, rank);
     });
 
     // Street lamps down both sides of the main crossroads
@@ -3747,7 +5243,10 @@ function normalizedSlotPlacements(input) {
     function addLamp(lx, lz) {
       const g = new THREE.Group(); g.position.set(lx, Y_WALK, lz);
       g.add(queueForMerge(mesh(new THREE.CylinderGeometry(0.045, 0.06, 1.5, 8), lampMat, 0, 0.75, 0, false, false)));
-      g.add(queueForMerge(mesh(new THREE.SphereGeometry(0.11, 10, 10), lampGlassMat, 0, 1.56, 0, false, false)));
+      if (ISRAEL) {
+        g.add(queueForMerge(mesh(new THREE.BoxGeometry(0.35, 0.045, 0.045), lampMat, 0.13, 1.50, 0, false, false)));
+        g.add(queueForMerge(mesh(new THREE.BoxGeometry(0.24, 0.055, 0.10), lampGlassMat, 0.27, 1.48, 0, false, false)));
+      } else g.add(queueForMerge(mesh(new THREE.SphereGeometry(0.11, 10, 10), lampGlassMat, 0, 1.56, 0, false, false)));
       root.add(g);
     }
     // Along the four block frontages that face the road ring
@@ -3804,8 +5303,8 @@ function normalizedSlotPlacements(input) {
       (parent || root).add(g);
       return g;
     }
-    createStringLights([-8.6, Y_WALK + 1.25, -6.8], [-6.4, Y_WALK + 1.25, -6.8], 0.22, 6);
-    createStringLights([-6.4, Y_WALK + 1.25, -6.8], [-6.4, Y_WALK + 1.25, -8.6], 0.20, 5);
+    if (!ISRAEL) createStringLights([-8.6, Y_WALK + 1.25, -6.8], [-6.4, Y_WALK + 1.25, -6.8], 0.22, 6);
+    if (!ISRAEL) createStringLights([-6.4, Y_WALK + 1.25, -6.8], [-6.4, Y_WALK + 1.25, -8.6], 0.20, 5);
 
     // 2. Red Fire Hydrants at Sidewalk Corners
     function createFireHydrant(x, z, ry) {
@@ -4035,6 +5534,347 @@ function normalizedSlotPlacements(input) {
     }
 
     // ────────────────────────────────────────────────────────────────
+    // 🇮🇱 10c-IL. ISRAEL-SPECIFIC STREET DETAILS
+    // Authentic urban texture: street cat, park mangal, satellite dish
+    // ────────────────────────────────────────────────────────────────
+    if (typeof ISRAEL !== "undefined" && ISRAEL) {
+
+      // 🐈 Street cat — Tel Aviv's iconic feral cat, sitting by a wall
+      (function createStreetCat(x, y, z, ry) {
+        const cat = new THREE.Group(); cat.position.set(x, y, z); cat.rotation.y = ry; root.add(cat);
+        const bodyM = mat(0xB5A48C, 0.7);
+        const darkM = mat(0x6B5B4A, 0.8);
+        // body
+        cat.add(mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.18, 7), bodyM, 0, 0.09, 0));
+        // head
+        const head = new THREE.Group(); head.position.set(0, 0.19, 0.04); cat.add(head);
+        head.add(mesh(new THREE.SphereGeometry(0.065, 8, 6), bodyM, 0, 0, 0));
+        // ears
+        [-0.04, 0.04].forEach(function (ex) {
+          head.add(mesh(new THREE.ConeGeometry(0.022, 0.038, 4), darkM, ex, 0.065, 0));
+        });
+        // eyes — two tiny dark spheres
+        [-0.025, 0.025].forEach(function (ex) {
+          head.add(mesh(new THREE.SphereGeometry(0.011, 5, 5), mat(0x1C1C1C, 0.2), ex, 0.005, 0.058, false, false));
+        });
+        // tail curling up behind
+        const tail = new THREE.Group(); tail.position.set(0.03, 0.05, -0.09); cat.add(tail);
+        tail.add(mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.18, 6), bodyM, 0, 0.09, 0));
+        tail.add(mesh(new THREE.SphereGeometry(0.025, 6, 5), bodyM, 0, 0.19, 0, false, false));
+        tail.rotation.x = -0.9; tail.rotation.z = 0.3;
+        animObjects.push({ type: "bob", ref: cat, base: y, phase: 1.8, baseRotY: ry });
+      }(-4.85, Y_WALK, -1.2, 0.6));
+
+      // 🔥 Mangal (charcoal BBQ) — the quintessential Israeli park activity
+      (function createMangal(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_GRASS, z); g.rotation.y = ry; reserveGroup.add(g);
+        const metalM = mat(0x374151, 0.4, 0.7);
+        const charM  = mat(0x1C1917, 0.9);
+        // legs — four thin posts
+        [[-0.18, -0.14], [0.18, -0.14], [-0.18, 0.14], [0.18, 0.14]].forEach(function (p) {
+          g.add(mesh(new THREE.CylinderGeometry(0.012, 0.015, 0.44, 5), metalM, p[0], 0.22, p[1]));
+        });
+        // grill tray
+        g.add(mesh(new THREE.BoxGeometry(0.44, 0.06, 0.34), metalM, 0, 0.46, 0));
+        // charcoal bed inside
+        g.add(mesh(new THREE.BoxGeometry(0.38, 0.03, 0.28), charM, 0, 0.50, 0, false, false));
+        // grill grate — a few thin rods
+        for (let r = -0.13; r <= 0.13; r += 0.065) {
+          g.add(mesh(new THREE.BoxGeometry(0.40, 0.012, 0.012), mat(0x52525B, 0.5, 0.8), 0, 0.53, r, false, false));
+        }
+        // heat shimmer glow (very subtle orange emissive)
+        const glowM = mat(0xF97316, 0.05, 0, 0xF97316, 0.55);
+        g.add(mesh(new THREE.BoxGeometry(0.34, 0.018, 0.24), glowM, 0, 0.515, 0, false, false));
+        animObjects.push({ type: "neon_pulse", mat: glowM, base: 0.35, range: 0.75, phase: 0.7 });
+      }(-1.2, 2.4, 0.4));
+
+      // 📡 Satellite dish on a building wall — very common in Israeli residential buildings
+      (function createSatelliteDish(parent, x, y, z) {
+        const g = new THREE.Group(); g.position.set(x, y, z); parent.add(g);
+        const dishM = mat(0xC8C0B0, 0.3, 0.6);
+        const armM  = mat(0x6B7280, 0.5, 0.7);
+        // wall bracket arm
+        g.add(mesh(new THREE.BoxGeometry(0.04, 0.04, 0.18), armM, 0, 0, -0.07));
+        // dish bowl — half-sphere
+        const dish = mesh(new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.5), dishM, 0, 0, 0.04);
+        dish.rotation.x = -0.5; dish.rotation.y = 0.3; g.add(dish);
+        // LNB arm + head
+        g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.14, 5), armM, 0, 0.08, 0.10));
+        g.add(mesh(new THREE.SphereGeometry(0.022, 6, 6), mat(0x374151, 0.6), 0, 0.16, 0.10, false, false));
+      }(root, -7.4, 3.1, -4.8));
+
+      // 🟠 Mifal HaPayis (לוטו) kiosk — the iconic orange-blue corner booth
+      (function createLottoKiosk(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+        const orange = mat(0xE55A08, 0.35, 0.5);
+        const blue   = mat(0x1B3D9E, 0.4, 0.5);
+        const starO  = mat(0xE55A08, 0.5);
+        const glass  = mat(0xB8D4D8, 0.15, 0, 0x90C0C8, 0.12);
+
+        // — Main body: rounded orange hull —
+        g.add(mesh(roundedBox(0.62, 0.56, 0.50, 0.06), orange, 0, 0.28, 0));
+        // — Blue angled wing panels left and right —
+        [-1, 1].forEach(function (s) {
+          const wing = new THREE.Group();
+          wing.position.set(s * 0.34, 0.26, -0.01);
+          wing.rotation.y = s * 0.38;
+          wing.add(mesh(new THREE.BoxGeometry(0.22, 0.46, 0.07), blue, 0, 0, 0));
+          // Stars on wing (small orange dots)
+          [[0, 0.14], [0.07, -0.06], [-0.07, -0.06]].forEach(function (p) {
+            wing.add(mesh(new THREE.SphereGeometry(0.018, 5, 5), starO, p[0], p[1], 0.038, false, false));
+          });
+          g.add(wing);
+        });
+        // — Blue header band across top of body —
+        g.add(mesh(new THREE.BoxGeometry(0.64, 0.10, 0.52), blue, 0, 0.53, 0));
+        // Stars on header
+        [-0.20, 0, 0.20].forEach(function (sx) {
+          g.add(mesh(new THREE.SphereGeometry(0.018, 5, 5), starO, sx, 0.53, 0.27, false, false));
+        });
+        // — Counter window (glass inset) —
+        g.add(mesh(new THREE.BoxGeometry(0.38, 0.22, 0.015), glass, 0, 0.38, 0.26, false, false));
+        // Counter shelf below window
+        g.add(mesh(new THREE.BoxGeometry(0.38, 0.025, 0.08), mat(0xD4500A, 0.7), 0, 0.265, 0.26, false, false));
+        // — Sign box on top: white panel with "לוטו" hint —
+        g.add(mesh(roundedBox(0.52, 0.18, 0.12, 0.02), mat(0xF2F0EC, 0.9), 0, 0.69, 0));
+        // Blue circle on sign (logo circle)
+        g.add(mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.015, 10), blue, -0.10, 0.69, 0.065, false, false));
+        // Orange arc on logo circle
+        g.add(mesh(new THREE.TorusGeometry(0.038, 0.010, 5, 10, Math.PI * 1.2), orange, -0.10, 0.70, 0.065, false, false));
+        // — Flat base plinth —
+        g.add(mesh(new THREE.CylinderGeometry(0.44, 0.46, 0.04, 8), mat(0x2A2A2A, 0.8), 0, 0.02, 0));
+      }(2.6, 9.6, -2.188));
+
+      // 🕍 Chabad tefillin stand — shaliach with a small folding table
+      (function createTefillinStand(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+
+        // Folding table — thin aluminium-looking legs + white formica top
+        const tableM = mat(0xE8E4DC, 0.5, 0.6);
+        const legM   = mat(0x9CA3AF, 0.3, 0.8);
+        g.add(mesh(new THREE.BoxGeometry(0.48, 0.018, 0.32), tableM, 0, 0.46, 0));
+        [[-0.20, -0.13], [0.20, -0.13], [-0.20, 0.13], [0.20, 0.13]].forEach(function (p) {
+          g.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.46, 5), legM, p[0], 0.23, p[1]));
+        });
+
+        // Tefillin boxes on the table — shel rosh + shel yad, small black cubes
+        const blackBox = mat(0x18181B, 0.6, 0.5);
+        g.add(mesh(new THREE.BoxGeometry(0.07, 0.07, 0.07), blackBox, -0.09, 0.51, -0.05, false, false));
+        g.add(mesh(new THREE.BoxGeometry(0.055, 0.055, 0.055), blackBox, 0.04, 0.497, -0.03, false, false));
+        // Leather strap coiled beside the box
+        g.add(mesh(new THREE.TorusGeometry(0.032, 0.007, 5, 10), mat(0x2C1810, 0.8), 0.13, 0.477, 0, false, false));
+
+        // Small velvet pouch (dark blue)
+        g.add(mesh(roundedBox(0.13, 0.055, 0.09, 0.015), mat(0x1E2D5A, 0.7), -0.12, 0.487, 0.08, false, false));
+
+        // Sign: "תפילין" leaning on the table front edge
+        const signGrp = new THREE.Group(); signGrp.position.set(0, 0.52, 0.17); signGrp.rotation.x = 0.22; g.add(signGrp);
+        signGrp.add(mesh(new THREE.BoxGeometry(0.30, 0.12, 0.006), mat(0xF5EDD2, 0.9), 0, 0, 0, false, false));
+        signGrp.add(mesh(new THREE.BoxGeometry(0.30, 0.012, 0.007), mat(0x1B3D9E, 0.8), 0,  0.054, 0, false, false));
+        signGrp.add(mesh(new THREE.BoxGeometry(0.30, 0.012, 0.007), mat(0x1B3D9E, 0.8), 0, -0.054, 0, false, false));
+
+        // Chabad shaliach — haredi figure, standing behind the table
+        const shaliach = makeFigure({ appearance: buildAppearanceProfile('chabad:tefillin:shaliach:v1') });
+        shaliach.position.set(0, 0, -0.28);
+        shaliach.rotation.y = Math.PI;
+        shaliach.userData.lifeActor = true;
+        packRigidModel(shaliach);
+        g.add(shaliach);
+        bindVenueActor(shaliach, "chabad_stand", 0.25);
+        registerCharacterIdle({
+          mode: "shopper", ref: shaliach,
+          torso: shaliach.userData.torso,
+          armL: shaliach.userData.armL,
+          armR: shaliach.userData.armR,
+          phase: 580
+        });
+
+        // Give him interactive speech bubbles
+        if (shaliach.userData.torso) {
+          shaliach.userData.torso.userData = {
+            phrases: ["יהודי! תפילין היום? 🕍", "שליחות עם חיוך 😊", "מצווה! בא נניח תפילין ✡️"],
+            phrasesByLang: {
+              he: ["יהודי! תפילין היום? 🕍", "שליחות עם חיוך 😊", "מצווה! בא נניח תפילין ✡️"],
+              en: ["Tefillin today? 🕍", "On a mission, with a smile 😊", "A mitzvah! Come put on tefillin ✡️"]
+            }
+          };
+          interactiveCitizens.push(shaliach.userData.torso);
+        }
+      }(0.6, 3.6, Math.PI * 0.6));
+
+      // 🗑️ Israeli municipal green bins — the big boxy dark-green containers
+      (function () {
+        function createIsraeliGreenBin(x, z, ry) {
+          const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry || 0; root.add(g);
+          const bodyM = mat(0x2B5C25, 0.5, 0.4);
+          const lidM  = mat(0x234D1E, 0.45, 0.5);
+          const rimM  = mat(0x1A3D16, 0.6, 0.6);
+          // Body — boxy with slight taper
+          g.add(mesh(roundedBox(0.36, 0.46, 0.30, 0.025), bodyM, 0, 0.23, 0));
+          // Darker rim strip at bottom
+          g.add(mesh(new THREE.BoxGeometry(0.37, 0.04, 0.31), rimM, 0, 0.02, 0, false, false));
+          // Lid — slightly wider, angled
+          const lid = mesh(roundedBox(0.38, 0.055, 0.32, 0.02), lidM, 0, 0.478, 0, false, false);
+          lid.rotation.x = -0.06; g.add(lid);
+          // Lid handle — small bar
+          g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.12, 5), mat(0x1A3D16, 0.7), 0, 0.52, 0.10, false, false));
+          // Opening slot on the front face
+          g.add(mesh(new THREE.BoxGeometry(0.16, 0.025, 0.012), mat(0x0F2410, 0.9), 0, 0.44, 0.155, false, false));
+          // Small black wheels (two, at back)
+          [-0.12, 0.12].forEach(function (wx) {
+            const wh = mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.04, 8), mat(0x18181B, 0.8), wx, 0.038, -0.12);
+            wh.rotation.z = Math.PI / 2; g.add(wh);
+          });
+        }
+        // Place bins on the sidewalk — between road (ROAD_AT=5.6) and buildings
+        createIsraeliGreenBin( 6.4,  3.0,  Math.PI * 0.5);
+        createIsraeliGreenBin(-6.4, -2.8, -Math.PI * 0.5);
+        createIsraeliGreenBin( 2.0,  7.0,  0);
+        createIsraeliGreenBin(-2.4, -6.8,  Math.PI);
+      }());
+
+      // 💧 Dripping AC Drain Pipe & Wet Pavement Puddle
+      // A familiar Israeli summer street reality: an external PVC drain pipe descending
+      // from a 1st-floor AC unit, dripping onto a glossy puddle on the sidewalk.
+      (function createAcDripAndPuddle() {
+        const wallX = -7.42, groundZ = -3.85;
+        const g = new THREE.Group(); g.position.set(wallX, Y_WALK, groundZ); root.add(g);
+        const pvcMat = mat(0xE5E7EB, 0.4, 0.2);
+        const bracketMat = mat(0x9CA3AF, 0.3, 0.8);
+        const pipeH = 1.35;
+        // Vertical PVC pipe descending from upper AC
+        g.add(mesh(new THREE.CylinderGeometry(0.012, 0.012, pipeH, 6), pvcMat, 0, pipeH / 2 + 0.12, 0));
+        // Wall mounting brackets holding the pipe
+        [0.35, 0.85, 1.30].forEach(function (by) {
+          g.add(mesh(new THREE.BoxGeometry(0.035, 0.015, 0.03), bracketMat, -0.012, by, 0));
+        });
+        // 45-degree angled spout elbow at the bottom, pointing out towards sidewalk
+        const elbow = mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.08, 6), pvcMat, 0.025, 0.09, 0.02);
+        elbow.rotation.z = -0.55; g.add(elbow);
+        // Dangling translucent water drop at tip
+        const waterDropMat = mat(0x38BDF8, 0.1, 0.2, 0x38BDF8, 0.4);
+        g.add(mesh(new THREE.SphereGeometry(0.013, 6, 6), waterDropMat, 0.052, 0.065, 0.02, false, false));
+
+        // Wet pavement puddle on the ground directly below
+        const wetDarkStone = mat(0x52525B, 0.1, 0.1);
+        const puddleWater = mat(0x60A5FA, 0.05, 0.2, 0x60A5FA, 0.25);
+        // Organic overlapping puddle shape
+        const p1 = mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.008, 10), wetDarkStone, 0.10, 0.004, 0.03, false, false);
+        p1.scale.set(1.4, 1.0, 0.85); g.add(p1);
+        const p2 = mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.010, 10), puddleWater, 0.12, 0.006, 0.02, false, false);
+        p2.scale.set(1.2, 1.0, 0.75); g.add(p2);
+        // Subtle concentric ripple ring
+        const ripple = mesh(new THREE.TorusGeometry(0.07, 0.006, 4, 14), puddleWater, 0.11, 0.009, 0.025, false, false);
+        ripple.rotation.x = Math.PI / 2; g.add(ripple);
+        animObjects.push({ type: "neon_pulse", mat: puddleWater, base: 0.25, range: 0.65, phase: 1.2 });
+      }());
+
+      // ⚡ Bezeq / Electric Utility Cabinet (פילר סעף ותקשורת)
+      // The ubiquitous street-corner utility pillar with dual doors, ventilation louvers,
+      // a concrete curb plinth, and a small faded service sticker.
+      (function createUtilityPillar(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+        const baseM = mat(0x71717A, 0.9, 0.1);
+        const cabinetM = mat(0xC8C3B4, 0.75, 0.1);
+        const seamM = mat(0x52525B, 0.9);
+        const lockM = mat(0xD97706, 0.3, 0.7);
+
+        // Concrete base plinth
+        g.add(mesh(roundedBox(0.46, 0.10, 0.26, 0.02), baseM, 0, 0.05, 0));
+        // Main composite/metal cabinet body
+        g.add(mesh(roundedBox(0.42, 0.58, 0.22, 0.02), cabinetM, 0, 0.39, 0));
+        // Sloped rain-shed roof cap
+        const roof = mesh(new THREE.BoxGeometry(0.44, 0.035, 0.24), cabinetM, 0, 0.69, 0);
+        roof.rotation.x = -0.04; g.add(roof);
+
+        // Vertical door seam dividing the two service doors
+        g.add(mesh(new THREE.BoxGeometry(0.012, 0.50, 0.015), seamM, 0, 0.39, 0.111, false, false));
+        // Recessed ventilation louvers (horizontal slits on both door tops)
+        [-0.10, 0.10].forEach(function (dx) {
+          for (let l = 0; l < 3; l++) {
+            g.add(mesh(new THREE.BoxGeometry(0.12, 0.010, 0.008), seamM, dx, 0.54 - l * 0.024, 0.111, false, false));
+          }
+        });
+        // Central brass hasp & padlock
+        g.add(mesh(new THREE.BoxGeometry(0.028, 0.04, 0.018), lockM, 0, 0.34, 0.115, false, false));
+        // Small faded service sticker ("אינסטלטור / הובלות")
+        g.add(mesh(new THREE.BoxGeometry(0.09, 0.065, 0.005), mat(0xFDE047, 0.8), 0.09, 0.26, 0.111, false, false));
+      }(6.45, 2.15, -Math.PI * 0.5));
+
+      // ♻️ Neighborhood Plastic Bottle Recycling Cage (כלוב מחזור בקבוקים)
+      // The familiar green wire-mesh bottle bank next to municipal bins, with an inlet hole.
+      (function createRecyclingCage(x, z, ry) {
+        const g = new THREE.Group(); g.position.set(x, Y_WALK, z); g.rotation.y = ry; root.add(g);
+        const frameM = mat(0x15803D, 0.6, 0.4);
+        const meshM  = mat(0x166534, 0.65, 0.35);
+        const metalDark = mat(0x334155, 0.7);
+
+        // Raised metal corner posts (legs)
+        [[-0.26, -0.19], [0.26, -0.19], [-0.26, 0.19], [0.26, 0.19]].forEach(function (cp) {
+          g.add(mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.68, 6), frameM, cp[0], 0.34, cp[1]));
+        });
+        // Bottom frame rail & mesh floor
+        g.add(mesh(new THREE.BoxGeometry(0.54, 0.025, 0.40), frameM, 0, 0.09, 0));
+        // Main wire-mesh cage body
+        g.add(mesh(new THREE.BoxGeometry(0.53, 0.48, 0.39), meshM, 0, 0.34, 0));
+        // Sheet metal roof with curved slope
+        const roof = mesh(roundedBox(0.56, 0.04, 0.42, 0.02), frameM, 0, 0.59, 0);
+        g.add(roof);
+        // Circular rubber/metal bottle deposit chute on top
+        const chute = mesh(new THREE.TorusGeometry(0.065, 0.016, 6, 16), metalDark, 0, 0.615, 0, false, false);
+        chute.rotation.x = Math.PI / 2; g.add(chute);
+        // A few colorful translucent plastic bottles visible at bottom inside
+        const bottleColors = [0x38BDF8, 0x4ADE80, 0xE2E8F0, 0x60A5FA];
+        [[-0.12, 0.11, -0.06, 0.4], [0.08, 0.11, 0.05, -0.6], [-0.02, 0.13, 0.02, 0.9], [0.14, 0.11, -0.08, -0.2]].forEach(function (b, idx) {
+          const bMesh = mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.09, 6), mat(bottleColors[idx], 0.2, 0.1), b[0], b[1], b[2], false, false);
+          bMesh.rotation.z = b[3]; bMesh.rotation.x = b[3] * 0.5; g.add(bMesh);
+        });
+        // Small circular recycling emblem on front
+        g.add(mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.008, 10), mat(0xF0FDF4, 0.9), 0, 0.45, 0.201, false, false));
+        g.add(mesh(new THREE.TorusGeometry(0.026, 0.006, 4, 10), frameM, 0, 0.45, 0.206, false, false));
+      }(2.7, 7.15, -0.15));
+
+      // 🛴 Single Parked Shared E-Scooter (קורקינט שיתופי מוטה על רגלית)
+      // Parked along the sidewalk edge, tilted naturally on its kickstand.
+      (function createParkedScooter(x, z, ry) {
+        const sc = new THREE.Group(); sc.position.set(x, Y_WALK, z); sc.rotation.y = ry; root.add(sc);
+        // Natural kickstand tilt (~10 degrees roll)
+        sc.rotation.z = -0.16;
+
+        const bodyDark = mat(0x18181B, 0.7, 0.5);
+        const limeM    = mat(0x84CC16, 0.4, 0.4);
+        const wheelM   = mat(0x09090B, 0.9);
+        const lightM   = mat(0x22C55E, 0.2, 0, 0x22C55E, 2.5);
+
+        // Deck: sleek narrow board
+        sc.add(mesh(roundedBox(0.12, 0.04, 0.56, 0.02), bodyDark, 0, 0.085, 0));
+        // Rubber grip tape strip
+        sc.add(mesh(new THREE.BoxGeometry(0.08, 0.006, 0.48), mat(0x3F3F46, 0.95), 0, 0.108, 0, false, false));
+        // Wheels: front and rear black rubber wheels
+        [-0.24, 0.24].forEach(function (wz) {
+          const w = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 10), wheelM, 0, 0.05, wz);
+          w.rotation.z = Math.PI / 2; sc.add(w);
+        });
+        // Steering column (bright lime green tube)
+        const stem = mesh(new THREE.CylinderGeometry(0.014, 0.015, 0.65, 8), limeM, 0, 0.41, 0.22);
+        stem.rotation.x = -0.12; sc.add(stem);
+        // Handlebars (horizontal bar with black rubber hand grips)
+        sc.add(mesh(new THREE.BoxGeometry(0.32, 0.022, 0.022), bodyDark, 0, 0.72, 0.18));
+        [-0.13, 0.13].forEach(function (hx) {
+          sc.add(mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.06, 6), mat(0x27272A, 0.9), hx, 0.72, 0.18));
+        });
+        // Center digital dash & tiny green pulsing status LED
+        sc.add(mesh(new THREE.BoxGeometry(0.05, 0.035, 0.018), bodyDark, 0, 0.73, 0.17, false, false));
+        sc.add(mesh(new THREE.BoxGeometry(0.016, 0.016, 0.006), lightM, 0, 0.735, 0.16, false, false));
+        animObjects.push({ type: "neon_pulse", mat: lightM, base: 1.0, range: 2.2, phase: 0.5 });
+        // Kickstand leg holding the scooter tilted
+        const stand = mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.12, 5), mat(0x71717A, 0.5, 0.7), -0.055, 0.045, -0.08);
+        stand.rotation.z = 0.35; stand.rotation.x = 0.15; sc.add(stand);
+      }(-4.85, 2.2, 0.4));
+
+    } // end ISRAEL street details
+
+    // ────────────────────────────────────────────────────────────────
     // 🌱 10d. NATURE RESERVE: MONTHLY SPENDING PACE DYNAMICS
     // ────────────────────────────────────────────────────────────────
     const HEALTHY_PARK = 0.78;
@@ -4086,6 +5926,21 @@ function normalizedSlotPlacements(input) {
         density = 0.68; flowerDensity = 0.40; lowScale = 0.82;
       }
 
+      if (ARCTIC) {
+        // Preserve the same health-driven density and scale; translate only its palette.
+        targetMeadow = C(0xB6CDD8).lerp(C(0xEFF7FA), parkHealthValue);
+        targetPine = C(0x486B78).lerp(C(0x8DAEB7), parkHealthValue);
+        targetLeaf = C(0xAAC4D0).lerp(C(0xE2F0F4), parkHealthValue);
+        targetLeafLight = C(0xC9DCE4).lerp(C(0xFFFFFF), parkHealthValue);
+        targetBloom = C(0xDF9977);
+      }
+      if (ISRAEL) {
+        targetMeadow = C(0xB6AB7C).lerp(C(0x99A475), parkHealthValue);
+        targetPine = C(0x777C59).lerp(C(0x647955), parkHealthValue);
+        targetLeaf = C(0x9B9B70).lerp(C(0x7F926B), parkHealthValue);
+        targetLeafLight = C(0xB8B68B).lerp(C(0xA1AC7F), parkHealthValue);
+        targetBloom = C(0xC8A77B);
+      }
       setParkLook(targetMeadow, targetPine, targetLeaf, targetLeafLight, targetBloom,
                   crownScale, density, flowerDensity, lowScale);
     }
@@ -4191,12 +6046,12 @@ function normalizedSlotPlacements(input) {
 
     // Active Two-Way Traffic (Calm, graceful cruising pace ~45-60s per lap):
     // Clockwise vehicles:
-    addVehicleToPath(0xFACC15, false, true,  roadClockwise, 0.05, 0.022); // Yellow Taxi (~45s per lap)
-    addVehicleToPath(0xEF4444, false, false, roadClockwise, 0.50, 0.019); // Red Compact Sedan (~52s per lap)
+    addVehicleToPath(ISRAEL ? 0xEAE8DC : 0xFACC15, false, true,  roadClockwise, 0.05, 0.022); // Yellow Taxi (~45s per lap)
+    addVehicleToPath(ISRAEL ? 0xADB4AE : 0xEF4444, false, false, roadClockwise, 0.50, 0.019); // Red Compact Sedan (~52s per lap)
 
     // Counter-Clockwise vehicles (Opposite Lane!):
     addVehicleToPath(0x2563EB, true, false,  roadCounterClockwise, 0.20, 0.016); // Blue City Bus (~62s per lap)
-    addVehicleToPath(0xF97316, false, false, roadCounterClockwise, 0.70, 0.018); // Orange Delivery Van (~55s per lap)
+    addVehicleToPath(ISRAEL ? 0xDEDDD0 : 0xF97316, false, false, roadCounterClockwise, 0.70, 0.018); // Orange Delivery Van (~55s per lap)
 
     // ────────────────────────────────────────────────────────────────
     // 🚶 12. CITIZENS & SPEECH BUBBLE INTERACTION
@@ -4233,10 +6088,30 @@ function normalizedSlotPlacements(input) {
             bag: withDog ? null : (walkingCitizens.length % 2 ? 0xA67F52 : null) });
       const joints = g.userData, torso = joints.body;
       root.add(g);
-      const he = phrases || ["איזה יום מקסים! ✨", "שומר על תקציב מעולה 📈"];
+      let he = phrases;
+      let en = englishPhrases;
+      if (typeof ISRAEL !== "undefined" && ISRAEL) {
+        const app = g.userData.appearance || appearance;
+        if (app && app.israelType === 'haredi') {
+          he = ["שבוע טוב ומבורך! ☀️", "ברוך השם יום יום 🙏", "בדרך לקניות לשבת 🛍️", "הפרנסה מן השמיים 🕊️"];
+          en = ["A blessed week! ☀️", "Thank God for every day 🙏", "Shopping for Shabbat 🛍️", "Peace and blessings 🕊️"];
+        } else if (app && app.israelType === 'dati') {
+          he = ["יום נעים ומלא ברכה ✨", "שומר על תקציב שפוי 📊", "קפצתי רגע לסידורים 🚶‍♂️", "איזה יום יפה בשדרה 🌳"];
+          en = ["A wonderful and blessed day ✨", "Keeping the budget steady 📊", "Running quick errands 🚶‍♂️", "Beautiful day on the boulevard 🌳"];
+        } else if (app && app.bottomStyle === 'shorts') {
+          he = ["איזה חום היום... יאללה לים 🌊", "הקפה של הבוקר זה קדוש ☕", "סיבוב קצר בשכונה ☀️", "מי בא לחומוס? 🧆"];
+          en = ["Warm day, heading to the beach 🌊", "Morning coffee is sacred ☕", "Quick walk around ☀️", "Who's up for hummus? 🧆"];
+        } else {
+          he = ["הקפה של הבוקר זה קדוש ☕", "איזה כיף בשדרה 🌳", "שומר על תקציב מעולה 📊", "אחלה יום שבעולם ✨"];
+          en = ["Morning coffee is sacred ☕", "Lovely day on the boulevard 🌳", "Budget looking great 📊", "Wonderful day ✨"];
+        }
+      } else {
+        if (!he || !he.length) he = ["איזה יום מקסים! ✨", "שומר על תקציב מעולה 📈"];
+        if (!en || !en.length) en = ["What a lovely day ✨", "Budget looking good 📈"];
+      }
       torso.userData = {
         phrases: he,
-        phrasesByLang: { he: he, en: englishPhrases || ["What a lovely day ✨", "Budget looking good 📈"] }
+        phrasesByLang: { he: he, en: en }
       };
       interactiveCitizens.push(torso);
 
@@ -4274,8 +6149,8 @@ function normalizedSlotPlacements(input) {
       {x:-2.8,z:1.8}, {x:-2.4,z:2.6}, {x:0,z:3.2}, {x:2.4,z:2.6}, {x:2.8,z:1.8}
     ], ["טיול נעים בפארק 🌿"], ["A lovely stroll through the park 🌿"], false, 0.35, 'city:plaza:stroller');
 
-    // 2. Crosswalk Pedestrian crossing the street
-    addCitizen(null, null, null, [
+    // 2. Crosswalk Pedestrian crossing the street (not in Israel — path runs through road)
+    if (!(typeof ISRAEL !== "undefined" && ISRAEL)) addCitizen(null, null, null, [
       {x: -ROAD_AT, z: -3.2}, {x: -ROAD_AT, z: -1.0}, {x: -ROAD_AT, z: 1.0}, {x: -ROAD_AT, z: -3.2}
     ], ["חוצה בזהירות במעבר חצייה 🚶", "העיר תוססת היום! ✨"], ["Crossing at the zebra walk 🚶", "Lively city today! ✨"], false, 0.38, 'city:crosswalk:ped');
 
@@ -4379,6 +6254,17 @@ function makeLifePlace(id, variant) {
   g.name = "life-place:" + id + ":" + variant;
   const w = 1.35, d = 1.05, h = family.kind === "home" ? 1.12 : 0.98;
   const accent = mat(family.color, 0.82);
+  if (FUTURE) {
+    futureFront(g, w, d, { id: id }, true);
+  } else if (ARCTIC) {
+    iceFront(g, w, d, { id: id, body: family.color, sign: { text: family.label, bg: "#31576B", fg: "#FFFFFF", size: 27 } }, true);
+  } else if (ISRAEL) {
+    const local = ISRAEL_BUILDINGS[id] || [0xDCD5C1, 0xADAFA0, "#596F67", "utility"];
+    const cfg = { id: id, kind: family.kind === "home" ? "house" : "shop", body: local[0], accent: local[1], israelKind: local[3], glass: 0x8EA5A3, awning: [local[2], "#E5DDC8"] };
+    israelGround(g, w, d, cfg);
+    israelRoof(g, w, d, FLOOR_H, cfg);
+    if (cfg.kind !== "house") signPlate(g, w, 1.02, d, ISRAEL_SIGNS[id] || family.label, local[2], "#FFF7E9", 25);
+  } else {
   g.add(mesh(roundedBox(w, h, d, 0.07), M_CREAM, 0, h / 2, 0));
   g.add(mesh(new THREE.BoxGeometry(w + 0.08, 0.07, d + 0.08), M_WARM_STONE, 0, 0.04, 0));
   if (family.kind === "home") {
@@ -4406,6 +6292,7 @@ function makeLifePlace(id, variant) {
     } else if (family.kind === "books") {
       for (let i = 0; i < 4; i++) g.add(mesh(new THREE.BoxGeometry(0.08, 0.22, 0.16), i % 2 ? M_ROOF_OR : M_ROOF_BL, -0.17 + i * 0.11, 0.30, 0.73, false, false));
     }
+  }
   }
   const rigid = new THREE.Group();
   while (g.children.length) rigid.add(g.children[0]);
@@ -4723,20 +6610,13 @@ function ensureCrowdBatches() {
       if (figure.userData.armL) figure.userData.armL.rotation.x = 0.20;
       if (figure.userData.torso) { figure.userData.torso.rotation.z = 0.05; figure.userData.torso.rotation.x = 0.04; }
     }
-    const shirtMaterials = new Set((figure.userData.shirtMeshes || []).map(function (part) { return part.material; }));
     packRigidModel(figure); figure.updateMatrixWorld(true);
     const parts = [];
     figure.traverse(function (part) {
       if (!part.isMesh || !part.visible) return;
       // Bake each prototype part once; all waiting people share its geometry/material.
       const geometry = part.geometry.clone().applyMatrix4(part.matrixWorld);
-      const isShirt = shirtMaterials.has(part.material);
-      const material = isShirt ? part.material.clone() : part.material;
-      const baseColor = material.color.clone();
-      if (isShirt) material.color.set(0xffffff);
-      const batch = new THREE.InstancedMesh(geometry, material, CROWD_LIMITS.waiting);
-      batch.userData.sharedShirt = isShirt;
-      batch.userData.baseColor = baseColor;
+      const batch = new THREE.InstancedMesh(geometry, part.material, CROWD_LIMITS.waiting);
       batch.name = "venue-crowd:" + variant;
       batch.count = 0; batch.visible = false; batch.frustumCulled = false;
       batch.castShadow = false; batch.receiveShadow = true;
@@ -4907,13 +6787,7 @@ function applyVenueCrowds() {
     const variant = hashCitizenKey('waiting:' + pose.x + ':' + pose.z) % 8;
     transform.position.set(pose.x, Y_WALK, pose.z); transform.rotation.y = pose.yaw;
     transform.scale.setScalar(0.96 + (item.index % 3) * 0.035); transform.updateMatrix();
-    crowdBatches[variant].forEach(function (batch) {
-      batch.setMatrixAt(counts[variant], transform.matrix);
-      if (batch.userData.sharedShirt) {
-        batch.setColorAt(counts[variant], item.color ? new THREE.Color(item.color) : batch.userData.baseColor);
-        batch.instanceColor.needsUpdate = true;
-      }
-    });
+    crowdBatches[variant].forEach(function (batch) { batch.setMatrixAt(counts[variant], transform.matrix); });
     instancedWaitingRecords.push({
       variant: variant,
       batchIndex: counts[variant],
@@ -6615,8 +8489,8 @@ window.dioramaEnergyState = function () {
       ["woltCount","coffeeCount","onlinePackagesCount","activeSubscriptionsCount"].forEach(k => number(data.habits[k], "habits." + k));
       if (data.habits.deliveryTier != null && typeof data.habits.deliveryTier !== "string") fail("habits.deliveryTier");
       if (data.habits.deliveryFrequencyScore != null) number(data.habits.deliveryFrequencyScore, "habits.deliveryFrequencyScore");
-      ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
       if (data.parkMode != null && typeof data.parkMode !== "string") fail("parkMode");
+      ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
       if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
       if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");
       if (!data.slotPlacements || typeof data.slotPlacements !== "object" || Array.isArray(data.slotPlacements)) fail("slotPlacements");
@@ -6684,7 +8558,6 @@ window.dioramaEnergyState = function () {
         syncBuilding("museum_curiosities", data.museumAmount || 0);
         syncBuilding("health_pharmacy", data.healthAmount || 0);
         syncBuilding("finance_bank", data.financeAmount || 0);
-        applyCityHallProgress(data.cityHallProgress);
         syncBuilding("trans_station", data.transport || 0);
         syncBuilding("savings_sanctuary", data.savings || 0);
         applyBuildingActivity();
@@ -6765,6 +8638,13 @@ window.dioramaEnergyState = function () {
       if (renderPaused || energyDisposed) return;
       rafId = requestAnimationFrame(loop);
       if (!energyFrameDue(now)) return;
+      if (window._districtSample) {
+        // Render only the isolated district, including no city-level scenery batches.
+        prepareEnergyRender(now);
+        renderer.render(districtSampleScene, camera);
+        return;
+      }
+
       // The first rAF timestamp can predate the performance.now() taken while this script
       // was still parsing, so dt must never go negative — a negative dt drove vehicle
       // progress below zero and JS's negative modulo then indexed path[-1].
@@ -7465,7 +9345,77 @@ window.dioramaEnergyState = function () {
       window.updateDioramaData(window._initialDataPayload);
     }
 
+    if (ARCTIC) {
+      [[M_CREAM, 0xE5F0F4], [M_WARM_STONE, 0xB8D1DD], [M_WHITE, 0xFAFCFF],
+       [M_GRASS_LIME, 0xE8F2F5], [M_GRASS_DARK, 0xAAC5D0], [M_ASPHALT, 0x8DAFBE],
+       [M_ROOF_OR, 0xD7E7EF], [M_ROOF_BL, 0xA9CFDF], [M_ROOF_PEACH, 0xE5EDF3],
+       [M_STREET_LEAF, 0xD4E6EC], [M_PINE, 0x71949F], [M_LEAF, 0xD6E7ED],
+       [M_LEAF_LIGHT, 0xF1F7FA], [M_WATER, 0x9CCBDE]].forEach(function (pair) {
+        pair[0].color.copy(C(pair[1]));
+      });
+      earthBase.material.color.copy(C(0x83AFC2));
+      paverMat.map = null; paverMat.color.copy(C(0xDBE9EF)); paverMat.needsUpdate = true;
+      M_WATER.roughness = 0.94;
+      // Faceted ice outcrops hug the outer rim, outside the existing roads and plots.
+      const rim = new THREE.Group(); rim.name = "arctic-ice-rim"; root.add(rim);
+      for (let i = 0; i < 18; i++) {
+        const angle = i * Math.PI * 2 / 18;
+        const x = Math.cos(angle), z = Math.sin(angle), edge = 12.35 / Math.max(Math.abs(x), Math.abs(z));
+        const h = 0.22 + (i % 4) * 0.13;
+        const rock = mesh(new THREE.DodecahedronGeometry(1, 0), i % 2 ? M_WHITE : M_WARM_STONE,
+          x * edge, Y_GRASS + h * 0.30, z * edge, false, true);
+        rock.scale.set(0.30 + i % 3 * 0.10, h, 0.25); rock.rotation.y = angle; rim.add(rock);
+      }
+      packRigidModel(rim);
+    }
     mergeStaticScenery();
+
+    // Onboarding style swatch: complete food venues on their own freestanding plinth.
+    // Clones stay independent of subsequent finance payloads and tier updates.
+    let districtSampleGroup = null;
+    const districtSampleScene = new THREE.Scene();
+    // City scenery can live outside root after batching. A separate scene guarantees
+    // that the onboarding sample contains only its plinth, venues and lighting.
+    scene.children.forEach(function (object) {
+      if (!object.isLight) return;
+      const light = object.clone();
+      districtSampleScene.add(light);
+      if (light.target) districtSampleScene.add(light.target);
+    });
+    window.setDistrictSample = function (enabled) {
+      window._districtSample = !!enabled;
+      root.visible = !enabled;
+      if (districtSampleGroup) districtSampleGroup.visible = !!enabled;
+      if (!enabled) return;
+      if (!districtSampleGroup) {
+      const sample = new THREE.Group();
+      const base = new THREE.Mesh(
+        roundedBox(6.0, 0.38, 9.8, 0.35),
+        new THREE.MeshStandardMaterial({ color: 0xE8DDC9, roughness: 0.95 })
+      );
+      base.position.set(0, Y_WALK - 0.19, 0);
+      base.receiveShadow = true;
+      sample.add(base);
+      ["food_super", "food_bistro", "food_coffee", "food_wolt"].forEach(function (id) {
+        const rec = cityBuildings[id];
+        rec.tier = -1;
+        setBuildingTier(rec, 2);
+        const venue = rec.group.clone(true);
+        venue.position.x -= 9.2;
+        sample.add(venue);
+      });
+      districtSampleScene.add(sample);
+      districtSampleGroup = sample;
+      }
+
+      const sampleCamera = { az: Math.PI * 0.25, el: 0.60, zoom: 2.05, lookX: 0, lookY: 0.8, lookZ: 0 };
+      Object.assign(currentCam, sampleCamera);
+      Object.assign(targetCam, sampleCamera);
+      placeCam();
+      applyFrustum();
+    };
+    window.setDistrictSample(!!window._districtSample);
+
 
     // Shadow casting costs a second draw call per mesh. Signs, window panes, wheels, lamp
     // bulbs and other small detail read fine without their own shadow, so only geometry big
@@ -7491,7 +9441,6 @@ window.dioramaEnergyState = function () {
       park: { setHealth: applyParkHealth, step: stepPlantings, owns: belongsToReserve,
         reserve: reserveGroup, lake: lakeMesh, meadow: M_PARK_MEADOW,
         previewValues: [1, 0.8, 0.6, 0.4, 0.2] },
-      cityHall: { root: cityHall, stages: hallStages, setProgress: applyCityHallProgress },
       buildings: cityBuildings,
       life: { states: venueStates, instances: lifeInstances, assignments: lifeAssignments,
         plots: LIFE_PLOTS, actors: venueActors, vehicles: vehicleState, allocate: allocateLifePlaces,

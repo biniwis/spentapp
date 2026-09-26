@@ -614,7 +614,15 @@ struct SharedSpacesSetupView: View {
         // nothing to paste and nothing to choose. Landing on "create" would ask the
         // person who tapped the link to start a space of their own instead of joining
         // the one that invited them.
-        .onAppear { if store.invitation != nil { selectedTab = .join } }
+        .onAppear {
+            if store.invitation != nil { selectedTab = .join }
+            // Opening this screen is what discovers the user's spaces. A reinstall, a new
+            // device or a new Apple ID all arrive with an empty local store and nothing to
+            // remember a space by, so the list has to come from CloudKit every time rather
+            // than from whatever this device happens to have kept. Best effort, and never
+            // blocking the screen: a person without iCloud is not an error here.
+            Task { await store.discover() }
+        }
         .onChange(of: store.invitation != nil) { _, arrived in
             if arrived { selectedTab = .join }
         }

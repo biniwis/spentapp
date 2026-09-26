@@ -362,6 +362,35 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try reload()
     }
 
+    /// Finds the spaces this account can see in CloudKit, whether or not anything local
+    /// remembers them.
+    ///
+    /// Discovery deliberately does not consult `shared_spaces_enabled`. That flag used to
+    /// gate the only call to `refresh()`, while `connect()` was the only writer of the
+    /// flag, so a fresh install or a new device could never set it and therefore could
+    /// never look: the gate could not be opened from inside. CloudKit is the record of
+    /// what this account owns and belongs to, so opening the shared UI has to be enough
+    /// to go and read it.
+    ///
+    /// Having no iCloud account is an ordinary state, not a failure to report: a personal
+    /// user who never shared anything should not meet an alert for it. Everything else is
+    /// surfaced, because a discovery that silently did not happen is how a user concludes
+    /// their spaces are gone.
+    func discover() async {
+        if demo { return }
+        do {
+            try await refresh()
+        } catch let error as SharedLedgerError where error == .noAccount {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        // Discovery is also the moment a join left half-finished by a previous launch can
+        // be completed, so recovery does not depend on the user still holding the link.
+        await resumePendingJoinIfAny()
+    }
+
     func refresh() async throws {
         if demo { return }
         try await connect()
@@ -494,12 +523,104 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     func accept(_ metadata: CKShare.Metadata, memberName: String) async throws {
         guard !demo, metadata.containerIdentifier == cloud.containerIdentifier,
               let id = spaceID(metadata.share.recordID.zoneID) else { throw SharedLedgerError.wrongInvitation }
+        let cleanName = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanName.isEmpty else { throw SharedLedgerError.invalidInput }
         try await connect()
-        guard let result = try await cloud.accept([metadata])[metadata] else { throw SharedLedgerError.wrongInvitation }
-        _ = try result.get()
+        // Written before the irreversible call, so a death on the far side of it still
+        // leaves enough on disk to finish the job. Without this the invitation is spent
+        // and the user is left inside a space with no member row and no second link.
+        switch SharedJoin.next(hasIntent: pendingJoin(id) != nil,
+                               cloudAccepted: pendingJoin(id)?.acceptedAt != nil) {
+        case .beginIntent:
+            try beginPendingJoin(spaceID: id, memberName: cleanName)
+        case .accept:
+            // Accepting a share cannot be undone and cannot be replayed, so it happens at
+            // most once per recorded intent.
+            guard let result = try await cloud.accept([metadata])[metadata] else { throw SharedLedgerError.wrongInvitation }
+            _ = try result.get()
+            try markPendingJoinAccepted(id)
+        case .finish, .done:
+            break
+        }
+        try await finishPendingJoin(id)
+    }
+
+    // MARK: - Durable join
+
+    private func pendingJoins() throws -> [SharedPendingJoin] {
+        guard let database else { return [] }
+        return try database.context.fetch(FetchDescriptor<SharedPendingJoin>())
+    }
+
+    private func pendingJoin(_ id: UUID) -> SharedPendingJoin? {
+        guard let database else { return nil }
+        return try? database.context.fetch(FetchDescriptor<SharedPendingJoin>())
+            .first { $0.spaceID == id.uuidString }
+    }
+
+    private func beginPendingJoin(spaceID id: UUID, memberName: String) throws {
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+        if pendingJoin(id) == nil {
+            database.context.insert(SharedPendingJoin(spaceID: id.uuidString, memberName: memberName))
+        } else {
+            pendingJoin(id)?.memberName = memberName
+        }
+        try database.save()
+    }
+
+    private func markPendingJoinAccepted(_ id: UUID) throws {
+        guard let database else { throw SharedLedgerError.storageUnavailable }
+        pendingJoin(id)?.acceptedAt = Date()
+        try database.save()
+    }
+
+    private func clearPendingJoin(_ id: UUID) throws {
+        guard let database, let row = pendingJoin(id) else { return }
+        database.context.delete(row)
+        try database.save()
+    }
+
+    /// Finishes a recorded join. Safe to run more than once: the member's record name is
+    /// derived from the account and the space, so a second run rewrites the same row
+    /// instead of adding another member.
+    private func finishPendingJoin(_ id: UUID) async throws {
+        guard let pending = pendingJoin(id) else { throw SharedLedgerError.wrongInvitation }
         try await refresh()
-        if canWrite(id) { try registerMember(in: id, name: memberName) }
-        invitation = nil; activeSpaceID = id
+        // The space has to exist here before it can be entered. CloudKit can accept a share
+        // before the zone appears in this account's own listing, and activating a space
+        // that is not there would leave the app pointed at nothing.
+        let materialized = spaces.contains(where: { $0.id == id })
+        let writable = canWrite(id)
+        guard SharedJoin.canActivate(materialized: materialized, canWrite: writable, memberWritten: false) else {
+            // Still on disk, so the next attempt resumes rather than restarting.
+            throw materialized || !writable
+                ? SharedLedgerError.noAccess
+                : SharedLedgerError.storageUnavailable
+        }
+        // Safe to run more than once: the member's record name is derived from the account
+        // and the space, so a second run rewrites the same row instead of adding another
+        // member or handing out a second colour.
+        try registerMember(in: id, name: pending.memberName)
+        // Cleared only once the member row is real, so an interrupted finish resumes
+        // instead of stranding a user CloudKit already let in.
+        try clearPendingJoin(id)
+        invitation = nil
+        activeSpaceID = id
+    }
+
+    /// Picks up a join that CloudKit accepted but the app never finished. Runs on the
+    /// paths that already talk to CloudKit, so a relaunch repairs the join on its own
+    /// without the user having to remember the link they were given.
+    func resumePendingJoinIfAny() async {
+        guard !demo, let pending = try? pendingJoins().first,
+              let id = UUID(uuidString: pending.spaceID), pending.acceptedAt != nil else { return }
+        do {
+            try await finishPendingJoin(id)
+        } catch {
+            // Left on disk on purpose: the next attempt tries again rather than stranding
+            // a user CloudKit already let in.
+            errorMessage = error.localizedDescription
+        }
     }
 
     func metadata(for url: String) async throws -> CKShare.Metadata {
@@ -733,18 +854,35 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
                     if let id = spaceID(record.recordID.zoneID) { revocationStrikes[id] = nil }
                 }
                 for failure in changes.failedRecordSaves {
-                    if failure.error.code == .serverRecordChanged, let server = failure.error.serverRecord {
+                    // Classified, not guessed. A conflict keeps both versions and asks the
+                    // user; a transport, server, rate or account fault keeps the change
+                    // queued for CloudKit to retry. Only evidence that this account can no
+                    // longer reach the zone is allowed to take a space away, and even
+                    // then the queued write stays where it is until the revocation is
+                    // actually believed, so a zone that reappears still has its work.
+                    let kind = SharedSyncClassifier.classify(failure.error.code)
+                    if kind == .conflict, let server = failure.error.serverRecord {
                         try merge(server, scope: scope, conflict: true)
                         continue
                     }
-                    guard let id = spaceID(failure.record.recordID.zoneID),
-                          revoke(id, because: failure.error.code == .zoneNotFound ? .transient : .terminal) else {
-                        // Still under the strike threshold: keep the record queued so the
-                        // retry can deliver it, and stay quiet instead of crying wolf.
-                        continue
+                    guard let id = spaceID(failure.record.recordID.zoneID) else { continue }
+                    if kind == .zoneMissing {
+                        // CloudKit's listing can lag a zone it has just written, so this
+                        // is counted and only believed once it repeats.
+                        if !revoke(id, because: .transient) { continue }
+                    } else if kind.mayRevokeSpace {
+                        revoke(id, because: .terminal)
                     }
-                    syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(failure.record.recordID)])
-                    errorMessage = failure.error.localizedDescription
+                    // Retryable, quota, account and unknown failures fall through here on
+                    // purpose: the change keeps its place in the queue, the space keeps its
+                    // write access, and the row keeps its local revision. Only a believed
+                    // revocation drops the queued change.
+                    if !kind.keepsPendingChange {
+                        syncEngine.state.remove(pendingRecordZoneChanges: [.saveRecord(failure.record.recordID)])
+                    }
+                    // CloudKit's own retry timing wins. When it supplies a retry-after, the
+                    // engine already knows; nothing here schedules a second attempt.
+                    if let text = kind.reportText { errorMessage = text }
                 }
             default: return
             }

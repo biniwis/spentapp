@@ -477,9 +477,71 @@ final class SharedEngineState {
     init(scope: Int, serialization: Data) { self.scope = scope; self.serialization = serialization }
 }
 
+/// A join that has started but not finished, kept so a one-time invitation cannot be
+/// spent without producing a member.
+///
+/// Accepting a share is irreversible and happens on CloudKit's side, while everything that
+/// makes the user a *named* member happens locally afterwards. If the app dies between
+/// those two points, the invitation is already consumed: the user holds a link that can
+/// never work again, and the space lists them as a participant with no name, no colour and
+/// no ability to be picked as a payer. Recording the intent before the irreversible call
+/// means the second half can be finished on the next launch instead of being lost.
+///
+/// Deliberately holds no URL, token or share metadata. Resuming needs to know *which*
+/// space and *what name*, never to be able to replay the invitation itself.
+@Model
+final class SharedPendingJoin {
+    @Attribute(.unique) var spaceID: String
+    var memberName: String
+    /// Set once CloudKit has accepted, so a relaunch knows to go straight to finishing
+    /// rather than trying to accept a share that is already accepted.
+    var acceptedAt: Date?
+    init(spaceID: String, memberName: String, acceptedAt: Date? = nil) {
+        self.spaceID = spaceID
+        self.memberName = memberName
+        self.acceptedAt = acceptedAt
+    }
+}
+
+/// The order a durable join has to happen in.
+///
+/// Accepting a share is the one irreversible step: it consumes a one-time invitation and
+/// cannot be replayed. Everything the user actually gets out of it — a name, a colour, the
+/// ability to be picked as a payer, an openable space — happens locally afterwards and can
+/// fail on its own. Writing the intent down first is what makes the second half reachable
+/// again, so the order matters and is pinned here rather than left to the call site.
+enum SharedJoin {
+    enum Step: Equatable {
+        /// Nothing recorded yet: write the intent before touching CloudKit.
+        case beginIntent
+        /// The intent is on disk but CloudKit has not accepted yet.
+        case accept
+        /// CloudKit accepted; the local half still has to be finished.
+        case finish
+        /// Nothing left to do.
+        case done
+    }
+
+    static func next(hasIntent: Bool, cloudAccepted: Bool) -> Step {
+        if !hasIntent { return .beginIntent }
+        return cloudAccepted ? .finish : .accept
+    }
+
+    /// Whether the user may be put into the space yet.
+    ///
+    /// A space that CloudKit has accepted but not yet materialised in this account's
+    /// listing is not somewhere the app can send anybody, and a member row that does not
+    /// exist is not somebody who can be chosen as a payer. So entering requires all three,
+    /// and in particular the member: this is the state that used to be skipped, leaving a
+    /// participant with no name and no way to assign spending to anybody.
+    static func canActivate(materialized: Bool, canWrite: Bool, memberWritten: Bool) -> Bool {
+        materialized && canWrite && memberWritten
+    }
+}
+
 enum SharedSchemaV1: VersionedSchema {
     static var versionIdentifier: Schema.Version { .init(1, 0, 0) }
-    static var models: [any PersistentModel.Type] { [SharedStoredRecord.self, SharedEngineState.self] }
+    static var models: [any PersistentModel.Type] { [SharedStoredRecord.self, SharedEngineState.self, SharedPendingJoin.self] }
 }
 
 @MainActor
@@ -586,8 +648,93 @@ enum SharedInvitation {
     /// invitation, and CloudKit rejects the untrimmed form.
     static func pastedURL(_ input: String) -> URL? {
         let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed), url.scheme == "https",
-              url.host?.isEmpty == false else { return nil }
-        return url
+        guard let link = URL(string: trimmed), link.scheme == "https",
+              link.host?.isEmpty == false else { return nil }
+        return link
+    }
+}
+
+/// What a failed save means, and therefore what must be done to the queued change.
+///
+/// A transport or server problem is not a lost space. Treating every error other than
+/// `zoneNotFound` as a revocation used to hide a user's own space and dequeue their
+/// pending write on a single dropped connection, which is indistinguishable, from the
+/// outside, from deleting their work. Only positive evidence that access is gone may
+/// take a space away; everything else stays queued and waits for CloudKit to retry.
+enum SharedSyncFailure {
+    /// Keep the change queued and let CloudKit retry. Never revokes, never dequeues.
+    case retryable
+    /// The account is not usable right now. Local data and pending writes are kept; the
+    /// space is not revoked, because signing back in must not require a new invitation.
+    case accountRequired
+    /// The account is out of room. The write is still worth keeping — the user can free
+    /// space and it will upload — so this reports without revoking or dequeuing.
+    case quotaExceeded
+    /// The server copy is newer. The caller keeps both versions and asks the user.
+    case conflict
+    /// The zone is not in the listing. CloudKit's own listing can lag a zone it has just
+    /// written, so this is counted and only believed once it repeats.
+    case zoneMissing
+    /// Positive evidence that this account can no longer reach the zone.
+    case accessRevoked
+    /// Not understood. Treated as retryable so an unrecognised fault can never destroy
+    /// queued work; being wrong here costs a retry, being wrong the other way costs data.
+    case unknown
+
+    /// Whether a space may be taken away on the strength of this failure.
+    var mayRevokeSpace: Bool { self == .accessRevoked }
+
+    /// Whether the pending change must stay in the engine queue.
+    ///
+    /// Everything except a genuine access loss keeps its place, including quota and
+    /// account faults: the write is still correct, and dropping it would silently discard
+    /// an expense the user entered.
+    var keepsPendingChange: Bool { self != .accessRevoked }
+
+    /// A human-readable reason, or nil when there is nothing worth interrupting for.
+    ///
+    /// A conflict and a missing zone are already represented in the UI, and a plain
+    /// retryable blip should not raise an alert, so neither speaks.
+    var reportText: String? {
+        let he = AppLanguage.current == .hebrew
+        switch self {
+        case .retryable, .zoneMissing, .conflict: return nil
+        case .accountRequired: return he ? "יש להתחבר ל־iCloud כדי להמשיך לסנכרן. השינויים נשמרו." : "Sign in to iCloud to keep syncing. Your changes are saved."
+        case .quotaExceeded: return he ? "אין מספיק מקום ב־iCloud. השינויים נשמרו ויישלחו לאחר פינוי מקום." : "iCloud storage is full. Your changes are saved and will upload once space is freed."
+        case .accessRevoked: return he ? "הגישה למרחב הוסרה." : "Access to this space was removed."
+        case .unknown: return he ? "סנכרון המרחב נכשל. השינויים נשמרו." : "Shared sync failed. Your changes are saved."
+        }
+    }
+}
+
+/// Decides what a failed CloudKit save means. Pure, so it can be tested without an
+/// account, a network or a zone.
+enum SharedSyncClassifier {
+    static func classify(_ code: CKError.Code) -> SharedSyncFailure {
+        switch code {
+        // A zone CloudKit has just saved can answer `zoneNotFound` until its own listing
+        // catches up, so this is counted rather than believed on sight.
+        case .zoneNotFound:
+            return .zoneMissing
+        case .serverRecordChanged:
+            return .conflict
+        // No usable session. Signing back in has to be enough to carry on, so the space
+        // and the queue are both left alone.
+        case .notAuthenticated:
+            return .accountRequired
+        case .quotaExceeded, .limitExceeded:
+            return .quotaExceeded
+        // Positive evidence that this account can no longer reach the zone: a share the
+        // owner deleted, a participant the owner removed, a zone the owner deleted, or a
+        // permission CloudKit refuses outright.
+        case .unknownItem, .userDeletedZone, .permissionFailure:
+            return .accessRevoked
+        case .networkUnavailable, .networkFailure, .serviceUnavailable, .requestRateLimited,
+             .zoneBusy, .internalError, .partialFailure, .operationCancelled,
+             .badContainer, .badDatabase, .serverRejectedRequest:
+            return .retryable
+        default:
+            return .unknown
+        }
     }
 }

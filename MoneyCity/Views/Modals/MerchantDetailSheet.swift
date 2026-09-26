@@ -309,7 +309,14 @@ public struct MerchantDetailSheet: View {
         }
         try? modelContext.save()
         rememberCategory = true
-        DatabaseService.shared.rememberCorrection(merchant: merchantName, category: cat)
-        Haptics.impact(.light)
+
+        let hasAutomaticTx = merchantTransactions.contains(where: { !$0.isManual && $0.amount >= 0 && !$0.isUnresolvedForeign })
+        MerchantLearningCoordinator.shared.confirm(
+            merchant: merchantName,
+            category: cat,
+            context: modelContext,
+            source: .merchantDetailSheet,
+            allowCommunityVote: hasAutomaticTx
+        )
     }
 }

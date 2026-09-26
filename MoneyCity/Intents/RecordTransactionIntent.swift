@@ -49,17 +49,12 @@ public struct RecordTransactionIntent: AppIntent {
     @Parameter(title: "Currency", description: "Defaults to the base currency selected in the app")
     public var currency: String?
 
-    /// Structured currency amount supplied by Apple Pay / Shortcuts (when available on iOS)
-    @Parameter(title: "Currency Amount", description: "Optional structured monetary amount with ISO currency code")
-    public var currencyAmount: IntentCurrencyAmount?
-
     @Parameter(title: "Date and Time", description: "When the transaction took place")
     public var transactionDate: Date?
 
     public static var parameterSummary: some ParameterSummary {
         Summary("Record payment of \(\.$amount) at \(\.$merchant)") {
             \.$currency
-            \.$currencyAmount
             \.$transactionDate
             \.$amountText
         }
@@ -72,29 +67,18 @@ public struct RecordTransactionIntent: AppIntent {
         merchant: String?,
         amountText: String? = nil,
         currency: String? = nil,
-        date: Date? = nil,
-        currencyAmount: IntentCurrencyAmount? = nil
+        date: Date? = nil
     ) {
         self.amount = amount
         self.amountText = amountText
         self.merchant = merchant
         self.currency = currency
         self.transactionDate = date
-        self.currencyAmount = currencyAmount
     }
 
     @MainActor
     public func perform() async throws -> some IntentResult & ProvidesDialog {
-        var effectiveAmount = amount
-
-        // If amount was empty, check if currencyAmount provided a positive amount value
-        if let ca = currencyAmount, (effectiveAmount == nil || effectiveAmount == 0) {
-            let decimalVal = NSDecimalNumber(decimal: ca.amount).doubleValue
-            if decimalVal > 0 {
-                effectiveAmount = decimalVal
-            }
-        }
-
+        let effectiveAmount = amount
         var effectiveMerchant = merchant
 
         if (effectiveMerchant == nil || effectiveMerchant?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == true) && (effectiveAmount != nil && effectiveAmount! > 0) {

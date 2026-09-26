@@ -43,7 +43,8 @@ public struct RemoteConfigRoot: Codable, Equatable, Sendable {
                 "automaticCapture": true,
                 "receiptScanner": false,
                 "weeklyAdditions": true,
-                "savingsGoals": true
+                "savingsGoals": true,
+                "communityMerchantLearning": false
             ],
             announcement: nil,
             copy: [:],
@@ -54,9 +55,81 @@ public struct RemoteConfigRoot: Codable, Equatable, Sendable {
                 cityNarrativeEnabled: true,
                 captureHealthCheckEnabled: true
             ),
-            merchantOverrides: []
+            merchantOverrides: baselineCuratedMerchantOverrides
         )
     }
+
+    public static let baselineCuratedMerchantOverrides: [RemoteMerchantOverride] = [
+        // Food / Delivery
+        RemoteMerchantOverride(match: "wolt", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "וולט", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "10bis", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "תן ביס", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "tabit", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "טאביט", mode: "exact", category: "food"),
+
+        // Supermarkets & Groceries
+        RemoteMerchantOverride(match: "shufersal", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "שופרסל", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "שופרסל דיל", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "שופרסל שלי", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "שופרסל אקספרס", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "יש חסד", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "יש בשכונה", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "rami levy", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "רמי לוי", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "am:pm", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "victory", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "ויקטורי", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "carrefour", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "קרפור", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "יוחננוף", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "yohanof", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "yohananof", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "טיב טעם", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "tiv taam", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "אושר עד", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "osher ad", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "חצי חינם", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "hazi hinam", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "מגה בעיר", mode: "exact", category: "food"),
+
+        // Major Coffee & Bakeries
+        RemoteMerchantOverride(match: "aroma", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "ארומה", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "arcaffe", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "ארקפה", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "landwer", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "לנדוור", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "קפה גרג", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "רולדין", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "roladin", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "גולדה", mode: "exact", category: "food"),
+        RemoteMerchantOverride(match: "golda", mode: "exact", category: "food"),
+
+        // Transit & Parking
+        RemoteMerchantOverride(match: "gett", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "גט", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "uber", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "אובר", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "pango", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "פנגו", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "cellopark", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "סלופארק", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "rav kav", mode: "exact", category: "transport"),
+        RemoteMerchantOverride(match: "רב קו", mode: "exact", category: "transport"),
+
+        // Pharmacies
+        RemoteMerchantOverride(match: "super-pharm", mode: "exact", category: "health"),
+        RemoteMerchantOverride(match: "super pharm", mode: "exact", category: "health"),
+        RemoteMerchantOverride(match: "סופר-פארם", mode: "exact", category: "health"),
+        RemoteMerchantOverride(match: "סופר פארם", mode: "exact", category: "health"),
+        RemoteMerchantOverride(match: "be פארם", mode: "exact", category: "health"),
+
+        // Major Retailers
+        RemoteMerchantOverride(match: "zara", mode: "exact", category: "shopping"),
+        RemoteMerchantOverride(match: "זארה", mode: "exact", category: "shopping")
+    ]
 }
 
 public struct RemoteAnnouncement: Codable, Equatable, Sendable {
@@ -211,13 +284,19 @@ public final class RemoteConfigService: ObservableObject, @unchecked Sendable {
     // Production and Staging raw endpoints on the main branch
     public static let defaultProductionURL = URL(string: "https://raw.githubusercontent.com/biniwis/spentapp/main/remote-config/production.json")!
     public static let defaultStagingURL = URL(string: "https://raw.githubusercontent.com/biniwis/spentapp/main/remote-config/staging.json")!
+    #if DEBUG
+    /// Endpoint pointing directly to the feature/city-v2 branch staging configuration for pre-merge testing.
+    public static let branchStagingURL = URL(string: "https://raw.githubusercontent.com/biniwis/spentapp/feature/city-v2/remote-config/staging.json")!
+    #endif
     public static let defaultShortcutURL = "https://www.icloud.com/shortcuts/72aa49c6fe0449fd99703e8d4f2a1853"
 
     // Keys
     private let keyLastRefreshAttempt = "remote_config_last_refresh_attempt_timestamp"
     private let keyLastKnownGood = "remote_config_last_known_good_json"
     private let keyDismissedAnnouncements = "remote_config_dismissed_announcements"
+    #if DEBUG
     private let keyEndpointOverride = "remote_config_endpoint_url"
+    #endif
 
     private let lock = NSLock()
     private var cachedConfig: RemoteConfigRoot
@@ -255,16 +334,32 @@ public final class RemoteConfigService: ObservableObject, @unchecked Sendable {
     // MARK: - Active Endpoint
 
     public var endpointURL: URL {
+        #if DEBUG
         if let overrideString = defaults.string(forKey: keyEndpointOverride),
            let url = URL(string: overrideString), !overrideString.isEmpty {
             return url
         }
-        #if DEBUG
         return Self.defaultStagingURL
         #else
         return Self.defaultProductionURL
         #endif
     }
+
+    #if DEBUG
+    /// Sets or clears a custom endpoint URL override (strictly DEBUG-only; inactive in Release).
+    public func setEndpointOverride(_ urlString: String?) {
+        if let str = urlString?.trimmingCharacters(in: .whitespacesAndNewlines), !str.isEmpty {
+            defaults.set(str, forKey: keyEndpointOverride)
+        } else {
+            defaults.removeObject(forKey: keyEndpointOverride)
+        }
+    }
+
+    /// The current custom endpoint override, if configured (strictly DEBUG-only).
+    public var endpointOverride: String? {
+        defaults.string(forKey: keyEndpointOverride)
+    }
+    #endif
 
     // MARK: - Lifecycle Refresh
 

@@ -854,7 +854,7 @@ final class CurrencyHandlingTests: XCTestCase {
 
     @MainActor
     func testRecordTransactionIntentIgnoresSyntheticUSDInCurrencyAmount() async throws {
-        // Test A: Base ILS, amount 34.50, RecordTransactionIntent with currencyAmount USD.
+        // Test A: Base ILS, amount 34.50, RecordTransactionIntent with currency USD.
         // Assert amount == 34.50, currency == "₪", originalAmount == nil, originalCurrency == nil.
         LocalizationManager.shared.baseCurrency = .ils
         UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
@@ -864,7 +864,7 @@ final class CurrencyHandlingTests: XCTestCase {
         let intent = RecordTransactionIntent(
             amount: 34.50,
             merchant: testMerchant,
-            currencyAmount: IntentCurrencyAmount(amount: 0, currencyCode: "USD")
+            currency: "USD"
         )
 
         _ = try await intent.perform()
@@ -898,8 +898,7 @@ final class CurrencyHandlingTests: XCTestCase {
         let intent = RecordTransactionIntent(
             amount: 150.0,
             merchant: testMerchant,
-            currency: "USD",
-            currencyAmount: IntentCurrencyAmount(amount: 150.0, currencyCode: "USD")
+            currency: "USD"
         )
 
         _ = try await intent.perform()
@@ -979,9 +978,8 @@ final class CurrencyHandlingTests: XCTestCase {
     }
 
     @MainActor
-    func testRecordTransactionIntentAmountFallbackFromCurrencyAmountIgnoresCurrencyCode() async throws {
-        // Verifies that when numeric amount is 0/nil, currencyAmount.amount is safely used as fallback
-        // while its currencyCode is completely ignored and base currency (₪) is used.
+    func testRecordTransactionIntentAmountFallbackFromAmountText() async throws {
+        // Verifies that when numeric amount is 0/nil, amountText is safely used as fallback
         LocalizationManager.shared.baseCurrency = .ils
         UserDefaults.standard.set("ILS", forKey: "app_currency_pref")
         UserDefaults.standard.set(true, forKey: "auto_convert_fx")
@@ -990,7 +988,7 @@ final class CurrencyHandlingTests: XCTestCase {
         let intent = RecordTransactionIntent(
             amount: 0.0,
             merchant: testMerchant,
-            currencyAmount: IntentCurrencyAmount(amount: 45.0, currencyCode: "USD")
+            amountText: "45.0"
         )
 
         _ = try await intent.perform()

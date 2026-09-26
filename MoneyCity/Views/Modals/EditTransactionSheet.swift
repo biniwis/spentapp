@@ -606,10 +606,13 @@ public struct EditTransactionSheet: View {
         // date, etc. must NOT automatically convert an inferred category into a learned rule.
         let isExplicitCategoryAction = hasUserExplicitlySelectedCategory || (transaction.needsCategorization && selectedCategory != .other)
         if isExplicitCategoryAction && !finalMerchant.isEmpty && selectedCategory != .other {
-            DatabaseService.shared.rememberCorrection(
+            MerchantLearningCoordinator.shared.confirm(
                 merchant: finalMerchant,
                 category: selectedCategory,
-                buildingId: selectedBuildingId
+                buildingId: selectedBuildingId,
+                transaction: transaction,
+                context: modelContext,
+                source: .editTransactionSheet
             )
         }
         let cal = Calendar.current

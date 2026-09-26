@@ -12,7 +12,20 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     /// catches up. One blip must not cost the user a space, so a revoke has to repeat
     /// itself before we believe it.
     static let revocationThreshold = 3
-    let cloud = CKContainer(identifier: "iCloud.com.moneycity.app")
+    let cloud: CKContainer
+    private let accountProvider: SharedCloudAccountProvider
+    private let customRootDirectory: URL?
+
+    init(
+        cloud: CKContainer = CKContainer(identifier: "iCloud.com.moneycity.app"),
+        rootDirectory: URL? = nil,
+        accountProvider: SharedCloudAccountProvider? = nil
+    ) {
+        self.cloud = cloud
+        self.customRootDirectory = rootDirectory
+        self.accountProvider = accountProvider ?? cloud
+    }
+
     @Published private(set) var spaces: [SharedSpace] = []
     @Published private(set) var members: [SharedMember] = []
     @Published private(set) var expenses: [SharedExpense] = []
@@ -32,6 +45,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     @Published var invitation: CKShare.Metadata?
     private(set) var database: SharedDatabaseService?
     private var engines: [Int: CKSyncEngine] = [:]
+    private var engineGenerations: [ObjectIdentifier: UInt64] = [:]
     private var accountName: String?
     private var writableSpaces = Set<UUID>()
     private var revokedSpaces = Set<UUID>()
@@ -41,6 +55,24 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     private var accountObserver: NSObjectProtocol?
     private var connecting = false
     private var stopped = false
+    private var accountGeneration: UInt64 = 0
+
+    func isSpaceRevoked(_ id: UUID) -> Bool { revokedSpaces.contains(id) }
+    func isSpaceUnsupported(_ id: UUID) -> Bool { unsupportedSpaces.contains(id) }
+    var connectedAccount: String? { accountName }
+    var activeRevokedSpaces: Set<UUID> { revokedSpaces }
+    var activeUnsupportedSpaces: Set<UUID> { unsupportedSpaces }
+    #if DEBUG
+    var currentAccountGeneration: UInt64 { accountGeneration }
+    func engineForTesting(scope: CKDatabase.Scope) -> CKSyncEngine? { engines[scope.rawValue] }
+    func isEngineActiveForTesting(_ syncEngine: CKSyncEngine) -> Bool {
+        let scope = syncEngine.database.databaseScope.rawValue
+        return !stopped &&
+            engineGenerations[ObjectIdentifier(syncEngine)] == accountGeneration &&
+            engines[scope] === syncEngine
+    }
+    var onRefreshSuspensionHook: (() async -> Void)?
+    #endif
 
     var activeSpace: SharedSpace? { spaces.first { $0.id == activeSpaceID } }
     func text(_ he: String, _ en: String) -> String { AppLanguage.current == .hebrew ? he : en }
@@ -48,6 +80,28 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }
     func myMemberID(in space: UUID) -> String { hash(space.uuidString + (accountName ?? "")) }
+
+    private func saveAccountMetadata() {
+        guard let directory = database?.directory else { return }
+        let metadata = SharedAccountMetadata(
+            revokedSpaceIDs: revokedSpaces,
+            unsupportedSpaceIDs: unsupportedSpaces,
+            revocationStrikes: revocationStrikes,
+            activeSpaceID: activeSpaceID
+        )
+        metadata.save(to: directory)
+    }
+
+    private func loadAccountMetadata() {
+        guard let directory = database?.directory else { return }
+        let metadata = SharedAccountMetadata.load(from: directory)
+        revokedSpaces = metadata.revokedSpaceIDs
+        unsupportedSpaces = metadata.unsupportedSpaceIDs
+        revocationStrikes = metadata.revocationStrikes
+        if let savedActive = metadata.activeSpaceID, !revokedSpaces.contains(savedActive), !unsupportedSpaces.contains(savedActive) {
+            activeSpaceID = savedActive
+        }
+    }
 
     /// The same identity, but only when it can actually be trusted.
     ///
@@ -66,8 +120,9 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         return writableSpaces.contains(id) || ownedSpaces.contains(id)
     }
     func select(_ id: UUID?) {
-        guard id == nil || spaces.contains(where: { $0.id == id }) else { return }
+        guard id == nil || (spaces.contains(where: { $0.id == id }) && !revokedSpaces.contains(id!) && !unsupportedSpaces.contains(id!)) else { return }
         activeSpaceID = id
+        saveAccountMetadata()
     }
     func perform(_ work: @escaping @MainActor () async throws -> Void) {
         guard !busy else { return }
@@ -75,6 +130,9 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         Task {
             defer { busy = false }
             do { try await work() }
+            catch is CancellationError {
+                return
+            }
             catch {
                 // The user's own input belongs on the screen they are looking at.
                 // Escalating it to a global alert is what made a bad invite link look
@@ -115,13 +173,20 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
 
     private func performConnect() async throws {
         guard !stopped else { throw SharedLedgerError.storageUnavailable }
+        var generation = accountGeneration
         connecting = true
         defer { connecting = false }
-        guard try await cloud.accountStatus() == .available else { throw SharedLedgerError.noAccount }
-        let account = try await cloud.userRecordID().recordName
-        if let previous = accountName, previous != account {
-            stopForAccountChange()
+        let status = try await accountProvider.accountStatus()
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+        guard status == .available else {
+            handleAccountChange()
             throw SharedLedgerError.noAccount
+        }
+        let account = try await accountProvider.userRecordID().recordName
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+        if let previous = accountName, previous != account {
+            handleAccountChange()
+            generation = accountGeneration
         }
         guard database == nil else { return }
         #if DEBUG
@@ -129,11 +194,19 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         #else
         let environment = "Production"
         #endif
-        let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
+        let root: URL
+        if let custom = customRootDirectory {
+            root = custom
+        } else {
+            root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                               appropriateFor: nil, create: true)
-        database = try SharedDatabaseService(directory: root.appendingPathComponent("Shared/\(environment)/\(hash(account))"))
+        }
+        let accountFolder = root.appendingPathComponent("Shared/\(environment)/\(hash(account))")
+        database = try SharedDatabaseService(directory: accountFolder)
         accountName = account
+        loadAccountMetadata()
         UserDefaults.standard.set(true, forKey: "shared_spaces_enabled")
+        UserDefaults.standard.set(true, forKey: "shared_spaces_enabled_\(hash(account))")
         try reload()
         guard let database else { throw SharedLedgerError.storageUnavailable }
         let states = try database.context.fetch(FetchDescriptor<SharedEngineState>())
@@ -144,21 +217,53 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             let config = CKSyncEngine.Configuration(database: cloud.database(with: scope), stateSerialization: state, delegate: self)
             let engine = CKSyncEngine(config)
             engines[scope.rawValue] = engine
+            engineGenerations[ObjectIdentifier(engine)] = generation
             for row in try database.records() where row.databaseScope == scope.rawValue && row.localRevision != nil {
                 engine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID(row))])
             }
         }
-        accountObserver = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.stopForAccountChange() }
+        if accountObserver == nil {
+            accountObserver = NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.handleAccountChange() }
+            }
         }
     }
 
-    private func stopForAccountChange() {
-        stopped = true; engines.removeAll(); writableSpaces.removeAll()
-        spaces = []; members = []; expenses = []; activeSpaceID = nil
+    func handleAccountChange() {
+        accountGeneration &+= 1
+        connectAttempt?.cancel()
+        connectAttempt = nil
+        refreshAttempt?.cancel()
+        refreshAttempt = nil
+        engineGenerations.removeAll()
+        engines.removeAll()
+        writableSpaces.removeAll()
+        ownedSpaces.removeAll()
+        revokedSpaces.removeAll()
+        unsupportedSpaces.removeAll()
+        revocationStrikes.removeAll()
+        spaces = []
+        members = []
+        expenses = []
+        conflicts = []
+        conflictCount = 0
+        activeSpaceID = nil
+        accountName = nil
         database = nil
+        stopped = false
+    }
+
+    private func stopForAccountChange() {
+        handleAccountChange()
+        stopped = true
         errorMessage = text("חשבון iCloud השתנה. יש לפתוח מחדש את האפליקציה. שינויים ממתינים נשמרו בחשבון המקורי.",
                             "iCloud account changed. Reopen the app. Pending changes remain in the original account.")
+    }
+
+    deinit {
+        if let accountObserver {
+            NotificationCenter.default.removeObserver(accountObserver)
+        }
     }
 
     private func recordID(_ row: SharedStoredRecord) -> CKRecord.ID {
@@ -185,10 +290,13 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         // lookup instead of a scan, and so a failed refresh cannot cost us our own spaces.
         ownedSpaces = Set(records.filter { $0.kind == "space" && !$0.isDeleted &&
                                             $0.databaseScope == CKDatabase.Scope.private.rawValue }
-                                .compactMap { UUID(uuidString: $0.spaceID) })
+                                .compactMap { UUID(uuidString: $0.spaceID) }
+                                .filter { !revokedSpaces.contains($0) && !unsupportedSpaces.contains($0) })
         var nextSpaces: [SharedSpace] = [], nextMembers: [SharedMember] = [], nextExpenses: [SharedExpense] = []
         for row in records where !row.isDeleted && row.schemaVersion == 1 {
-            guard let id = UUID(uuidString: row.spaceID), !revokedSpaces.contains(id) else { continue }
+            guard let id = UUID(uuidString: row.spaceID),
+                  !revokedSpaces.contains(id),
+                  !unsupportedSpaces.contains(id) else { continue }
             switch row.kind {
             case "space": nextSpaces.append(try JSONDecoder().decode(SharedSpace.self, from: row.payload))
             case "member": nextMembers.append(try JSONDecoder().decode(SharedMember.self, from: row.payload))
@@ -204,7 +312,8 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         for row in records where !row.isDeleted && row.kind == "expense" {
             guard let recPayload = row.recoveryPayload,
                   let spaceID = UUID(uuidString: row.spaceID),
-                  !revokedSpaces.contains(spaceID) else { continue }
+                  !revokedSpaces.contains(spaceID),
+                  !unsupportedSpaces.contains(spaceID) else { continue }
             if let serverExp = try? JSONDecoder().decode(SharedExpense.self, from: row.payload),
                let localExp = try? JSONDecoder().decode(SharedExpense.self, from: recPayload) {
                 nextConflicts.append(SharedExpenseConflict(
@@ -217,7 +326,10 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         }
         conflicts = nextConflicts
         conflictCount = nextConflicts.count
-        if let activeSpaceID, !spaces.contains(where: { $0.id == activeSpaceID }) { self.activeSpaceID = nil }
+        if let active = activeSpaceID, (!spaces.contains(where: { $0.id == active }) || revokedSpaces.contains(active) || unsupportedSpaces.contains(active)) {
+            self.activeSpaceID = nil
+            saveAccountMetadata()
+        }
     }
 
     private func put<T: Encodable>(_ value: T, kind: String, name: String, space: UUID,
@@ -255,13 +367,18 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             revokedSpaces.insert(id)
             writableSpaces.remove(id)
             revocationStrikes[id] = nil
+            saveAccountMetadata()
             return true
         case .transient:
             let strikes = (revocationStrikes[id] ?? 0) + 1
             revocationStrikes[id] = strikes
-            guard strikes >= Self.revocationThreshold else { return false }
+            guard strikes >= Self.revocationThreshold else {
+                saveAccountMetadata()
+                return false
+            }
             revokedSpaces.insert(id)
             writableSpaces.remove(id)
+            saveAccountMetadata()
             return true
         }
     }
@@ -275,7 +392,9 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         // A target is optional, but a target of zero or less is a mistake, not a choice.
         // Rejected before anything is created, so a bad number costs nothing.
         if let monthlyBudgetMinor, monthlyBudgetMinor <= 0 { throw SharedLedgerError.invalidAmount }
+        let generation = accountGeneration
         try await connect()
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         let id = UUID()
         let space = SharedSpace(id: id, name: String(cleanName.prefix(60)), currencyCode: currency,
                                 timeZoneID: TimeZone.current.identifier, mapStyle: mapStyle, createdAt: Date(),
@@ -284,23 +403,39 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         do {
             if !demo {
                 _ = try await cloud.privateCloudDatabase.save(zone)
+                guard generation == accountGeneration, !Task.isCancelled else {
+                    rollbackSpace(id, zone: zone)
+                    throw CancellationError()
+                }
                 let share = CKShare(recordZoneID: zone.zoneID)
                 share[CKShare.SystemFieldKey.title] = space.name as CKRecordValue
                 share.publicPermission = .none
                 _ = try await cloud.privateCloudDatabase.save(share)
+                guard generation == accountGeneration, !Task.isCancelled else {
+                    rollbackSpace(id, zone: zone)
+                    throw CancellationError()
+                }
             }
             writableSpaces.insert(id)
             try put(space, kind: "space", name: "space", space: id, zone: zone.zoneID, scope: CKDatabase.Scope.private.rawValue)
             try registerMember(in: id, name: cleanMember)
-            if !demo { try await sync() }
+            if !demo {
+                try await sync()
+                guard generation == accountGeneration, !Task.isCancelled else {
+                    rollbackSpace(id, zone: zone)
+                    throw CancellationError()
+                }
+            }
         } catch {
             // Half a space is worse than no space: undo every step this call made.
             rollbackSpace(id, zone: zone)
             throw error
         }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         // The app only leaves the previous scope once the new space and its first
         // sync are both real, so a failed create cannot strand the user in a broken scope.
         activeSpaceID = id
+        saveAccountMetadata()
     }
 
     /// Undoes a partially created space: local rows, write access, the engine queue,
@@ -309,6 +444,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     private func rollbackSpace(_ id: UUID, zone: CKRecordZone) {
         writableSpaces.remove(id)
         revocationStrikes[id] = nil
+        saveAccountMetadata()
         if let database {
             for record in ((try? database.records()) ?? []) where record.spaceID == id.uuidString {
                 database.context.delete(record)
@@ -401,6 +537,9 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         if demo { return }
         do {
             try await refresh()
+            guard !Task.isCancelled else { return }
+        } catch is CancellationError {
+            return
         } catch let error as SharedLedgerError where error == .noAccount {
             return
         } catch let ckError as CKError where SharedSyncClassifier.classify(ckError.code) == .retryable || SharedSyncClassifier.classify(ckError.code) == .accountRequired {
@@ -408,9 +547,11 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         } catch let urlError as URLError where urlError.code == .notConnectedToInternet || urlError.code == .networkConnectionLost {
             return
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
             return
         }
+        guard !Task.isCancelled else { return }
         // Discovery is also the moment a join left half-finished by a previous launch can
         // be completed, so recovery does not depend on the user still holding the link.
         await resumePendingJoinIfAny()
@@ -437,20 +578,37 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     }
 
     private func performRefresh() async throws {
+        let generation = accountGeneration
         try await connect()
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+        #if DEBUG
+        if let onRefreshSuspensionHook {
+            await onRefreshSuspensionHook()
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+        }
+        #endif
         var accessible = Set<UUID>(), writable = Set<UUID>()
         for scope: CKDatabase.Scope in [.private, .shared] {
             let zones = try await cloud.database(with: scope).allRecordZones()
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
             for zone in zones {
                 guard let id = spaceID(zone.zoneID) else { continue }
                 accessible.insert(id)
                 if scope == .private { writable.insert(id) }
-                else if let shareID = zone.share?.recordID,
-                        let share = try await cloud.sharedCloudDatabase.record(for: shareID) as? CKShare,
-                        share.currentUserParticipant?.permission == .readWrite { writable.insert(id) }
+                else if let shareID = zone.share?.recordID {
+                    let record = try await cloud.sharedCloudDatabase.record(for: shareID)
+                    guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+                    if let share = record as? CKShare,
+                       share.currentUserParticipant?.permission == .readWrite {
+                        writable.insert(id)
+                    }
+                }
             }
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
             try await engines[scope.rawValue]?.fetchChanges()
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         // A space we can see again is not revoked, and its access comes back with it.
         revokedSpaces.subtract(accessible)
         // Only a space that actually reappeared clears its record. Wiping every strike
@@ -465,14 +623,17 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         // its share says read-only. A zone we merely failed to see never costs access.
         writableSpaces.formUnion(writable)
         writableSpaces.subtract(accessible.subtracting(writable))
+        saveAccountMetadata()
         try reload()
     }
 
     /// Undoes a revocation and re-sends whatever the space never managed to upload.
     /// Safe to call on a space that is not revoked: refresh decides the truth.
     func recoverSpace(_ id: UUID) async throws {
+        let generation = accountGeneration
         revokedSpaces.remove(id)
         revocationStrikes[id] = nil
+        saveAccountMetadata()
         // reload() reads revokedSpaces, so the row has to surface here before anything
         // downstream can look the space up by id.
         try reload()
@@ -486,31 +647,42 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             }
         }
         try await refresh()
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         guard canWrite(id) else { return }
         try await sync()
     }
 
     func sync() async throws {
         if demo { return }
+        let generation = accountGeneration
         try await connect()
-        for engine in engines.values { try await engine.sendChanges() }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+        for engine in engines.values {
+            try await engine.sendChanges()
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+        }
         try await refresh()
     }
 
     func sharingRecord(in space: UUID) async throws -> CKShare {
         guard !demo else { throw SharedLedgerError.noAccount }
+        let generation = accountGeneration
         let row = try spaceRow(space)
         let db = cloud.database(with: CKDatabase.Scope(rawValue: row.databaseScope) ?? .shared)
         let zone = try await db.recordZone(for: recordID(row).zoneID)
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         if let id = zone.share?.recordID, let share = try? await db.record(for: id) as? CKShare {
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
             return share
         }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         if row.databaseScope == CKDatabase.Scope.private.rawValue {
             let spaceObj = spaces.first(where: { $0.id == space }) ?? SharedSpace(id: space, name: "SPENT", currencyCode: "ILS", timeZoneID: TimeZone.current.identifier, mapStyle: "urban", createdAt: Date(), monthlyBudgetMinor: nil)
             let share = CKShare(recordZoneID: zone.zoneID)
             share[CKShare.SystemFieldKey.title] = spaceObj.name as CKRecordValue
             share.publicPermission = .none
             let saved = try await cloud.privateCloudDatabase.save(share)
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
             return (saved as? CKShare) ?? share
         }
         throw SharedLedgerError.noAccess
@@ -569,18 +741,21 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
               let id = spaceID(metadata.share.recordID.zoneID) else { throw SharedLedgerError.wrongInvitation }
         let cleanName = memberName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty else { throw SharedLedgerError.invalidInput }
+        let generation = accountGeneration
         try await connect()
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         // Written before the irreversible call, so a death on the far side of it still
         // leaves enough on disk to finish the job. Without this the invitation is spent
         // and the user is left inside a space with no member row and no second link.
         switch SharedJoin.next(hasIntent: pendingJoin(id) != nil,
-                               cloudAccepted: pendingJoin(id)?.acceptedAt != nil) {
+                                cloudAccepted: pendingJoin(id)?.acceptedAt != nil) {
         case .beginIntent:
             try beginPendingJoin(spaceID: id, memberName: cleanName)
         case .accept:
             // Accepting a share cannot be undone and cannot be replayed, so it happens at
             // most once per recorded intent.
             guard let result = try await cloud.accept([metadata])[metadata] else { throw SharedLedgerError.wrongInvitation }
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
             _ = try result.get()
             try markPendingJoinAccepted(id)
         case .finish, .done:
@@ -652,7 +827,9 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     /// instead of adding another member.
     private func finishPendingJoin(_ id: UUID) async throws {
         guard let pending = pendingJoin(id) else { throw SharedLedgerError.wrongInvitation }
+        let generation = accountGeneration
         try await refresh()
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         // The space has to exist here before it can be entered. CloudKit can accept a share
         // before the zone appears in this account's own listing, and activating a space
         // that is not there would leave the app pointed at nothing.
@@ -673,6 +850,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try clearPendingJoin(id)
         invitation = nil
         activeSpaceID = id
+        saveAccountMetadata()
     }
 
     /// Picks up a join that CloudKit accepted but the app never finished. Runs on the
@@ -719,11 +897,14 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try ensureNoPendingChanges(in: id)
         guard isOwner(id) else { throw SharedLedgerError.noAccess }
         guard let database else { throw SharedLedgerError.storageUnavailable }
+        let generation = accountGeneration
         let row = try spaceRow(id)
         if !demo && row.databaseScope == CKDatabase.Scope.private.rawValue {
             let zoneID = recordID(row).zoneID
             _ = try await cloud.privateCloudDatabase.deleteRecordZone(withID: zoneID)
+            guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
         let records = try database.records()
         for r in records where r.spaceID == id.uuidString {
             database.context.delete(r)
@@ -734,6 +915,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         if activeSpaceID == id {
             activeSpaceID = nil
         }
+        saveAccountMetadata()
         try reload()
     }
 
@@ -742,15 +924,21 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try ensureNoPendingChanges(in: id)
         guard isOwner(id) else { throw SharedLedgerError.noAccess }
         guard let database else { throw SharedLedgerError.storageUnavailable }
+        let generation = accountGeneration
 
         if !demo {
             do {
                 let share = try await sharingRecord(in: id)
+                guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
                 _ = try await cloud.privateCloudDatabase.deleteRecord(withID: share.recordID)
+                guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+            } catch is CancellationError {
+                throw CancellationError()
             } catch let ckError as CKError where ckError.code == .unknownItem {
                 // Already removed from server
             }
         }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
 
         // Keep space and expenses for the owner; remove other members from local store
         let myID = myMemberID(in: id)
@@ -768,23 +956,32 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         try ensureNoPendingChanges(in: id)
         guard !isOwner(id) else { throw SharedLedgerError.noAccess }
         guard let database else { throw SharedLedgerError.storageUnavailable }
+        let generation = accountGeneration
 
         if !demo {
             let row = try spaceRow(id)
             let zoneID = recordID(row).zoneID
             do {
                 let share = try await sharingRecord(in: id)
+                guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
                 _ = try await cloud.sharedCloudDatabase.deleteRecord(withID: share.recordID)
+                guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+            } catch is CancellationError {
+                throw CancellationError()
             } catch let ckError as CKError where ckError.code == .unknownItem {
                 // Already removed on server
             } catch {
                 do {
                     _ = try await cloud.sharedCloudDatabase.deleteRecordZone(withID: zoneID)
+                    guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
+                } catch is CancellationError {
+                    throw CancellationError()
                 } catch let ckError as CKError where ckError.code == .unknownItem {
                     // Already removed
                 }
             }
         }
+        guard generation == accountGeneration, !Task.isCancelled else { throw CancellationError() }
 
         // Only executed if cloud removal succeeded
         let records = try database.records()
@@ -797,6 +994,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         if activeSpaceID == id {
             activeSpaceID = nil
         }
+        saveAccountMetadata()
         try reload()
     }
 
@@ -845,7 +1043,11 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         guard record.recordType == "SPENTSharedRecord", let id = spaceID(record.recordID.zoneID), let database,
               let kind = record["kind"] as? String, let payload = record["payload"] as? Data,
               payload.count < 100_000 else { return }
-        guard record["schemaVersion"] as? Int64 == 1 else { unsupportedSpaces.insert(id); return }
+        guard record["schemaVersion"] as? Int64 == 1 else {
+            unsupportedSpaces.insert(id)
+            saveAccountMetadata()
+            return
+        }
         // Validate foreign records before allowing them into financial calculations.
         switch kind {
         case "space":
@@ -861,7 +1063,10 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
                   value.amount.isFinite, abs(value.amount) <= MoneyAmount.maximum, value.amount != 0,
                   value.merchant.count <= 120, value.note.count <= 1000,
                   value.category.canonical != .savings else { throw SharedLedgerError.invalidInput }
-        default: unsupportedSpaces.insert(id); return
+        default:
+            unsupportedSpaces.insert(id)
+            saveAccountMetadata()
+            return
         }
         let row: SharedStoredRecord
         if let existing = try database.record(key(record.recordID)) { row = existing }
@@ -893,7 +1098,10 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
 
     func handleEvent(_ event: CKSyncEngine.Event, syncEngine: CKSyncEngine) async {
         let scope = syncEngine.database.databaseScope.rawValue
-        guard !stopped, engines[scope] === syncEngine, let database else { return }
+        guard !stopped,
+              engineGenerations[ObjectIdentifier(syncEngine)] == accountGeneration,
+              engines[scope] === syncEngine,
+              let database else { return }
         do {
             switch event {
             case .stateUpdate(let value):
@@ -902,7 +1110,8 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
                 else { database.context.insert(SharedEngineState(scope: scope, serialization: data)) }
             case .accountChange(let change):
                 if case .signIn = change.changeType { return }
-                stopForAccountChange(); return
+                handleAccountChange()
+                return
             case .fetchedRecordZoneChanges(let changes):
                 for modification in changes.modifications { try merge(modification.record, scope: scope) }
                 for deletion in changes.deletions {
@@ -918,7 +1127,10 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             case .sentRecordZoneChanges(let changes):
                 for record in changes.savedRecords {
                     try merge(record, scope: scope, acknowledge: true)
-                    if let id = spaceID(record.recordID.zoneID) { revocationStrikes[id] = nil }
+                    if let id = spaceID(record.recordID.zoneID) {
+                        revocationStrikes[id] = nil
+                        saveAccountMetadata()
+                    }
                 }
                 for failure in changes.failedRecordSaves {
                     // Classified, not guessed. A conflict keeps both versions and asks the
@@ -965,7 +1177,11 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     }
 
     func nextRecordZoneChangeBatch(_ context: CKSyncEngine.SendChangesContext, syncEngine: CKSyncEngine) async -> CKSyncEngine.RecordZoneChangeBatch? {
-        guard !stopped, let database else { return nil }
+        let scope = syncEngine.database.databaseScope.rawValue
+        guard !stopped,
+              engineGenerations[ObjectIdentifier(syncEngine)] == accountGeneration,
+              engines[scope] === syncEngine,
+              let database else { return nil }
         do {
             var records: [CKRecord.ID: CKRecord] = [:]
             for row in try database.records() where row.localRevision != nil && row.databaseScope == syncEngine.database.databaseScope.rawValue {
@@ -1010,6 +1226,20 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
             date: Date().addingTimeInterval(-3_600 * 30), note: "", paidBy: partner.id, createdBy: partner.id,
             updatedBy: partner.id, originalAmount: "120.00", originalCurrency: "USD",
             exchangeRate: nil, exchangeRateDate: nil))
+    }
+
+    func markSpaceRevokedForTesting(_ id: UUID) {
+        revokedSpaces.insert(id)
+        writableSpaces.remove(id)
+        saveAccountMetadata()
+        try? reload()
+    }
+
+    func markSpaceUnsupportedForTesting(_ id: UUID) {
+        unsupportedSpaces.insert(id)
+        writableSpaces.remove(id)
+        saveAccountMetadata()
+        try? reload()
     }
     #endif
 }

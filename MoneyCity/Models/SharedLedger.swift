@@ -573,10 +573,12 @@ enum SharedSchemaV1: VersionedSchema {
 
 @MainActor
 final class SharedDatabaseService {
+    let directory: URL?
     let container: ModelContainer
     let context: ModelContext
 
     init(directory: URL?, inMemory: Bool = false) throws {
+        self.directory = directory
         let schema = Schema(versionedSchema: SharedSchemaV1.self)
         let configuration: ModelConfiguration
         if inMemory {
@@ -601,6 +603,57 @@ final class SharedDatabaseService {
         do { try context.save() } catch { context.rollback(); throw error }
     }
 }
+
+/// Scoped, durable metadata for a specific CloudKit account's shared spaces.
+/// Stored in the account's isolated directory (`access_metadata.json`).
+///
+/// Invariants:
+/// - Never includes invitation URLs, secrets, or tokens.
+/// - Isolated per CloudKit user account hash; never shared across accounts.
+/// - Excluded from Personal Cloud Backup.
+public struct SharedAccountMetadata: Codable, Equatable, Sendable {
+    public var revokedSpaceIDs: Set<UUID>
+    public var unsupportedSpaceIDs: Set<UUID>
+    public var revocationStrikes: [UUID: Int]
+    public var activeSpaceID: UUID?
+
+    public init(
+        revokedSpaceIDs: Set<UUID> = [],
+        unsupportedSpaceIDs: Set<UUID> = [],
+        revocationStrikes: [UUID: Int] = [:],
+        activeSpaceID: UUID? = nil
+    ) {
+        self.revokedSpaceIDs = revokedSpaceIDs
+        self.unsupportedSpaceIDs = unsupportedSpaceIDs
+        self.revocationStrikes = revocationStrikes
+        self.activeSpaceID = activeSpaceID
+    }
+
+    public static func load(from directory: URL?) -> SharedAccountMetadata {
+        guard let directory else { return SharedAccountMetadata() }
+        let fileURL = directory.appendingPathComponent("access_metadata.json")
+        guard let data = try? Data(contentsOf: fileURL),
+              let metadata = try? JSONDecoder().decode(SharedAccountMetadata.self, from: data) else {
+            return SharedAccountMetadata()
+        }
+        return metadata
+    }
+
+    public func save(to directory: URL?) {
+        guard let directory else { return }
+        let fileURL = directory.appendingPathComponent("access_metadata.json")
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        try? data.write(to: fileURL, options: .atomic)
+    }
+}
+
+/// Abstract provider for CloudKit account status and identity, enabling isolated deterministic tests.
+public protocol SharedCloudAccountProvider: Sendable {
+    func accountStatus() async throws -> CKAccountStatus
+    func userRecordID() async throws -> CKRecord.ID
+}
+
+extension CKContainer: SharedCloudAccountProvider {}
 
 enum SharedLedgerError: LocalizedError {
     case invalidAmount, invalidInput, storageUnavailable, noAccount, noAccess, pendingChanges, unsupportedVersion, wrongInvitation

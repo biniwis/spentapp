@@ -9,6 +9,9 @@ public struct DioramaReadyWrapper: View {
     public let totalSavings: Double
     public let savingsTarget: Double
     public let parkHealth: Double
+    /// Set only when the month has no health to report; nil keeps the renderer's own
+    /// graded path, which is the personal city and every month with a real reading.
+    public let parkMode: CityParkMode?
     /// Bumped whenever the user asks for the default city view back.
     public let viewResetToken: Int
     /// Pulls the camera back for the month view.
@@ -43,6 +46,7 @@ public struct DioramaReadyWrapper: View {
         totalSavings: Double,
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
+        parkMode: CityParkMode? = nil,
         viewResetToken: Int = 0,
         isOverview: Bool = false,
         categoryTotals: [SpendingCategory: Double],
@@ -70,6 +74,7 @@ public struct DioramaReadyWrapper: View {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
+        self.parkMode = parkMode
         self.viewResetToken = viewResetToken
         self.isOverview = isOverview
         self.categoryTotals = categoryTotals
@@ -103,6 +108,7 @@ public struct DioramaReadyWrapper: View {
                 totalSavings: totalSavings,
                 savingsTarget: savingsTarget,
                 parkHealth: parkHealth,
+                parkMode: parkMode,
                 viewResetToken: viewResetToken,
                 isOverview: isOverview,
                 categoryTotals: categoryTotals,

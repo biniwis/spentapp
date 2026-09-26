@@ -133,6 +133,30 @@ final class DioramaContractTests: XCTestCase {
         context.exception = nil
         context.evaluateScript("payload = \(json); payload.tutorialBuildingId = 'food_coffee'; validateDioramaPayload(payload);")
         XCTAssertNil(context.exception)
+
+        // A month with no target sends a mode instead of a health reading, and a payload
+        // without the field is the one every personal city has always sent.
+        XCTAssertFalse(json.contains("parkMode"), "No mode means the key is absent, not null")
+        context.exception = nil
+        context.evaluateScript("payload = \(json); payload.parkMode = 'neutral'; validateDioramaPayload(payload);")
+        XCTAssertNil(context.exception)
+        for mutation in ["payload.parkMode = 42", "payload.parkMode = {}"] {
+            context.exception = nil
+            context.evaluateScript("payload = \(json); \(mutation); validateDioramaPayload(payload);")
+            XCTAssertNotNil(context.exception, mutation)
+        }
+
+        // And the shipped renderer actually branches on it, in a way that does not read a
+        // health value: neutral is its own look, not a number fed through the bands.
+        let parkSection = try section("const HEALTHY_PARK", "function stepPlantings")
+        context.exception = nil
+        context.evaluateScript(parkSection)
+        XCTAssertNil(context.exception)
+        let applied = try XCTUnwrap(html.range(of: "if (data.parkMode === \"neutral\") applyParkNeutral();"))
+        XCTAssertTrue(applied.upperBound < (html.range(of: "else applyParkHealth(data.parkHealth !== undefined ? data.parkHealth : HEALTHY_PARK);")?.lowerBound ?? html.endIndex),
+                      "Neutral is checked before the graded path, so it wins when both are sent")
+        XCTAssertTrue(parkSection.contains("parkHealthValue = null;"),
+                      "Neutral reports no health value at all, rather than a borrowed one")
     }
 }
 #endif

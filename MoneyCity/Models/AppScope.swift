@@ -185,10 +185,80 @@ public final class AppScopeContext: ObservableObject {
         }
     }
 
+    /// Everything the city needs to describe a shared month, read once from that space's
+    /// own ledger.
+    ///
+    /// The city used to be handed a constant budget and a constant park, so a shared space
+    /// had a garden that never moved and a plan nothing could be measured against. Reading
+    /// the month once — the same reading the profile and analytics get — means the city,
+    /// the numbers beside it and the ledger cannot disagree, and a target that was never
+    /// set stays absent instead of turning into a real-looking zero.
+    ///
+    /// `nil` in personal scope, where the personal city has its own budget history and must
+    /// never borrow a space's numbers.
+    func sharedCityContext(for date: Date) -> SharedCityContext? {
+        guard let space = currentSpace, let summary = sharedMonthSummary(for: date) else { return nil }
+        return SharedCityContext(space: space, summary: summary)
+    }
+
     /// Participants for the currently active space (empty for personal).
     var participants: [SharedMember] {
         guard case let .shared(spaceID) = activeScope else { return [] }
         return store.members.filter { $0.spaceID == spaceID }
+    }
+}
+
+/// A shared month, prepared for the city in one reading.
+///
+/// The conversion between the ledger's minor units and the renderer's whole currency units
+/// happens here, once, so no view has to remember which of the two it is holding — the
+/// mistake the old hardcoded budget was hiding behind.
+struct SharedCityContext: Equatable {
+    let spaceID: UUID
+    let currencyCode: String
+    /// The world this space lives in, carried from the space itself.
+    let mapStyle: String
+    /// The space's monthly target in minor units, or nil when it has not set one.
+    let monthlyTargetMinor: Int64?
+    /// Resolved spending this month, signed, in minor units.
+    let monthlySpentMinor: Int64
+    /// What the month has done to that target, including the case where there is no target.
+    let park: SharedParkState
+    /// Active members with the colors the city should use for them. Read from the summary
+    /// rather than the member list so somebody who has left the space stops colouring it.
+    let members: [SharedMemberTotal]
+
+    /// The target in whole currency units, or nil when the space has not set one.
+    var monthlyTargetMajor: Double? {
+        guard let monthlyTargetMinor, monthlyTargetMinor > 0 else { return nil }
+        return SharedMoney.major(monthlyTargetMinor, currency: currencyCode)
+    }
+
+    /// The only way to build one from live data: a space and a reading of that same space's
+    /// month.
+    ///
+    /// Taking both together is the point. A context assembled from two different sources
+    /// could describe a target from one space and a park from another, and nothing in the
+    /// city would notice.
+    init(space: SharedSpace, summary: SharedMonthlySummary) {
+        self.init(spaceID: space.id,
+                  currencyCode: space.currencyCode,
+                  mapStyle: space.mapStyle,
+                  monthlyTargetMinor: summary.progress.targetMinor,
+                  monthlySpentMinor: summary.progress.spentMinor,
+                  park: SharedParkState(fraction: summary.progress.fraction),
+                  members: summary.memberTotals)
+    }
+
+    init(spaceID: UUID, currencyCode: String, mapStyle: String, monthlyTargetMinor: Int64?,
+         monthlySpentMinor: Int64, park: SharedParkState, members: [SharedMemberTotal]) {
+        self.spaceID = spaceID
+        self.currencyCode = currencyCode
+        self.mapStyle = mapStyle
+        self.monthlyTargetMinor = monthlyTargetMinor
+        self.monthlySpentMinor = monthlySpentMinor
+        self.park = park
+        self.members = members
     }
 }
 

@@ -74,6 +74,18 @@ public struct CityDistrictState: Identifiable, Equatable, Sendable {
     }
 }
 
+/// A park state that is deliberately not a number.
+///
+/// The renderer's whole language is a 0–1 health value graded into four bands, which is
+/// the right language for "here is how this month went against a plan". It is the wrong
+/// language for "there is no plan": every number there would be a claim the money does not
+/// support, and zero would claim the month is perfect. So a city that has nothing to
+/// measure says so, and the renderer draws a fixed, ungraded park instead.
+public enum CityParkMode: String, Codable, Sendable {
+    /// Planted and kept, but saying nothing about the month.
+    case neutral
+}
+
 /// Computed model for a specific month's diorama state and living city simulation.
 public struct MonthlyCity: Identifiable, Sendable {
     public let id: String // Format: "YYYY-MM"
@@ -87,6 +99,10 @@ public struct MonthlyCity: Identifiable, Sendable {
     /// 0 = parched, 1 = lush. A normally-run month sits near 0.78.
     /// This is visual financial-state information and resets with the month.
     public var parkHealth: Double
+    /// Set only when there is no health to report and the reason is not a bad month.
+    /// nil everywhere else, including the whole personal city, so every existing renderer
+    /// path stays exactly as it was when the field is absent.
+    public var parkMode: CityParkMode?
     /// Day-to-day spending this month — everything except rent, bills, subscriptions and
     /// savings. This is what the garden is measured on.
     public var everydaySpent: Double
@@ -114,6 +130,7 @@ public struct MonthlyCity: Identifiable, Sendable {
         totalSavings: Double,
         savingsTarget: Double = 0,
         parkHealth: Double = CitySimulationEngine.healthyParkLevel,
+        parkMode: CityParkMode? = nil,
         everydaySpent: Double = 0,
         everydayBaseline: Double = 0,
         categoryTotals: [SpendingCategory: Double] = [:],
@@ -132,6 +149,7 @@ public struct MonthlyCity: Identifiable, Sendable {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
+        self.parkMode = parkMode
         self.everydaySpent = everydaySpent
         self.everydayBaseline = everydayBaseline
         self.categoryTotals = categoryTotals

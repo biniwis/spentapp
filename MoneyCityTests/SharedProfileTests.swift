@@ -341,7 +341,7 @@ final class SharedProfileTests: XCTestCase {
         return try ModelContainer(for: schema, configurations: [configuration])
     }
 
-    func testLeftMemberIsNotCountedAsAMemberOfThisMonth() {
+    func testLeftMemberIsStillAMemberOfTheMonthTheyPaidIn() {
         let space = makeSpace()
         let binjamin = makeMember(id: "m1", spaceID: space.id, name: "בנימין")
         let gone = makeMember(id: "m2", spaceID: space.id, name: "עזב", active: false)
@@ -349,9 +349,11 @@ final class SharedProfileTests: XCTestCase {
 
         let summary = SharedMonthlySummary.month(of: space, expenses: expenses, members: [binjamin, gone], now: now)
 
-        XCTAssertEqual(summary.memberTotals.map(\.memberID), ["m1"])
+        XCTAssertEqual(summary.memberTotals.map(\.memberID), ["m1", "m2"])
+        XCTAssertEqual(summary.memberTotals.first { $0.memberID == "m2" }?.amountMinor, 300_00)
         XCTAssertEqual(summary.spentMinor, 300_00)
-        XCTAssertEqual(summary.unattributedMinor, 300_00, "A former member's spend is not given to someone else")
+        XCTAssertEqual(summary.unattributedMinor, 0,
+                       "A former member's spend is never given to someone else, and never given to nobody")
     }
 
     func testMemberColorsAndNamesComeFromTheSpaceNotTheView() {
@@ -412,5 +414,191 @@ final class SharedProfileTests: XCTestCase {
         XCTAssertFalse(summary.progress.hasTarget)
         XCTAssertNil(summary.progress.remainingMinor)
         XCTAssertNil(summary.progress.fraction, "No target means no 0% bar pretending to be progress")
+    }
+}
+
+// MARK: - Who a month happened to
+
+/// A month is made of the people who took part in it, which is not the same list as the
+/// people in the space today. Somebody who paid and then left still happened to that month:
+/// their spending, their name and their colour are history, and history is not membership.
+@MainActor
+final class SharedMemberHistoryTests: XCTestCase {
+
+    private func makeSpace(id: UUID = UUID(), targetMinor: Int64? = 1_000_00) -> SharedSpace {
+        SharedSpace(id: id, name: "s", currencyCode: "ILS", timeZoneID: "UTC",
+                    mapStyle: "urban", createdAt: Date(), monthlyBudgetMinor: targetMinor)
+    }
+
+    private func makeMember(id: String, spaceID: UUID, name: String = "m",
+                            color: String = "#7C5CFF", active: Bool = true) -> SharedMember {
+        SharedMember(id: id, spaceID: spaceID, name: name, colorHex: color, isActive: active)
+    }
+
+    private func makeExpense(spaceID: UUID, minor: Int64, paidBy: String, at date: Date) -> SharedExpense {
+        SharedExpense(id: UUID(), spaceID: spaceID, amountMinor: minor, currencyCode: "ILS",
+                      merchant: "T", category: .food, buildingID: "food_bistro", date: date, note: "",
+                      paidBy: paidBy, createdBy: paidBy, updatedBy: paidBy)
+    }
+
+    private static func month(_ iso: String) -> Date {
+        var comps = Calendar(identifier: .gregorian)
+            .dateComponents([.year, .month], from: ISO8601DateFormatter().date(from: iso) ?? Date())
+        comps.day = 15
+        comps.hour = 10
+        return Calendar(identifier: .gregorian).date(from: comps)!
+    }
+
+    private let september = SharedMemberHistoryTests.month("2026-09-15T10:00:00Z")
+    private let august = SharedMemberHistoryTests.month("2026-08-15T10:00:00Z")
+
+    // MARK: The rule
+
+    func testActiveMemberWithSpendIsAttributed() {
+        let space = makeSpace()
+        let me = makeMember(id: "a", spaceID: space.id, name: "אני")
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 400_00, paidBy: "a", at: september)],
+            members: [me], now: september)
+        XCTAssertEqual(summary.memberTotals.map(\.memberID), ["a"])
+        XCTAssertEqual(summary.memberTotals.first?.amountMinor, 400_00)
+        XCTAssertEqual(summary.unattributedMinor, 0)
+    }
+
+    func testActiveMemberWithNothingStillAppearsWithZero() {
+        let space = makeSpace()
+        let me = makeMember(id: "a", spaceID: space.id)
+        let idle = makeMember(id: "b", spaceID: space.id)
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 400_00, paidBy: "a", at: september)],
+            members: [me, idle], now: september)
+        XCTAssertEqual(summary.memberTotals.first { $0.memberID == "b" }?.amountMinor, 0,
+                       "Being in the space is being in the month")
+    }
+
+    func testInactiveMemberWithSpendKeepsTheirNameColourAndAmount() {
+        let space = makeSpace()
+        let here = makeMember(id: "a", spaceID: space.id)
+        let leaver = makeMember(id: "b", spaceID: space.id, name: "מאיה", color: "#FF6446", active: false)
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 900_00, paidBy: "b", at: september)],
+            members: [here, leaver], now: september)
+        let kept = summary.memberTotals.first { $0.memberID == "b" }
+        XCTAssertEqual(kept?.name, "מאיה", "The month remembers who they were")
+        XCTAssertEqual(kept?.colorHex, "#FF6446", "And in which colour")
+        XCTAssertEqual(kept?.amountMinor, 900_00)
+        XCTAssertEqual(summary.unattributedMinor, 0, "Leaving is not a reason for their money to belong to nobody")
+        XCTAssertTrue(summary.canShowMemberShares,
+                      "One person leaving must not switch off the breakdown for everybody else")
+    }
+
+    func testInactiveMemberRefundStaysAttributedToThemAndReducesTheirNet() {
+        let space = makeSpace()
+        let leaver = makeMember(id: "b", spaceID: space.id, active: false)
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 1_000_00, paidBy: "b", at: september),
+                       makeExpense(spaceID: space.id, minor: -300_00, paidBy: "b", at: september)],
+            members: [leaver], now: september)
+        XCTAssertEqual(summary.memberTotals.first?.amountMinor, 700_00)
+        XCTAssertEqual(summary.unattributedMinor, 0)
+        XCTAssertEqual(summary.spentMinor, 700_00)
+    }
+
+    func testInactiveMemberWithNothingInTheMonthIsLeftOutOfIt() {
+        let space = makeSpace()
+        let me = makeMember(id: "a", spaceID: space.id)
+        let leaver = makeMember(id: "b", spaceID: space.id, active: false)
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 100_00, paidBy: "a", at: september)],
+            members: [me, leaver], now: september)
+        XCTAssertEqual(summary.memberTotals.map(\.memberID), ["a"],
+                       "A month they had no part in is not a month they appear in")
+    }
+
+    func testAMemberInactiveTodayStillAppearsInTheMonthTheyActuallyPaidIn() {
+        let space = makeSpace()
+        let leaver = makeMember(id: "b", spaceID: space.id, name: "מאיה", active: false)
+        let expenses = [makeExpense(spaceID: space.id, minor: 500_00, paidBy: "b", at: august),
+                        makeExpense(spaceID: space.id, minor: 700_00, paidBy: "ghost", at: september)]
+
+        let lastMonth = SharedMonthlySummary.month(of: space, expenses: expenses, members: [leaver], now: august)
+        XCTAssertEqual(lastMonth.memberTotals.map(\.memberID), ["b"],
+                       "Analytics browsing August must still see who paid for it")
+        XCTAssertEqual(lastMonth.memberTotals.first?.amountMinor, 500_00)
+
+        let thisMonth = SharedMonthlySummary.month(of: space, expenses: expenses, members: [leaver], now: september)
+        XCTAssertTrue(thisMonth.memberTotals.isEmpty, "September is not theirs either, they paid nothing in it")
+        XCTAssertEqual(thisMonth.spentMinor, 700_00, "The record is still counted, whoever paid it")
+        XCTAssertEqual(thisMonth.unattributedMinor, 700_00,
+                       "A payer with no member record at all is honestly unattributed rather than invented")
+    }
+
+    func testTrulyUnknownPayerIsStillUnattributed() {
+        let space = makeSpace()
+        let me = makeMember(id: "a", spaceID: space.id)
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 100_00, paidBy: "a", at: september),
+                       makeExpense(spaceID: space.id, minor: 250_00, paidBy: "ghost", at: september)],
+            members: [me], now: september)
+        XCTAssertEqual(summary.unattributedMinor, 250_00,
+                       "A payer with no member record at all has no name and no colour to be given")
+        XCTAssertEqual(summary.memberTotals.map(\.memberID), ["a"])
+        XCTAssertFalse(summary.canShowMemberShares)
+    }
+
+    func testOneRecordForOnePersonIsOneRow() {
+        let space = makeSpace()
+        let doubled = [makeMember(id: "a", spaceID: space.id), makeMember(id: "a", spaceID: space.id)]
+        let summary = SharedMonthlySummary.month(of: space,
+            expenses: [makeExpense(spaceID: space.id, minor: 100_00, paidBy: "a", at: september)],
+            members: doubled, now: september)
+        XCTAssertEqual(summary.memberTotals.count, 1, "Two records for one person must not double their spending")
+        XCTAssertEqual(summary.memberTotals.first?.amountMinor, 100_00)
+    }
+
+    func testAnotherSpacesMembersAreNeverParticipants() {
+        let mine = makeSpace()
+        let theirs = makeSpace()
+        let stranger = makeMember(id: "x", spaceID: theirs.id)
+        let summary = SharedMonthlySummary.month(of: mine,
+            expenses: [makeExpense(spaceID: mine.id, minor: 100_00, paidBy: "x", at: september)],
+            members: [stranger], now: september)
+        XCTAssertTrue(summary.memberTotals.isEmpty)
+        XCTAssertEqual(summary.unattributedMinor, 100_00)
+    }
+
+    // MARK: History is not membership
+
+    func testALeaverKeepsNoPermissionsAndNoPlaceInThePayerList() async throws {
+        let space = makeSpace()
+        let me = makeMember(id: "a", spaceID: space.id, name: "אני")
+        let leaver = makeMember(id: "b", spaceID: space.id, name: "מאיה", color: "#FF6446", active: false)
+        let members = [me, leaver]
+        let expenses = [makeExpense(spaceID: space.id, minor: 900_00, paidBy: "b", at: august)]
+
+        // History is reported...
+        let summary = SharedMonthlySummary.month(of: space, expenses: expenses, members: members, now: august)
+        XCTAssertEqual(summary.memberTotals.map(\.memberID), ["a", "b"])
+        let theirRow = summary.memberTotals.first { $0.memberID == "b" }
+        XCTAssertEqual(theirRow?.name, "מאיה")
+        XCTAssertEqual(theirRow?.colorHex, "#FF6446")
+        XCTAssertEqual(theirRow?.amountMinor, 900_00)
+
+        // ...and the payer list is built from membership, which never moved. This is the
+        // same filter the quick add sheet applies when it offers payers.
+        let payers = members.filter { $0.spaceID == space.id && $0.isActive }
+        XCTAssertEqual(payers.map(\.id), ["a"], "A leaver is not somebody you can pay as")
+        XCTAssertFalse(leaver.isActive, "And reporting their month does not reactivate them")
+
+        // Nor does it change what the scope is allowed to do. Capabilities are the app's
+        // own answer to may this scope write, pick payers, manage members, and a month
+        // being summarised must not move a single one of them.
+        let store = SharedWorkspaceStore()
+        try await store.startDemo()
+        let scope = AppScopeContext(store: store)
+        let before = scope.capabilities
+        _ = scope.sharedMonthSummary(for: Date())
+        _ = SharedMonthlySummary.month(of: space, expenses: expenses, members: members, now: september)
+        XCTAssertEqual(scope.capabilities, before, "Reading history grants nothing")
     }
 }

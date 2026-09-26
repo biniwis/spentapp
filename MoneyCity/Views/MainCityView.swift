@@ -232,28 +232,39 @@ public struct MainCityView: View {
 
     private var currentCity: MonthlyCity {
         #if !SWIFT_PACKAGE
-        if scopeContext.activeScope.isShared, let space = scopeContext.currentSpace {
+        if scopeContext.activeScope.isShared,
+           let space = scopeContext.currentSpace,
+           let shared = sharedCityContext {
             let monthExpenses = scopeContext.expenses(for: currentDate, personalTransactions: allTransactions)
             var city = CitySimulationEngine.shared.generateCity(
                 for: currentDate,
                 expenses: monthExpenses,
-                estimatedMonthlyBudget: 0,
+                estimatedMonthlyBudget: shared.monthlyTargetMajor ?? 0,
                 calendar: space.calendar
             )
-            city.parkHealth = CitySimulationEngine.healthyParkLevel
-            let participants = scopeContext.participants
-            city.venueStates = city.venueStates.map { venue in
-                var result = venue
-                let values = participants.map { member in
-                    (member, max(0, monthExpenses.filter { $0.buildingId == venue.id && $0.paidBy == member.id }.reduce(0) { $0 + $1.amount }))
-                }
-                let sum = values.reduce(0) { $0 + $1.1 }
-                result.memberShares = values.compactMap { member, value in
-                    guard sum > 0, value > 0 else { return nil }
-                    return CityMemberShare(memberID: member.id, color: member.colorHex, share: value / sum)
-                }
-                return result
+            // The garden answers to the space's own target. With no target there is no
+            // health to send and nothing to claim, so the month says so explicitly and the
+            // renderer draws a park that is kept but ungraded — never the zero that only a
+            // month which spent nothing could earn, and never a borrowed number standing in
+            // for a plan nobody set.
+            city.parkHealth = shared.park.parkHealth ?? CitySimulationEngine.healthyParkLevel
+            city.parkMode = shared.park.rendererMode
+            // A savings target is a promise one person makes to themselves. A shared month
+            // has none, so the reserve stays empty instead of borrowing the space's savings
+            // records and presenting them as a fill level nobody agreed to.
+            city.totalSavings = 0
+            city.savingsTarget = 0
+            city.buildingTotals["savings_sanctuary"] = 0
+            city.tiles = city.tiles.map { tile in
+                guard tile.category == .savings else { return tile }
+                var neutral = tile
+                neutral.spendingAmount = 0
+                neutral.level = 1
+                return neutral
             }
+            city.venueStates = SharedCityMemberShares.applying(to: city.venueStates,
+                                                              members: shared.members,
+                                                              expenses: monthExpenses)
             return city
         }
         #endif
@@ -286,6 +297,16 @@ public struct MainCityView: View {
                 historicalWoltSpends: historicalDelivery.spends
             )
         }
+    }
+
+    /// The active space's month, prepared for the city. Read once per render and only in
+    /// shared scope, so the personal city keeps its own budget path untouched.
+    private var sharedCityContext: SharedCityContext? {
+        #if SWIFT_PACKAGE
+        return nil
+        #else
+        return scopeContext.sharedCityContext(for: currentDate)
+        #endif
     }
 
     /// The everyday categories the user set a ceiling on. Empty when they set a single
@@ -398,6 +419,7 @@ public struct MainCityView: View {
                     totalSavings: currentCity.totalSavings,
                     savingsTarget: currentCity.savingsTarget,
                     parkHealth: currentCity.parkHealth,
+                    parkMode: currentCity.parkMode,
                     viewResetToken: cityViewResetToken,
                     isOverview: isSnapshotMode,
                     categoryTotals: currentCity.categoryTotals,

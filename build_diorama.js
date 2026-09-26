@@ -4041,11 +4041,26 @@ ${threeMinJs}
         density = 0.68; flowerDensity = 0.40; lowScale = 0.82;
       }
 
-      M_PARK_MEADOW.color.copy(targetMeadow);
-      M_PARK_PINE.color.copy(targetPine);
-      M_PARK_LEAF.color.copy(targetLeaf);
-      M_PARK_LEAF_LIGHT.color.copy(targetLeafLight);
-      M_PARK_BLOOM.color.copy(targetBloom);
+      setParkLook(targetMeadow, targetPine, targetLeaf, targetLeafLight, targetBloom,
+                  crownScale, density, flowerDensity, lowScale);
+    }
+
+    // A month with no plan has nothing to be graded against, so it is not graded: this is
+    // one fixed look, applied through the same path, that neither rewards nor thins the
+    // park. No flowers for an unspent budget nobody set, no wilting for a plan that does
+    // not exist, and no health value behind it for anything else to read as a reading.
+    function applyParkNeutral() {
+      parkHealthValue = null;
+      setParkLook(C(0x4E8F4A), C(0x2F6B3A), C(0x4A9C57), C(0x6FB85A), C(0x74A163),
+                  1.00, 0.92, 0.00, 0.98);
+    }
+
+    function setParkLook(meadow, pine, leaf, leafLight, bloom, crownScale, density, flowerDensity, lowScale) {
+      M_PARK_MEADOW.color.copy(meadow);
+      M_PARK_PINE.color.copy(pine);
+      M_PARK_LEAF.color.copy(leaf);
+      M_PARK_LEAF_LIGHT.color.copy(leafLight);
+      M_PARK_BLOOM.color.copy(bloom);
 
       for (let i = 0; i < parkPlantings.length; i++) {
         const p = parkPlantings[i];
@@ -5179,6 +5194,7 @@ ${threeMinJs}
       if (data.habits.deliveryTier != null && typeof data.habits.deliveryTier !== "string") fail("habits.deliveryTier");
       if (data.habits.deliveryFrequencyScore != null) number(data.habits.deliveryFrequencyScore, "habits.deliveryFrequencyScore");
       ["otherAmount","museumAmount","healthAmount","financeAmount","pendingSortingCount"].forEach(k => { if (data[k] != null) number(data[k], k); });
+      if (data.parkMode != null && typeof data.parkMode !== "string") fail("parkMode");
       if (data.tutorialBuildingId != null && !Object.prototype.hasOwnProperty.call(buildingDistrictKeys, data.tutorialBuildingId)) fail("tutorialBuildingId");
       if (!Array.isArray(data.enrichments) || data.enrichments.some(id => typeof id !== "string")) fail("enrichments");
       if (!data.slotPlacements || typeof data.slotPlacements !== "object" || Array.isArray(data.slotPlacements)) fail("slotPlacements");
@@ -5252,7 +5268,11 @@ ${threeMinJs}
         applyBuildingActivity();
 
         // Reserve health drives only planting and foliage; water remains independent.
-        applyParkHealth(data.parkHealth !== undefined ? data.parkHealth : HEALTHY_PARK);
+        // A space with no target sends a mode instead of a number, because there is
+        // nothing to grade. Every other month, and every personal city, sends no mode at
+        // all and takes the graded path exactly as before.
+        if (data.parkMode === "neutral") applyParkNeutral();
+        else applyParkHealth(data.parkHealth !== undefined ? data.parkHealth : HEALTHY_PARK);
 
         // Lake in the nature reserve stays naturally full and serene
         lakeFillTarget = 1.0;

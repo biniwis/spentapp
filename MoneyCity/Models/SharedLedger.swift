@@ -74,6 +74,129 @@ struct SharedBudgetProgress: Equatable {
     var isOverTarget: Bool { (remainingMinor ?? 0) < 0 }
 }
 
+/// The plain reading of how much of a shared month's target has been used.
+///
+/// A tier describes pace, not worth: none of these are good or bad outcomes, they are where
+/// this month happens to sit. `noTarget` is a real state rather than an absent value, so a
+/// space that never set a target cannot end up drawn as though it had used none of one —
+/// zero spent against a target nobody chose is not an achievement.
+enum SharedParkTier: String, Equatable, Sendable {
+    case noTarget
+    case early
+    case comfortable
+    case even
+    case close
+    case over
+
+    init(fraction: Double?) {
+        guard let fraction else { self = .noTarget; return }
+        switch fraction {
+        case ..<0.25: self = .early
+        case ..<0.5: self = .comfortable
+        case ..<0.75: self = .even
+        case ...1.0: self = .close
+        default: self = .over
+        }
+    }
+}
+
+/// What a shared month has done to its target, and what the park should say about it.
+///
+/// One number, one meaning. The same ratio always lands in the same tier, and because the
+/// ratio is read from the month the summary describes, a state can never be carried over
+/// from a month that has already ended — the city resets with the calendar.
+///
+/// The tier exists for people; the renderer reads health. Both come from the same
+/// fraction so the wording and the garden can never drift apart.
+struct SharedParkState: Equatable, Sendable {
+    /// Share of the target spent, uncapped and floored at zero: a month whose refunds
+    /// outweigh its spending has used none of its target, whatever the signs work out to.
+    /// `nil` when the space has not set a target.
+    let fraction: Double?
+    let tier: SharedParkTier
+
+    init(fraction: Double?) {
+        guard let fraction, fraction.isFinite else {
+            self.fraction = nil
+            self.tier = .noTarget
+            return
+        }
+        let used = max(0, fraction)
+        self.fraction = used
+        self.tier = SharedParkTier(fraction: used)
+    }
+
+    /// The health the diorama renders, or `nil` when the space has no target to read.
+    ///
+    /// The range is the renderer's own: 0 is parched, 1 is lush, and a normally-run month
+    /// sits near 0.78. A month that has barely touched its target opens at the calm end and
+    /// the target itself lands in the "active" band, so the garden's usual resting look
+    /// corresponds to a month a little over half way through its plan. Past the target it
+    /// settles toward a floor well clear of parched, because spending more than planned is
+    /// something the residents should be able to see rather than a punishment to render.
+    var parkHealth: Double? {
+        guard let fraction else { return nil }
+        let span = 1.25
+        return 0.95 - 0.62 * (min(fraction, span) / span)
+    }
+
+    /// What the renderer should be told when there is no number to send.
+    ///
+    /// nil in every month with a real reading, so the renderer's existing graded path is
+    /// untouched; `.neutral` only for a space that has set no target, where the honest
+    /// answer is a park that says nothing rather than a number that claims something.
+    var rendererMode: CityParkMode? {
+        parkHealth == nil ? .neutral : nil
+    }
+}
+
+/// Who paid at each venue, drawn as accents on buildings the space already has.
+///
+/// One pass over the month, grouped by venue and payer. The per-venue, per-member form of
+/// this walked the whole month again for every pair, and that cost is paid on every render;
+/// the numbers came out the same, so nothing about the picture depends on it.
+///
+/// Unresolved foreign records carry no honest value in the space's currency yet, so they
+/// are left out of the weighting entirely rather than counted at face value. Refunds stay
+/// signed while they are summed, so a refund comes off whoever paid it, and only the
+/// finished weight is floored: somebody refunded past what they spent is not drawn as
+/// having contributed a little, and not drawn as having contributed at all. When nobody
+/// has a positive weight the venue simply carries no member colours, rather than splitting
+/// a share between people who are not in it.
+enum SharedCityMemberShares {
+    static func applying(to venues: [CityVenueState],
+                         members: [SharedMemberTotal],
+                         expenses: [ExpenseSnapshot]) -> [CityVenueState] {
+        let memberIDs = Set(members.map(\.memberID))
+        var paidByVenue: [String: [String: Double]] = [:]
+        if !memberIDs.isEmpty {
+            for expense in expenses {
+                guard !expense.isUnresolvedForeign, let payer = expense.paidBy,
+                      memberIDs.contains(payer) else { continue }
+                paidByVenue[expense.buildingId, default: [:]][payer, default: 0] += expense.amount
+            }
+        }
+        return venues.map { venue in
+            var result = venue
+            let paid = paidByVenue[venue.id] ?? [:]
+            let weights = members.compactMap { member -> (member: SharedMemberTotal, weight: Double)? in
+                let net = paid[member.memberID] ?? 0
+                guard net > 0, net.isFinite else { return nil }
+                return (member, net)
+            }
+            let total = weights.reduce(0) { $0 + $1.weight }
+            guard total > 0 else {
+                result.memberShares = nil
+                return result
+            }
+            result.memberShares = weights.map {
+                CityMemberShare(memberID: $0.member.memberID, color: $0.member.colorHex, share: $0.weight / total)
+            }
+            return result
+        }
+    }
+}
+
 struct SharedMember: Codable, Identifiable, Equatable {
     var id: String
     var spaceID: UUID
@@ -195,8 +318,33 @@ struct SharedMonthlySummary: Equatable {
             $0.spaceID == space.id && calendar.isDate($0.date, equalTo: now, toGranularity: .month)
         }
         let resolvable = inMonth.filter { !$0.isUnresolvedForeign }
-        let activeMembers = members.filter { $0.spaceID == space.id && $0.isActive }
-        let memberIDs = Set(activeMembers.map(\.id))
+
+        // Who belongs to *this* month, which is not the same question as who is in the
+        // space today.
+        //
+        // Somebody who paid in August and has since left the space is still one of the
+        // people August happened to. Dropping them the moment they became inactive turned
+        // their spending into money belonging to nobody: it vanished from the breakdown,
+        // left the remaining members' shares adding up to less than the month, and could
+        // silently switch the whole member breakdown off. So the list is everyone who is
+        // here now, plus everyone who actually paid in the month being summarised, active
+        // or not.
+        //
+        // This is history, not membership. Nothing here puts anybody back in the payer
+        // list, the member list or anyone's permissions — those read `isActive` from the
+        // store and are untouched by how a past month is reported. It is also why the
+        // month being summarised is the only thing that decides: a member inactive today
+        // who paid in a month Analytics is browsing still appears in that month.
+        let spaceMembers = members.filter { $0.spaceID == space.id }
+        let payersThisMonth = Set(inMonth.map(\.paidBy))
+        var seen = Set<String>()
+        let participants = spaceMembers.filter { member in
+            // Deduplicated by ID: two records for one person are one person, and a month
+            // that listed them twice would show their spending twice.
+            guard seen.insert(member.id).inserted else { return false }
+            return member.isActive || payersThisMonth.contains(member.id)
+        }
+        let memberIDs = Set(participants.map(\.id))
 
         var totals: [String: Int64] = [:]
         var unattributed: Int64 = 0
@@ -204,11 +352,13 @@ struct SharedMonthlySummary: Equatable {
             if memberIDs.contains(expense.paidBy) {
                 totals[expense.paidBy, default: 0] += expense.amountMinor
             } else {
+                // Only money whose payer cannot be resolved to somebody who was ever in
+                // this space. Being inactive is not a reason to stop being a payer.
                 unattributed += expense.amountMinor
             }
         }
 
-        let memberTotals = activeMembers.map { member in
+        let memberTotals = participants.map { member in
             SharedMemberTotal(memberID: member.id,
                               name: member.name,
                               colorHex: member.colorHex,

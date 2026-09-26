@@ -59,6 +59,9 @@ public struct ThreeDioramaView: ViewRepresentable {
     public let savingsTarget: Double
     /// How the reserve looks this month, 0 parched to 1 lush. Resets with the month.
     public let parkHealth: Double
+    /// Set only when the month has no health to report; nil keeps the renderer's own
+    /// graded path, which is the personal city and every month with a real reading.
+    public let parkMode: CityParkMode?
     /// Bumped by the app every time the user asks for the city view back. The map resets its
     /// camera whenever this changes, which is the only way to reset a camera that is already
     /// in city mode.
@@ -103,6 +106,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         totalSavings: Double,
         savingsTarget: Double = 0,
         parkHealth: Double = 0.78,
+        parkMode: CityParkMode? = nil,
         viewResetToken: Int = 0,
         isOverview: Bool = false,
         categoryTotals: [SpendingCategory: Double],
@@ -131,6 +135,7 @@ public struct ThreeDioramaView: ViewRepresentable {
         self.totalSavings = totalSavings
         self.savingsTarget = savingsTarget
         self.parkHealth = parkHealth
+        self.parkMode = parkMode
         self.viewResetToken = viewResetToken
         self.isOverview = isOverview
         self.categoryTotals = categoryTotals
@@ -231,6 +236,10 @@ public struct ThreeDioramaView: ViewRepresentable {
         /// What a full savings park is worth for this user. 0 when there is no baseline.
         public let savingsTarget: Double
         public let parkHealth: Double
+        /// `"neutral"` when the month has nothing to measure against. Omitted from the
+        /// encoded payload otherwise, so a payload without the field behaves exactly as it
+        /// always has — which is every personal city and every month with a real reading.
+        public var parkMode: String? = nil
         public let otherAmount: Double?
         public let museumAmount: Double?
         /// Pharmacy and everyday health spending. The map shows this as a small chemist's
@@ -285,6 +294,7 @@ public struct ThreeDioramaView: ViewRepresentable {
             savings: savings,
             savingsTarget: savingsTarget,
             parkHealth: parkHealth,
+            parkMode: parkMode?.rawValue,
             otherAmount: otherSpend,
             museumAmount: museumSpend,
             healthAmount: healthSpend,

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import CloudKit
 
 /// Shared values never hold a reference to a personal SwiftData model.
 struct SharedSpace: Codable, Identifiable, Equatable {
@@ -514,13 +515,23 @@ final class SharedDatabaseService {
 
 enum SharedLedgerError: LocalizedError {
     case invalidAmount, invalidInput, storageUnavailable, noAccount, noAccess, pendingChanges, unsupportedVersion, wrongInvitation
+    /// CloudKit saved the share but produced no URL to hand over. Never swallowed: a
+    /// missing link is a failed invite, and the user has to hear it.
+    case inviteLinkUnavailable
+    /// One-time URL participants can be created from iOS 18, but reading the URL back
+    /// out of the saved share is only exposed to Swift from iOS 26. On 17–25 there is no
+    /// compliant way to produce a link for an arbitrary recipient, so the action is
+    /// refused outright rather than falling back to a share URL that would not reach
+    /// them, and the user is pointed at Apple's own sharing sheet instead.
+    case inviteLinkUnsupported
 
     /// True when the cause is something the user typed or chose, not a transport,
     /// account or storage fault. These are reported on the screen they came from.
     var isUserInput: Bool {
         switch self {
         case .invalidAmount, .invalidInput, .wrongInvitation: return true
-        case .storageUnavailable, .noAccount, .noAccess, .pendingChanges, .unsupportedVersion: return false
+        case .storageUnavailable, .noAccount, .noAccess, .pendingChanges, .unsupportedVersion,
+             .inviteLinkUnavailable, .inviteLinkUnsupported: return false
         }
     }
 
@@ -535,6 +546,48 @@ enum SharedLedgerError: LocalizedError {
         case .pendingChanges: return he ? "יש שינויים שטרם הסתנכרנו. יש לסנכרן לפני היציאה." : "Sync pending changes before leaving."
         case .unsupportedVersion: return he ? "נדרש עדכון לאפליקציה כדי לערוך מרחב זה." : "Update the app before editing this space."
         case .wrongInvitation: return he ? "ההזמנה אינה למרחב SPENT נתמך." : "This invitation is not for a supported SPENT space."
+        case .inviteLinkUnavailable: return he ? "לא ניתן היה ליצור קישור הזמנה. נסו שוב." : "Could not create an invitation link. Try again."
+        case .inviteLinkUnsupported: return he ? "קישורי הזמנה זמינים ב־iOS 26 ומעלה. אפשר להזמין דרך ניהול השיתוף של Apple." : "Invitation links need iOS 26 or later. You can still invite through Apple sharing management."
         }
+    }
+}
+
+/// What it takes to hand somebody a link they can actually open.
+///
+/// The CloudKit round trip lives in `SharedWorkspaceStore`; the decisions live here so
+/// they can be tested without an account, a network, or a shared zone.
+enum SharedInvitation {
+    /// Whether an invitation link may be produced at all.
+    ///
+    /// A demo space has no CloudKit share to invite anyone to, and a member of someone
+    /// else's space does not get to widen it, so both are refused before any network
+    /// call and before a participant is added to anything.
+    static func validate(isDemo: Bool, isOwner: Bool, hasPendingLocalChanges: Bool) throws {
+        if isDemo { throw SharedLedgerError.noAccount }
+        guard isOwner else { throw SharedLedgerError.noAccess }
+        // Adding a participant while local edits are still queued would leave the
+        // invitation and the space disagreeing about what members can see.
+        if hasPendingLocalChanges { throw SharedLedgerError.pendingChanges }
+    }
+
+    /// The share must stay private. Invitation links do not need a public share, and a
+    /// public one would quietly open the space's expenses to anyone with the link.
+    static func ensurePrivate(_ permission: CKShare.ParticipantPermission) throws {
+        guard permission == .none else { throw SharedLedgerError.noAccess }
+    }
+
+    /// A link the user never receives is a failed invite, not a silent no-op.
+    static func requireLink(_ url: URL?) throws -> URL {
+        guard let url else { throw SharedLedgerError.inviteLinkUnavailable }
+        return url
+    }
+
+    /// A pasted link with a trailing space or newline is a typo, not a broken
+    /// invitation, and CloudKit rejects the untrimmed form.
+    static func pastedURL(_ input: String) -> URL? {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed), url.scheme == "https",
+              url.host?.isEmpty == false else { return nil }
+        return url
     }
 }

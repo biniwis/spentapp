@@ -443,6 +443,54 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         throw SharedLedgerError.noAccess
     }
 
+    /// A link one specific person can claim once.
+    ///
+    /// `CKShare.url` is deliberately not used here. On a private share that URL only
+    /// resolves for accounts CloudKit can already identify, so pasting it into WhatsApp
+    /// does not invite an arbitrary recipient — and opening the share to the public to
+    /// make the link work would expose the space's expenses to anyone holding it. A
+    /// one-time URL participant is the documented way to hand somebody a link without
+    /// knowing who they are first, and it keeps `publicPermission` at `.none`.
+    func createInvitationLink(in spaceID: UUID) async throws -> URL {
+        // A one-time URL participant can be added from iOS 18, but `oneTimeURL(for:)` —
+        // the only Swift-visible way to read the link back — is iOS 26 and newer. Refused
+        // below that rather than reaching for `CKShare.url`, which on a private share
+        // would not open for a recipient CloudKit cannot already identify.
+        guard #available(iOS 26.0, *) else { throw SharedLedgerError.inviteLinkUnsupported }
+        // Refused before the share is even fetched, and before a participant is added.
+        try SharedInvitation.validate(isDemo: demo, isOwner: isOwner(spaceID),
+                                      hasPendingLocalChanges: hasPendingLocalChanges(in: spaceID))
+
+        let share = try await sharingRecord(in: spaceID)
+        try SharedInvitation.ensurePrivate(share.publicPermission)
+        // Reasserted on the object that is about to be saved. This method never widens a
+        // share, whatever the fetched copy claimed.
+        share.publicPermission = .none
+
+        // A brand new participant every time, never an earlier pending one. A pending
+        // participant with no name and no lookup info does not prove SPENT created it —
+        // and handing the same one-time URL to two people would turn one invitation into
+        // a single-use link that only one of them can claim. One explicit invite action,
+        // one link, one person.
+        let participant = addOneTimeParticipant(to: share)
+
+        // The owner holds the share in their own private database, so that is where the
+        // updated share and its new participant have to be written.
+        let saved = try await cloud.privateCloudDatabase.save(share)
+        guard let savedShare = saved as? CKShare else { throw SharedLedgerError.inviteLinkUnavailable }
+        return try SharedInvitation.requireLink(savedShare.oneTimeURL(for: participant.participantID))
+    }
+
+    /// A participant with readWrite, because a member of a shared space is expected to
+    /// add expenses to it — that is the whole point of inviting them.
+    @available(iOS 26.0, *)
+    private func addOneTimeParticipant(to share: CKShare) -> CKShare.Participant {
+        let participant = CKShare.Participant.oneTimeURLParticipant()
+        participant.permission = .readWrite
+        share.addParticipant(participant)
+        return participant
+    }
+
     func accept(_ metadata: CKShare.Metadata, memberName: String) async throws {
         guard !demo, metadata.containerIdentifier == cloud.containerIdentifier,
               let id = spaceID(metadata.share.recordID.zoneID) else { throw SharedLedgerError.wrongInvitation }
@@ -457,8 +505,7 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
     func metadata(for url: String) async throws -> CKShare.Metadata {
         // A link pasted with a trailing space or a stray newline is a typo, not a broken
         // invitation, and CloudKit would reject the untrimmed form.
-        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let link = URL(string: trimmed), link.scheme == "https", link.host?.isEmpty == false,
+        guard let link = SharedInvitation.pastedURL(url),
               let result = try await cloud.shareMetadatas(for: [link])[link] else {
             throw SharedLedgerError.wrongInvitation
         }
@@ -468,9 +515,11 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
 
     /// Access-management UI must not allow leaving while there are unsent local edits.
     func ensureNoPendingChanges(in id: UUID) throws {
-        guard !(try database?.records().contains { $0.spaceID == id.uuidString && $0.localRevision != nil } ?? false) else {
-            throw SharedLedgerError.pendingChanges
-        }
+        guard !hasPendingLocalChanges(in: id) else { throw SharedLedgerError.pendingChanges }
+    }
+
+    private func hasPendingLocalChanges(in id: UUID) -> Bool {
+        (try? database?.records().contains { $0.spaceID == id.uuidString && $0.localRevision != nil }) ?? false
     }
 
     func isOwner(_ spaceID: UUID) -> Bool {

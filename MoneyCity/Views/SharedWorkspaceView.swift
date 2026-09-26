@@ -610,6 +610,14 @@ struct SharedSpacesSetupView: View {
         }
         .presentationBackground(posterCanvas)
         .animation(pageAnimation, value: selectedTab)
+        // A link that arrived from CloudKit is already a finished invitation: there is
+        // nothing to paste and nothing to choose. Landing on "create" would ask the
+        // person who tapped the link to start a space of their own instead of joining
+        // the one that invited them.
+        .onAppear { if store.invitation != nil { selectedTab = .join } }
+        .onChange(of: store.invitation != nil) { _, arrived in
+            if arrived { selectedTab = .join }
+        }
         // The root app can only show this alert while the sheet is closed, so the sheet
         // shows it itself. An alert inside a sheet's own content is ordinary and does not
         // fight the sheet that presents it.
@@ -1977,6 +1985,23 @@ public struct InviteMemberPreSheet: View {
     let onProceedToSharing: () -> Void
     @EnvironmentObject private var l10n: LocalizationManager
     @Environment(\.dismiss) private var dismiss
+    /// A link is only ever held after CloudKit saved its participant, so nothing on
+    /// screen can be a link that was never real.
+    @State private var isCreating = false
+    @State private var copied = false
+    @State private var errorText: String?
+    @State private var isSharing = false
+    @State private var shareItems: [Any] = []
+
+    private var store: SharedWorkspaceStore { .shared }
+
+    /// Direct invitation links need `oneTimeURL(for:)`, which is iOS 26 and newer. The
+    /// check lives here as well as in the store: the store's own guard is a last line of
+    /// defence for a caller that missed this one, not the normal way a user gets here.
+    private var canMakeDirectLink: Bool {
+        if #available(iOS 26.0, *) { return true }
+        return false
+    }
 
     public var body: some View {
         VStack(spacing: 20) {
@@ -2011,8 +2036,8 @@ public struct InviteMemberPreSheet: View {
                     .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundColor(Color.deepNavy)
 
-                Text(l10n.isHebrew ? "חברים שיוזמנו יוכלו לצפות בהוצאות המרחב, להוסיף עסקאות ולראות את העיר המשותפת."
-                                   : "Invited members can view shared expenses, add transactions, and see the shared city.")
+                Text(l10n.isHebrew ? "החבר/ה יוכלו לראות ולהוסיף הוצאות במרחב המשותף ולראות את העיר המשותפת."
+                                   : "They can view and add expenses in the shared space, and see the shared city.")
                     .font(.system(size: 13, weight: .medium, design: .default))
                     .foregroundColor(Color.textSecondary)
                     .multilineTextAlignment(.center)
@@ -2043,33 +2068,159 @@ public struct InviteMemberPreSheet: View {
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .padding(.horizontal, 20)
 
-            Spacer()
+            Spacer(minLength: 0)
 
-            Button {
-                Haptics.impact(.medium)
-                onProceedToSharing()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 15, weight: .semibold))
-                    Text(l10n.isHebrew ? "המשך לשיתוף של Apple" : "Continue to Apple Sharing")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 52)
-                .background(Color.deepNavy)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            // A failure is printed here, not swallowed and not raised as an alert over the
+            // whole app: the user asked for a link and did not get one.
+            if let errorText {
+                Text(errorText)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundColor(MoneyCityTheme.brandPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
             }
-            .buttonStyle(.plain)
+
+            VStack(spacing: 10) {
+                // One-time URL links can only be read back out of a saved share from
+                // iOS 26. Offering the two link buttons on an older system would mean
+                // showing controls that can only fail, so that system gets the one path
+                // that genuinely works there.
+                if canMakeDirectLink {
+                    Button {
+                        Haptics.impact(.medium)
+                        createLink { link in
+                            shareItems = [inviteText(for: link), link]
+                            isSharing = true
+                        }
+                    } label: {
+                        ctaLabel(l10n.isHebrew ? "שליחת הזמנה" : "Send Invitation",
+                                 systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isCreating)
+
+                    Button {
+                        Haptics.impact(.light)
+                        createLink { link in
+                            UIPasteboard.general.url = link
+                            copied = true
+                        }
+                    } label: {
+                        ctaLabel(l10n.isHebrew ? "העתקת קישור" : "Copy Link",
+                                 systemImage: "doc.on.doc")
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isCreating)
+
+                    // Managing who is already in the space is a different job from
+                    // inviting somebody new, and only Apple's own sheet can remove a
+                    // member — so it stays on iOS 26 too, just quieter.
+                    Button {
+                        Haptics.selection()
+                        onProceedToSharing()
+                    } label: {
+                        Text(l10n.isHebrew ? "ניהול שיתוף דרך Apple" : "Manage Sharing via Apple")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Button {
+                        Haptics.impact(.medium)
+                        onProceedToSharing()
+                    } label: {
+                        ctaLabel(l10n.isHebrew ? "הזמנה דרך Apple" : "Invite via Apple",
+                                 systemImage: "person.2.badge.plus")
+                    }
+                    .buttonStyle(.plain)
+
+                    Text(l10n.isHebrew ? "קישור הזמנה ישיר זמין בגרסאות iOS חדשות יותר."
+                                       : "A direct invitation link is available on newer iOS versions.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(Color.textMuted)
+                        .multilineTextAlignment(.center)
+                }
+            }
             .padding(.horizontal, 20)
-            .padding(.bottom, 24)
+            .padding(.bottom, copied ? 10 : 20)
+            // remembered or pre-filled URL.
+            if copied {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(MoneyCityTheme.spentGreen)
+                    Text(l10n.isHebrew ? "הקישור הועתק" : "Link copied")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                }
+                .transition(.opacity)
+                .padding(.bottom, 20)
+            }
         }
         .background(Color.appBackground.ignoresSafeArea())
         .presentationBackground(Color.appBackground)
-        .presentationDetents([.medium, .fraction(0.7)])
+        .presentationDetents([.medium, .fraction(0.8)])
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $isSharing) {
+            ActivityShareSheet(items: shareItems)
+        }
     }
+
+    /// A link that is not there yet is never shown, so the button says what is
+    /// happening instead of pretending to be ready.
+    private func ctaLabel(_ title: String, systemImage: String) -> some View {
+        HStack(spacing: 8) {
+            if isCreating {
+                ProgressView().tint(.white)
+                Text(l10n.isHebrew ? "יצירת הזמנה…" : "Creating Invitation…")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+            } else {
+                Image(systemName: systemImage)
+                    .font(.system(size: 15, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+            }
+        }
+        .foregroundColor(.white)
+        .frame(maxWidth: .infinity)
+        .frame(height: 52)
+        .background(isCreating ? Color.deepNavy.opacity(0.6) : Color.deepNavy)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func inviteText(for link: URL) -> String {
+        l10n.isHebrew ? "הזמנה להצטרף למרחב \(space.name) ב־SPENT" : "Join \(space.name) in SPENT"
+    }
+
+    /// CloudKit has to save the participant before there is a URL to hand over, so the
+    /// link is produced here and not before.
+    private func createLink(_ use: @escaping (URL) -> Void) {
+        guard !isCreating else { return }
+        isCreating = true
+        copied = false
+        errorText = nil
+        Task {
+            defer { isCreating = false }
+            do {
+                let link = try await store.createInvitationLink(in: space.id)
+                withAnimation { use(link) }
+            } catch {
+                let ledger = error as? SharedLedgerError
+                errorText = ledger?.errorDescription ?? error.localizedDescription
+            }
+        }
+    }
+}
+
+/// UIActivityViewController, so WhatsApp, Messages, Mail, AirDrop and Copy are all
+/// reachable from one sheet. `ShareLink` cannot be used here: the item does not exist
+/// until the invitation has been saved.
+struct ActivityShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 struct SharedSharingController: UIViewControllerRepresentable {

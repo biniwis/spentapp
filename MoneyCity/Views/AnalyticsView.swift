@@ -124,25 +124,23 @@ public struct AnalyticsView: View {
     }
 
     private func countsTowardStats(_ tx: ExpenseSnapshot) -> Bool {
-        if tx.isUnresolvedForeign { return false }
-        if tx.category.canonical == .savings { return false }
-        if excludeHousing && tx.category.canonical == .housing { return false }
-        return true
+        AnalyticsCategoryTotal.countsTowardStats(tx, excludeHousing: excludeHousing)
     }
 
-    /// What the filter is holding back, so the row can display the exact amount
+    /// What the filter is holding back, so the row can display the exact amount.
+    ///
+    /// Only money that was going to be counted in the first place: a housing record with no
+    /// usable rate was never part of the total, so calling it hidden would overstate what
+    /// the filter did.
     private var hiddenHousing: Double {
         guard excludeHousing else { return 0 }
-        return displayTransactions
-            .filter { $0.category.canonical == .housing }
-            .reduce(0) { $0 + $1.amount }
+        return AnalyticsCategoryTotal.hiddenHousingAmount(in: displayTransactions)
     }
 
-    /// Housing this month regardless of the filter — used to decide whether the row is worth showing
+    /// Countable housing this month, filter on or off. The row is not worth showing for
+    /// housing the statistics never counted, because then it would claim to hide ₪0.
     private var housingThisMonth: Double {
-        displayTransactions
-            .filter { $0.category.canonical == .housing }
-            .reduce(0) { $0 + $1.amount }
+        AnalyticsCategoryTotal.hiddenHousingAmount(in: displayTransactions)
     }
 
     private var totalSpent: Double {
@@ -179,12 +177,7 @@ public struct AnalyticsView: View {
 
     /// Top categories sorted by spending
     private var categoryTotals: [AnalyticsCategoryTotal] {
-        var totals: [SpendingCategory: Double] = [:]
-        for tx in displayTransactions where countsTowardStats(tx) {
-            totals[tx.category.canonical, default: 0] += tx.amount
-        }
-        let total = max(totals.values.reduce(0, +), 1.0)
-        return totals.sorted { $0.value > $1.value }.map { AnalyticsCategoryTotal(category: $0.key, amount: $0.value, fraction: $0.value / total) }
+        AnalyticsCategoryTotal.totals(from: displayTransactions, countsTowardStats: countsTowardStats)
     }
 
     /// 6 comparative months for the bar chart up to chartAnchorDate
@@ -241,6 +234,249 @@ public struct AnalyticsView: View {
         }
     }
 
+    // MARK: - Shared Scope
+
+    #if !SWIFT_PACKAGE
+    /// The active space's month for the month on screen, or `nil` in personal scope.
+    ///
+    /// Read for the month being *viewed*, not for today: the stepper walks back, and a
+    /// target read for the current month would sit above last month's spending. The date
+    /// picks the month in the space's own calendar; the arithmetic stays in the one engine.
+    private var sharedMonthSummary: SharedMonthlySummary? {
+        scope.sharedMonthSummary(for: targetMonthDate)
+    }
+    #endif
+
+    private var sharedCurrency: String {
+        #if !SWIFT_PACKAGE
+        return scope.sharedCurrencyCode ?? "ILS"
+        #else
+        return "ILS"
+        #endif
+    }
+
+    private func sharedAmountText(_ minor: Int64) -> String {
+        l10n.formatScopedMinor(minor, currency: sharedCurrency)
+    }
+
+    /// Whether shares of the month can be drawn at all.
+    ///
+    /// A refund can push a category, or the month itself, below zero. A percentage of a
+    /// total that is not positive is not a share of anything, and dividing by
+    /// `max(total, 1)` used to turn such a month into confident negative percentages. The
+    /// amounts are real and stay; only the percentage and its bar go.
+    private var canShowCategoryShares: Bool {
+        guard totalSpent > 0 else { return false }
+        return !categoryTotals.contains { $0.amount < 0 }
+    }
+
+    /// Where the space stands against the target it set for itself.
+    ///
+    /// Every number is read from `SharedMonthlySummary`, the same source the profile
+    /// reports, so the two screens cannot disagree about the same month. The month's
+    /// headline amount is deliberately not repeated: the hero above already states it, and
+    /// printing it twice is two chances to show two different numbers.
+    private var sharedTargetSection: some View {
+        Group {
+            #if !SWIFT_PACKAGE
+            if let summary = sharedMonthSummary {
+                let progress = summary.progress
+                VStack(alignment: .leading, spacing: 9) {
+                    if progress.hasTarget, let target = progress.targetMinor {
+                        HStack(alignment: .firstTextBaseline, spacing: 5) {
+                            Text(l10n.language == .hebrew ? "מתוך יעד של" : "Out of a target of")
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                            Text(sharedAmountText(target))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.deepNavy)
+                        }
+
+                        if progress.isOverTarget {
+                            Text(l10n.language == .hebrew
+                                 ? "מעל היעד ב־\(sharedAmountText(-(progress.remainingMinor ?? 0)))"
+                                 : "\(sharedAmountText(-(progress.remainingMinor ?? 0))) over target")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.orange)
+                        } else {
+                            Text(l10n.language == .hebrew
+                                 ? "נותרו \(sharedAmountText(progress.remainingMinor ?? 0)) החודש"
+                                 : "\(sharedAmountText(progress.remainingMinor ?? 0)) left this month")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(Color.spentGreen)
+                        }
+                    } else {
+                        // No target, so no bar and no comparison. A space that never set one
+                        // is not a space that is somehow at zero.
+                        Text(l10n.language == .hebrew
+                             ? "לא הוגדר יעד חודשי למרחב, ולכן אין עם מה להשוות"
+                             : "No monthly target for this space, so there is nothing to compare against")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    // The bar clamps; the fraction behind it stays uncapped, because 118%
+                    // spent is information the reader is owed.
+                    if let fraction = progress.fraction {
+                        GeometryReader { geo in
+                            ZStack(alignment: .leading) {
+                                Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                                Capsule()
+                                    .fill(progress.isOverTarget ? Color.orange : MoneyCityTheme.brandPrimary)
+                                    .frame(width: geo.size.width * CGFloat(min(max(fraction, 0), 1)))
+                            }
+                        }
+                        .frame(height: 6)
+                    }
+
+                    // Why the ledger's month and the category breakdown can differ. Each line
+                    // names the actual cause, and only when it is the actual cause: a vague
+                    // "these totals do not match" tells the reader nothing they can act on,
+                    // and is usually the sign of a bug rather than a rule.
+                    if excludeHousing, hiddenHousing > 0 {
+                        sharedFootnote(l10n.language == .hebrew
+                                       ? "הוצאות דיור בסכום \(sharedAmountText(minor(hiddenHousing))) מוסתרות מהפירוט לפי הבחירה שלך"
+                                       : "\(sharedAmountText(minor(hiddenHousing))) of housing is hidden from the breakdown, by your choice")
+                    }
+
+                    if summary.savingsMinor != 0 {
+                        sharedFootnote(l10n.language == .hebrew
+                                       ? "חיסכון בסכום \(sharedAmountText(summary.savingsMinor)) אינו נכלל בפירוט הקטגוריות, אך נכלל ביעד"
+                                       : "\(sharedAmountText(summary.savingsMinor)) of savings is not in the category breakdown, but is part of the target")
+                    }
+
+                    sharedUnresolvedNote(summary.unresolvedCount)
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 2)
+            }
+            #endif
+        }
+    }
+
+    /// A quiet line for money that exists in the space but cannot be counted yet. Never an
+    /// error state: the record is real, the rate simply is not known.
+    private func sharedUnresolvedNote(_ count: Int) -> some View {
+        Group {
+            #if !SWIFT_PACKAGE
+            if count > 0 {
+                sharedFootnote(unresolvedCountText(count))
+            }
+            #endif
+        }
+    }
+
+    /// A small explanatory line under the target. Same weight everywhere, so a screen with
+    /// two of them does not look like one of them is more important.
+    private func sharedFootnote(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium, design: .default))
+            .foregroundColor(Color.textMuted)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// A major-unit amount back into the space's minor units, for the few places a rule
+    /// speaks in `Double` (the screen's own statistics) and has to name an amount in the
+    /// ledger's units.
+    private func minor(_ majorAmount: Double) -> Int64 {
+        Int64((majorAmount * pow(10, Double(SharedMoney.digits(sharedCurrency)))).rounded())
+    }
+
+    private func unresolvedCountText(_ count: Int) -> String {
+        guard l10n.language == .hebrew else {
+            return count == 1
+                ? "1 foreign-currency record awaits a rate and is not counted"
+                : "\(count) foreign-currency records await a rate and are not counted"
+        }
+        switch count {
+        case 1: return "עסקה אחת במטבע זר ממתינה להמרה ולא נספרה"
+        case 2: return "שתי עסקאות במטבע זר ממתינות להמרה ולא נספרו"
+        default: return "\(count) עסקאות במטבע זר ממתינות להמרה ולא נספרו"
+        }
+    }
+
+    /// Who paid the month, in the space's currency and members' own colours.
+    ///
+    /// Not a leaderboard: no ranking, no winner, no medals. A member who spent nothing
+    /// still appears, at zero, and a refund larger than the payment shows its real
+    /// negative. Shares are drawn only when `canShowMemberShares` says the month can carry
+    /// them; otherwise the row is the amount and nothing else.
+    private var sharedMemberSection: some View {
+        Group {
+            #if !SWIFT_PACKAGE
+            if let summary = sharedMonthSummary,
+               !summary.memberTotals.isEmpty,
+               summary.transactionCount > 0 {
+                VStack(alignment: .leading, spacing: 13) {
+                    HStack(spacing: 7) {
+                        MoneyIcon(.users, size: 15, color: MoneyCityTheme.brandPrimary)
+                        Text(l10n.language == .hebrew ? "מי שילם החודש" : "Who Paid This Month")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Color.deepNavy)
+                        Spacer()
+                    }
+
+                    VStack(spacing: 12) {
+                        ForEach(summary.memberTotals) { total in
+                            sharedMemberRow(total, summary: summary)
+                        }
+                    }
+
+                    if summary.unattributedMinor != 0 {
+                        // Money that came from outside the member list stays unattributed.
+                        // Splitting it evenly would invent a payer the ledger does not name.
+                        HStack(spacing: 12) {
+                            MoneyIcon(.user, size: 13, color: Color.textMuted)
+                                .frame(width: 34, height: 34)
+                            Text(l10n.language == .hebrew ? "לא משויך לחבר" : "Not attributed to a member")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                            Spacer(minLength: 8)
+                            Text(sharedAmountText(summary.unattributedMinor))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 6)
+            }
+            #endif
+        }
+    }
+
+    private func sharedMemberRow(_ total: SharedMemberTotal, summary: SharedMonthlySummary) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 12) {
+                SharedMemberMark(colorHex: total.colorHex, size: 32)
+                Text(total.name)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                Text(sharedAmountText(total.amountMinor))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(total.amountMinor < 0 ? Color.spentGreen : Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+
+            if summary.canShowMemberShares, summary.spentMinor > 0 {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color(red: 243/255, green: 244/255, blue: 246/255))
+                        Capsule()
+                            .fill(Color(hex: total.colorHex))
+                            .frame(width: max(geo.size.width * CGFloat(Double(total.amountMinor) / Double(summary.spentMinor)), 3),
+                                   height: 4)
+                    }
+                }
+                .frame(height: 4)
+            }
+        }
+    }
+
     // MARK: - Body Layout
 
     public var body: some View {
@@ -263,6 +499,8 @@ public struct AnalyticsView: View {
                     VStack(spacing: 16) {
                         heroKpiSection
 
+                        sharedTargetSection
+
                         compactBarChart
                             .padding(.horizontal, 20)
 
@@ -282,9 +520,15 @@ public struct AnalyticsView: View {
                             .padding(.top, 4)
 
                         if !categoryTotals.isEmpty {
-                            categoryDonutCard
-                                .padding(.horizontal, 20)
-                                .padding(.top, 8)
+                            // A donut of a month that nets out at or below zero would be a
+                            // picture of nothing. The category amounts above still stand.
+                            if canShowCategoryShares {
+                                categoryDonutCard
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 8)
+                            }
+
+                            sharedMemberSection
                         }
 
                         Spacer(minLength: 110)
@@ -307,6 +551,17 @@ public struct AnalyticsView: View {
         .onAppear {
             withAnimation(.easeOut(duration: 0.6)) { animateChart = true }
         }
+        #if !SWIFT_PACKAGE
+        // Switching scope swaps the whole dataset underneath. Nothing here caches totals,
+        // but a bar or category chosen in the previous scope would point at data that is
+        // no longer on screen, so the selection state is dropped with the scope.
+        .onChange(of: scope.activeScope) { _, _ in
+            selectedSlice = nil
+            selectedBarOffset = nil
+            isScrubbingChart = false
+            categoryForFeed = nil
+        }
+        #endif
     }
 
     // MARK: - Sticky Top Navigation Bar
@@ -540,9 +795,11 @@ public struct AnalyticsView: View {
                     Spacer()
 
                     HStack(spacing: 6) {
-                        Text("\(Int(round(fraction * 100)))%")
-                            .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(Color.textSecondary)
+                        if canShowCategoryShares {
+                            Text("\(Int(round(fraction * 100)))%")
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundColor(Color.textSecondary)
+                        }
 
                         Text(l10n.formatScoped(amount: amount))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -553,18 +810,20 @@ public struct AnalyticsView: View {
                 }
 
                 // Micro Progress Bar indicating relative spending volume
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color(uiColor: .systemGray6))
-                            .frame(height: 4)
+                if canShowCategoryShares {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color(uiColor: .systemGray6))
+                                .frame(height: 4)
 
-                        Capsule()
-                            .fill(category.themeColor)
-                            .frame(width: max(geo.size.width * CGFloat(fraction), 6), height: 4)
+                            Capsule()
+                                .fill(category.themeColor)
+                                .frame(width: max(geo.size.width * CGFloat(fraction), 6), height: 4)
+                        }
                     }
+                    .frame(height: 4)
                 }
-                .frame(height: 4)
             }
         }
         .padding(.vertical, 4)

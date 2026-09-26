@@ -156,11 +156,34 @@ struct SharedMonthlySummary: Equatable {
     let memberTotals: [SharedMemberTotal]
     let unattributedMinor: Int64
     let progress: SharedBudgetProgress
+    /// Money set aside under the savings category this month.
+    ///
+    /// Reported rather than derived, because the space's month is the ledger's month: this
+    /// money really did leave the account and the target covers it. A category breakdown,
+    /// on the other hand, only breaks down what was spent and leaves savings out. A screen
+    /// showing both needs to be able to name the reason instead of leaving two totals that
+    /// do not match.
+    let savingsMinor: Int64
 
     /// The sum actually attributed to members. Lower than `spentMinor` when something was
     /// paid by a non-member.
     var attributedMinor: Int64 {
         memberTotals.reduce(0) { $0 + $1.amountMinor }
+    }
+
+    /// Whether member spending can honestly be drawn as shares of the month.
+    ///
+    /// A share answers "what part of the whole is this?", and the whole has to be a real
+    /// whole for the answer to mean anything. It is not when the month's net is not
+    /// positive, when a refund has pushed someone below zero — a negative share of a
+    /// positive total reads as a smaller contribution, not as money coming back — or when
+    /// part of the month was paid by somebody outside the member list, because the visible
+    /// bars would not add up to the month they sit under.
+    ///
+    /// Amounts are always safe to show. These are not, so callers fall back to amounts.
+    var canShowMemberShares: Bool {
+        guard spentMinor > 0, unattributedMinor == 0 else { return false }
+        return memberTotals.allSatisfy { $0.amountMinor >= 0 }
     }
 
     static func month(of space: SharedSpace,
@@ -192,6 +215,8 @@ struct SharedMonthlySummary: Equatable {
                               amountMinor: totals[member.id] ?? 0)
         }
         let spent = resolvable.reduce(Int64(0)) { $0 + $1.amountMinor }
+        let savings = resolvable.filter { $0.category.canonical == .savings }
+            .reduce(Int64(0)) { $0 + $1.amountMinor }
 
         return SharedMonthlySummary(spaceID: space.id,
                                     spentMinor: spent,
@@ -199,7 +224,8 @@ struct SharedMonthlySummary: Equatable {
                                     unresolvedCount: inMonth.count - resolvable.count,
                                     memberTotals: memberTotals,
                                     unattributedMinor: unattributed,
-                                    progress: space.progress(spentMinor: spent))
+                                    progress: space.progress(spentMinor: spent),
+                                    savingsMinor: savings)
     }
 }
 

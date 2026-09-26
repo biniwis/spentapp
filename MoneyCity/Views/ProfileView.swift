@@ -612,12 +612,10 @@ public struct ProfileView: View {
 
     /// Shared amounts stay exact: decimals appear only when the currency has them and the
     /// value actually carries a fraction, so ₪5,860 stays ₪5,860 while ₪5,860.50 keeps
-    /// its cents and ¥5,000 is not given phantom decimals.
+    /// its cents and ¥5,000 is not given phantom decimals. The rule itself lives in
+    /// `formatScopedMinor`, shared with analytics.
     private func sharedAmountText(_ minor: Int64) -> String {
-        let code = scope.sharedCurrencyCode ?? "ILS"
-        let major = SharedMoney.major(minor, currency: code)
-        let hasFraction = SharedMoney.digits(code) > 0 && major != major.rounded()
-        return l10n.formatScoped(amount: major, showDecimals: hasFraction)
+        l10n.formatScopedMinor(minor, currency: scope.sharedCurrencyCode ?? "ILS")
     }
 
     private var personalGreetingContent: some View {

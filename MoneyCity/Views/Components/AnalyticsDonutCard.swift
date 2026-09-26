@@ -11,6 +11,50 @@ public struct AnalyticsCategoryTotal: Identifiable {
         self.amount = amount
         self.fraction = fraction
     }
+
+    /// Groups a month's records into per-category totals, largest first.
+    ///
+    /// Lives here rather than inside the view so the money rules are testable: which
+    /// records count, and what happens when a refund drags a category below zero. The
+    /// arithmetic is unchanged — callers decide how to *show* a negative share, which is
+    /// why `fraction` is returned raw instead of being clamped behind the caller's back.
+    public static func totals(from transactions: [ExpenseSnapshot],
+                              countsTowardStats: (ExpenseSnapshot) -> Bool) -> [AnalyticsCategoryTotal] {
+        var totals: [SpendingCategory: Double] = [:]
+        for tx in transactions where countsTowardStats(tx) {
+            totals[tx.category.canonical, default: 0] += tx.amount
+        }
+        let total = max(totals.values.reduce(0, +), 1.0)
+        // Ties are broken by name so equal categories keep a fixed order between renders
+        // instead of an arbitrary one.
+        return totals.sorted { $0.value == $1.value ? $0.key.rawValue < $1.key.rawValue : $0.value > $1.value }
+            .map { AnalyticsCategoryTotal(category: $0.key, amount: $0.value, fraction: $0.value / total) }
+    }
+
+    /// Which records count toward a scope's month statistics.
+    ///
+    /// A foreign record with no rate is the one that matters most here: it exists, it shows
+    /// up in lists, and it has no honest value in the scope's currency, so it is kept out of
+    /// every sum. Savings are not spending, and housing can be filtered out on request.
+    public static func countsTowardStats(_ tx: ExpenseSnapshot, excludeHousing: Bool = false) -> Bool {
+        if tx.isUnresolvedForeign { return false }
+        if tx.category.canonical == .savings { return false }
+        if excludeHousing && tx.category.canonical == .housing { return false }
+        return true
+    }
+
+    /// The money the housing filter is holding back from the month.
+    ///
+    /// The same records the statistics would have counted had the filter been off, which is
+    /// what "hidden" has to mean: an amount is only hidden if it was going to be counted.
+    /// A housing record in a foreign currency with no rate has no value in the scope's
+    /// currency, so it was never in the total and must not be reported as though the filter
+    /// took it out. Savings is excluded for the same reason it is excluded everywhere else.
+    public static func hiddenHousingAmount(in transactions: [ExpenseSnapshot]) -> Double {
+        transactions
+            .filter { $0.category.canonical == .housing && countsTowardStats($0, excludeHousing: false) }
+            .reduce(0) { $0 + $1.amount }
+    }
 }
 
 public struct AnalyticsDonutCard: View {

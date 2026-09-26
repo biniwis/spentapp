@@ -126,8 +126,17 @@ public final class AppScopeContext: ObservableObject {
     /// Built from the local store, never from the network: a target saved offline has to
     /// show up immediately, so the profile never waits on a sync round trip.
     var sharedMonthSummary: SharedMonthlySummary? {
+        sharedMonthSummary(for: Date())
+    }
+
+    /// The active space's month containing `date`, or `nil` in personal scope.
+    ///
+    /// Analytics browses months, so it cannot use the current month alone: a target read
+    /// for today would sit above last month's spending. The date decides the month in the
+    /// space's own calendar, and the arithmetic is the same single engine the profile uses.
+    func sharedMonthSummary(for date: Date) -> SharedMonthlySummary? {
         guard let space = currentSpace else { return nil }
-        return SharedMonthlySummary.month(of: space, expenses: store.expenses, members: store.members)
+        return SharedMonthlySummary.month(of: space, expenses: store.expenses, members: store.members, now: date)
     }
 
     public func selectPersonal() {
@@ -200,5 +209,16 @@ extension LocalizationManager {
         }
         #endif
         return format(amount: amount, showDecimals: showDecimals)
+    }
+
+    /// A shared amount from minor units, in the space's own currency.
+    ///
+    /// Decimals appear only when the currency has them *and* the value carries a fraction,
+    /// so ₪5,860 stays ₪5,860, ₪5,860.50 keeps its cents, and ¥5,000 is not handed
+    /// phantom decimals. One definition, used by every surface that reports shared money.
+    func formatScopedMinor(_ minor: Int64, currency: String) -> String {
+        let major = SharedMoney.major(minor, currency: currency)
+        let hasFraction = SharedMoney.digits(currency) > 0 && major != major.rounded()
+        return formatScoped(amount: major, showDecimals: hasFraction)
     }
 }

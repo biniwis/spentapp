@@ -12,7 +12,8 @@ public struct AnalyticsView: View {
     #endif
     private var allTransactions: [ExpenseSnapshot] {
         #if !SWIFT_PACKAGE
-        return scope.allExpenses(personalTransactions: personalTransactions)
+        let personal = scope.allExpenses(personalTransactions: personalTransactions)
+        return includeMySharedSpend ? personal + mySharedTransactions : personal
         #else
         return personalTransactions.map(ExpenseSnapshot.init)
         #endif
@@ -36,6 +37,9 @@ public struct AnalyticsView: View {
 
     // Housing filter: variable spending vs fixed housing
     @AppStorage("stats_exclude_housing") private var excludeHousing: Bool = false
+    // Off by default: adding shared money changes every number on this screen, so it is
+    // something the user asks for rather than something that happens to them.
+    @AppStorage("stats_include_my_shared") private var includeMySharedSpend: Bool = false
 
     private let storyVibrantPurple = Color.spentGreen
     private let storySoftLilac = Color.spentGreenSoft
@@ -125,6 +129,40 @@ public struct AnalyticsView: View {
 
     private func countsTowardStats(_ tx: ExpenseSnapshot) -> Bool {
         AnalyticsCategoryTotal.countsTowardStats(tx, excludeHousing: excludeHousing)
+    }
+
+    /// Shared expenses the user personally paid for, already in the personal currency.
+    ///
+    /// Offered only in personal scope: in a shared city the space's own analytics are the
+    /// right answer, and mixing a personal toggle into them would quietly change what a
+    /// partner sees. Nothing is copied or written — this is a reading, and with the tag off
+    /// it is not even consulted.
+    private var mySharedTransactions: [ExpenseSnapshot] {
+        #if !SWIFT_PACKAGE
+        guard !scope.activeScope.isShared else { return [] }
+        return mySpend.includedExpenses.map(\.snapshot)
+        #else
+        return []
+        #endif
+    }
+
+    /// The spend reading the tag is about, over the month the screen is showing.
+    private var mySpend: MyTotalSpend {
+        #if !SWIFT_PACKAGE
+        return scope.myTotalSpend(for: targetMonthDate, baseCurrencyCode: l10n.baseCurrency.code,
+                                  personalTransactions: personalTransactions)
+        #else
+        return MyTotalSpend(personalMinor: 0, baseCurrencyCode: "ILS", spaces: [], includedExpenses: [])
+        #endif
+    }
+
+    /// Whether the tag is worth a line on the screen at all.
+    private var offersMySharedSpend: Bool {
+        #if !SWIFT_PACKAGE
+        return !scope.activeScope.isShared && mySpend.isMemberOfAnySpace
+        #else
+        return false
+        #endif
     }
 
     /// What the filter is holding back, so the row can display the exact amount.
@@ -515,6 +553,12 @@ public struct AnalyticsView: View {
                                 .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
+                        if offersMySharedSpend {
+                            mySharedSpendLineItem
+                                .padding(.top, 2)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+
                         topCategoriesSection
                             .padding(.horizontal, 20)
                             .padding(.top, 4)
@@ -885,6 +929,61 @@ public struct AnalyticsView: View {
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - My Shared Spend Line Item (Borderless)
+
+    /// The same quiet line as the housing filter, saying one thing: the numbers on this
+    /// screen can also count what I paid for in a space I share with someone. Off by
+    /// default, and it only appears when there is such a space to speak of.
+    @ViewBuilder
+    private var mySharedSpendLineItem: some View {
+        let isHebrew = l10n.language == .hebrew
+        let myTotal = mySharedTotalThisMonth
+        HStack(spacing: 12) {
+            MoneyIcon(.users, size: 16, color: Color.deepNavy)
+                .frame(width: 28, height: 28)
+                .background(Color(uiColor: .systemGray6))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isHebrew ? "כולל מה ששילמתי במשותף" : "Including what I paid in shared")
+                    .font(.system(size: 13, weight: .semibold, design: .default))
+                    .foregroundColor(Color.deepNavy)
+
+                Text(includeMySharedSpend
+                     ? (isHebrew
+                        ? "\(l10n.formatScoped(amount: myTotal)) מתוך הסכום הכולל"
+                        : "\(l10n.formatScoped(amount: myTotal)) of the total")
+                     : (isHebrew
+                        ? "רק הוצאות אישיות בספירה"
+                        : "Personal spending only"))
+                    .font(.system(size: 11, weight: .regular, design: .default))
+                    .foregroundColor(Color.textMuted)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { includeMySharedSpend },
+                set: { val in
+                    Haptics.impact(.light)
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        includeMySharedSpend = val
+                    }
+                }
+            ))
+            .labelsHidden()
+            .tint(Color.primaryBlue)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 6)
+    }
+
+    /// What the user personally paid in shared spaces, for the month on screen, in the
+    /// personal currency and excluding anything the app cannot state honestly.
+    private var mySharedTotalThisMonth: Double {
+        Double(mySpend.sharedMinor) / pow(10, Double(SharedMoney.digits(mySpend.baseCurrencyCode)))
     }
 
     // MARK: - Integral Housing Line Item (Borderless)

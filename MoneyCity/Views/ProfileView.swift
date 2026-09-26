@@ -67,7 +67,7 @@ public struct ProfileView: View {
     @State private var showBackupSheet = false
     @State private var selectedMonth: String? = nil
     @State private var showDetailedYear = false
-    @State private var showDetailedTransactions = false
+    @State private var monthTileMode: MonthTileMode = .transactions
     @State private var showDetailedStreak = false
     @State private var showDetailedBudget = false
     @State private var activeRecapForSheet: MonthlyRecap? = nil
@@ -110,6 +110,22 @@ public struct ProfileView: View {
 
     private var totalThisMonth: Double {
         thisMonthTransactions.filter { $0.category != .savings }.reduce(0) { $0 + $1.amount }
+    }
+
+    /// Personal spending plus what this user personally paid for in shared spaces.
+    ///
+    /// A partner's spending is not this user's spending, however public the space is, and a
+    /// space the app cannot prove the user belongs to is left out rather than guessed at.
+    /// Purely a reading — the personal budget, city, park and target are not consulted and
+    /// nothing is written.
+    private var mySpendThisMonth: MyTotalSpend? {
+        #if !SWIFT_PACKAGE
+        guard !scopeCapabilities.isShared else { return nil }
+        return scope.myTotalSpend(for: Date(), baseCurrencyCode: l10n.baseCurrency.code,
+                                  personalTransactions: personalTransactions)
+        #else
+        return nil
+        #endif
     }
 
     private var yearTransactions: [ExpenseSnapshot] {
@@ -877,7 +893,7 @@ public struct ProfileView: View {
         Button(action: {
             Haptics.selection()
             withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                showDetailedTransactions.toggle()
+                monthTileMode = monthTileMode.next(offersOutOfPocket: mySpendThisMonth?.isMemberOfAnySpace == true)
             }
         }) {
             VStack(alignment: .leading, spacing: 10) {
@@ -891,31 +907,11 @@ public struct ProfileView: View {
                     }
                     Spacer()
                     Circle()
-                        .fill(Color.themeTurquoise.opacity(showDetailedTransactions ? 0.85 : 0.18))
+                        .fill(Color.themeTurquoise.opacity(monthTileMode == .transactions ? 0.18 : 0.85))
                         .frame(width: 6, height: 6)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    if showDetailedTransactions {
-                        let avgTx = thisMonthTransactions.isEmpty ? 0 : (totalThisMonth / Double(thisMonthTransactions.count))
-                        Text(l10n.formatScoped(amount: avgTx, showDecimals: false))
-                            .font(.system(size: 18.5, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                        Text(l10n.language == .hebrew ? "ממוצע לעסקה" : "Avg per transaction")
-                            .font(.system(size: 11, weight: .medium, design: .default))
-                            .foregroundColor(Color.themeTurquoise)
-                            .lineLimit(1)
-                    } else {
-                        Text("\(thisMonthTransactions.count)")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(Color.deepNavy)
-                        Text(l10n.language == .hebrew ? "עסקאות החודש" : "Transactions")
-                            .font(.system(size: 12, weight: .medium, design: .default))
-                            .foregroundColor(Color.textSecondary)
-                    }
-                }
+                monthTileValue
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -925,6 +921,78 @@ public struct ProfileView: View {
             .shadow(color: Color.black.opacity(0.03), radius: 8, y: 2)
         }
         .bouncyPress(scale: 0.96)
+    }
+
+    /// One tile, three readings, in the order the eye already expects them: how many
+    /// transactions there were, then what they averaged, and only for somebody who shares
+    /// space with others, what actually left their pocket.
+    @ViewBuilder
+    private var monthTileValue: some View {
+        let isHe = l10n.language == .hebrew
+        let spend = mySpendThisMonth
+
+        switch monthTileMode {
+        case .average:
+            let avgTx = thisMonthTransactions.isEmpty ? 0 : (totalThisMonth / Double(thisMonthTransactions.count))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(l10n.formatScoped(amount: avgTx, showDecimals: false))
+                    .font(.system(size: 18.5, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(isHe ? "ממוצע לעסקה" : "Avg per transaction")
+                    .font(.system(size: 11, weight: .medium, design: .default))
+                    .foregroundColor(Color.themeTurquoise)
+                    .lineLimit(1)
+            }
+
+        case .outOfPocket:
+            if let spend {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(l10n.formatScopedMinor(spend.totalMinor, currency: spend.baseCurrencyCode))
+                        .font(.system(size: 18.5, weight: .bold, design: .rounded))
+                        .foregroundColor(Color.deepNavy)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                    Text(isHe ? "סה\"כ יצא ממני החודש" : "Out of my pocket this month")
+                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .foregroundColor(Color.themeTurquoise)
+                        .lineLimit(1)
+                    Text("\(isHe ? "אישי" : "Personal") \(l10n.formatScopedMinor(spend.personalMinor, currency: spend.baseCurrencyCode))"
+                         + " · \(isHe ? "משותף" : "Shared") \(l10n.formatScopedMinor(spend.sharedMinor, currency: spend.baseCurrencyCode))")
+                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .foregroundColor(Color.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if !spend.omittedCurrencies.isEmpty {
+                        Text(omittedCurrenciesNote(spend.omittedCurrencies, isHebrew: isHe))
+                            .font(.system(size: 10, weight: .regular, design: .default))
+                            .foregroundColor(Color.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
+            }
+
+        case .transactions:
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(thisMonthTransactions.count)")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(Color.deepNavy)
+                Text(isHe ? "עסקאות החודש" : "Transactions")
+                    .font(.system(size: 12, weight: .medium, design: .default))
+                    .foregroundColor(Color.textSecondary)
+            }
+        }
+    }
+
+    /// Said once, quietly, and only when it is true: there is money of the user's in a
+    /// currency this total cannot honestly state.
+    private func omittedCurrenciesNote(_ currencies: [String], isHebrew: Bool) -> String {
+        let list = currencies.joined(separator: ", ")
+        return isHebrew
+            ? "לא כולל מרחב ב\(list)"
+            : "Excludes a space in \(list)"
     }
 
     private var streakMetricTile: some View {
@@ -1664,5 +1732,24 @@ public struct ProfileView: View {
             AutomaticCaptureStateStore.markAutomaticCaptureDetected(at: latest.receivedAt)
         }
         AutomaticCaptureStateStore.markBootstrapped()
+    }
+}
+
+/// The readings the "this month" tile can be showing, in tap order.
+///
+/// The third one exists only for somebody who shares space with someone. A user with no
+/// shared space is never offered a breakdown that would only ever have one line, so the
+/// tile they have today is exactly the tile they keep.
+enum MonthTileMode {
+    case transactions
+    case average
+    case outOfPocket
+
+    func next(offersOutOfPocket: Bool) -> MonthTileMode {
+        switch self {
+        case .transactions: return .average
+        case .average: return offersOutOfPocket ? .outOfPocket : .transactions
+        case .outOfPocket: return .transactions
+        }
     }
 }

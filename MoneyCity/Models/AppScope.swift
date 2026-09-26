@@ -206,6 +206,35 @@ public final class AppScopeContext: ObservableObject {
         guard case let .shared(spaceID) = activeScope else { return [] }
         return store.members.filter { $0.spaceID == spaceID }
     }
+
+    /// What the user paid out of their own pocket in a month, personal and shared together.
+    ///
+    /// A shared space is only counted when the app can prove the signed-in user is a member
+    /// of it, and only money they personally paid counts: a partner's groceries are a
+    /// partner's money, however much they are discussed in the same city. Nothing is written
+    /// anywhere — this is a reading of ledgers that already exist.
+    public func myTotalSpend(for month: Date,
+                             baseCurrencyCode: String,
+                             personalTransactions: [Transaction]) -> MyTotalSpend {
+        let calendar = Calendar.current
+        let personal = personalTransactions.filter {
+            calendar.isDate($0.timestamp, equalTo: month, toGranularity: .month)
+        }
+        // The personal part uses the same rule the profile already shows, so the plain
+        // state of a card and the combined state can never disagree about it.
+        let personalMinor = Int64((personal.filter { $0.category != .savings }
+            .reduce(0) { $0 + $1.amount } * 100).rounded())
+        return MyTotalSpendCalculator.compute(
+            baseCurrencyCode: baseCurrencyCode,
+            personalMinor: personalMinor,
+            spaces: store.spaces,
+            expenses: store.expenses,
+            members: store.members,
+            convert: FXService.convert(amount:from:to:),
+            myMemberID: { store.currentMemberID(in: $0) },
+            now: month)
+    }
+
 }
 
 /// A shared month, prepared for the city in one reading.

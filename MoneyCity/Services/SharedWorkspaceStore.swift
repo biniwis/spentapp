@@ -48,6 +48,17 @@ final class SharedWorkspaceStore: ObservableObject, CKSyncEngineDelegate {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }
     func myMemberID(in space: UUID) -> String { hash(space.uuidString + (accountName ?? "")) }
+
+    /// The same identity, but only when it can actually be trusted.
+    ///
+    /// `myMemberID` hashes in an empty account name before the store has connected, and
+    /// that hash matches no member at all. Reporting it as an identity would be a guess
+    /// that silently reads as certainty, so anything asking "am I a member of this space,
+    /// and did I pay for it?" must ask this instead and take a `nil` seriously.
+    func currentMemberID(in space: UUID) -> String? {
+        guard let accountName, !accountName.isEmpty else { return nil }
+        return myMemberID(in: space)
+    }
     func canWrite(_ id: UUID) -> Bool {
         guard !stopped, !unsupportedSpaces.contains(id), !revokedSpaces.contains(id) else { return false }
         // Denial needs positive evidence. Anything else risks locking the owner out of

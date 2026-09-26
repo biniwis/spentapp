@@ -14,7 +14,7 @@ extension Transaction: ExpenseReadable {}
 
 public struct ExpenseSnapshot: Sendable, Identifiable, ExpenseReadable {
     public let id: UUID
-    public let amount: Double
+    public var amount: Double
     public let merchant: String
     public let category: SpendingCategory
     public let timestamp: Date
@@ -48,6 +48,18 @@ public struct ExpenseSnapshot: Sendable, Identifiable, ExpenseReadable {
         isConfirmed = transaction.isConfirmed
         displayOriginalText = transaction.displayOriginalText
         canRevertForeign = transaction.originalCurrency != nil || transaction.originalAmount != nil || transaction.exchangeRate != nil
+    }
+
+    /// The same record stated in another currency, at an amount already converted.
+    ///
+    /// Only the money and its currency change: what the expense was for, when it happened,
+    /// who paid for it and which building it belongs to all stay exactly as recorded, so a
+    /// converted figure can never quietly become a different expense.
+    public func converted(to currency: String, amount: Double) -> ExpenseSnapshot {
+        var copy = self
+        copy.amount = amount
+        copy.currency = currency
+        return copy
     }
 
     init(_ expense: SharedExpense) {

@@ -3,6 +3,32 @@ import XCTest
 
 final class MerchantCanonicalizerTests: XCTestCase {
 
+    /// `safeDisplayMerchant` answers in the app language, which `AppLanguage.current` reads
+    /// from `app_language_pref` and otherwise falls back to the device language. These tests
+    /// assert Hebrew output, so without owning that key they pass only on a simulator that
+    /// happens to already prefer Hebrew, and fail on a fresh machine or an English one.
+    ///
+    /// The key is process-wide, so it is set for the duration of each test and put back
+    /// exactly as it was found — including removing it again if it was not there, so this
+    /// suite cannot change the language any later test runs under.
+    private var previousLanguagePreference: String?
+
+    override func setUp() {
+        super.setUp()
+        previousLanguagePreference = UserDefaults.standard.string(forKey: "app_language_pref")
+        UserDefaults.standard.set(AppLanguage.hebrew.rawValue, forKey: "app_language_pref")
+    }
+
+    override func tearDown() {
+        if let previousLanguagePreference {
+            UserDefaults.standard.set(previousLanguagePreference, forKey: "app_language_pref")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "app_language_pref")
+        }
+        self.previousLanguagePreference = nil
+        super.tearDown()
+    }
+
     // MARK: - TEST 1 — Learned merchant survives
     func testLearnedMerchantSurvives() {
         // Incoming: Chacoli. No rule.

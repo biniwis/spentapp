@@ -452,12 +452,38 @@ final class MonthlyRecapArchiveVisualTests: XCTestCase {
 
         try context.save()
         
+        // Every hosting controller and window is held until this test tears them down, and
+        // the teardown happens here rather than at the end of a helper.
+        //
+        // MonthlyRecapArchiveView reads through @Query, so rendering it registers a SwiftData
+        // observer against the context that backs it. Letting the hosting controller fall out
+        // of scope while the container is still alive leaves that observer registered with
+        // nothing to unregister it: a made-key-and-visible window can outlive its own
+        // reference, and the next SwiftData save in any later test posts a change
+        // notification that reaches the dangling observer and traps. That killed the test
+        // host mid-suite, after which xcodebuild relaunched it and reported the run as
+        // failed even though every assertion had passed.
+        var hosted: [UIHostingController<AnyView>] = []
+        var windows: [UIWindow] = []
+        defer {
+            for window in windows {
+                window.rootViewController = nil
+                window.isHidden = true
+            }
+            hosted.removeAll()
+            windows.removeAll()
+            // Let the released views finish unregistering while the container is still alive.
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.05))
+        }
+
         func renderToDisk(view: some View, filename: String) {
-            let hosting = UIHostingController(rootView: view)
+            let hosting = UIHostingController(rootView: AnyView(view))
             let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 393, height: 852))
             window.rootViewController = hosting
             window.makeKeyAndVisible()
             hosting.view.frame = window.bounds
+            hosted.append(hosting)
+            windows.append(window)
             
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.2))
             hosting.view.layoutIfNeeded()
@@ -470,10 +496,13 @@ final class MonthlyRecapArchiveVisualTests: XCTestCase {
                 let path = "/Users/bnymynwysmn/.gemini/antigravity/brain/0b66d33b-b50a-4abf-bf18-87bef410dacc/\(filename)"
                 try? data.write(to: URL(fileURLWithPath: path))
             }
-            window.isHidden = true
         }
 
         let l10n = LocalizationManager.shared
+        // Restored to whatever it was, not to a hardcoded language: this is process-wide
+        // state, and leaving it pinned decides what every later test sees.
+        let previousLanguage = l10n.language
+        defer { l10n.language = previousLanguage }
         
         // Render Hebrew RTL
         l10n.language = .hebrew
@@ -490,9 +519,6 @@ final class MonthlyRecapArchiveVisualTests: XCTestCase {
             .environment(\.layoutDirection, .leftToRight)
             .modelContainer(container)
         renderToDisk(view: englishView, filename: "archive_english.png")
-        
-        // Restore language
-        l10n.language = .hebrew
     }
 }
 

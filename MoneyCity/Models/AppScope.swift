@@ -216,23 +216,41 @@ public final class AppScopeContext: ObservableObject {
     public func myTotalSpend(for month: Date,
                              baseCurrencyCode: String,
                              personalTransactions: [Transaction]) -> MyTotalSpend {
-        let calendar = Calendar.current
-        let personal = personalTransactions.filter {
-            calendar.isDate($0.timestamp, equalTo: month, toGranularity: .month)
-        }
-        // The personal part uses the same rule the profile already shows, so the plain
-        // state of a card and the combined state can never disagree about it.
-        let personalMinor = Int64((personal.filter { $0.category != .savings }
-            .reduce(0) { $0 + $1.amount } * 100).rounded())
         return MyTotalSpendCalculator.compute(
             baseCurrencyCode: baseCurrencyCode,
-            personalMinor: personalMinor,
+            personalMinor: MyTotalSpendCalculator.personalMinor(
+                in: personalTransactions, month: month, baseCurrencyCode: baseCurrencyCode),
             spaces: store.spaces,
             expenses: store.expenses,
             members: store.members,
             convert: FXService.convert(amount:from:to:),
             myMemberID: { store.currentMemberID(in: $0) },
             now: month)
+    }
+
+    /// The shared expenses this user personally paid for, across every month asked about,
+    /// in the personal currency and under the same rules as the card above.
+    ///
+    /// One call answers all of them, so the month on screen, the month it is compared
+    /// against and each month of the chart are the same money. Months that overlap are
+    /// asked about more than once by a screen that shows a window and a single month, so
+    /// an expense is counted once and only once — the same row must never appear twice in
+    /// a total because it was asked for twice.
+    public func mySharedExpenses(for months: some Sequence<Date>,
+                                 baseCurrencyCode: String) -> [ExpenseSnapshot] {
+        guard !store.spaces.isEmpty else { return [] }
+        var counted = Set<UUID>()
+        var snapshots: [ExpenseSnapshot] = []
+        for month in months {
+            for snapshot in MyTotalSpendCalculator.mySharedSnapshots(
+                for: month, baseCurrencyCode: baseCurrencyCode,
+                spaces: store.spaces, expenses: store.expenses, members: store.members,
+                convert: FXService.convert(amount:from:to:),
+                myMemberID: { store.currentMemberID(in: $0) }) {
+                if counted.insert(snapshot.id).inserted { snapshots.append(snapshot) }
+            }
+        }
+        return snapshots
     }
 
 }

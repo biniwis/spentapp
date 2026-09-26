@@ -325,6 +325,73 @@ final class MyTotalSpendTests: XCTestCase {
         XCTAssertEqual(result.spaces.count, 2, "And the unconvertible one is still reported")
     }
 
+    // MARK: - Currency scale
+
+    private func personal(_ amount: Double, base: String, at date: Date? = nil,
+                          category: SpendingCategory = .food) -> Transaction {
+        Transaction(amount: amount, currency: base, merchant: "M", category: category,
+                    timestamp: date ?? now, buildingId: "food_bistro")
+    }
+
+    /// The same pair of numbers in three currencies that disagree about what a minor unit
+    /// is. A shekel has two decimal places, a yen has none, a dinar has three — so "1,000"
+    /// is not the same number of minor units in any two of them, and a total that assumed
+    /// two places would be a hundred times out in the yen.
+    private func assertScaleIsHonoured(base: String, digits: Int) {
+        let space = makeSpace(currency: base)
+        let personalMinor = MyTotalSpendCalculator.personalMinor(
+            in: [personal(1_000, base: base)], month: now, baseCurrencyCode: base)
+        let result = compute(personalMinor: personalMinor, spaces: [space],
+                             expenses: [makeExpense(spaceID: space.id, minor: 1_234, paidBy: "me",
+                                                    currency: base)],
+                             members: [makeMember("me", space.id)], base: base)
+
+        XCTAssertEqual(SharedMoney.digits(base), digits, "\(base) is a \(digits)-digit currency")
+        XCTAssertEqual(personalMinor, Int64(1_000 * pow(10, Double(digits))),
+                       "1,000 \(base) is not the same number of minor units as 1,000 of anything else")
+        XCTAssertEqual(result.sharedMinor, 1_234, "Same currency, so the shared money is simply counted")
+        XCTAssertEqual(result.totalMinor, personalMinor + 1_234,
+                       "personal + shared = total, in this currency too")
+    }
+
+    func testPersonalAndSharedAddUpInShekels() {
+        assertScaleIsHonoured(base: "ILS", digits: 2)
+    }
+
+    func testPersonalAndSharedAddUpInYenWhichHasNoMinorUnit() {
+        assertScaleIsHonoured(base: "JPY", digits: 0)
+    }
+
+    func testPersonalAndSharedAddUpInDinarWhichHasThreeDecimalPlaces() {
+        assertScaleIsHonoured(base: "KWD", digits: 3)
+    }
+
+    func testAPersonalRefundStillSubtractsWhateverTheCurrencyScaleIs() {
+        for base in ["ILS", "JPY", "KWD"] {
+            let minor = MyTotalSpendCalculator.personalMinor(
+                in: [personal(500, base: base), personal(-200, base: base)],
+                month: now, baseCurrencyCode: base)
+            XCTAssertEqual(minor, Int64(300 * pow(10, Double(SharedMoney.digits(base)))),
+                           "A refund takes money off in \(base) as well")
+        }
+    }
+
+    func testSavingsAreStillNotSpendingInAnyCurrency() {
+        for base in ["ILS", "JPY", "KWD"] {
+            let saving = personal(1_000, base: base, category: .savings)
+            let minor = MyTotalSpendCalculator.personalMinor(in: [saving], month: now, baseCurrencyCode: base)
+            XCTAssertEqual(minor, 0, "\(base): money set aside is not money spent")
+        }
+    }
+
+    func testPersonalMoneyFromAnotherMonthIsNotThisMonthsMoney() {
+        let lastMonth = Calendar.current.date(byAdding: .month, value: -1, to: now) ?? now
+        let minor = MyTotalSpendCalculator.personalMinor(
+            in: [personal(1_000, base: "ILS", at: lastMonth), personal(250, base: "ILS")],
+            month: now, baseCurrencyCode: "ILS")
+        XCTAssertEqual(minor, 25_000)
+    }
+
     // MARK: - Nothing else moves
 
     func testComputingThisTouchesNoLedgerAndNoScope() {
@@ -410,6 +477,175 @@ final class MyTotalSpendScopeTests: XCTestCase {
         scope.selectShared(spaceID: spaceID)
         let context = try XCTUnwrap(scope.sharedCityContext(for: Date()))
         XCTAssertEqual(context.spaceID, spaceID)
+    }
+
+    // MARK: - Every month the screen shows
+
+    /// The window a screen looks at: the chart months, plus the month the total on screen
+    /// is compared against. Index 0 is the anchor month, 1 the month before, and so on.
+    /// The last element is that comparison month again, which is usually already inside
+    /// the window — and asking about it twice must not be asking about it twice.
+    private func monthsAScreenAsksAbout(anchor: Date, selectedBar: Int? = nil,
+                                        count: Int = 6) -> [Date] {
+        let cal = scopeCalendarForTests
+        let window = (0..<count).map { cal.date(byAdding: .month, value: -$0, to: anchor) ?? anchor }
+        let offset = selectedBar ?? 0
+        return window + [cal.date(byAdding: .month, value: offset - 1, to: anchor) ?? anchor]
+    }
+
+    private var scopeCalendarForTests: Calendar { .current }
+
+    /// Per-month shared totals, read the way the view reads them when the tag is on.
+    private func sharedTotals(_ scope: AppScopeContext, over asked: [Date],
+                              base: String = "ILS") -> [Double] {
+        let cal = scope.calendar
+        let listed = scope.mySharedExpenses(for: asked, baseCurrencyCode: base)
+        return asked.map { date in
+            listed.filter { cal.isDate($0.timestamp, equalTo: date, toGranularity: .month) }
+                .reduce(0) { $0 + $1.amount }
+        }
+    }
+
+    /// Starts the demo space, notes what the user had already paid in each of those months,
+    /// and hands the test a way to add more. Measured before and after on the same store,
+    /// so the demo's own spending is never mistaken for the money under test.
+    private func measuringMyMonths(selectedBar: Int? = nil,
+                                   _ test: (_ scope: AppScopeContext,
+                                            _ add: ([Int]) async throws -> Void,
+                                            _ baseline: [Double],
+                                            _ asked: [Date]) async throws -> Void) async throws {
+        let store = SharedWorkspaceStore()
+        try await store.startDemo()
+        // Asked of the store before the scope moves to personal, which is what clearing
+        // the active space means.
+        let spaceID = try XCTUnwrap(store.activeSpaceID)
+        let me = try XCTUnwrap(store.currentMemberID(in: spaceID))
+        let scope = AppScopeContext(store: store)
+        scope.selectPersonal()
+        let asked = monthsAScreenAsksAbout(anchor: Date(), selectedBar: selectedBar)
+        let baseline = sharedTotals(scope, over: asked)
+
+        let add: ([Int]) async throws -> Void = { offsets in
+            for offset in offsets {
+                let date = Calendar.current.date(byAdding: .month, value: -offset, to: Date()) ?? Date()
+                try store.saveExpense(SharedExpense(
+                    id: UUID(), spaceID: spaceID, amountMinor: 5_000, currencyCode: "ILS",
+                    merchant: "S", category: .food, buildingID: "food_bistro", date: date,
+                    note: "", paidBy: me, createdBy: me, updatedBy: me))
+            }
+        }
+
+        try await test(scope, add, baseline, asked)
+    }
+
+    private func growth(_ baseline: [Double], after: [Double]) -> [Double] {
+        zip(after, baseline).map { $0 - $1 }
+    }
+
+    func testBothMonthsOfTheComparisonGetTheSharedMoneyTheyActuallySpent() async throws {
+        try await measuringMyMonths { scope, add, baseline, asked in
+            try await add([0, 1])
+
+            let added = growth(baseline, after: sharedTotals(scope, over: asked))
+
+            XCTAssertEqual(added[0], 50, "This month's shared money is in this month's total")
+            XCTAssertEqual(added[asked.count - 1], 50,
+                           "And the month before carries its own, which is the month being compared")
+        }
+    }
+
+    func testEveryMonthOfTheChartGetsItsOwnSharedMoneyRatherThanTheSelectedMonths() async throws {
+        try await measuringMyMonths { scope, add, baseline, asked in
+            try await add([2, 4])
+
+            let added = growth(baseline, after: sharedTotals(scope, over: asked))
+
+            XCTAssertEqual(Array(added.prefix(6)), [0, 0, 50, 0, 50, 0],
+                           "Two and four months back each carry their own money, and no other bar does")
+            XCTAssertEqual(added[6], 0, "The month before the window had none of its own to add")
+        }
+    }
+
+    func testGoingBackToAnEarlierMonthShowsThatMonthsSharedMoney() async throws {
+        try await measuringMyMonths(selectedBar: 3) { scope, add, baseline, asked in
+            try await add([3])
+
+            let added = growth(baseline, after: sharedTotals(scope, over: asked))
+
+            XCTAssertEqual(added[3], 50, "The month the user navigated to carries its own shared money")
+            XCTAssertEqual(added[2], 0, "And the month before it carries its own, which is nothing")
+            XCTAssertEqual(added[0], 0, "The month they walked away from is not added to this one")
+        }
+    }
+
+    func testAMonthAskedAboutTwiceIsCountedOnceInEachTotalAndOnceAcrossThem() async throws {
+        try await measuringMyMonths { scope, add, baseline, asked in
+            try await add([0, 1, 2])
+
+            let listed = scope.mySharedExpenses(for: asked, baseCurrencyCode: "ILS")
+            let ids = listed.map(\.id)
+            let added = growth(baseline, after: sharedTotals(scope, over: asked))
+
+            XCTAssertEqual(Set(ids).count, ids.count, "Overlapping months must not double a row")
+            XCTAssertEqual(asked[6], asked[1], "This screen really does ask about one month twice")
+            XCTAssertEqual(added[6], added[1], "And gets the same answer, not two of them")
+            XCTAssertEqual(Array(added.prefix(6)).reduce(0, +), 150,
+                           "Three months of shared money across the window, each counted once")
+        }
+    }
+
+    func testWithTheTagOffTheScreenIsPersonalOnlyIncludingThePastMonths() async throws {
+        try await measuringMyMonths { scope, add, baseline, asked in
+            try await add([0, 1, 2])
+            let now = Date()
+            let personal = [ExpenseSnapshot(id: UUID(), amount: 30, merchant: "P", category: .food,
+                                            timestamp: now, buildingId: "food_bistro")]
+            let cal = scope.calendar
+            let off = asked.map { date in
+                personal.filter { cal.isDate($0.timestamp, equalTo: date, toGranularity: .month) }
+                    .reduce(0) { $0 + $1.amount }
+            }
+
+            XCTAssertEqual(off, [30, 0, 0, 0, 0, 0, 0],
+                           "With the tag off every past month is empty, exactly as it always was")
+            XCTAssertEqual(Array(growth(baseline, after: sharedTotals(scope, over: asked)).prefix(6))
+                            .reduce(0, +), 150, "With it on, the same three months appear")
+        }
+    }
+
+    func testReadingTheOtherMonthsWritesNothingAndGrantsNothing() async throws {
+        let store = SharedWorkspaceStore()
+        try await store.startDemo()
+        let scope = AppScopeContext(store: store)
+        scope.selectPersonal()
+        let expensesBefore = store.expenses
+        let membersBefore = store.members
+        let capabilitiesBefore = scope.capabilities
+
+        _ = scope.mySharedExpenses(for: monthsAScreenAsksAbout(anchor: Date()),
+                                   baseCurrencyCode: "ILS")
+
+        XCTAssertEqual(store.expenses, expensesBefore, "A wider question copies nothing into anywhere")
+        XCTAssertEqual(store.members, membersBefore)
+        XCTAssertEqual(scope.capabilities, capabilitiesBefore)
+    }
+
+    func testAHistoryOfSharedMoneyDoesNotChangeWhatASharedSpaceReports() async throws {
+        let store = SharedWorkspaceStore()
+        try await store.startDemo()
+        let spaceID = try XCTUnwrap(store.activeSpaceID)
+        let scope = AppScopeContext(store: store)
+        scope.selectShared(spaceID: spaceID)
+        let before = try XCTUnwrap(scope.sharedMonthSummary(for: Date()))
+        scope.selectPersonal()
+
+        _ = scope.mySharedExpenses(for: monthsAScreenAsksAbout(anchor: Date()),
+                                   baseCurrencyCode: "ILS")
+        scope.selectShared(spaceID: spaceID)
+        let after = try XCTUnwrap(scope.sharedMonthSummary(for: Date()))
+
+        XCTAssertEqual(before.spentMinor, after.spentMinor, "The space's own month is its own business")
+        XCTAssertEqual(before.memberTotals.map(\.amountMinor), after.memberTotals.map(\.amountMinor))
     }
 
     // MARK: - The Analytics tag

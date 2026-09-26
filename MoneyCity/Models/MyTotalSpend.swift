@@ -147,4 +147,42 @@ enum MyTotalSpendCalculator {
         return MyTotalSpend(personalMinor: personalMinor, baseCurrencyCode: base,
                             spaces: amounts, includedExpenses: included)
     }
+
+    /// The personal half on its own: this month's own spending, in minor units of the base
+    /// currency.
+    ///
+    /// Separate because the scale is a property of the currency, not of the screen: the yen
+    /// has no minor unit at all and the dinar has three, so a total that assumed two
+    /// decimal places would be a hundred times out in one currency and ten times out in
+    /// the other. Savings are not spending, and refunds arrive already signed.
+    public static func personalMinor(in transactions: [Transaction],
+                                     month: Date,
+                                     baseCurrencyCode: String,
+                                     calendar: Calendar = .current) -> Int64 {
+        let major = transactions.filter {
+            calendar.isDate($0.timestamp, equalTo: month, toGranularity: .month)
+        }.filter { $0.category != .savings }
+            .reduce(0) { $0 + $1.amount }
+        return Int64((major * pow(10, Double(SharedMoney.digits(baseCurrencyCode)))).rounded())
+    }
+
+    /// The same reading, minus the personal half: the shared expenses this user paid for
+    /// in one month, already stated in the personal currency.
+    ///
+    /// Offered separately because the screen asks about months the card does not show —
+    /// the month before, and each bar of the chart. They are answered here rather than
+    /// filtered out of one month's answer, so no consumer is quietly left reading a
+    /// different truth than the one the card tells.
+    static func mySharedSnapshots(for month: Date,
+                                  baseCurrencyCode: String,
+                                  spaces: [SharedSpace],
+                                  expenses: [SharedExpense],
+                                  members: [SharedMember],
+                                  convert: (Double, String, String) -> Double?,
+                                  myMemberID: (UUID) -> String?) -> [ExpenseSnapshot] {
+        compute(baseCurrencyCode: baseCurrencyCode, personalMinor: 0,
+                spaces: spaces, expenses: expenses, members: members,
+                convert: convert, myMemberID: myMemberID, now: month)
+            .includedExpenses.map(\.snapshot)
+    }
 }

@@ -13,7 +13,9 @@ public struct AnalyticsView: View {
     private var allTransactions: [ExpenseSnapshot] {
         #if !SWIFT_PACKAGE
         let personal = scope.allExpenses(personalTransactions: personalTransactions)
-        return includeMySharedSpend ? personal + mySharedTransactions : personal
+        guard includeMySharedSpend, !scope.activeScope.isShared else { return personal }
+        return personal + scope.mySharedExpenses(for: monthsOnScreen,
+                                                 baseCurrencyCode: l10n.baseCurrency.code)
         #else
         return personalTransactions.map(ExpenseSnapshot.init)
         #endif
@@ -65,6 +67,17 @@ public struct AnalyticsView: View {
         let cal = scopeCalendar
         let offset = selectedBarOffset ?? selectedMonthOffset
         return cal.date(byAdding: .month, value: offset, to: Date()) ?? Date()
+    }
+
+    /// Every month the screen shows or compares at once: the six chart months, plus the
+    /// month before the one on screen. Asked of the shared ledger in one go, so a month
+    /// that shows up in two places is one answer rather than two.
+    private var monthsOnScreen: [Date] {
+        let cal = scopeCalendar
+        var months = (0..<6).map { cal.date(byAdding: .month, value: -$0, to: chartAnchorDate) ?? chartAnchorDate }
+        let prev = cal.date(byAdding: .month, value: -1, to: targetMonthDate) ?? targetMonthDate
+        months.append(prev)
+        return months
     }
 
     private var isRecapWindowActiveForTargetMonth: Bool {
@@ -131,22 +144,11 @@ public struct AnalyticsView: View {
         AnalyticsCategoryTotal.countsTowardStats(tx, excludeHousing: excludeHousing)
     }
 
-    /// Shared expenses the user personally paid for, already in the personal currency.
-    ///
-    /// Offered only in personal scope: in a shared city the space's own analytics are the
-    /// right answer, and mixing a personal toggle into them would quietly change what a
-    /// partner sees. Nothing is copied or written — this is a reading, and with the tag off
-    /// it is not even consulted.
-    private var mySharedTransactions: [ExpenseSnapshot] {
-        #if !SWIFT_PACKAGE
-        guard !scope.activeScope.isShared else { return [] }
-        return mySpend.includedExpenses.map(\.snapshot)
-        #else
-        return []
-        #endif
-    }
-
     /// The spend reading the tag is about, over the month the screen is showing.
+    ///
+    /// Personal scope only, and only ever a reading: in a shared city the space's own
+    /// analytics are the right answer, and mixing a personal toggle into them would
+    /// quietly change what a partner sees. With the tag off nothing here is consulted.
     private var mySpend: MyTotalSpend {
         #if !SWIFT_PACKAGE
         return scope.myTotalSpend(for: targetMonthDate, baseCurrencyCode: l10n.baseCurrency.code,
